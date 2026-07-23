@@ -2,7 +2,7 @@
 
 An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized play. The page (`character-sheet.html`) loads its logic from small modules in `src/`. Open it directly in a browser, or for local development serve the folder (there's a ready `static` config in `.claude/launch.json`, e.g. `python3 -m http.server`). No install, no accounts; game data is user-supplied (see below).
 
-> **Status:** prototype (v0.9), deliberately unstyled ("function over form"). Cosmetics/theming come later.
+> **Status:** prototype (v0.10), deliberately unstyled ("function over form"). Cosmetics/theming come later.
 
 ---
 
@@ -13,6 +13,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Dice roller (command mode)](#dice-roller-command-mode)
 - [Roll buttons](#roll-buttons)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
+- [Class features (5e.tools import)](#class-features-5etools-import)
 - [Saving & loading](#saving--loading)
 - [Keyboard](#keyboard)
 - [Roadmap / known limits](#roadmap--known-limits)
@@ -49,6 +50,7 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - **Inventory & Equipment** — coin purse (cp/sp/ep/gp/pp, auto-summed to a gp total via SRD exchange rates) and an item list (equipped, qty, name, weight, gp value per unit). Each row auto-sums to a line total; the footer totals weight and item value, and shows **total wealth = coins + items** in gp, so you can watch it move as you buy/sell gear.
 - **Dice Roller** — see below.
 - **Spell Library** — import & search spells; see below.
+- **Class Features** — import class data to see the features your classes/levels grant; see below.
 - **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; spell table with per-spell to-hit and damage roll buttons.
 
 ## Dice roller (command mode)
@@ -92,6 +94,14 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - Click **`+`** to add it to your Spellcasting table (fills name, level, and damage — cantrip damage scales to your current level).
 
 *Note: nothing from 5e.tools is bundled with the sheet; you supply the JSON, it's parsed in your browser.*
+
+## Class features (5e.tools import)
+Import class data to list the features your build grants.
+1. **Load class files** → pick one or more `class-*.json` from 5e.tools' `data/class/` (e.g. `class-fighter.json`). Use the 2014 classes.
+2. The panel reads your **Classes** table (class name, subclass, level) and lists every class feature and matching subclass feature you'd have at that level. Class/subclass names match case-insensitively; it updates live as you edit the table.
+3. Click a feature's **name** to expand its description; click again to collapse.
+
+The library is cached locally (separate from your character). *Optional/choice features that live in their own files — Fighting Styles, Battle Master maneuvers, Warlock invocations, Metamagic, etc. — aren't imported yet.*
 
 ## Saving & loading
 - **Autosave** to the browser (localStorage) on every change.
