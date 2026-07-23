@@ -45,6 +45,25 @@ function loadClassFiles(files) {
     rd.readAsText(file);
   });
 }
+/* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
+   Only works when served over http(s) — browsers block fetch() of local files opened via file://.
+   5e.tools' data/class/ has no index.json, so we probe the known 2014-class filenames directly. */
+const CLASS_DATA_FILES = ["artificer", "barbarian", "bard", "cleric", "druid", "fighter", "monk", "mystic",
+  "paladin", "ranger", "rogue", "sidekick", "sorcerer", "warlock", "wizard"].map(n => "data/class/class-" + n + ".json");
+async function autoLoadClasses() {
+  let found = false, blocked = false, filesLoaded = 0;
+  for (const url of CLASS_DATA_FILES) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      found = true;
+      parseClassFile(await res.json());
+      filesLoaded++;
+    } catch (e) { blocked = true; }
+  }
+  if (filesLoaded) saveClassLib();
+  return { found, blocked, filesLoaded, filesTotal: CLASS_DATA_FILES.length };
+}
 function saveClassLib() {
   try { localStorage.setItem("charsheet-classlib", JSON.stringify({ v: CLASS_SCHEMA, lib: CLASS_LIB })); }
   catch (e) { console.warn("Class library too large for localStorage; kept in memory for this session only.", e); }
@@ -66,7 +85,7 @@ function renderClassLibrary() {
 }
 function renderClassFeatures() {
   const el = $("class-feat-results"); if (!el) return;
-  if (!Object.keys(CLASS_LIB).length) { el.innerHTML = "<div class='hint'>Import <code>class-*.json</code> above (from 5e.tools <code>data/class/</code>) to see your features.</div>"; return; }
+  if (!Object.keys(CLASS_LIB).length) { el.innerHTML = "<div class='hint'>No classes loaded — auto-loads from <code>data/class/</code>, or import <code>class-*.json</code> above.</div>"; return; }
   const classes = getClasses().filter(c => c.name.trim());
   if (!classes.length) { el.innerHTML = "<div class='hint'>Add a class name in the Character module to see its features.</div>"; return; }
   el.innerHTML = classes.map(c => {
@@ -96,12 +115,18 @@ function toggleFeatDetail(link) {
   d.innerHTML = escapeHtml(f.text).replace(/\n/g, "<br>");
   div.after(d);
 }
+function runClassAutoLoad() {
+  $("class-lib-autostatus").textContent = "loading from data/ …";
+  autoLoadClasses().then(res => { renderClassLibrary(); $("class-lib-autostatus").textContent = autoStatusText(res, "class features"); });
+}
 document.addEventListener("DOMContentLoaded", () => {
   loadClassLib();
   $("class-import").addEventListener("change", e => { if (e.target.files.length) loadClassFiles(e.target.files); e.target.value = ""; });
   $("class-lib-clear").addEventListener("click", () => {
     if (confirm("Clear the imported class library? (does not affect your character)")) { CLASS_LIB = {}; localStorage.removeItem("charsheet-classlib"); renderClassLibrary(); }
   });
+  $("class-lib-reload").addEventListener("click", runClassAutoLoad);
+  runClassAutoLoad();
   $("class-feat-results").addEventListener("click", e => { const l = e.target.closest(".feat-link"); if (l) { e.preventDefault(); toggleFeatDetail(l); } });
   // Re-render when the Classes table changes: MutationObserver for row add/remove, input for value edits.
   const cr = $("class-rows");

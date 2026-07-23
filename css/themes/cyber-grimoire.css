@@ -1,0 +1,43 @@
+/* Cyber Grimoire: neon cyberpunk with electric glow */
+:root {
+  --font-body: 'Courier New', monospace;
+  --font-mono: 'Courier New', monospace;
+  --bg: #0a0a0a;
+  --fg: #00ffff;
+  --muted-fg: #00cc99;
+  --border: #00ffff;
+  --border-soft: #00cc99;
+  --border-hair: #003333;
+  --code-bg: #1a1a2a;
+  --link: #ff00ff;
+  --link-border: #ff00ff;
+  --danger: #ff0055;
+  --danger-border: #ff00ff;
+  --btn-bg: #1a1a2a;
+  --btn-fg: #00ffff;
+  --btn-border: #00ffff;
+  --tooltip-bg: #0a0a0a;
+  --tooltip-fg: #00ffff;
+  --menu-bg: #0a0a0a;
+  --menu-hover-bg: #1a1a2a;
+  --menu-shadow: rgba(0, 255, 255, 0.3);
+  --radius: 0px;
+}
+
+/* Electric glow on links and interactive elements */
+a, .sp-name-link, .feat-link {
+  text-shadow: 0 0 8px rgba(255, 0, 255, 0.6);
+}
+
+h1, h2 {
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(255, 0, 255, 0.4);
+}
+
+/* Neon border glow on modules */
+.module {
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.3) inset, 0 0 12px rgba(255, 0, 255, 0.1);
+}
+
+button:hover {
+  text-shadow: 0 0 6px rgba(0, 255, 255, 0.8);
+}

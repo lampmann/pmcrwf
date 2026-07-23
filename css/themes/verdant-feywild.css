@@ -1,0 +1,47 @@
+/* Verdant Feywild: whimsical fey forest with soft edges */
+:root {
+  --font-body: system-ui, sans-serif;
+  --font-mono: 'Courier New', monospace;
+  --bg: #f5f9f5;
+  --fg: #2d5016;
+  --muted-fg: #5a7a3a;
+  --border: #50c878;
+  --border-soft: #8dd9a0;
+  --border-hair: #e8f5e9;
+  --code-bg: #e8f5e9;
+  --link: #2e7d32;
+  --link-border: #50c878;
+  --danger: #b81c1c;
+  --danger-border: #8b1313;
+  --btn-bg: #e8f5e9;
+  --btn-fg: #2d5016;
+  --btn-border: #50c878;
+  --tooltip-bg: #2d5016;
+  --tooltip-fg: #f5f9f5;
+  --menu-bg: #f5f9f5;
+  --menu-hover-bg: #e8f5e9;
+  --menu-shadow: rgba(45, 80, 22, 0.2);
+  --radius: 8px;
+}
+
+/* Soft, rounded, airy modules */
+.module {
+  box-shadow: 0 2px 6px rgba(45, 80, 22, 0.1);
+  background: #fafef9;
+}
+
+/* Gentle lilac/green glow on headers */
+h1, h2 {
+  color: #2e7d32;
+  text-shadow: 0 1px 2px rgba(45, 80, 22, 0.15);
+}
+
+/* Soft emerald accents for links */
+.sp-name-link, .feat-link {
+  color: #2e7d32;
+}
+
+/* Light, friendly button style */
+button {
+  box-shadow: 0 1px 3px rgba(45, 80, 22, 0.15);
+}

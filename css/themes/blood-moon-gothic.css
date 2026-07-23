@@ -1,0 +1,42 @@
+/* Blood Moon Gothic: dark horror with crimson accents */
+:root {
+  --font-body: system-ui, sans-serif;
+  --font-mono: 'Courier New', monospace;
+  --bg: #1a1a1a;
+  --fg: #e8e8e8;
+  --muted-fg: #a0a0a0;
+  --border: #404040;
+  --border-soft: #555555;
+  --border-hair: #2a2a2a;
+  --code-bg: #252525;
+  --link: #ff6b7a;
+  --link-border: #c41e3a;
+  --danger: #c41e3a;
+  --danger-border: #a01830;
+  --btn-bg: #252525;
+  --btn-fg: #e8e8e8;
+  --btn-border: #555555;
+  --tooltip-bg: #1a1a1a;
+  --tooltip-fg: #e8e8e8;
+  --menu-bg: #1a1a1a;
+  --menu-hover-bg: #2a2a2a;
+  --menu-shadow: rgba(196, 30, 58, 0.3);
+  --radius: 0px;
+}
+
+/* Sharp, thin borders on modules for gothic edge */
+.module {
+  border-width: 1px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Crimson glow on headers */
+h1, h2 {
+  color: #ff8899;
+  text-shadow: 0 0 4px rgba(196, 30, 58, 0.5);
+}
+
+/* Danger elements with bold crimson */
+.fctrl-btn.red, .fbtn.exc {
+  text-shadow: 0 0 4px rgba(196, 30, 58, 0.6);
+}
