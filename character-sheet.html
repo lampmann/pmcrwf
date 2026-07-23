@@ -27,6 +27,7 @@
     <h2>Character</h2>
     <label>Name <input type="text" class="txt" data-persist id="char-name" style="width:16rem"></label>
     <label>Race <input type="text" data-persist id="char-race" style="width:9rem"></label>
+    <label>Subrace <input type="text" data-persist id="char-subrace" style="width:9rem"></label>
     <label>Background <input type="text" data-persist id="char-bg" style="width:9rem"></label>
     <fieldset>
       <legend>Classes (multiclass supported)</legend>
@@ -142,17 +143,17 @@
     <div id="dicelog"><div>— roll log —</div></div>
   </section>
 
-  <!-- ===== CLASS FEATURES (5e.tools import) ===== -->
+  <!-- ===== FEATURES (5e.tools import: race + class + feats) ===== -->
   <section class="module wide" data-module="class-features">
-    <h2>Class Features <span class="hint">(auto-loads from <code>data/class/</code>; shows features for the classes/levels in your Character module)</span></h2>
+    <h2>Features <span class="hint">(auto-loads race/class/feat data from <code>data/</code>; shows features for your race and the classes/levels in your Character module)</span></h2>
     <div>
       <button id="class-lib-reload">reload from data/ folder</button>
       <button id="class-lib-clear">clear</button>
-      <span class="hint" id="class-lib-count">no classes loaded</span>
+      <span class="hint" id="class-lib-count">nothing loaded</span>
       <span class="hint" id="class-lib-autostatus"></span>
     </div>
     <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
-      <label style="display:inline">import files manually <input type="file" id="class-import" accept="application/json" multiple></label>.
+      <label style="display:inline">import files manually (class/race/feat json) <input type="file" id="class-import" accept="application/json" multiple></label>.
     </div>
     <div id="class-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
   </section>
