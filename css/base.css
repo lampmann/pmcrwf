@@ -1,0 +1,84 @@
+/* Prof. Dr. style: deliberately minimal. Function over form.
+   Themeable via CSS custom properties (see the --var list below) — a theme
+   file loaded after this one only needs to redefine these on :root. */
+:root {
+  --font-body: system-ui, sans-serif;
+  --font-mono: monospace;
+  --bg: #fff;
+  --fg: #000;
+  --muted-fg: #444;
+  --border: #000;
+  --border-soft: #666;
+  --border-hair: #eee;
+  --code-bg: #eee;
+  --link: #1a56c4;
+  --link-border: #1a56c4;
+  --danger: #b32318;
+  --danger-border: #b32318;
+  --btn-bg: #fff;
+  --btn-fg: #000;
+  --btn-border: #999;
+  --tooltip-bg: #000;
+  --tooltip-fg: #fff;
+  --menu-bg: #fff;
+  --menu-hover-bg: #def;
+  --menu-shadow: rgba(0,0,0,.3);
+  --radius: 0px;
+}
+* { box-sizing: border-box; }
+body { font-family: var(--font-body); margin: 1rem; line-height: 1.35; background: var(--bg); color: var(--fg); }
+h1 { font-size: 1.2rem; margin: 0 0 .25rem; }
+h2 { font-size: 1rem; margin: 0 0 .5rem; }
+.toolbar { margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 2px solid var(--border); }
+.toolbar button, .toolbar label { margin-right: .5rem; }
+.modules { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
+.module { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem .75rem; min-width: 240px; background: var(--bg); }
+.module.wide { flex-basis: 100%; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: 1px 4px; }
+input[type="number"], input[type="text"] { font: inherit; background: var(--bg); color: var(--fg); }
+input.num { width: 3.6rem; text-align: right; }
+input.tiny { width: 2.6rem; text-align: right; }
+input.txt { width: 100%; }
+.derived { font-weight: bold; }
+button.roll { font: inherit; cursor: pointer; }
+button { font: inherit; background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-border); border-radius: var(--radius); }
+#dicelog { height: 12rem; overflow-y: auto; border: 1px solid var(--border); padding: .25rem; font-family: var(--font-mono); font-size: .8rem; white-space: pre-wrap; }
+#dicelog > div:first-child { font-weight: bold; }
+.rowbtn { cursor: pointer; }
+fieldset { border: 1px dashed var(--border-soft); border-radius: var(--radius); margin: .25rem 0; padding: .25rem .5rem; }
+legend { font-size: .8rem; }
+.hint { font-size: .75rem; color: var(--muted-fg); }
+code { background: var(--code-bg); color: inherit; padding: 0 2px; }
+/* ----- spell filter UI ----- */
+.modbar { margin: .25rem 0; padding-bottom: .25rem; border-bottom: 1px solid var(--border); }
+.modbar button, .fctrl-btn, .fbtn { font: inherit; cursor: pointer; }
+.modbar button { margin-right: 3px; font-size: .78rem; }
+#mod-combine { font-weight: bold; }
+.fgroup { display: grid; grid-template-columns: 5.5rem 1fr; gap: .3rem; align-items: start; padding: 2px 0; border-top: 1px solid var(--border-hair); }
+.flabel { font-weight: bold; font-size: .8rem; padding-top: 3px; }
+.fctrl { display: inline-block; margin-right: .4rem; }
+.fctrl-btn { border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg); padding: 0 3px; margin-right: 2px; font-size: .72rem; }
+.fctrl-btn.blue { color: var(--link); border-color: var(--link-border); }
+.fctrl-btn.red { color: var(--danger); border-color: var(--danger-border); }
+.fbtn { border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg); padding: 0 5px; margin: 1px; font-size: .8rem; }
+.fbtn.inc { background: var(--link); color: var(--tooltip-fg); border-color: var(--link-border); }
+.fbtn.exc { background: var(--danger); color: var(--tooltip-fg); border-color: var(--danger-border); }
+/* ----- roll modifier tooltip + context menu ----- */
+#rolltip { position: fixed; background: var(--tooltip-bg); color: var(--tooltip-fg); padding: 2px 6px; font-size: .75rem; pointer-events: none; display: none; z-index: 1000; white-space: nowrap; }
+#rollmenu { position: fixed; background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border); font-size: .8rem; z-index: 1001; box-shadow: 2px 2px 4px var(--menu-shadow); }
+#rollmenu div { padding: 2px 12px; cursor: pointer; }
+#rollmenu div:hover { background: var(--menu-hover-bg); }
+.fmode { width: 2.9rem; box-sizing: border-box; text-align: center; }   /* fixed width so OR/AND/XOR never shift the row */
+/* ----- spell results table ----- */
+.spell-table { border-collapse: collapse; width: 100%; }
+.spell-table td { padding: 0 5px; white-space: nowrap; vertical-align: top; }
+.spell-table td.c { text-align: center; }
+.spell-table .nm { width: 100%; }
+.sp-name-link { text-decoration: none; color: var(--link); cursor: pointer; }
+.sp-name-link:hover { text-decoration: underline; }
+.sp-detail td { white-space: normal; padding: 2px 5px 7px; }
+/* ----- class features ----- */
+.feat-link { color: var(--link); cursor: pointer; text-decoration: none; }
+.feat-link:hover { text-decoration: underline; }
+.feat-detail { white-space: normal; margin: 0 0 .35rem 1.2rem; }

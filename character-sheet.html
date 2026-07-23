@@ -4,71 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Modular Character Sheet — Prototype (unstyled)</title>
-<style>
-  /* Prof. Dr. style: deliberately minimal. Function over form. */
-  * { box-sizing: border-box; }
-  body { font-family: system-ui, sans-serif; margin: 1rem; line-height: 1.35; }
-  h1 { font-size: 1.2rem; margin: 0 0 .25rem; }
-  h2 { font-size: 1rem; margin: 0 0 .5rem; }
-  .toolbar { margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 2px solid #000; }
-  .toolbar button, .toolbar label { margin-right: .5rem; }
-  .modules { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
-  .module { border: 1px solid #000; padding: .5rem .75rem; min-width: 240px; }
-  .module.wide { flex-basis: 100%; }
-  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
-  th, td { text-align: left; padding: 1px 4px; }
-  input[type="number"], input[type="text"] { font: inherit; }
-  input.num { width: 3.6rem; text-align: right; }
-  input.tiny { width: 2.6rem; text-align: right; }
-  input.txt { width: 100%; }
-  .derived { font-weight: bold; }
-  button.roll { font: inherit; cursor: pointer; }
-  #dicelog { height: 12rem; overflow-y: auto; border: 1px solid #000; padding: .25rem; font-family: monospace; font-size: .8rem; white-space: pre-wrap; }
-  #dicelog > div:first-child { font-weight: bold; }
-  .rowbtn { cursor: pointer; }
-  fieldset { border: 1px dashed #666; margin: .25rem 0; padding: .25rem .5rem; }
-  legend { font-size: .8rem; }
-  .hint { font-size: .75rem; color: #444; }
-  code { background: #eee; padding: 0 2px; }
-  /* ----- spell filter UI ----- */
-  .modbar { margin: .25rem 0; padding-bottom: .25rem; border-bottom: 1px solid #000; }
-  .modbar button, .fctrl-btn, .fbtn { font: inherit; cursor: pointer; }
-  .modbar button { margin-right: 3px; font-size: .78rem; }
-  #mod-combine { font-weight: bold; }
-  .fgroup { display: grid; grid-template-columns: 5.5rem 1fr; gap: .3rem; align-items: start; padding: 2px 0; border-top: 1px solid #eee; }
-  .flabel { font-weight: bold; font-size: .8rem; padding-top: 3px; }
-  .fctrl { display: inline-block; margin-right: .4rem; }
-  .fctrl-btn { border: 1px solid #999; background: #fff; padding: 0 3px; margin-right: 2px; font-size: .72rem; }
-  .fctrl-btn.blue { color: #1a56c4; border-color: #1a56c4; }
-  .fctrl-btn.red { color: #b32318; border-color: #b32318; }
-  .fbtn { border: 1px solid #999; background: #fff; color: #000; padding: 0 5px; margin: 1px; font-size: .8rem; }
-  .fbtn.inc { background: #1a56c4; color: #fff; border-color: #1a56c4; }
-  .fbtn.exc { background: #b32318; color: #fff; border-color: #b32318; }
-  /* ----- roll modifier tooltip + context menu ----- */
-  #rolltip { position: fixed; background: #000; color: #fff; padding: 2px 6px; font-size: .75rem; pointer-events: none; display: none; z-index: 1000; white-space: nowrap; }
-  #rollmenu { position: fixed; background: #fff; border: 1px solid #000; font-size: .8rem; z-index: 1001; box-shadow: 2px 2px 4px rgba(0,0,0,.3); }
-  #rollmenu div { padding: 2px 12px; cursor: pointer; }
-  #rollmenu div:hover { background: #def; }
-  .fmode { width: 2.9rem; box-sizing: border-box; text-align: center; }   /* fixed width so OR/AND/XOR never shift the row */
-  /* ----- spell results table ----- */
-  .spell-table { border-collapse: collapse; width: 100%; }
-  .spell-table td { padding: 0 5px; white-space: nowrap; vertical-align: top; }
-  .spell-table td.c { text-align: center; }
-  .spell-table .nm { width: 100%; }
-  .sp-name-link { text-decoration: none; color: #1a56c4; cursor: pointer; }
-  .sp-name-link:hover { text-decoration: underline; }
-  .sp-detail td { white-space: normal; padding: 2px 5px 7px; }
-  /* ----- class features ----- */
-  .feat-link { color: #1a56c4; cursor: pointer; text-decoration: none; }
-  .feat-link:hover { text-decoration: underline; }
-  .feat-detail { white-space: normal; margin: 0 0 .35rem 1.2rem; }
-</style>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" id="theme-css" href="">
 </head>
 <body>
 
 <div class="toolbar">
   <strong>[UNNAMED SHEET]</strong> &mdash; prototype v0.10
   <span style="float:right">
+    <label>Theme <select id="theme-select"></select></label>
     <button id="btn-export">Export JSON</button>
     <label>Import <input type="file" id="file-import" accept="application/json" style="width:12rem"></label>
     <button id="btn-reset">Reset</button>
@@ -200,11 +144,15 @@
 
   <!-- ===== CLASS FEATURES (5e.tools import) ===== -->
   <section class="module wide" data-module="class-features">
-    <h2>Class Features <span class="hint">(import 5e.tools <code>class-*.json</code>; shows features for the classes/levels in your Character module)</span></h2>
+    <h2>Class Features <span class="hint">(auto-loads from <code>data/class/</code>; shows features for the classes/levels in your Character module)</span></h2>
     <div>
-      <label>Load class files <input type="file" id="class-import" accept="application/json" multiple></label>
+      <button id="class-lib-reload">reload from data/ folder</button>
       <button id="class-lib-clear">clear</button>
       <span class="hint" id="class-lib-count">no classes loaded</span>
+      <span class="hint" id="class-lib-autostatus"></span>
+    </div>
+    <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
+      <label style="display:inline">import files manually <input type="file" id="class-import" accept="application/json" multiple></label>.
     </div>
     <div id="class-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
   </section>
@@ -276,6 +224,7 @@
 <script src="src/class-library.js"></script>
 <script src="src/item-library.js"></script>
 <script src="src/persistence.js"></script>
+<script src="src/theme.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>
