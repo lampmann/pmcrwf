@@ -46,6 +46,7 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - **Saving Throws** — proficiency toggle + misc bonus → auto total, with a roll button. The **Misc** field accepts dice (e.g. `10+1d4`).
 - **Skills** — proficiency / expertise (mutually exclusive) + misc → auto total + roll button. Passive Perception computed. The **Misc** field accepts dice (see [Roll buttons](#roll-buttons)).
 - **HP & Defenses** — current/temp HP, AC, speed, hit dice, auto initiative + roll button. **Max HP** is auto-calculated from each class's Hit Die & level (fixed/"consistent" value per level, not rolled) + CON mod per level, with an override box.
+- **Inventory & Equipment** — coin purse (cp/sp/ep/gp/pp, auto-summed to a gp total via SRD exchange rates) and an item list (equipped, qty, name, weight, gp value per unit). Each row auto-sums to a line total; the footer totals weight and item value, and shows **total wealth = coins + items** in gp, so you can watch it move as you buy/sell gear.
 - **Dice Roller** — see below.
 - **Spell Library** — import & search spells; see below.
 - **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; spell table with per-spell to-hit and damage roll buttons.
@@ -108,3 +109,12 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - Spell rows: save spells still show a "to hit" button; leveled-spell damage shows base dice only (no upcast math); cantrip damage is set at add-time.
 - **Deferred spell filters** (data mostly parsed already, easy to add): Conditions Inflicted, Spell Attack type (melee/ranged), Range, Area style, Duration, Cast-time sub-types, and **Class/Subclass** (needs the class→spell mapping). 5etools' Core/Supplements/Adventures source *groupings* are also deferred (individual sources work).
 - A step-by-step character creator, rules-as-written defaults with house-rule toggles, and an allowed-books toggle list are planned.
+- **Not planned:** personality traits, ideals, bonds, flaws, backstory, and appearance fields (age/height/eyes/etc.). This sheet targets optimized play, not roleplay journaling — that content belongs in a separate document, not on the sheet.
+- **Missing vs. big-name sheets (D&D Beyond, Roll20, Fight Club 5e), still worth doing:**
+  - Weapons/attacks table (melee & ranged, separate from the spell table) with to-hit and damage roll buttons.
+  - Features & Traits list — class features, racial traits, and feats aren't tracked anywhere yet (only the class/subclass/level itself is).
+  - Proficiencies — armor, weapon, tool, and language proficiencies have no home (only skill/save proficiency toggles exist).
+  - Death saves, exhaustion, and a conditions tracker.
+  - A concentration indicator tied to the currently-active concentration spell (spell data already flags `conc`, just not surfaced as an active tracker).
+  - Short/long rest buttons that auto-restore HP, hit dice, and spell slots.
+  - Resistances/immunities/vulnerabilities, an XP tracker, and a print/PDF-friendly view.

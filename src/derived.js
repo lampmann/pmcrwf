@@ -97,6 +97,25 @@ function recompute() {
   if (hpCur.value !== "" && Number(hpCur.value) > hpMax) hpCur.value = String(hpMax);
 
   for (let i = 1; i <= 9; i++) $("slot-total-" + i).textContent = String(slotTotal(i));
+
+  recomputeInventory();
+}
+
+/* ---------- Inventory (coin purse + item list, all summed in gp) ---------- */
+function fmtGP(n) { return String(Math.round(n * 100) / 100); }
+function coinTotalGP() { return Object.keys(COIN_GP).reduce((s, k) => s + num($("coin-" + k)) * COIN_GP[k], 0); }
+function itemsTotalValue() { return getItems().reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.val) || 0), 0); }
+function itemsTotalWeight() { return getItems().reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.wt) || 0), 0); }
+function recomputeInventory() {
+  document.querySelectorAll("#item-rows tr").forEach(tr => {
+    const qty = Number(tr.querySelector(".itm-qty").value) || 0;
+    const val = Number(tr.querySelector(".itm-val").value) || 0;
+    tr.querySelector(".itm-total").textContent = fmtGP(qty * val);
+  });
+  $("items-value-total").textContent = fmtGP(itemsTotalValue());
+  $("items-weight-total").textContent = fmtGP(itemsTotalWeight());
+  $("coin-total-gp").textContent = fmtGP(coinTotalGP());
+  $("wealth-total-gp").textContent = fmtGP(coinTotalGP() + itemsTotalValue());
 }
 
 function miscOf(key) {

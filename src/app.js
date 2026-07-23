@@ -45,6 +45,7 @@ function init() {
 
   $("btn-add-class").addEventListener("click", () => { addClassRow(); recompute(); scheduleSave(); });
   $("btn-add-spell").addEventListener("click", () => { addSpellRow(); scheduleSave(); });
+  $("btn-add-item").addEventListener("click", () => { addItemRow(); recompute(); scheduleSave(); });
 
   $("btn-export").addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(collectState(), null, 2)], { type: "application/json" });
@@ -95,7 +96,7 @@ function init() {
     else { addClassRow({ name: "", lvl: 1 }); initMathFields(); }
   } catch (err) {
     console.error("Load failed; starting fresh.", err);
-    $("class-rows").innerHTML = ""; $("spell-rows").innerHTML = "";
+    $("class-rows").innerHTML = ""; $("spell-rows").innerHTML = ""; $("item-rows").innerHTML = "";
     addClassRow({ name: "", lvl: 1 }); initMathFields();
   }
 
