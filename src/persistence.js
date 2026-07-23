@@ -2,7 +2,7 @@
 let saveTimer;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 300); }
 function collectState() {
-  const state = { fields: {}, classes: getClasses(), spells: getSpells(), items: getItems() };
+  const state = { fields: {}, classes: getClasses(), spells: getSpells(), items: getItems(), featChoices: FEAT_CHOICES };
   document.querySelectorAll("[data-persist]").forEach(el => { state.fields[el.id] = el.type === "checkbox" ? el.checked : el.value; });
   return state;
 }
@@ -14,12 +14,14 @@ function applyState(state) {
   (state.spells || []).forEach(addSpellRow);
   $("item-rows").innerHTML = "";
   (state.items || []).forEach(addItemRow);
+  FEAT_CHOICES = state.featChoices || {};
   Object.entries(state.fields || {}).forEach(([id, val]) => {
     const el = $(id); if (!el) return;
     if (el.type === "checkbox") el.checked = val; else el.value = val;
   });
   initMathFields();
   recompute();
+  renderClassFeatures();
 }
 function saveState() { localStorage.setItem("charsheet-v0", JSON.stringify(collectState())); $("save-status").textContent = "saved " + new Date().toLocaleTimeString(); }
 function loadState() { try { return JSON.parse(localStorage.getItem("charsheet-v0")); } catch (e) { return null; } }

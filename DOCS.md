@@ -13,7 +13,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Dice roller (command mode)](#dice-roller-command-mode)
 - [Roll buttons](#roll-buttons)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
-- [Class features (5e.tools import)](#class-features-5etools-import)
+- [Features (5e.tools import: race + class + feats)](#features-5etools-import-race--class--feats)
 - [Equipment library (5e.tools import)](#equipment-library-5etools-import)
 - [Theme](#theme)
 - [Saving & loading](#saving--loading)
@@ -44,7 +44,7 @@ Any bounded number box (ability scores, class level, current/temp HP, AC, speed,
 Values are clamped to their limits: ability scores **1–30**, class level **1–20** (total across classes also capped at 20), HP/AC/speed **≥ 0**, current HP **≤ max HP**.
 
 ## Modules
-- **Character** — name, race, background, and a multiclass table (each class + subclass + level + Hit Die + Casting type). Hit Die and Casting type default to **auto** — looked up from the SRD class/subclass name you type (see [Where game data comes from](#where-game-data-comes-from)) — and can be set explicitly to override the lookup. Total level auto-drives **proficiency bonus** (with an override box).
+- **Character** — name, race, subrace, background, and a multiclass table (each class + subclass + level + Hit Die + Casting type). Hit Die and Casting type default to **auto** — looked up from the SRD class/subclass name you type (see [Where game data comes from](#where-game-data-comes-from)) — and can be set explicitly to override the lookup. Total level auto-drives **proficiency bonus** (with an override box).
 - **Ability Scores** — scores → live modifiers.
 - **Saving Throws** — proficiency toggle + misc bonus → auto total, with a roll button. The **Misc** field accepts dice (e.g. `10+1d4`).
 - **Skills** — proficiency / expertise (mutually exclusive) + misc → auto total + roll button. Passive Perception computed. The **Misc** field accepts dice (see [Roll buttons](#roll-buttons)).
@@ -52,7 +52,7 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - **Inventory & Equipment** — coin purse (cp/sp/ep/gp/pp, auto-summed to a gp total via SRD exchange rates) and an item list (equipped, qty, name, weight, gp value per unit). Each row auto-sums to a line total; the footer totals weight and item value, and shows **total wealth = coins + items** in gp, so you can watch it move as you buy/sell gear. Includes an Equipment Library for importing 5e.tools gear; see below.
 - **Dice Roller** — see below.
 - **Spell Library** — import & search spells; see below.
-- **Class Features** — import class data to see the features your classes/levels grant; see below.
+- **Features** — import race/class/feat data to see the traits and features your race, subrace, and classes/levels grant, plus a feat picker for Ability Score Improvements; see below.
 - **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; spell table with per-spell to-hit and damage roll buttons.
 
 ## Dice roller (command mode)
@@ -98,13 +98,14 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 
 *Note: nothing from 5e.tools is bundled with the sheet; `data/` is gitignored — you supply it, it's parsed in your browser.*
 
-## Class features (5e.tools import)
+## Features (5e.tools import: race + class + feats)
 Same zero-click setup as the equipment library:
-1. With the same `data/` folder in place (see above), the sheet auto-fetches the 2014 `class-*.json` files (fighter, wizard, etc.) from `data/class/` on load — no picker needed. **Reload from data/ folder** re-runs the fetch; **import files** below it is the fallback for `file://` use or homebrew class files.
-2. The panel reads your **Classes** table (class name, subclass, level) and lists every class feature and matching subclass feature you'd have at that level. Class/subclass names match case-insensitively; it updates live as you edit the table.
+1. With the same `data/` folder in place (see above), the sheet auto-fetches the 2014 `class-*.json` files (fighter, wizard, etc.) from `data/class/`, plus `data/races.json` and `data/feats.json`, on load — no picker needed. **Reload from data/ folder** re-runs the fetch; **import files** below it is the fallback for `file://` use, or homebrew class/race/feat files (auto-detected by content, so class/race/feat JSON can all be dropped into the same picker).
+2. The panel reads your **Race** + **Subrace** fields and lists your racial traits, then reads your **Classes** table (class name, subclass, level) and lists every class feature and matching subclass feature you'd have at that level. Names match case-insensitively; it updates live as you edit any of those fields.
 3. Click a feature's **name** to expand its description; click again to collapse.
+4. For any feature literally named **Ability Score Improvement**, a **Feat** dropdown appears next to it (populated from `feats.json`) — pick one and its description shows in place of the ASI's own boilerplate when you expand that feature. Your picks are saved as part of your character (export/import), not just cached locally like the rest of the library.
 
-The library is cached locally (separate from your character). *Optional/choice features that live in their own files — Fighting Styles, Battle Master maneuvers, Warlock invocations, Metamagic, etc. — aren't imported yet.*
+The library itself (class/race/feat data) is cached locally, separate from your character. *Subraces that use 5e.tools' internal `_copy` inheritance (mostly non-PHB reprints/variants) aren't resolved and are skipped — direct-entry subraces (the PHB ones: High Elf, Drow, Hill Dwarf, etc.) work fine. Optional/choice class features that live in their own files — Fighting Styles, Battle Master maneuvers, Warlock invocations, Metamagic, etc. — aren't imported yet.*
 
 ## Equipment library (5e.tools import)
 Same zero-click setup as the spell library, and deliberately the simplest importer on the sheet:
@@ -132,15 +133,13 @@ The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.c
 - **Enter** in the dice box runs the command.
 
 ## Roadmap / known limits
-- Layout engine (drag / resize / snap-to-grid), theming, and icon variants — not built yet.
-- Feats / races importers — not built yet.
+- Layout engine (drag / resize / snap-to-grid) and icon variants — not built yet.
 - Spell rows: save spells still show a "to hit" button; leveled-spell damage shows base dice only (no upcast math); cantrip damage is set at add-time.
 - **Deferred spell filters** (data mostly parsed already, easy to add): Conditions Inflicted, Spell Attack type (melee/ranged), Range, Area style, Duration, Cast-time sub-types, and **Class/Subclass** (needs the class→spell mapping). 5etools' Core/Supplements/Adventures source *groupings* are also deferred (individual sources work).
 - A step-by-step character creator, rules-as-written defaults with house-rule toggles, and an allowed-books toggle list are planned.
 - **Not planned:** personality traits, ideals, bonds, flaws, backstory, and appearance fields (age/height/eyes/etc.). This sheet targets optimized play, not roleplay journaling — that content belongs in a separate document, not on the sheet.
 - **Missing vs. big-name sheets (D&D Beyond, Roll20, Fight Club 5e), still worth doing:**
   - Weapons/attacks table (melee & ranged, separate from the spell table) with to-hit and damage roll buttons.
-  - Features & Traits list — class features, racial traits, and feats aren't tracked anywhere yet (only the class/subclass/level itself is).
   - Proficiencies — armor, weapon, tool, and language proficiencies have no home (only skill/save proficiency toggles exist).
   - Death saves, exhaustion, and a conditions tracker.
   - A concentration indicator tied to the currently-active concentration spell (spell data already flags `conc`, just not surfaced as an active tracker).
