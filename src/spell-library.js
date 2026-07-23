@@ -102,6 +102,25 @@ function loadSpellFiles(files) {
     rd.readAsText(file);
   });
 }
+/* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
+   Only works when served over http(s) — browsers block fetch() of local files opened via file://. */
+const SPELL_DATA_INDEX = "data/spells/index.json";
+async function autoLoadSpells() {
+  let idx;
+  try {
+    const res = await fetch(SPELL_DATA_INDEX);
+    if (!res.ok) return { found: false, blocked: false };
+    idx = await res.json();
+  } catch (e) { return { found: false, blocked: true }; }
+  const files = Object.values(idx);
+  const results = await Promise.allSettled(
+    files.map(f => fetch("data/spells/" + f).then(r => r.ok ? r.json() : Promise.reject(r.status)))
+  );
+  let filesLoaded = 0;
+  results.forEach(r => { if (r.status === "fulfilled") { mergeSpells((r.value.spell || []).map(parseSpell)); filesLoaded++; } });
+  if (filesLoaded) saveSpellLib();
+  return { found: true, blocked: false, filesLoaded, filesTotal: files.length };
+}
 function saveSpellLib() {
   try { localStorage.setItem("charsheet-spelllib", JSON.stringify({ v: LIB_SCHEMA, spells: SPELL_LIB })); }
   catch (e) { console.warn("Spell library too large for localStorage; kept in memory for this session only.", e); }

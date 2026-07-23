@@ -10,21 +10,34 @@ const ITEM_TYPES = {
   P:"Potion", R:"Ranged Weapon", RD:"Rod", RG:"Ring", S:"Shield", SC:"Scroll", SCF:"Spellcasting Focus",
   T:"Tools", TAH:"Tack & Harness", TG:"Trade Good", VEH:"Vehicle (Land)", SHP:"Ship", WD:"Wand",
 };
-const ITEM_LIB_SCHEMA = 1;  // bump when the parsed-item shape changes (forces a one-time re-import)
+const ITEM_LIB_SCHEMA = 2;  // bump when the parsed-item shape changes (forces a one-time re-import)
 let ITEM_LIB = [];
 
+// Individual magic items in 5e.tools rarely carry an explicit "value" — these are the average gp
+// asking price per rarity from XGE's "Magic Item Price" table (Xanathar's Guide to Everything, p.126,
+// data/book/book-xge.json ~L5628), halved for consumables per that table's own footnote, applied when
+// an item's data marks it as one via a "consumable" flag.
+const RARITY_DEFAULT_GP = { common: 45, uncommon: 350, rare: 11000, "very rare": 35000, legendary: 175000 };
+function defaultRarityValueGp(raw) {
+  const base = RARITY_DEFAULT_GP[raw.rarity];
+  if (base == null) return null;
+  return raw.consumable ? base / 2 : base;
+}
 function parseItemType(raw) {
   const code = (raw.type || "").split("|")[0];
   return ITEM_TYPES[code] || code || "";
 }
 function parseItem(raw) {
+  const explicitGp = raw.value != null ? Math.round((raw.value / 100) * 100) / 100 : null;  // 5e.tools stores value in cp
+  const rarityGp = explicitGp == null ? defaultRarityValueGp(raw) : null;
   return {
     name: raw.name,
     source: raw.source || "",
     type: parseItemType(raw),
     rarity: (raw.rarity && raw.rarity !== "none") ? raw.rarity : "",
     weight: raw.weight != null ? raw.weight : "",
-    valueGp: raw.value != null ? Math.round((raw.value / 100) * 100) / 100 : "",  // 5e.tools stores value in cp
+    valueGp: explicitGp != null ? explicitGp : (rarityGp != null ? rarityGp : ""),
+    valueDefaulted: rarityGp != null,  // true when the value came from RARITY_DEFAULT_GP, not the source data
     srd: !!raw.srd || !!raw.basicRules,
   };
 }
@@ -40,13 +53,32 @@ function loadItemFiles(files) {
     rd.onload = () => {
       try {
         const j = JSON.parse(rd.result);
-        const raws = [].concat(j.baseitem || [], j.item || []);
+        const raws = [].concat(j.baseitem || [], j.item || [], j.itemGroup || []);
         mergeItems(raws.map(parseItem));
       } catch (e) { errs.push(file.name + ": " + e); }
       if (++done === total) { saveItemLib(); renderItemLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n")); }
     };
     rd.readAsText(file);
   });
+}
+/* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
+   Only works when served over http(s) — browsers block fetch() of local files opened via file://. */
+const ITEM_DATA_FILES = ["data/items-base.json", "data/items.json"];
+async function autoLoadItems() {
+  let found = false, blocked = false, filesLoaded = 0;
+  for (const url of ITEM_DATA_FILES) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      found = true;
+      const j = await res.json();
+      const raws = [].concat(j.baseitem || [], j.item || [], j.itemGroup || []);
+      mergeItems(raws.map(parseItem));
+      filesLoaded++;
+    } catch (e) { blocked = true; }
+  }
+  if (filesLoaded) saveItemLib();
+  return { found, blocked, filesLoaded, filesTotal: ITEM_DATA_FILES.length };
 }
 function saveItemLib() {
   try { localStorage.setItem("charsheet-itemlib", JSON.stringify({ v: ITEM_LIB_SCHEMA, items: ITEM_LIB })); }
@@ -84,7 +116,7 @@ function renderItemResults() {
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
       <td class="c hint">${it.weight === "" ? "" : it.weight}</td>
-      <td class="c hint">${it.valueGp === "" ? "" : it.valueGp}</td>
+      <td class="c hint"${it.valueDefaulted ? ` title="estimated by rarity — no official price in the source data"` : ""}>${it.valueGp === "" ? "" : (it.valueDefaulted ? "~" + it.valueGp : it.valueGp)}</td>
       <td class="hint">${it.source}</td>
     </tr>`;
   }).join("");
