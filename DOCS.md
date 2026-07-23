@@ -8,6 +8,7 @@ Open `character-sheet.html` in any modern browser. No install, no server, no acc
 ---
 
 ## Contents
+- [Where game data comes from](#where-game-data-comes-from)
 - [Number boxes (math input)](#number-boxes-math-input)
 - [Modules](#modules)
 - [Dice roller (command mode)](#dice-roller-command-mode)
@@ -18,6 +19,14 @@ Open `character-sheet.html` in any modern browser. No install, no server, no acc
 - [Roadmap / known limits](#roadmap--known-limits)
 
 ---
+
+## Where game data comes from
+The sheet draws a line between two kinds of game data:
+
+- **Small SRD facts get hardcoded.** Things like hit dice, the multiclass spellcaster slot table, or a class's casting type are short, fixed, and covered by the SRD — so they live directly in the code as lookup tables (e.g. `HIT_DIE_MAX`/`HIT_DIE_FIXED` and `MULTICLASS_SLOTS` in [derived.js](src/derived.js)) and drive the auto-calculated fields.
+- **Large or non-SRD content is user-supplied.** Anything that's a lot of data (the full spell list) or not in the SRD (most sourcebook content beyond it) is never bundled — you import it yourself (see [Spell library](#spell-library-5etools-import)). This is also why `spells-*.json` files are gitignored rather than committed.
+
+When adding a new auto-calculated feature, ask which bucket it falls into: a small SRD table → hardcode it with an override box (see Max HP and Spell Slots below); anything bigger or non-SRD → make it an import, not a bundled dataset.
 
 ## Number boxes (math input)
 Any bounded number box (ability scores, class level, current/temp HP, AC, speed, spell slots used) accepts arithmetic:
