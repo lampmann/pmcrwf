@@ -16,7 +16,11 @@ function commitMath(el) {
   else { const a = evalArith(raw); val = a === null ? prev : a; }            // arithmetic, e.g. "30+5"
   const min = el.dataset.min !== undefined ? Number(el.dataset.min) : -Infinity;
   let max = el.dataset.max !== undefined ? Number(el.dataset.max) : Infinity;
-  if (el.dataset.maxFrom) { const f = $(el.dataset.maxFrom); if (f && f.value !== "" && !isNaN(Number(f.value))) max = Math.min(max, Number(f.value)); }
+  if (el.dataset.maxFrom) {
+    const f = $(el.dataset.maxFrom);
+    const raw = f ? (f.value !== undefined ? f.value : f.textContent) : "";
+    if (raw !== "" && !isNaN(Number(raw))) max = Math.min(max, Number(raw));
+  }
   val = Math.round(val);
   val = Math.min(max, Math.max(min, val));
   el.value = String(val);
@@ -24,7 +28,6 @@ function commitMath(el) {
 }
 function commitMathField(el) {
   commitMath(el);
-  if (el.id === "hp-max" && $("hp-cur")) commitMath($("hp-cur")); // re-clamp current to new max
   if (el.classList.contains("cls-lvl")) enforceTotalLevelCap(el);  // total across all classes <= 30
   recompute(); scheduleSave();
 }

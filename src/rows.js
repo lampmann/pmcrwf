@@ -43,26 +43,40 @@ function buildSkills() {
   });
 }
 function buildSlots() {
-  const head = $("slot-head"), total = $("slot-total"), used = $("slot-used");
-  head.innerHTML = "<th>Level</th>"; total.innerHTML = "<td>total</td>"; used.innerHTML = "<td>used</td>";
+  const head = $("slot-head"), total = $("slot-total"), override = $("slot-override"), used = $("slot-used");
+  head.innerHTML = "<th>Level</th>"; total.innerHTML = "<td>total</td>"; override.innerHTML = "<td>override</td>"; used.innerHTML = "<td>used</td>";
   for (let i = 1; i <= 9; i++) {
     head.innerHTML += `<th>${i}</th>`;
-    total.innerHTML += `<td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="slot-total-${i}"></td>`;
+    total.innerHTML += `<td class="derived" id="slot-total-${i}">0</td>`;
+    override.innerHTML += `<td><input type="text" inputmode="numeric" class="tiny" data-persist data-allow-empty placeholder="auto" id="slot-override-${i}"></td>`;
     used.innerHTML += `<td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty data-max-from="slot-total-${i}" id="slot-used-${i}"></td>`;
   }
 }
 
 /* ---------- Class (multiclass) rows ---------- */
+const HIT_DICE = ["d6", "d8", "d10", "d12"];
+const CASTING_TYPES = [
+  ["none", "None"], ["full", "Full"], ["half", "Half"], ["third", "Third"],
+  ["pact", "Pact (Warlock)"],
+];
 function addClassRow(data = {}) {
   const tr = document.createElement("tr");
+  const hd = data.hitDie || "d8", cast = data.casting || "none";
+  const hdOpts = HIT_DICE.map(h => `<option value="${h}" ${hd === h ? "selected" : ""}>${h}</option>`).join("");
+  const castOpts = CASTING_TYPES.map(([v, lab]) => `<option value="${v}" ${cast === v ? "selected" : ""}>${lab}</option>`).join("");
   tr.innerHTML = `
     <td><input type="text" class="cls-name" value="${data.name || ""}" style="width:8rem"></td>
     <td><input type="text" class="cls-sub" value="${data.sub || ""}" style="width:8rem"></td>
     <td><input type="text" inputmode="numeric" class="tiny cls-lvl" data-math data-min="1" data-max="20" value="${data.lvl || 1}"></td>
+    <td><select class="cls-hd">${hdOpts}</select></td>
+    <td><select class="cls-cast">${castOpts}</select></td>
     <td><button class="rowbtn cls-del">x</button></td>`;
   const lvl = tr.querySelector(".cls-lvl"); lvl.dataset.prev = String(data.lvl || 1);
   tr.querySelector(".cls-del").addEventListener("click", () => { tr.remove(); recompute(); scheduleSave(); });
-  tr.querySelectorAll("input").forEach(i => i.addEventListener("input", () => { recompute(); scheduleSave(); }));
+  tr.querySelectorAll("input, select").forEach(i => {
+    i.addEventListener("input", () => { recompute(); scheduleSave(); });
+    i.addEventListener("change", () => { recompute(); scheduleSave(); });
+  });
   $("class-rows").appendChild(tr);
 }
 function getClasses() {
@@ -70,6 +84,8 @@ function getClasses() {
     name: tr.querySelector(".cls-name").value,
     sub: tr.querySelector(".cls-sub").value,
     lvl: Number(tr.querySelector(".cls-lvl").value) || 0,
+    hitDie: tr.querySelector(".cls-hd").value,
+    casting: tr.querySelector(".cls-cast").value,
   }));
 }
 
