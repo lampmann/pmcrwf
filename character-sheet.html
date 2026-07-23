@@ -49,12 +49,21 @@
   #rollmenu { position: fixed; background: #fff; border: 1px solid #000; font-size: .8rem; z-index: 1001; box-shadow: 2px 2px 4px rgba(0,0,0,.3); }
   #rollmenu div { padding: 2px 12px; cursor: pointer; }
   #rollmenu div:hover { background: #def; }
+  .fmode { width: 2.9rem; box-sizing: border-box; text-align: center; }   /* fixed width so OR/AND/XOR never shift the row */
+  /* ----- spell results table ----- */
+  .spell-table { border-collapse: collapse; width: 100%; }
+  .spell-table td { padding: 0 5px; white-space: nowrap; vertical-align: top; }
+  .spell-table td.c { text-align: center; }
+  .spell-table .nm { width: 100%; }
+  .sp-name-link { text-decoration: none; color: #1a56c4; cursor: pointer; }
+  .sp-name-link:hover { text-decoration: underline; }
+  .sp-detail td { white-space: normal; padding: 2px 5px 7px; }
 </style>
 </head>
 <body>
 
 <div class="toolbar">
-  <strong>[UNNAMED SHEET]</strong> &mdash; prototype v0.7
+  <strong>[UNNAMED SHEET]</strong> &mdash; prototype v0.8
   <span style="float:right">
     <button id="btn-export">Export JSON</button>
     <label>Import <input type="file" id="file-import" accept="application/json" style="width:12rem"></label>
@@ -144,6 +153,23 @@
     <div id="dicelog"><div>— roll log —</div></div>
   </section>
 
+  <!-- ===== ROLL MODIFIERS (dice bonuses) ===== -->
+  <section class="module wide" data-module="modifiers">
+    <h2>Roll Modifiers <span class="hint">(toggleable dice added to matching rolls — Guidance, Bless, Bardic Inspiration…)</span></h2>
+    <table>
+      <thead><tr><th>On</th><th>Name</th><th>Dice</th><th title="ability checks &amp; skills">Check</th><th>Save</th><th>Atk</th><th>Init</th><th></th></tr></thead>
+      <tbody id="mod-rows"></tbody>
+    </table>
+    <button id="btn-add-mod">+ add</button>
+    &nbsp;<span class="hint">presets:</span>
+    <button class="mod-preset" data-p="guidance">Guidance</button>
+    <button class="mod-preset" data-p="bless">Bless</button>
+    <button class="mod-preset" data-p="resistance">Resistance</button>
+    <button class="mod-preset" data-p="bardic">Bardic Insp.</button>
+    <button class="mod-preset" data-p="alacrity">Gift of Alacrity</button>
+    <div class="hint">Check = ability checks &amp; skills. Toggle <b>On</b> when the buff is active; its dice are appended to matching rolls.</div>
+  </section>
+
   <!-- ===== SPELL LIBRARY (5e.tools import) ===== -->
   <section class="module wide" data-module="spell-library">
     <h2>Spell Library <span class="hint">(import 5e.tools <code>spells-*.json</code> — use 2014 files, e.g. spells-phb.json, not spells-<b>x</b>phb.json)</span></h2>
@@ -205,6 +231,7 @@
 <script src="src/dice.js"></script>
 <script src="src/spell-library.js"></script>
 <script src="src/persistence.js"></script>
+<script src="src/modifiers.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>

@@ -45,6 +45,8 @@ function init() {
 
   $("btn-add-class").addEventListener("click", () => { addClassRow(); recompute(); scheduleSave(); });
   $("btn-add-spell").addEventListener("click", () => { addSpellRow(); scheduleSave(); });
+  $("btn-add-mod").addEventListener("click", () => { addModifierRow(); scheduleSave(); });
+  document.querySelectorAll(".mod-preset").forEach(b => b.addEventListener("click", () => { addModifierRow(MOD_PRESETS[b.dataset.p]); scheduleSave(); }));
 
   $("btn-export").addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(collectState(), null, 2)], { type: "application/json" });
@@ -77,7 +79,10 @@ function init() {
     else if (id === "mod-reset") { resetFilters(); renderFilterArea(); renderSpellResults(); }
     else if (id === "mod-savedefault") { saveFilterDefaults(); alert("Current filters saved as the default (Reset restores them)."); }
   });
-  $("spell-results").addEventListener("click", e => { const b = e.target.closest(".sp-lib-add"); if (b) addSpellFromLib(b.dataset.key); });
+  $("spell-results").addEventListener("click", e => {
+    const b = e.target.closest(".sp-lib-add"); if (b) { addSpellFromLib(b.dataset.key); return; }
+    const link = e.target.closest(".sp-name-link"); if (link) { e.preventDefault(); toggleSpellDetail(link); }
+  });
   $("spell-lib-clear").addEventListener("click", () => {
     if (confirm("Clear the imported spell library? (does not affect your character)")) {
       SPELL_LIB = []; localStorage.removeItem("charsheet-spelllib");

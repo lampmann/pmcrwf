@@ -2,7 +2,7 @@
 let saveTimer;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 300); }
 function collectState() {
-  const state = { fields: {}, classes: getClasses(), spells: getSpells() };
+  const state = { fields: {}, classes: getClasses(), spells: getSpells(), modifiers: getModifiers() };
   document.querySelectorAll("[data-persist]").forEach(el => { state.fields[el.id] = el.type === "checkbox" ? el.checked : el.value; });
   return state;
 }
@@ -12,6 +12,8 @@ function applyState(state) {
   (state.classes || [{ name: "", sub: "", lvl: 1 }]).forEach(addClassRow);
   $("spell-rows").innerHTML = "";
   (state.spells || []).forEach(addSpellRow);
+  $("mod-rows").innerHTML = "";
+  (state.modifiers || []).forEach(addModifierRow);
   Object.entries(state.fields || {}).forEach(([id, val]) => {
     const el = $(id); if (!el) return;
     if (el.type === "checkbox") el.checked = val; else el.value = val;
