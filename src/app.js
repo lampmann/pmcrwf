@@ -45,8 +45,6 @@ function init() {
 
   $("btn-add-class").addEventListener("click", () => { addClassRow(); recompute(); scheduleSave(); });
   $("btn-add-spell").addEventListener("click", () => { addSpellRow(); scheduleSave(); });
-  $("btn-add-mod").addEventListener("click", () => { addModifierRow(); scheduleSave(); });
-  document.querySelectorAll(".mod-preset").forEach(b => b.addEventListener("click", () => { addModifierRow(MOD_PRESETS[b.dataset.p]); scheduleSave(); }));
 
   $("btn-export").addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(collectState(), null, 2)], { type: "application/json" });

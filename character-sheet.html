@@ -63,7 +63,7 @@
 <body>
 
 <div class="toolbar">
-  <strong>[UNNAMED SHEET]</strong> &mdash; prototype v0.8
+  <strong>[UNNAMED SHEET]</strong> &mdash; prototype v0.9
   <span style="float:right">
     <button id="btn-export">Export JSON</button>
     <label>Import <input type="file" id="file-import" accept="application/json" style="width:12rem"></label>
@@ -118,6 +118,7 @@
       <tbody id="skill-rows"></tbody>
     </table>
     <div class="hint">Passive Perception: <span class="derived" id="passive-perc">10</span></div>
+    <div class="hint">Misc accepts dice, e.g. <code>10+1d4</code> (Pass Without Trace + Guidance) — the die is appended when you roll.</div>
   </section>
 
   <!-- ===== HP / DEFENSES ===== -->
@@ -132,7 +133,7 @@
       <tr><td>AC</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="ac"></td>
           <td>Speed</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="speed"></td></tr>
       <tr><td>Initiative</td><td class="derived" id="init">+0</td>
-          <td>misc</td><td><input type="number" class="tiny" data-persist id="init-misc"></td></tr>
+          <td>misc</td><td><input type="text" data-persist id="init-misc" style="width:4.5rem;text-align:right"></td></tr>
     </table>
     <button class="roll" data-roll-check="init" data-label="Initiative">Roll Initiative</button>
     <div class="hint">Max HP assumes the fixed/"consistent" hit point value per level (4/5/6/7 for d6/d8/d10/d12) rather than rolling, using each class's Hit Die and level from the Classes table above.</div>
@@ -151,23 +152,6 @@
       On roll-buttons: <b>Shift</b> = advantage, <b>Ctrl</b> = disadvantage.
     </div>
     <div id="dicelog"><div>— roll log —</div></div>
-  </section>
-
-  <!-- ===== ROLL MODIFIERS (dice bonuses) ===== -->
-  <section class="module wide" data-module="modifiers">
-    <h2>Roll Modifiers <span class="hint">(toggleable dice added to matching rolls — Guidance, Bless, Bardic Inspiration…)</span></h2>
-    <table>
-      <thead><tr><th>On</th><th>Name</th><th>Dice</th><th title="ability checks &amp; skills">Check</th><th>Save</th><th>Atk</th><th>Init</th><th></th></tr></thead>
-      <tbody id="mod-rows"></tbody>
-    </table>
-    <button id="btn-add-mod">+ add</button>
-    &nbsp;<span class="hint">presets:</span>
-    <button class="mod-preset" data-p="guidance">Guidance</button>
-    <button class="mod-preset" data-p="bless">Bless</button>
-    <button class="mod-preset" data-p="resistance">Resistance</button>
-    <button class="mod-preset" data-p="bardic">Bardic Insp.</button>
-    <button class="mod-preset" data-p="alacrity">Gift of Alacrity</button>
-    <div class="hint">Check = ability checks &amp; skills. Toggle <b>On</b> when the buff is active; its dice are appended to matching rolls.</div>
   </section>
 
   <!-- ===== SPELL LIBRARY (5e.tools import) ===== -->
@@ -202,7 +186,7 @@
       &nbsp; Spell Save DC: <span class="derived" id="spell-dc">—</span>
       (misc <input type="number" class="tiny" data-persist id="spell-dc-misc">)
       &nbsp; Spell Attack: <span class="derived" id="spell-atk">—</span>
-      (misc <input type="number" class="tiny" data-persist id="spell-atk-misc">)
+      (misc <input type="text" data-persist id="spell-atk-misc" style="width:4.5rem;text-align:right">)
     </div>
     <fieldset>
       <legend>Spell Slots</legend>
@@ -231,7 +215,6 @@
 <script src="src/dice.js"></script>
 <script src="src/spell-library.js"></script>
 <script src="src/persistence.js"></script>
-<script src="src/modifiers.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>

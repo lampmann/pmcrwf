@@ -2,7 +2,7 @@
 
 An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized play. The page (`character-sheet.html`) loads its logic from small modules in `src/`. Open it directly in a browser, or for local development serve the folder (there's a ready `static` config in `.claude/launch.json`, e.g. `python3 -m http.server`). No install, no accounts; game data is user-supplied (see below).
 
-> **Status:** prototype (v0.8), deliberately unstyled ("function over form"). Cosmetics/theming come later.
+> **Status:** prototype (v0.9), deliberately unstyled ("function over form"). Cosmetics/theming come later.
 
 ---
 
@@ -12,7 +12,6 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Modules](#modules)
 - [Dice roller (command mode)](#dice-roller-command-mode)
 - [Roll buttons](#roll-buttons)
-- [Roll modifiers (dice bonuses)](#roll-modifiers-dice-bonuses)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
 - [Saving & loading](#saving--loading)
 - [Keyboard](#keyboard)
@@ -44,11 +43,10 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 ## Modules
 - **Character** — name, race, background, and a multiclass table (each class + subclass + level + Hit Die + Casting type). Hit Die and Casting type default to **auto** — looked up from the SRD class/subclass name you type (see [Where game data comes from](#where-game-data-comes-from)) — and can be set explicitly to override the lookup. Total level auto-drives **proficiency bonus** (with an override box).
 - **Ability Scores** — scores → live modifiers.
-- **Saving Throws** — proficiency toggle + misc bonus → auto total, with a roll button.
-- **Skills** — proficiency / expertise (mutually exclusive) + misc → auto total + roll button. Passive Perception computed.
+- **Saving Throws** — proficiency toggle + misc bonus → auto total, with a roll button. The **Misc** field accepts dice (e.g. `10+1d4`).
+- **Skills** — proficiency / expertise (mutually exclusive) + misc → auto total + roll button. Passive Perception computed. The **Misc** field accepts dice (see [Roll buttons](#roll-buttons)).
 - **HP & Defenses** — current/temp HP, AC, speed, hit dice, auto initiative + roll button. **Max HP** is auto-calculated from each class's Hit Die & level (fixed/"consistent" value per level, not rolled) + CON mod per level, with an override box.
 - **Dice Roller** — see below.
-- **Roll Modifiers** — toggleable dice bonuses (Guidance, Bless, Bardic Inspiration, …); see below.
 - **Spell Library** — import & search spells; see below.
 - **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; spell table with per-spell to-hit and damage roll buttons.
 
@@ -77,11 +75,7 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - **Shift-click** = advantage, **Ctrl-click** = disadvantage.
 - Hold **Shift / Ctrl** while hovering a roll button to see the active mode as a tooltip.
 - **Right-click** a roll button for a *Normal / Advantage / Disadvantage* menu.
-
-## Roll modifiers (dice bonuses)
-For effects that add **dice** (not a flat number) to rolls — Guidance (+1d4 to ability checks), Bless (+1d4 to attacks & saves), Bardic Inspiration, Resistance, Gift of Alacrity (+1d8 initiative), etc.
-- Add a row (or use a **preset**), name it, set its dice (e.g. `1d4`), and tick which rolls it applies to: **Check** (ability checks & skills), **Save**, **Atk**, **Init**.
-- Toggle **On** when the buff is active — its dice are automatically appended to matching roll-button rolls, and the log notes which buffs applied.
+- A stat's **Misc** field may contain **dice** (e.g. `10+1d4`): the flat part folds into the shown total, and the dice are appended to the roll — handy for always-on effects like Pass Without Trace + Guidance on Stealth.
 
 ## Spell library (5e.tools import)
 1. Download the 5e.tools source data. Spells live in `data/spells/`.

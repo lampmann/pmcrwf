@@ -7,7 +7,8 @@ function profBonus() {
   return lvl < 1 ? 2 : Math.ceil(lvl / 4) + 1;
 }
 function spellMod() { const ab = $("spell-ability").value; return ab ? mod($("score-" + ab).value) : 0; }
-function spellAttackBonus() { return profBonus() + spellMod() + num($("spell-atk-misc")); }
+function spellAttackBonus() { return profBonus() + spellMod() + parseBonus($("spell-atk-misc").value).flat; }
+function spellAttackDice() { return parseBonus($("spell-atk-misc").value).dice; }
 
 /* ---------- Max HP (assumes fixed/"consistent" HP per level, not rolled) ---------- */
 const HIT_DIE_MAX = { d6: 6, d8: 8, d10: 10, d12: 12 };
@@ -53,28 +54,41 @@ function slotTotal(i) {
   return ov !== "" && !isNaN(Number(ov)) ? Number(ov) : autoSlots()[i - 1];
 }
 
+/* Parse a "misc bonus" string into a flat numeric part + a dice-notation part.
+   e.g. "10+d4" -> { flat: 10, dice: "+1d4" }  (Pass Without Trace + Guidance) */
+function parseBonus(str) {
+  let flat = 0, dice = "";
+  const terms = (str || "").replace(/\s/g, "").match(/[+-]?[^+-]+/g) || [];
+  for (let t of terms) {
+    let s = "+";
+    if (t[0] === "+") t = t.slice(1); else if (t[0] === "-") { s = "-"; t = t.slice(1); }
+    if (!t) continue;
+    if (/d/i.test(t)) { if (/^d/i.test(t)) t = "1" + t; dice += s + t; }   // dice term (bare "d4" -> "1d4")
+    else { const n = Number(t); if (!isNaN(n)) flat += s === "-" ? -n : n; }
+  }
+  return { flat, dice };
+}
 function recompute() {
   const pb = profBonus();
   $("total-level").textContent = totalLevel();
   $("pb").textContent = sign(pb);
   ABILITIES.forEach(a => { $("mod-" + a.key).textContent = sign(mod($("score-" + a.key).value)); });
   ABILITIES.forEach(a => {
-    const b = mod($("score-" + a.key).value) + ($("saveprof-" + a.key).checked ? pb : 0) + num($("savemisc-" + a.key));
-    $("savebonus-" + a.key).textContent = sign(b);
+    const key = "save-" + a.key, d = checkDice(key);
+    $("savebonus-" + a.key).textContent = sign(checkBonus(key)) + (d ? " " + d : "");
   });
   document.querySelectorAll("#skill-rows tr").forEach(tr => {
-    const slug = tr.dataset.slug, ab = tr.dataset.ability;
-    let pmult = $("skillexp-" + slug).checked ? 2 : $("skillprof-" + slug).checked ? 1 : 0;
-    const b = mod($("score-" + ab).value) + pb * pmult + num($("skillmisc-" + slug));
-    $("skillbonus-" + slug).textContent = sign(b);
+    const key = "skill-" + tr.dataset.slug, d = checkDice(key);
+    $("skillbonus-" + tr.dataset.slug).textContent = sign(checkBonus(key)) + (d ? " " + d : "");
   });
   const percMult = $("skillexp-perception").checked ? 2 : $("skillprof-perception").checked ? 1 : 0;
-  $("passive-perc").textContent = 10 + mod($("score-wis").value) + pb * percMult + num($("skillmisc-perception"));
-  $("init").textContent = sign(mod($("score-dex").value) + num($("init-misc")));
+  $("passive-perc").textContent = 10 + mod($("score-wis").value) + pb * percMult + parseBonus($("skillmisc-perception").value).flat;
+  { const d = checkDice("init"); $("init").textContent = sign(checkBonus("init")) + (d ? " " + d : ""); }
   const ab = $("spell-ability").value;
   if (ab) {
     $("spell-dc").textContent = 8 + pb + spellMod() + num($("spell-dc-misc"));
-    $("spell-atk").textContent = sign(spellAttackBonus());
+    const ad = spellAttackDice();
+    $("spell-atk").textContent = sign(spellAttackBonus()) + (ad ? " " + ad : "");
   } else { $("spell-dc").textContent = "—"; $("spell-atk").textContent = "—"; }
 
   const hpMax = maxHP();
@@ -85,18 +99,22 @@ function recompute() {
   for (let i = 1; i <= 9; i++) $("slot-total-" + i).textContent = String(slotTotal(i));
 }
 
-function checkBonus(key) {
-  if (key === "init") return mod($("score-dex").value) + num($("init-misc"));
-  if (key.startsWith("save-")) {
-    const a = key.slice(5), pb = profBonus();
-    return mod($("score-" + a).value) + ($("saveprof-" + a).checked ? pb : 0) + num($("savemisc-" + a));
-  }
+function miscOf(key) {
+  if (key === "init") return $("init-misc").value;
+  if (key.startsWith("save-")) return $("savemisc-" + key.slice(5)).value;
+  if (key.startsWith("skill-")) return $("skillmisc-" + key.slice(6)).value;
+  return "";
+}
+function baseOf(key) {   // the fixed part: ability mod + proficiency (no misc)
+  if (key === "init") return mod($("score-dex").value);
+  if (key.startsWith("save-")) { const a = key.slice(5); return mod($("score-" + a).value) + ($("saveprof-" + a).checked ? profBonus() : 0); }
   if (key.startsWith("skill-")) {
-    const slug = key.slice(6), pb = profBonus();
+    const slug = key.slice(6);
     const tr = [...document.querySelectorAll("#skill-rows tr")].find(t => t.dataset.slug === slug);
-    const ab = tr.dataset.ability;
-    const pmult = $("skillexp-" + slug).checked ? 2 : $("skillprof-" + slug).checked ? 1 : 0;
-    return mod($("score-" + ab).value) + pb * pmult + num($("skillmisc-" + slug));
+    const ab = tr.dataset.ability, pmult = $("skillexp-" + slug).checked ? 2 : $("skillprof-" + slug).checked ? 1 : 0;
+    return mod($("score-" + ab).value) + profBonus() * pmult;
   }
   return 0;
 }
+function checkBonus(key) { return baseOf(key) + parseBonus(miscOf(key)).flat; }   // static numeric bonus
+function checkDice(key) { return parseBonus(miscOf(key)).dice; }                  // dice from misc, e.g. "+1d4"

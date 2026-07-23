@@ -16,7 +16,7 @@ function buildSaves() {
     tr.innerHTML = `
       <td><input type="checkbox" data-persist id="saveprof-${a.key}"></td>
       <td>${a.name}</td>
-      <td><input type="number" class="tiny" data-persist id="savemisc-${a.key}"></td>
+      <td><input type="text" data-persist id="savemisc-${a.key}" style="width:4.5rem;text-align:right"></td>
       <td class="derived" id="savebonus-${a.key}">+0</td>
       <td><button class="roll" data-roll-check="save-${a.key}" data-label="${a.name} save">roll</button></td>`;
     tb.appendChild(tr);
@@ -31,7 +31,7 @@ function buildSkills() {
       <td><input type="checkbox" data-persist id="skillprof-${slug}"></td>
       <td><input type="checkbox" data-persist id="skillexp-${slug}"></td>
       <td>${name} <span class="hint">(${ab})</span></td>
-      <td><input type="number" class="tiny" data-persist id="skillmisc-${slug}"></td>
+      <td><input type="text" data-persist id="skillmisc-${slug}" style="width:4.5rem;text-align:right"></td>
       <td class="derived" id="skillbonus-${slug}">+0</td>
       <td><button class="roll" data-roll-check="skill-${slug}" data-label="${name}">roll</button></td>`;
     tr.dataset.ability = ab; tr.dataset.slug = slug;
