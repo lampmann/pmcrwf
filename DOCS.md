@@ -13,6 +13,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Dice roller (command mode)](#dice-roller-command-mode)
 - [Roll buttons](#roll-buttons)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
+- [Equipment library (5e.tools import)](#equipment-library-5etools-import)
 - [Saving & loading](#saving--loading)
 - [Keyboard](#keyboard)
 - [Roadmap / known limits](#roadmap--known-limits)
@@ -46,7 +47,7 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - **Saving Throws** — proficiency toggle + misc bonus → auto total, with a roll button. The **Misc** field accepts dice (e.g. `10+1d4`).
 - **Skills** — proficiency / expertise (mutually exclusive) + misc → auto total + roll button. Passive Perception computed. The **Misc** field accepts dice (see [Roll buttons](#roll-buttons)).
 - **HP & Defenses** — current/temp HP, AC, speed, hit dice, auto initiative + roll button. **Max HP** is auto-calculated from each class's Hit Die & level (fixed/"consistent" value per level, not rolled) + CON mod per level, with an override box.
-- **Inventory & Equipment** — coin purse (cp/sp/ep/gp/pp, auto-summed to a gp total via SRD exchange rates) and an item list (equipped, qty, name, weight, gp value per unit). Each row auto-sums to a line total; the footer totals weight and item value, and shows **total wealth = coins + items** in gp, so you can watch it move as you buy/sell gear.
+- **Inventory & Equipment** — coin purse (cp/sp/ep/gp/pp, auto-summed to a gp total via SRD exchange rates) and an item list (equipped, qty, name, weight, gp value per unit). Each row auto-sums to a line total; the footer totals weight and item value, and shows **total wealth = coins + items** in gp, so you can watch it move as you buy/sell gear. Includes an Equipment Library for importing 5e.tools gear; see below.
 - **Dice Roller** — see below.
 - **Spell Library** — import & search spells; see below.
 - **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; spell table with per-spell to-hit and damage roll buttons.
@@ -93,10 +94,20 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 
 *Note: nothing from 5e.tools is bundled with the sheet; you supply the JSON, it's parsed in your browser.*
 
+## Equipment library (5e.tools import)
+Deliberately the simplest importer on the sheet — one file picker, one search box, nothing to configure:
+1. Download the 5e.tools source data. Equipment lives in `data/items-base.json` (mundane gear, weapons, armor) and `data/items.json` (magic items). Either file works, and you can load both.
+2. **Load equipment files** → pick one or more. The importer auto-detects whichever of `baseitem`/`item` arrays are present, so any 5e.tools item file just works — no format to pick, no per-file settings.
+3. The library is cached locally, so you only import once.
+
+**Browsing:** a single **search** box matches name, type, rarity, and source all at once — type "potion", "rare", or "phb" and it filters. Results show name, type, rarity, weight (lb), and value (gp, converted from 5e.tools' copper-piece figure). Click **`+`** to add a row straight into your Inventory table (qty 1, weight and value pre-filled) — from there it's counted in the item-value and total-wealth sums automatically.
+
+*Note: nothing from 5e.tools is bundled with the sheet; you supply the JSON, it's parsed in your browser.*
+
 ## Saving & loading
 - **Autosave** to the browser (localStorage) on every change.
 - **Export JSON** downloads your character. **Import** loads one back. **Reset** clears the sheet.
-- The spell library is stored separately from your character.
+- The spell library and equipment library are stored separately from your character.
 
 ## Keyboard
 - **Enter** in a number box commits the math and moves on.
@@ -105,7 +116,7 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 
 ## Roadmap / known limits
 - Layout engine (drag / resize / snap-to-grid), theming, and icon variants — not built yet.
-- Class-features / feats / items / races importers — spells only, for now.
+- Class-features / feats / races importers — spells and equipment only, for now.
 - Spell rows: save spells still show a "to hit" button; leveled-spell damage shows base dice only (no upcast math); cantrip damage is set at add-time.
 - **Deferred spell filters** (data mostly parsed already, easy to add): Conditions Inflicted, Spell Attack type (melee/ranged), Range, Area style, Duration, Cast-time sub-types, and **Class/Subclass** (needs the class→spell mapping). 5etools' Core/Supplements/Adventures source *groupings* are also deferred (individual sources work).
 - A step-by-step character creator, rules-as-written defaults with house-rule toggles, and an allowed-books toggle list are planned.
