@@ -17,7 +17,7 @@ let ITEM_LIB = [];
 // asking price per rarity from XGE's "Magic Item Price" table (Xanathar's Guide to Everything, p.126,
 // data/book/book-xge.json ~L5628), halved for consumables per that table's own footnote, applied when
 // an item's data marks it as one via a "consumable" flag.
-const RARITY_DEFAULT_GP = { common: 45, uncommon: 350, rare: 11000, "very rare": 25000, legendary: 175000 };
+const RARITY_DEFAULT_GP = { common: 45, uncommon: 350, rare: 11000, "very rare": 35000, legendary: 175000 };
 function defaultRarityValueGp(raw) {
   const base = RARITY_DEFAULT_GP[raw.rarity];
   if (base == null) return null;
