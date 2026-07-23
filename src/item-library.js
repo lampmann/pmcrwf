@@ -40,13 +40,32 @@ function loadItemFiles(files) {
     rd.onload = () => {
       try {
         const j = JSON.parse(rd.result);
-        const raws = [].concat(j.baseitem || [], j.item || []);
+        const raws = [].concat(j.baseitem || [], j.item || [], j.itemGroup || []);
         mergeItems(raws.map(parseItem));
       } catch (e) { errs.push(file.name + ": " + e); }
       if (++done === total) { saveItemLib(); renderItemLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n")); }
     };
     rd.readAsText(file);
   });
+}
+/* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
+   Only works when served over http(s) — browsers block fetch() of local files opened via file://. */
+const ITEM_DATA_FILES = ["data/items-base.json", "data/items.json"];
+async function autoLoadItems() {
+  let found = false, blocked = false, filesLoaded = 0;
+  for (const url of ITEM_DATA_FILES) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      found = true;
+      const j = await res.json();
+      const raws = [].concat(j.baseitem || [], j.item || [], j.itemGroup || []);
+      mergeItems(raws.map(parseItem));
+      filesLoaded++;
+    } catch (e) { blocked = true; }
+  }
+  if (filesLoaded) saveItemLib();
+  return { found, blocked, filesLoaded, filesTotal: ITEM_DATA_FILES.length };
 }
 function saveItemLib() {
   try { localStorage.setItem("charsheet-itemlib", JSON.stringify({ v: ITEM_LIB_SCHEMA, items: ITEM_LIB })); }

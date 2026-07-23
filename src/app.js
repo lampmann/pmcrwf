@@ -1,3 +1,18 @@
+/* ---------- data/ folder auto-load status ---------- */
+function autoStatusText(res, what) {
+  if (res.blocked) return "auto-load blocked — serve over http(s), not file:// (see DOCS)";
+  if (!res.found) return `no data/ found for ${what} — see DOCS, or import manually below`;
+  return `auto-loaded ${res.filesLoaded}/${res.filesTotal} file(s) from data/`;
+}
+function runSpellAutoLoad() {
+  $("spell-lib-autostatus").textContent = "loading from data/ …";
+  autoLoadSpells().then(res => { renderSpellLibrary(); $("spell-lib-autostatus").textContent = autoStatusText(res, "spells"); });
+}
+function runItemAutoLoad() {
+  $("item-lib-autostatus").textContent = "loading from data/ …";
+  autoLoadItems().then(res => { renderItemLibrary(); $("item-lib-autostatus").textContent = autoStatusText(res, "equipment"); });
+}
+
 /* ---------- Init / wiring ---------- */
 function init() {
   buildAbilities(); buildSaves(); buildSkills(); buildSlots();
@@ -88,6 +103,8 @@ function init() {
       renderSpellLibrary();
     }
   });
+  $("spell-lib-reload").addEventListener("click", runSpellAutoLoad);
+  runSpellAutoLoad();
 
   // ----- Equipment library wiring -----
   loadItemLib(); renderItemLibrary();
@@ -102,6 +119,8 @@ function init() {
       renderItemLibrary();
     }
   });
+  $("item-lib-reload").addEventListener("click", runItemAutoLoad);
+  runItemAutoLoad();
 
   // Load saved state LAST and guarded — if it throws, start fresh but keep the sheet alive.
   try {

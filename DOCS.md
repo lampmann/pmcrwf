@@ -1,6 +1,6 @@
 # Modular Character Sheet — Documentation
 
-An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized play. The page (`character-sheet.html`) loads its logic from small modules in `src/`. Open it directly in a browser, or for local development serve the folder (there's a ready `static` config in `.claude/launch.json`, e.g. `python3 -m http.server`). No install, no accounts; game data is user-supplied (see below).
+An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized play. The page (`character-sheet.html`) loads its logic from small modules in `src/`. **Serve the folder** rather than opening the file directly — there's a ready `static` config in `.claude/launch.json` (`python3 -m http.server`) — this is required for the spell/equipment libraries to auto-load (see below); browsers block `fetch()` of local files opened via `file://`. No install, no accounts; game data is user-supplied (see below).
 
 > **Status:** prototype (v0.9), deliberately unstyled ("function over form"). Cosmetics/theming come later.
 
@@ -24,7 +24,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 The sheet draws a line between two kinds of game data:
 
 - **Small SRD facts get hardcoded.** Things like each class's hit die and casting type (`CLASS_DATA`/`SUBCLASS_CASTING` in [data.js](src/data.js)), or the multiclass spellcaster slot table (`MULTICLASS_SLOTS` in [derived.js](src/derived.js)), are short, fixed, and covered by the SRD — so they live directly in the code as lookup tables and drive the auto-calculated fields (selectable as "auto", with an explicit override always available).
-- **Large or non-SRD content is user-supplied.** Anything that's a lot of data (the full spell list) or not in the SRD (most sourcebook content beyond it) is never bundled — you import it yourself (see [Spell library](#spell-library-5etools-import)). This is also why `spells-*.json` files are gitignored rather than committed.
+- **Large or non-SRD content is user-supplied.** Anything that's a lot of data (the full spell list, the equipment list) or not in the SRD (most sourcebook content beyond it) is never bundled — you supply it yourself by dropping 5e.tools' own `data/` directory next to `character-sheet.html` (see [Spell library](#spell-library-5etools-import) / [Equipment library](#equipment-library-5etools-import)). This is also why `data/` is gitignored rather than committed.
 
 When adding a new auto-calculated feature, ask which bucket it falls into: a small SRD table → hardcode it with an override box (see Max HP and Spell Slots below); anything bigger or non-SRD → make it an import, not a bundled dataset.
 
@@ -80,9 +80,10 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - A stat's **Misc** field may contain **dice** (e.g. `10+1d4`): the flat part folds into the shown total, and the dice are appended to the roll — handy for always-on effects like Pass Without Trace + Guidance on Stealth.
 
 ## Spell library (5e.tools import)
-1. Download the 5e.tools source data. Spells live in `data/spells/`.
-2. **Load spell files** → pick one or more `spells-*.json`. **Use 2014 files** (`spells-phb.json`, `spells-xge.json`, `spells-tce.json`, …) — **not** `spells-xphb.json` (that's the 2024 PHB).
-3. The library is cached locally, so you only import once.
+**Zero-click setup:** download the [5e.tools source data](https://github.com/5etools-mirror-3/5etools-src) (the whole repo, or just its `data/` folder) and drop that `data/` folder next to `character-sheet.html`, so `data/spells/index.json` exists at that relative path. Reload the page — the sheet fetches `data/spells/index.json`, then every spell file it lists (`spells-phb.json`, `spells-xge.json`, …), and merges them in automatically. **Use the 2014 data** — the mirror above is the 2014 ruleset; don't point it at a 2024-only clone, and any stray `spells-xphb.json` (2024 PHB) is simply ignored since it's not referenced by the 2014 index.
+- The **reload from data/ folder** button re-runs the fetch (e.g. after you add more source files) without a full page reload.
+- If auto-load can't find `data/`, or the page was opened via `file://` (browsers block local-file `fetch()`), a status message next to the count explains which — and the old manual **import files** picker below it still works as a fallback for one-off or homebrew files.
+- The library is cached locally either way, so this only costs time on first load.
 
 **Browsing:** Each filter category (Source, Level, School, Damage, Save, Cast, Components, Misc) is a row of **tri-state buttons** — click a button to cycle **neutral → include (blue) → exclude (red)**.
 - **Per category:** `All` (include all), `Clear` (neutral), `None` (exclude all), a **blue** combine-mode button (how the include buttons combine) and a **red** one (how the excludes combine) — each cycles `OR → AND → XOR` — and `Hide`.
@@ -92,17 +93,17 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - Click a spell's **name** to expand its full **description** (and higher-level text); click again to collapse.
 - Click **`+`** to add it to your Spellcasting table (fills name, level, and damage — cantrip damage scales to your current level).
 
-*Note: nothing from 5e.tools is bundled with the sheet; you supply the JSON, it's parsed in your browser.*
+*Note: nothing from 5e.tools is bundled with the sheet; `data/` is gitignored — you supply it, it's parsed in your browser.*
 
 ## Equipment library (5e.tools import)
-Deliberately the simplest importer on the sheet — one file picker, one search box, nothing to configure:
-1. Download the 5e.tools source data. Equipment lives in `data/items-base.json` (mundane gear, weapons, armor) and `data/items.json` (magic items). Either file works, and you can load both.
-2. **Load equipment files** → pick one or more. The importer auto-detects whichever of `baseitem`/`item` arrays are present, so any 5e.tools item file just works — no format to pick, no per-file settings.
-3. The library is cached locally, so you only import once.
+Same zero-click setup as the spell library, and deliberately the simplest importer on the sheet:
+1. With the same `data/` folder in place (see above), the sheet auto-fetches `data/items-base.json` (mundane gear, weapons, armor) and `data/items.json` (magic items) on load — no format to pick, no per-file settings.
+2. **Reload from data/ folder** re-runs the fetch; the **import files** picker below it is the fallback for `file://` use or homebrew item files.
+3. The library is cached locally, so this only costs time once.
 
 **Browsing:** a single **search** box matches name, type, rarity, and source all at once — type "potion", "rare", or "phb" and it filters. Results show name, type, rarity, weight (lb), and value (gp, converted from 5e.tools' copper-piece figure). Click **`+`** to add a row straight into your Inventory table (qty 1, weight and value pre-filled) — from there it's counted in the item-value and total-wealth sums automatically.
 
-*Note: nothing from 5e.tools is bundled with the sheet; you supply the JSON, it's parsed in your browser.*
+*Note: nothing from 5e.tools is bundled with the sheet; `data/` is gitignored — you supply it, it's parsed in your browser.*
 
 ## Saving & loading
 - **Autosave** to the browser (localStorage) on every change.
