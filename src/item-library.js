@@ -10,21 +10,34 @@ const ITEM_TYPES = {
   P:"Potion", R:"Ranged Weapon", RD:"Rod", RG:"Ring", S:"Shield", SC:"Scroll", SCF:"Spellcasting Focus",
   T:"Tools", TAH:"Tack & Harness", TG:"Trade Good", VEH:"Vehicle (Land)", SHP:"Ship", WD:"Wand",
 };
-const ITEM_LIB_SCHEMA = 1;  // bump when the parsed-item shape changes (forces a one-time re-import)
+const ITEM_LIB_SCHEMA = 2;  // bump when the parsed-item shape changes (forces a one-time re-import)
 let ITEM_LIB = [];
 
+// Individual magic items in 5e.tools rarely carry an explicit "value" — these are the average gp
+// asking price per rarity from XGE's "Magic Item Price" table (Xanathar's Guide to Everything, p.126,
+// data/book/book-xge.json ~L5628), halved for consumables per that table's own footnote, applied when
+// an item's data marks it as one via a "consumable" flag.
+const RARITY_DEFAULT_GP = { common: 45, uncommon: 350, rare: 11000, "very rare": 25000, legendary: 175000 };
+function defaultRarityValueGp(raw) {
+  const base = RARITY_DEFAULT_GP[raw.rarity];
+  if (base == null) return null;
+  return raw.consumable ? base / 2 : base;
+}
 function parseItemType(raw) {
   const code = (raw.type || "").split("|")[0];
   return ITEM_TYPES[code] || code || "";
 }
 function parseItem(raw) {
+  const explicitGp = raw.value != null ? Math.round((raw.value / 100) * 100) / 100 : null;  // 5e.tools stores value in cp
+  const rarityGp = explicitGp == null ? defaultRarityValueGp(raw) : null;
   return {
     name: raw.name,
     source: raw.source || "",
     type: parseItemType(raw),
     rarity: (raw.rarity && raw.rarity !== "none") ? raw.rarity : "",
     weight: raw.weight != null ? raw.weight : "",
-    valueGp: raw.value != null ? Math.round((raw.value / 100) * 100) / 100 : "",  // 5e.tools stores value in cp
+    valueGp: explicitGp != null ? explicitGp : (rarityGp != null ? rarityGp : ""),
+    valueDefaulted: rarityGp != null,  // true when the value came from RARITY_DEFAULT_GP, not the source data
     srd: !!raw.srd || !!raw.basicRules,
   };
 }
@@ -103,7 +116,7 @@ function renderItemResults() {
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
       <td class="c hint">${it.weight === "" ? "" : it.weight}</td>
-      <td class="c hint">${it.valueGp === "" ? "" : it.valueGp}</td>
+      <td class="c hint"${it.valueDefaulted ? ` title="estimated by rarity — no official price in the source data"` : ""}>${it.valueGp === "" ? "" : (it.valueDefaulted ? "~" + it.valueGp : it.valueGp)}</td>
       <td class="hint">${it.source}</td>
     </tr>`;
   }).join("");
