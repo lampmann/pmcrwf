@@ -20,7 +20,7 @@ Open `character-sheet.html` in any modern browser. No install, no server, no acc
 ---
 
 ## Number boxes (math input)
-Any bounded number box (ability scores, class level, HP, AC, speed, spell slots) accepts arithmetic:
+Any bounded number box (ability scores, class level, current/temp HP, AC, speed, spell slots used) accepts arithmetic:
 
 | You type | Result (box was `30`) |
 |----------|-----------------------|
@@ -33,14 +33,14 @@ Any bounded number box (ability scores, class level, HP, AC, speed, spell slots)
 Values are clamped to their limits: ability scores **1–30**, class level **1–20** (total across classes also capped at 20), HP/AC/speed **≥ 0**, current HP **≤ max HP**.
 
 ## Modules
-- **Character** — name, race, background, and a multiclass table (each class + subclass + level). Total level auto-drives **proficiency bonus** (with an override box).
+- **Character** — name, race, background, and a multiclass table (each class + subclass + level + Hit Die + Casting type). Total level auto-drives **proficiency bonus** (with an override box).
 - **Ability Scores** — scores → live modifiers.
 - **Saving Throws** — proficiency toggle + misc bonus → auto total, with a roll button.
 - **Skills** — proficiency / expertise (mutually exclusive) + misc → auto total + roll button. Passive Perception computed.
-- **HP & Defenses** — current/max/temp HP, AC, speed, hit dice, auto initiative + roll button.
+- **HP & Defenses** — current/temp HP, AC, speed, hit dice, auto initiative + roll button. **Max HP** is auto-calculated from each class's Hit Die & level (fixed/"consistent" value per level, not rolled) + CON mod per level, with an override box.
 - **Dice Roller** — see below.
 - **Spell Library** — import & search spells; see below.
-- **Spellcasting** — spellcasting ability → auto save DC & spell attack; manual spell-slot grid; spell table with per-spell to-hit and damage roll buttons.
+- **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; spell table with per-spell to-hit and damage roll buttons.
 
 ## Dice roller (command mode)
 Type a command and press **Enter**. Prefix is `/` (also accepts `!`). Bare notation works too (`4d6kh3`).
