@@ -89,6 +89,20 @@ function init() {
     }
   });
 
+  // ----- Equipment library wiring -----
+  loadItemLib(); renderItemLibrary();
+  $("item-import").addEventListener("change", e => { if (e.target.files.length) loadItemFiles(e.target.files); e.target.value = ""; });
+  $("item-search").addEventListener("input", renderItemResults);
+  $("item-results").addEventListener("click", e => {
+    const b = e.target.closest(".itm-lib-add"); if (b) addItemFromLib(b.dataset.key);
+  });
+  $("item-lib-clear").addEventListener("click", () => {
+    if (confirm("Clear the imported equipment library? (does not affect your character)")) {
+      ITEM_LIB = []; localStorage.removeItem("charsheet-itemlib");
+      renderItemLibrary();
+    }
+  });
+
   // Load saved state LAST and guarded — if it throws, start fresh but keep the sheet alive.
   try {
     const saved = loadState();
