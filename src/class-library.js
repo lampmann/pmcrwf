@@ -24,6 +24,16 @@ let FEAT_LIB = {};
 // ASI feat picks, keyed by the same string used for that ASI feature's feat-link (see fkeyFor).
 // Persisted as part of the character (collectState/applyState in persistence.js).
 let FEAT_CHOICES = {};
+// Limited-use tracking, keyed by the same feature key as FEAT_CHOICES/feat-link.
+// { used: number, pendingRests: number|null } — pendingRests is only set for the
+// "until you finish NdN long/short rests" delayed-recharge pattern (see parseUses).
+// Persisted as part of the character (collectState/applyState in persistence.js).
+let USES_STATE = {};
+// Populated at render time: featureKey -> the exact text that was displayed for it
+// (the class/subclass/race trait text, or — for an ASI slot with a feat chosen — the
+// feat's text). Used by the rest buttons to re-scan for limited-use features without
+// re-walking the whole render tree.
+let FEATURE_TEXT_BY_KEY = {};
 
 function parseClassFile(j) {
   // A class-*.json is authoritative for its class(es); (re)build each fresh.
@@ -159,6 +169,104 @@ function isASI(name) { return (name || "").trim().toLowerCase() === "ability sco
 function fkeyFor(className, name, level) { return (className + "|" + name + "|" + level).replace(/"/g, "&quot;"); }
 function raceFkey(raceName, entryName) { return ("race||" + raceName + "||" + entryName).replace(/"/g, "&quot;"); }
 
+/* ----- limited-use detection: parse feature/feat text for finite-use + recharge patterns -----
+   Handles (see DOCS for the exact phrasings this was built against):
+     "a number of times equal to your proficiency bonus" / "...your <Ability> modifier (a minimum of X)"
+     "you can use this ability/feature/reaction twice" (word numbers: once/twice/three times/...)
+     "once per day"
+     "once you use this ..., you can't ... again until you finish [Nd?d? long/short rests]"
+   Recharges on "when you finish a short/long/short-or-long rest", or the delayed
+   "until you finish 1d4 long rests" variant (tracked via USES_STATE[key].pendingRests). */
+const USE_NUM_WORDS = { once: 1, twice: 2, thrice: 3, "three times": 3, "four times": 4, "five times": 5, "six times": 6 };
+const USE_ABILITY_NAMES = { strength: "str", dexterity: "dex", constitution: "con", intelligence: "int", wisdom: "wis", charisma: "cha" };
+function parseUses(text) {
+  if (!text) return null;
+  const t = text;
+  let max = null;
+  if (/number of times equal to your proficiency bonus/i.test(t)) max = { type: "prof" };
+  if (!max) {
+    const am = t.match(/number of times equal to your (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) modifier/i);
+    if (am) {
+      max = { type: "abilitymod", ability: USE_ABILITY_NAMES[am[1].toLowerCase()] };
+      const mm = t.match(/minimum of (once|twice|\d+)/i);
+      if (mm) max.min = USE_NUM_WORDS[mm[1].toLowerCase()] || Number(mm[1]) || 1;
+    }
+  }
+  if (!max) {
+    const wm = t.match(/use (?:this|it) (?:ability|feature|reaction|trait)?\s*(once|twice|thrice|three times|four times|five times|six times)\b/i);
+    if (wm) max = { type: "fixed", n: USE_NUM_WORDS[wm[1].toLowerCase()] };
+  }
+  if (!max && /once per day/i.test(t)) max = { type: "fixed", n: 1 };
+  if (!max && /once you use (?:this|it)\b.*can[’']?t (?:do so|use (?:this|it)) again/i.test(t)) max = { type: "fixed", n: 1 };
+  if (!max) return null;
+
+  let per = null, delayed = null;
+  const dm = t.match(/until you finish (\d*d\d+|a|an) (long|short) rests?/i);
+  if (dm) {
+    const restType = dm[2].toLowerCase() === "long" ? "lr" : "sr";
+    if (/^\d*d\d+$/i.test(dm[1])) { delayed = { restType, expr: dm[1].toLowerCase() }; per = restType; }
+    else per = restType;
+  }
+  if (!per) {
+    const pm = t.match(/when you finish a (short or long|long or short|short|long) rest/i);
+    if (pm) per = pm[1].toLowerCase().includes("short") ? "sr" : "lr";
+  }
+  if (!per) per = "lr";
+  return { max, per, delayed };
+}
+function computeUsesMax(maxSpec) {
+  if (maxSpec.type === "fixed") return maxSpec.n;
+  if (maxSpec.type === "prof") return profBonus();
+  if (maxSpec.type === "abilitymod") {
+    const raw = mod($("score-" + maxSpec.ability).value);
+    return maxSpec.min != null ? Math.max(raw, maxSpec.min) : raw;
+  }
+  return 0;
+}
+function rollDiceExpr(expr) {
+  const m = /^(\d*)d(\d+)$/i.exec(expr || ""); if (!m) return 1;
+  const count = Number(m[1] || 1), sides = Number(m[2]);
+  let sum = 0; for (let i = 0; i < count; i++) sum += rollDie(sides);
+  return sum;
+}
+function renderUsesTracker(key, usesSpec) {
+  const max = Math.max(0, computeUsesMax(usesSpec.max));
+  const st = USES_STATE[key] || (USES_STATE[key] = { used: 0, pendingRests: null });
+  const used = Math.min(st.used, max);
+  const periodLabel = usesSpec.delayed ? `long rest (${usesSpec.delayed.expr} once expended)` : usesSpec.per === "sr" ? "short/long rest" : "long rest";
+  const pips = Array.from({ length: max }, (_, i) =>
+    `<button type="button" class="use-pip${i < used ? " used" : ""}" data-useskey="${key}" data-i="${i}" title="click to set uses">${i < used ? "●" : "○"}</button>`
+  ).join("");
+  const pendingHint = (usesSpec.delayed && st.pendingRests != null)
+    ? ` <span class="hint">(${st.pendingRests} more long rest${st.pendingRests === 1 ? "" : "s"} to recharge)</span>` : "";
+  return ` <span class="uses-tracker" data-useskey="${key}">${pips} <span class="hint">${used}/${max} · ${periodLabel}</span>${pendingHint}</span>`;
+}
+function togglePip(pip) {
+  const key = pip.dataset.useskey, i = Number(pip.dataset.i);
+  const st = USES_STATE[key] || (USES_STATE[key] = { used: 0, pendingRests: null });
+  st.used = i < st.used ? i : i + 1;
+  scheduleSave(); renderClassFeatures();
+}
+function applyRest(kind) {   // kind: "sr" or "lr"
+  Object.entries(FEATURE_TEXT_BY_KEY).forEach(([key, text]) => {
+    const u = parseUses(text); if (!u) return;
+    const st = USES_STATE[key]; if (!st) return;
+    if (u.delayed) {
+      if (kind !== "lr") return;   // delayed recovery is only ever counted in long rests
+      const max = Math.max(0, computeUsesMax(u.max));
+      if (st.used < max) return;   // not fully expended yet, nothing to count down
+      if (st.pendingRests == null) st.pendingRests = rollDiceExpr(u.delayed.expr);
+      st.pendingRests -= 1;
+      if (st.pendingRests <= 0) { st.used = 0; st.pendingRests = null; }
+    } else if (u.per === "sr") {
+      st.used = 0;   // short-rest recovery also happens on a long rest
+    } else if (kind === "lr") {
+      st.used = 0;
+    }
+  });
+  scheduleSave(); renderClassFeatures();
+}
+
 function renderClassLibrary() {
   const counts = [];
   if (Object.keys(CLASS_LIB).length) counts.push(Object.keys(CLASS_LIB).length + " class(es)");
@@ -181,9 +289,12 @@ function renderRaceSection() {
   });
   const subNote = sub ? ` <span class="hint">/ ${escapeHtml(sub.name)}</span>`
     : (subName ? ` <span class="hint">/ ${escapeHtml(subName)} — subrace not found</span>` : "");
-  const items = list.map(e =>
-    `<div><a class="feat-link" data-fkey="${raceFkey(rec.name, e.name)}"><b>${escapeHtml(e.name)}</b></a> <span class="hint">${e.source || rec.source}</span></div>`
-  ).join("") || "<div class='hint'>&nbsp;&nbsp;no traits</div>";
+  const items = list.map(e => {
+    const key = raceFkey(rec.name, e.name);
+    FEATURE_TEXT_BY_KEY[key] = e.text;
+    const usesSpec = parseUses(e.text), tracker = usesSpec ? renderUsesTracker(key, usesSpec) : "";
+    return `<div><a class="feat-link" data-fkey="${key}"><b>${escapeHtml(e.name)}</b></a> <span class="hint">${e.source || rec.source}</span>${tracker}</div>`;
+  }).join("") || "<div class='hint'>&nbsp;&nbsp;no traits</div>";
   return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)}</b>${subNote}</div>${items}`;
 }
 function ciFindRace(name) { return ciFind(RACE_LIB, name); }
@@ -195,6 +306,7 @@ function renderClassFeatures() {
     el.innerHTML = "<div class='hint'>No data loaded — auto-loads from <code>data/</code> (class/race/feat files), or import files above.</div>"; return;
   }
   if (!raceName && !classes.length) { el.innerHTML = "<div class='hint'>Add a race and/or class name in the Character module to see its features.</div>"; return; }
+  FEATURE_TEXT_BY_KEY = {};
   const raceHtml = renderRaceSection();
   const classHtml = classes.map(c => {
     const rec = ciFindClass(c.name), lvl = c.lvl || 0;
@@ -208,12 +320,22 @@ function renderClassFeatures() {
     const items = list.map(f => {
       const fkey = fkeyFor(rec.name, f.name, f.level);
       const link = `<a class="feat-link" data-fkey="${fkey}"><b>${f.level}</b> ${escapeHtml(f.name)}</a> <span class="hint">${f.source}</span>`;
-      if (!isASI(f.name)) return `<div>${link}</div>`;
+      if (!isASI(f.name)) {
+        FEATURE_TEXT_BY_KEY[fkey] = f.text;
+        const usesSpec = parseUses(f.text), tracker = usesSpec ? renderUsesTracker(fkey, usesSpec) : "";
+        return `<div>${link}${tracker}</div>`;
+      }
       const featNames = Object.keys(FEAT_LIB).sort();
       const chosen = FEAT_CHOICES[fkey] || "";
       const opts = `<option value="">— no feat chosen —</option>` +
         featNames.map(n => `<option value="${escapeHtml(n)}" ${n === chosen ? "selected" : ""}>${escapeHtml(n)}</option>`).join("");
-      return `<div>${link} &nbsp;<label class="hint">Feat: <select class="asi-select" data-asikey="${fkey}" ${featNames.length ? "" : "disabled"}>${opts}</select></label></div>`;
+      let tracker = "";
+      if (chosen && FEAT_LIB[chosen]) {
+        FEATURE_TEXT_BY_KEY[fkey] = FEAT_LIB[chosen].text;
+        const usesSpec = parseUses(FEAT_LIB[chosen].text);
+        if (usesSpec) tracker = renderUsesTracker(fkey, usesSpec);
+      }
+      return `<div>${link} &nbsp;<label class="hint">Feat: <select class="asi-select" data-asikey="${fkey}" ${featNames.length ? "" : "disabled"}>${opts}</select></label>${tracker}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)} ${lvl}</b>${subNote}</div>${items}`;
   }).join("");
@@ -273,7 +395,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   $("class-lib-reload").addEventListener("click", runClassAutoLoad);
   runClassAutoLoad();
-  $("class-feat-results").addEventListener("click", e => { const l = e.target.closest(".feat-link"); if (l) { e.preventDefault(); toggleFeatDetail(l); } });
+  $("class-feat-results").addEventListener("click", e => {
+    const pip = e.target.closest(".use-pip"); if (pip) { togglePip(pip); return; }
+    const l = e.target.closest(".feat-link"); if (l) { e.preventDefault(); toggleFeatDetail(l); }
+  });
+  $("btn-short-rest").addEventListener("click", () => applyRest("sr"));
+  $("btn-long-rest").addEventListener("click", () => applyRest("lr"));
   $("class-feat-results").addEventListener("change", e => {
     const sel = e.target.closest(".asi-select"); if (!sel) return;
     if (sel.value) FEAT_CHOICES[sel.dataset.asikey] = sel.value; else delete FEAT_CHOICES[sel.dataset.asikey];

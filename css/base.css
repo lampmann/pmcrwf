@@ -82,3 +82,6 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .feat-link { color: var(--link); cursor: pointer; text-decoration: none; }
 .feat-link:hover { text-decoration: underline; }
 .feat-detail { white-space: normal; margin: 0 0 .35rem 1.2rem; }
+.uses-tracker { margin-left: .4rem; }
+.use-pip { border: none; background: none; color: var(--link); cursor: pointer; font-size: .9rem; padding: 0 1px; line-height: 1; }
+.use-pip:not(.used) { color: var(--muted-fg); }
