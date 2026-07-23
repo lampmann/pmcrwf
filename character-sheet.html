@@ -58,12 +58,16 @@
   .sp-name-link { text-decoration: none; color: #1a56c4; cursor: pointer; }
   .sp-name-link:hover { text-decoration: underline; }
   .sp-detail td { white-space: normal; padding: 2px 5px 7px; }
+  /* ----- class features ----- */
+  .feat-link { color: #1a56c4; cursor: pointer; text-decoration: none; }
+  .feat-link:hover { text-decoration: underline; }
+  .feat-detail { white-space: normal; margin: 0 0 .35rem 1.2rem; }
 </style>
 </head>
 <body>
 
 <div class="toolbar">
-  <strong>[UNNAMED SHEET]</strong> &mdash; prototype v0.9
+  <strong>[UNNAMED SHEET]</strong> &mdash; prototype v0.10
   <span style="float:right">
     <button id="btn-export">Export JSON</button>
     <label>Import <input type="file" id="file-import" accept="application/json" style="width:12rem"></label>
@@ -194,6 +198,17 @@
     <div id="dicelog"><div>— roll log —</div></div>
   </section>
 
+  <!-- ===== CLASS FEATURES (5e.tools import) ===== -->
+  <section class="module wide" data-module="class-features">
+    <h2>Class Features <span class="hint">(import 5e.tools <code>class-*.json</code>; shows features for the classes/levels in your Character module)</span></h2>
+    <div>
+      <label>Load class files <input type="file" id="class-import" accept="application/json" multiple></label>
+      <button id="class-lib-clear">clear</button>
+      <span class="hint" id="class-lib-count">no classes loaded</span>
+    </div>
+    <div id="class-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
+  </section>
+
   <!-- ===== SPELL LIBRARY (5e.tools import) ===== -->
   <section class="module wide" data-module="spell-library">
     <h2>Spell Library <span class="hint">(auto-loads from <code>data/spells/</code> — 2014 sources only, e.g. spells-phb.json, not spells-<b>x</b>phb.json)</span></h2>
@@ -258,6 +273,7 @@
 <script src="src/derived.js"></script>
 <script src="src/dice.js"></script>
 <script src="src/spell-library.js"></script>
+<script src="src/class-library.js"></script>
 <script src="src/item-library.js"></script>
 <script src="src/persistence.js"></script>
 <script src="src/app.js"></script>
