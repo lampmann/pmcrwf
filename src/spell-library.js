@@ -166,8 +166,8 @@ function renderFilterArea() {
       `<button class="fctrl-btn" data-fctrl="all" data-fg="${g.key}">All</button>` +
       `<button class="fctrl-btn" data-fctrl="clear" data-fg="${g.key}">Clear</button>` +
       `<button class="fctrl-btn" data-fctrl="none" data-fg="${g.key}">None</button>` +
-      `<button class="fctrl-btn blue" data-fctrl="bluemode" data-fg="${g.key}" title="how INCLUDE (blue) options combine">${st.blueMode.toUpperCase()}</button>` +
-      `<button class="fctrl-btn red" data-fctrl="redmode" data-fg="${g.key}" title="how EXCLUDE (red) options combine">${st.redMode.toUpperCase()}</button>` +
+      `<button class="fctrl-btn blue fmode" data-fctrl="bluemode" data-fg="${g.key}" title="how INCLUDE (blue) options combine">${st.blueMode.toUpperCase()}</button>` +
+      `<button class="fctrl-btn red fmode" data-fctrl="redmode" data-fg="${g.key}" title="how EXCLUDE (red) options combine">${st.redMode.toUpperCase()}</button>` +
       `<button class="fctrl-btn" data-fctrl="hide" data-fg="${g.key}">${st.hidden ? "Show" : "Hide"}</button></span>`;
     const opts = st.hidden ? "" : groupOpts(g).map(([v, lab, title]) => {
       const s = st.states[v] || "ignore", cls = s === "include" ? "inc" : s === "exclude" ? "exc" : "";
@@ -198,11 +198,36 @@ function renderSpellResults() {
   }
   const el = $("spell-results");
   if (!SPELL_LIB.length) { el.innerHTML = "<div class='hint'>Load some spell files above to get started.</div>"; return; }
-  el.innerHTML = (rows.map(s => {
-    const tag = s.attack ? "atk" : s.save ? (s.save.slice(0, 3) + " save") : "";
-    const meta = [s.school, tag, s.dmg, s.conc ? "conc" : "", s.ritual ? "ritual" : "", s.source].filter(Boolean).join(" · ");
-    return `<div><button class="sp-lib-add" data-key="${(s.name + "|" + s.source).replace(/"/g, "&quot;")}" title="add to sheet">+</button> <b>${s.level}</b> ${s.name} <span class="hint">${meta}</span></div>`;
-  }).join("") || "<div class='hint'>no matches</div>") + (more ? `<div class='hint'>…and ${more} more — narrow your search</div>` : "");
+  if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
+  const body = rows.map(s => {
+    const key = (s.name + "|" + s.source).replace(/"/g, "&quot;");
+    const sv = s.attack ? "atk" : s.save ? (s.save.slice(0, 3) + " sv") : "";
+    return `<tr>
+      <td><button class="sp-lib-add" data-key="${key}" title="add to sheet">+</button></td>
+      <td class="c"><b>${s.level}</b></td>
+      <td class="nm"><a class="sp-name-link" data-key="${key}">${s.name}</a></td>
+      <td class="hint">${s.school}</td>
+      <td class="hint">${sv}</td>
+      <td class="hint">${s.dmg || ""}</td>
+      <td class="c hint" title="concentration">${s.conc ? "conc" : ""}</td>
+      <td class="c hint" title="ritual">${s.ritual ? "R" : ""}</td>
+      <td class="hint">${s.source}</td>
+    </tr>`;
+  }).join("");
+  el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more — narrow your search</div>` : "");
+}
+function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function toggleSpellDetail(link) {
+  const tr = link.closest("tr"), next = tr.nextElementSibling;
+  if (next && next.classList.contains("sp-detail")) { next.remove(); return; }  // toggle off
+  const s = SPELL_LIB.find(x => (x.name + "|" + x.source) === link.dataset.key); if (!s) return;
+  const comp = ["v", "s", "m"].filter(k => s.comp && s.comp[k]).map(k => k.toUpperCase()).join("") || "—";
+  const meta = ["Level " + s.level, s.school, s.cast ? ("Cast: " + s.cast) : "", "Comp: " + comp,
+    s.conc ? "Concentration" : "", s.ritual ? "Ritual" : "", s.save ? (s.save + " save") : "", s.attack ? "spell attack" : ""].filter(Boolean).join(" · ");
+  const det = document.createElement("tr"); det.className = "sp-detail";
+  det.innerHTML = `<td></td><td colspan="8"><div class="hint">${meta}</div><div>${escapeHtml(s.text).replace(/\n/g, "<br>")}</div>` +
+    (s.higher ? `<div style="margin-top:3px"><b>At Higher Levels:</b> ${escapeHtml(s.higher).replace(/\n/g, "<br>")}</div>` : "") + `</td>`;
+  tr.after(det);
 }
 function addSpellFromLib(key) {
   const s = SPELL_LIB.find(x => (x.name + "|" + x.source) === key); if (!s) return;

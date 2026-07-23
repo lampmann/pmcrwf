@@ -1,9 +1,8 @@
 # Modular Character Sheet — Documentation
 
-A single-file, offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized play.
-Open `character-sheet.html` in any modern browser. No install, no server, no account.
+An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized play. The page (`character-sheet.html`) loads its logic from small modules in `src/`. Open it directly in a browser, or for local development serve the folder (there's a ready `static` config in `.claude/launch.json`, e.g. `python3 -m http.server`). No install, no accounts; game data is user-supplied (see below).
 
-> **Status:** prototype (v0.6), deliberately unstyled ("function over form"). Cosmetics/theming come later.
+> **Status:** prototype (v0.8), deliberately unstyled ("function over form"). Cosmetics/theming come later.
 
 ---
 
@@ -13,6 +12,7 @@ Open `character-sheet.html` in any modern browser. No install, no server, no acc
 - [Modules](#modules)
 - [Dice roller (command mode)](#dice-roller-command-mode)
 - [Roll buttons](#roll-buttons)
+- [Roll modifiers (dice bonuses)](#roll-modifiers-dice-bonuses)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
 - [Saving & loading](#saving--loading)
 - [Keyboard](#keyboard)
@@ -48,6 +48,7 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - **Skills** — proficiency / expertise (mutually exclusive) + misc → auto total + roll button. Passive Perception computed.
 - **HP & Defenses** — current/temp HP, AC, speed, hit dice, auto initiative + roll button. **Max HP** is auto-calculated from each class's Hit Die & level (fixed/"consistent" value per level, not rolled) + CON mod per level, with an override box.
 - **Dice Roller** — see below.
+- **Roll Modifiers** — toggleable dice bonuses (Guidance, Bless, Bardic Inspiration, …); see below.
 - **Spell Library** — import & search spells; see below.
 - **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; spell table with per-spell to-hit and damage roll buttons.
 
@@ -77,6 +78,11 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - Hold **Shift / Ctrl** while hovering a roll button to see the active mode as a tooltip.
 - **Right-click** a roll button for a *Normal / Advantage / Disadvantage* menu.
 
+## Roll modifiers (dice bonuses)
+For effects that add **dice** (not a flat number) to rolls — Guidance (+1d4 to ability checks), Bless (+1d4 to attacks & saves), Bardic Inspiration, Resistance, Gift of Alacrity (+1d8 initiative), etc.
+- Add a row (or use a **preset**), name it, set its dice (e.g. `1d4`), and tick which rolls it applies to: **Check** (ability checks & skills), **Save**, **Atk**, **Init**.
+- Toggle **On** when the buff is active — its dice are automatically appended to matching roll-button rolls, and the log notes which buffs applied.
+
 ## Spell library (5e.tools import)
 1. Download the 5e.tools source data. Spells live in `data/spells/`.
 2. **Load spell files** → pick one or more `spells-*.json`. **Use 2014 files** (`spells-phb.json`, `spells-xge.json`, `spells-tce.json`, …) — **not** `spells-xphb.json` (that's the 2024 PHB).
@@ -86,7 +92,9 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - **Per category:** `All` (include all), `Clear` (neutral), `None` (exclude all), a **blue** combine-mode button (how the include buttons combine) and a **red** one (how the excludes combine) — each cycles `OR → AND → XOR` — and `Hide`.
 - **Module bar:** `Combine as AND/OR` (how categories combine with each other), `Show All` / `Hide All`, `Reset`, and `Manage Defaults` (saves the current filters as the default that `Reset` restores).
 - **Source** buttons show the full book name on hover. A plain **search** box filters by name.
-- Click **`+`** on a spell to add it to your Spellcasting table (fills name, level, and damage — cantrip damage scales to your current level).
+- Results are shown in aligned columns (level, name, school, save/attack, damage, conc, ritual, source).
+- Click a spell's **name** to expand its full **description** (and higher-level text); click again to collapse.
+- Click **`+`** to add it to your Spellcasting table (fills name, level, and damage — cantrip damage scales to your current level).
 
 *Note: nothing from 5e.tools is bundled with the sheet; you supply the JSON, it's parsed in your browser.*
 
