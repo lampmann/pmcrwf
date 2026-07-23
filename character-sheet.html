@@ -139,6 +139,30 @@
     <div class="hint">Max HP assumes the fixed/"consistent" hit point value per level (4/5/6/7 for d6/d8/d10/d12) rather than rolling, using each class's Hit Die and level from the Classes table above.</div>
   </section>
 
+  <!-- ===== INVENTORY & EQUIPMENT ===== -->
+  <section class="module wide" data-module="inventory">
+    <h2>Inventory &amp; Equipment</h2>
+    <div>
+      Coins:
+      <label>cp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-cp"></label>
+      <label>sp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-sp"></label>
+      <label>ep <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-ep"></label>
+      <label>gp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-gp"></label>
+      <label>pp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-pp"></label>
+      &nbsp;=&nbsp;<span class="derived" id="coin-total-gp">0</span> gp
+    </div>
+    <table id="item-table">
+      <thead><tr><th>Eq</th><th>Qty</th><th>Item</th><th title="lb, per unit">Wt</th><th title="gp, per unit">Value</th><th title="gp, total for the row">Total</th><th></th></tr></thead>
+      <tbody id="item-rows"></tbody>
+    </table>
+    <button id="btn-add-item">+ add item</button>
+    <div class="hint">
+      Total weight: <span class="derived" id="items-weight-total">0</span> lb
+      &nbsp;|&nbsp; Total item value: <span class="derived" id="items-value-total">0</span> gp
+      &nbsp;|&nbsp; <b>Total wealth (coins + items): <span class="derived" id="wealth-total-gp">0</span> gp</b>
+    </div>
+  </section>
+
   <!-- ===== DICE ROLLER (command mode) ===== -->
   <section class="module wide" data-module="dice">
     <h2>Dice Roller <span class="hint">(command mode)</span></h2>

@@ -41,6 +41,9 @@ function classCasting(name, sub) {
   return d ? d.casting : "none";
 }
 
+/* Coin values in gp-equivalent, per SRD exchange rates. */
+const COIN_GP = { cp: 0.01, sp: 0.1, ep: 0.5, gp: 1, pp: 10 };
+
 /* ---------- Helpers ---------- */
 const $ = id => document.getElementById(id);
 const mod = score => Math.floor(((Number(score)||10) - 10) / 2);
