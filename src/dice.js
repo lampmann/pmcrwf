@@ -151,19 +151,14 @@ function runCommand(input) {
 const D20SEL = "[data-roll-check], .sp-atk";   // buttons that roll a d20 check (adv/dis applies)
 function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlKey || ev.metaKey || ev.altKey)) ? "dis" : "normal"; }
 function rollInfo(btn) {
-  if (btn.dataset.rollCheck) {
-    const k = btn.dataset.rollCheck, cat = k === "init" ? "init" : k.startsWith("save-") ? "save" : "check";
-    return { bonus: checkBonus(k), label: btn.dataset.label, cat };
-  }
-  if (btn.classList.contains("sp-atk")) { const tr = btn.closest("tr"); const name = tr.querySelector(".sp-name").value || "spell"; return { bonus: spellAttackBonus(), label: name + " attack", cat: "attack" }; }
+  if (btn.dataset.rollCheck) { const k = btn.dataset.rollCheck; return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label }; }
+  if (btn.classList.contains("sp-atk")) { const tr = btn.closest("tr"); const name = tr.querySelector(".sp-name").value || "spell"; return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: name + " attack" }; }
   return null;
 }
 function fireRoll(btn, mode) {
   const info = rollInfo(btn); if (!info) return;
-  const mods = activeMods(info.cat);                                   // dice bonuses (Guidance/Bless/…)
-  const dice = mods.map(m => "+" + m.dice.trim().replace(/^\+/, "")).join("");
-  const extra = mods.length ? " (" + mods.map(m => m.name || m.dice).join(", ") + ")" : "";
-  runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${dice} ${info.label}${extra}`, mode);
+  // info.dice already carries its sign(s), e.g. "+1d4" (from the Misc field)
+  runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, mode);
 }
 
 /* modifier-aware tooltip + right-click menu on d20 roll buttons */
