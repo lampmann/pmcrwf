@@ -16,7 +16,8 @@ function maxHPAuto() {
   const classes = getClasses().filter(c => c.lvl > 0);
   const conMod = mod($("score-con").value);
   return classes.reduce((total, c, i) => {
-    const dieMax = HIT_DIE_MAX[c.hitDie] || 8, dieFixed = HIT_DIE_FIXED[c.hitDie] || 5;
+    const hitDie = c.hitDie === "auto" ? classHitDie(c.name) : c.hitDie;
+    const dieMax = HIT_DIE_MAX[hitDie] || 8, dieFixed = HIT_DIE_FIXED[hitDie] || 5;
     for (let l = 1; l <= c.lvl; l++) total += (i === 0 && l === 1 ? dieMax : dieFixed) + conMod;
     return total;
   }, 0);
@@ -39,9 +40,10 @@ const MULTICLASS_SLOTS = [
 function casterLevel() {
   // Pact Magic (Warlock) slots aren't part of the multiclass table — "pact" classes don't contribute here.
   return getClasses().reduce((s, c) => {
-    if (c.casting === "full") return s + c.lvl;
-    if (c.casting === "half") return s + Math.floor(c.lvl / 2);
-    if (c.casting === "third") return s + Math.floor(c.lvl / 3);
+    const casting = c.casting === "auto" ? classCasting(c.name, c.sub) : c.casting;
+    if (casting === "full") return s + c.lvl;
+    if (casting === "half") return s + Math.floor(c.lvl / 2);
+    if (casting === "third") return s + Math.floor(c.lvl / 3);
     return s;
   }, 0);
 }

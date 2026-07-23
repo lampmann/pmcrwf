@@ -54,15 +54,17 @@ function buildSlots() {
 }
 
 /* ---------- Class (multiclass) rows ---------- */
-const HIT_DICE = ["d6", "d8", "d10", "d12"];
+// "auto" defers to CLASS_DATA/SUBCLASS_CASTING (looked up from the class/subclass name); pick an
+// explicit value only to override that lookup (homebrew class, reflavored hit die, etc.).
+const HIT_DICE = [["auto", "auto"], ["d6", "d6"], ["d8", "d8"], ["d10", "d10"], ["d12", "d12"]];
 const CASTING_TYPES = [
-  ["none", "None"], ["full", "Full"], ["half", "Half"], ["third", "Third"],
+  ["auto", "auto"], ["none", "None"], ["full", "Full"], ["half", "Half"], ["third", "Third"],
   ["pact", "Pact (Warlock)"],
 ];
 function addClassRow(data = {}) {
   const tr = document.createElement("tr");
-  const hd = data.hitDie || "d8", cast = data.casting || "none";
-  const hdOpts = HIT_DICE.map(h => `<option value="${h}" ${hd === h ? "selected" : ""}>${h}</option>`).join("");
+  const hd = data.hitDie || "auto", cast = data.casting || "auto";
+  const hdOpts = HIT_DICE.map(([v, lab]) => `<option value="${v}" ${hd === v ? "selected" : ""}>${lab}</option>`).join("");
   const castOpts = CASTING_TYPES.map(([v, lab]) => `<option value="${v}" ${cast === v ? "selected" : ""}>${lab}</option>`).join("");
   tr.innerHTML = `
     <td><input type="text" class="cls-name" value="${data.name || ""}" style="width:8rem"></td>
