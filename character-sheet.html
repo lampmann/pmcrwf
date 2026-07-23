@@ -166,11 +166,15 @@
       &nbsp;|&nbsp; <b>Total wealth (coins + items): <span class="derived" id="wealth-total-gp">0</span> gp</b>
     </div>
     <fieldset>
-      <legend>Equipment Library <span class="hint">(import 5e.tools <code>items-base.json</code> / <code>items.json</code>)</span></legend>
+      <legend>Equipment Library <span class="hint">(auto-loads from <code>data/items-base.json</code> / <code>data/items.json</code>)</span></legend>
       <div>
-        <label>Load equipment files <input type="file" id="item-import" accept="application/json" multiple></label>
+        <button id="item-lib-reload">reload from data/ folder</button>
         <button id="item-lib-clear">clear library</button>
         <span class="hint" id="item-lib-count">no equipment loaded</span>
+        <span class="hint" id="item-lib-autostatus"></span>
+      </div>
+      <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
+        <label style="display:inline">import files manually <input type="file" id="item-import" accept="application/json" multiple></label>.
       </div>
       <div style="margin:.35rem 0">
         <input type="text" id="item-search" placeholder="search name / type / rarity / source…" style="width:18rem" autocomplete="off">
@@ -207,11 +211,15 @@
 
   <!-- ===== SPELL LIBRARY (5e.tools import) ===== -->
   <section class="module wide" data-module="spell-library">
-    <h2>Spell Library <span class="hint">(import 5e.tools <code>spells-*.json</code> — use 2014 files, e.g. spells-phb.json, not spells-<b>x</b>phb.json)</span></h2>
+    <h2>Spell Library <span class="hint">(auto-loads from <code>data/spells/</code> — 2014 sources only, e.g. spells-phb.json, not spells-<b>x</b>phb.json)</span></h2>
     <div>
-      <label>Load spell files <input type="file" id="spell-import" accept="application/json" multiple></label>
+      <button id="spell-lib-reload">reload from data/ folder</button>
       <button id="spell-lib-clear">clear library</button>
       <span class="hint" id="spell-lib-count">no spells loaded</span>
+      <span class="hint" id="spell-lib-autostatus"></span>
+    </div>
+    <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
+      <label style="display:inline">import files manually <input type="file" id="spell-import" accept="application/json" multiple></label>.
     </div>
     <div id="spell-filter-area"></div>
     <div style="margin:.35rem 0">
