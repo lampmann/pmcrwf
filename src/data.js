@@ -11,6 +11,36 @@ const SKILLS = [
   ["Stealth","dex"],["Survival","wis"],
 ];
 
+/* ---------- SRD class data (hit die & casting type, keyed by lowercased class name) ----------
+   Small, fixed SRD facts get hardcoded per DOCS.md's data-sourcing policy; used to auto-fill
+   the Hit Die / Casting selects unless the row is manually overridden. */
+const CLASS_DATA = {
+  barbarian: { hitDie: "d12", casting: "none" },
+  bard: { hitDie: "d8", casting: "full" },
+  cleric: { hitDie: "d8", casting: "full" },
+  druid: { hitDie: "d8", casting: "full" },
+  fighter: { hitDie: "d10", casting: "none" },
+  monk: { hitDie: "d8", casting: "none" },
+  paladin: { hitDie: "d10", casting: "half" },
+  ranger: { hitDie: "d10", casting: "half" },
+  rogue: { hitDie: "d8", casting: "none" },
+  sorcerer: { hitDie: "d6", casting: "full" },
+  warlock: { hitDie: "d8", casting: "pact" },
+  wizard: { hitDie: "d6", casting: "full" },
+};
+// Third-caster subclasses grant Casting even though their base class doesn't.
+const SUBCLASS_CASTING = {
+  "eldritch knight": "third",
+  "arcane trickster": "third",
+};
+function classHitDie(name) { const d = CLASS_DATA[(name || "").trim().toLowerCase()]; return d ? d.hitDie : "d8"; }
+function classCasting(name, sub) {
+  const subCast = SUBCLASS_CASTING[(sub || "").trim().toLowerCase()];
+  if (subCast) return subCast;
+  const d = CLASS_DATA[(name || "").trim().toLowerCase()];
+  return d ? d.casting : "none";
+}
+
 /* ---------- Helpers ---------- */
 const $ = id => document.getElementById(id);
 const mod = score => Math.floor(((Number(score)||10) - 10) / 2);
