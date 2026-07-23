@@ -165,6 +165,18 @@
       &nbsp;|&nbsp; Total item value: <span class="derived" id="items-value-total">0</span> gp
       &nbsp;|&nbsp; <b>Total wealth (coins + items): <span class="derived" id="wealth-total-gp">0</span> gp</b>
     </div>
+    <fieldset>
+      <legend>Equipment Library <span class="hint">(import 5e.tools <code>items-base.json</code> / <code>items.json</code>)</span></legend>
+      <div>
+        <label>Load equipment files <input type="file" id="item-import" accept="application/json" multiple></label>
+        <button id="item-lib-clear">clear library</button>
+        <span class="hint" id="item-lib-count">no equipment loaded</span>
+      </div>
+      <div style="margin:.35rem 0">
+        <input type="text" id="item-search" placeholder="search name / type / rarity / source…" style="width:18rem" autocomplete="off">
+      </div>
+      <div id="item-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
+    </fieldset>
   </section>
 
   <!-- ===== DICE ROLLER (command mode) ===== -->
@@ -254,6 +266,7 @@
 <script src="src/dice.js"></script>
 <script src="src/spell-library.js"></script>
 <script src="src/class-library.js"></script>
+<script src="src/item-library.js"></script>
 <script src="src/persistence.js"></script>
 <script src="src/app.js"></script>
 </body>
