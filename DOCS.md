@@ -16,6 +16,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Features (5e.tools import: race + class + feats)](#features-5etools-import-race--class--feats)
 - [Equipment library (5e.tools import)](#equipment-library-5etools-import)
 - [Theme](#theme)
+- [Layout (move / resize / snap)](#layout-move--resize--snap)
 - [Saving & loading](#saving--loading)
 - [Keyboard](#keyboard)
 - [Roadmap / known limits](#roadmap--known-limits)
@@ -122,6 +123,15 @@ Same zero-click setup as the spell library, and deliberately the simplest import
 
 ## Theme
 The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.css` (each just redefines the CSS custom properties set on `:root` in `css/base.css` — colors, borders, fonts). Ships with 5 alternates (Illuminated Manuscript, Cyber Grimoire, Blood Moon Gothic, Verdant Feywild, Infernal Bronze) alongside the plain **Default (unstyled)** look; your choice is remembered (localStorage) across reloads. Drop your own `css/themes/your-theme.css` and add it to `css/themes/index.json` to add more.
+
+## Layout (move / resize / snap)
+By default modules flow down the page. The **Layout** bar (above the modules) turns on free-form arranging:
+- **Free (move/resize)** — switches modules to free positioning. **Drag a module's title** to move it; **drag its bottom-right corner** to resize.
+- **Snap to grid** — positions and sizes snap to a grid; the **grid** box sets the cell size in px.
+- **Snap to modules** — while dragging, edges snap to align with (or sit flush against) other modules' edges.
+- **Reset layout** — clears positions and returns to the default flow.
+
+Your arrangement is saved locally (separate from the character; per browser). Implemented in [layout.js](src/layout.js) as a self-contained module that works on any `.module`, so new modules are automatically draggable.
 
 ## Saving & loading
 - **Autosave** to the browser (localStorage) on every change.
