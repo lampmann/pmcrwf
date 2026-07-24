@@ -69,6 +69,16 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 #rollmenu { position: fixed; background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border); font-size: .8rem; z-index: 1001; box-shadow: 2px 2px 4px var(--menu-shadow); }
 #rollmenu div { padding: 2px 12px; cursor: pointer; }
 #rollmenu div:hover { background: var(--menu-hover-bg); }
+
+/* ----- typeahead (Race/Subrace/Class/Subclass search dropdown) ----- */
+.typeahead-wrap { position: relative; display: inline-block; }
+.typeahead-list {
+  display: none; position: absolute; top: 100%; left: 0; min-width: 100%; width: max-content; max-width: 20rem;
+  max-height: 12rem; overflow-y: auto; background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border);
+  font-size: .8rem; z-index: 1002; box-shadow: 2px 2px 4px var(--menu-shadow);
+}
+.typeahead-list div { padding: 2px 6px; cursor: pointer; white-space: nowrap; }
+.typeahead-list div:hover, .typeahead-list div.active { background: var(--menu-hover-bg); }
 .fmode { width: 2.9rem; box-sizing: border-box; text-align: center; }   /* fixed width so OR/AND/XOR never shift the row */
 /* ----- spell results table ----- */
 .spell-table { border-collapse: collapse; width: 100%; }

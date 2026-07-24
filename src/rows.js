@@ -80,6 +80,12 @@ function addClassRow(data = {}) {
     i.addEventListener("change", () => { recompute(); scheduleSave(); });
   });
   $("class-rows").appendChild(tr);
+  const nameInput = tr.querySelector(".cls-name"), subInput = tr.querySelector(".cls-sub");
+  attachTypeahead(nameInput, () => Object.keys(CLASS_LIB));
+  attachTypeahead(subInput, () => {
+    const rec = ciFindClass(nameInput.value);
+    return rec ? Object.values(rec.subs).map(s => s.name) : [];
+  });
 }
 function getClasses() {
   return [...document.querySelectorAll("#class-rows tr")].map(tr => ({
