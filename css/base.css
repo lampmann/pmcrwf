@@ -2,7 +2,7 @@
    Themeable via CSS custom properties (see the --var list below) — a theme
    file loaded after this one only needs to redefine these on :root. */
 :root {
-  --font-body: system-ui, sans-serif;
+  --font-body: "Times New Roman", Times, serif;
   --font-mono: monospace;
   --bg: #fff;
   --fg: #000;
