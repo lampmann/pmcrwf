@@ -48,9 +48,25 @@
     const sel = byId("exhaustion-level"), out = byId("exhaustion-effect");
     if (!sel || !out) return;
     const lvl = Math.max(0, Math.min(6, Number(sel.value) || 0));
-    if (lvl <= 0) { out.textContent = "No exhaustion."; return; }
-    const lines = []; for (let i = 1; i <= lvl; i++) lines.push(i + ". " + EXH[i]);
-    out.innerHTML = "Cumulative effects: " + lines.join(" · ");
+    let rows = "<tr><th>Level</th><th>Effect</th></tr>";   // rows up to the current level are highlighted (effects are cumulative)
+    for (let i = 1; i <= 6; i++) {
+      const active = i <= lvl;
+      rows += `<tr${active ? ' style="background:var(--menu-hover-bg)"' : ""}><td style="text-align:center">${i}</td><td>${EXH[i]}</td></tr>`;
+    }
+    out.innerHTML = `<table style="margin-top:.25rem">${rows}</table>`;
+  }
+
+  /* ---- condition dependencies: Paralyzed / Petrified / Stunned / Unconscious also make you Incapacitated ---- */
+  const INCAPACITATORS = ["paralyzed", "petrified", "stunned", "unconscious"];
+  function wireIncapacitators() {
+    INCAPACITATORS.forEach(c => {
+      const cb = byId("cond-" + c);
+      if (cb) cb.addEventListener("change", () => {
+        if (!cb.checked) return;
+        const inc = byId("cond-incapacitated");
+        if (inc && !inc.checked) { inc.checked = true; inc.dispatchEvent(new Event("input", { bubbles: true })); }
+      });
+    });
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -58,6 +74,7 @@
     if (roll) roll.addEventListener("click", rollDeathSave);
     if (reset) reset.addEventListener("click", clearDeath);
     if (exh) exh.addEventListener("change", updateExhaustion);
+    wireIncapacitators();
     updateExhaustion();  // runs after app.js has applied any saved state (this script loads after app.js)
   });
 })();

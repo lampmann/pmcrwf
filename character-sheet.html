@@ -92,21 +92,21 @@
   <!-- ===== CONDITIONS ===== -->
   <section class="module" data-module="conditions">
     <h2>Conditions</h2>
-    <div id="conditions-list" style="display:flex;flex-wrap:wrap;gap:.15rem .6rem">
-        <label title="Can't see; auto-fail sight checks. Attacks against you have advantage; your attacks have disadvantage."><input type="checkbox" data-persist id="cond-blinded"> Blinded</label>
-        <label title="Can't attack the charmer or target them with harmful effects; the charmer has advantage on social checks with you."><input type="checkbox" data-persist id="cond-charmed"> Charmed</label>
-        <label title="Can't hear; auto-fail hearing checks."><input type="checkbox" data-persist id="cond-deafened"> Deafened</label>
-        <label title="Disadvantage on ability checks & attacks while the source is in line of sight; can't willingly move closer to it."><input type="checkbox" data-persist id="cond-frightened"> Frightened</label>
-        <label title="Speed becomes 0; can't benefit from bonuses to speed."><input type="checkbox" data-persist id="cond-grappled"> Grappled</label>
-        <label title="Can't take actions or reactions."><input type="checkbox" data-persist id="cond-incapacitated"> Incapacitated</label>
-        <label title="Unseen without special sense; attacks against you have disadvantage, your attacks have advantage."><input type="checkbox" data-persist id="cond-invisible"> Invisible</label>
-        <label title="Incapacitated, can't move or speak; auto-fail Str & Dex saves; attacks against have advantage; melee hits within 5 ft are crits."><input type="checkbox" data-persist id="cond-paralyzed"> Paralyzed</label>
-        <label title="Turned to stone; incapacitated, weight ×10; resistance to all damage; immune to poison & disease."><input type="checkbox" data-persist id="cond-petrified"> Petrified</label>
-        <label title="Disadvantage on attack rolls and ability checks."><input type="checkbox" data-persist id="cond-poisoned"> Poisoned</label>
-        <label title="Disadvantage on attacks; melee attacks against you have advantage, ranged have disadvantage."><input type="checkbox" data-persist id="cond-prone"> Prone</label>
-        <label title="Speed 0; attacks against have advantage, your attacks disadvantage; disadvantage on Dex saves."><input type="checkbox" data-persist id="cond-restrained"> Restrained</label>
-        <label title="Incapacitated, can't move, can barely speak; auto-fail Str & Dex saves; attacks against have advantage."><input type="checkbox" data-persist id="cond-stunned"> Stunned</label>
-        <label title="Incapacitated, unaware, drops held items & falls prone; auto-fail Str & Dex saves; attacks have advantage; melee hits within 5 ft are crits."><input type="checkbox" data-persist id="cond-unconscious"> Unconscious</label>
+    <div id="conditions-list" style="display:flex;flex-direction:column;gap:.1rem">
+      <label title="Can't see; auto-fail any check requiring sight.&#10;Attack rolls against you have advantage.&#10;Your attack rolls have disadvantage."><input type="checkbox" data-persist id="cond-blinded"> Blinded</label>
+      <label title="Can't attack the charmer or target them with a harmful effect.&#10;The charmer has advantage on social ability checks with you."><input type="checkbox" data-persist id="cond-charmed"> Charmed</label>
+      <label title="Can't hear; auto-fail any check requiring hearing."><input type="checkbox" data-persist id="cond-deafened"> Deafened</label>
+      <label title="Disadvantage on ability checks and attack rolls while the source of fear is in line of sight.&#10;Can't willingly move closer to the source."><input type="checkbox" data-persist id="cond-frightened"> Frightened</label>
+      <label title="Speed becomes 0; can't benefit from any bonus to speed.&#10;Ends if the grappler is incapacitated or moved out of reach."><input type="checkbox" data-persist id="cond-grappled"> Grappled</label>
+      <label title="Can't take actions or reactions."><input type="checkbox" data-persist id="cond-incapacitated"> Incapacitated</label>
+      <label title="Impossible to see without a special sense; heavily obscured for hiding.&#10;Attack rolls against you have disadvantage.&#10;Your attack rolls have advantage."><input type="checkbox" data-persist id="cond-invisible"> Invisible</label>
+      <label title="Incapacitated; can't move or speak.&#10;Auto-fail Strength and Dexterity saving throws.&#10;Attack rolls against you have advantage.&#10;Any attack that hits you from within 5 ft is a critical hit."><input type="checkbox" data-persist id="cond-paralyzed"> Paralyzed</label>
+      <label title="Turned to stone; incapacitated, unaware, weight ×10, aging halted.&#10;Auto-fail Strength and Dexterity saving throws.&#10;Attack rolls against you have advantage.&#10;Resistance to all damage; immune to poison and disease."><input type="checkbox" data-persist id="cond-petrified"> Petrified</label>
+      <label title="Disadvantage on attack rolls and ability checks."><input type="checkbox" data-persist id="cond-poisoned"> Poisoned</label>
+      <label title="Your only movement is crawling, or standing up (costs half your speed).&#10;Disadvantage on attack rolls.&#10;Melee attacks against you have advantage; ranged attacks have disadvantage."><input type="checkbox" data-persist id="cond-prone"> Prone</label>
+      <label title="Speed becomes 0; can't benefit from any bonus to speed.&#10;Attack rolls against you have advantage; your attack rolls have disadvantage.&#10;Disadvantage on Dexterity saving throws."><input type="checkbox" data-persist id="cond-restrained"> Restrained</label>
+      <label title="Incapacitated; can't move, can speak only falteringly.&#10;Auto-fail Strength and Dexterity saving throws.&#10;Attack rolls against you have advantage."><input type="checkbox" data-persist id="cond-stunned"> Stunned</label>
+      <label title="Incapacitated; can't move or speak, unaware of surroundings.&#10;Drop what you're holding and fall prone.&#10;Auto-fail Strength and Dexterity saving throws.&#10;Attack rolls against you have advantage; hits from within 5 ft are critical hits."><input type="checkbox" data-persist id="cond-unconscious"> Unconscious</label>
       </div>
   </section>
 
