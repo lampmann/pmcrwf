@@ -1,0 +1,58 @@
+/* ============================================================
+   layout.css — free-form module layout (move / resize / snap /
+   multi-select). Theme-aware: uses the base.css custom properties.
+   Paired with src/layout.js.
+   ============================================================ */
+#lay-bar {
+  margin: 0 0 .75rem; padding: .35rem .55rem; border: 1px solid var(--border-soft);
+  border-radius: var(--radius); display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; font-size: .85rem;
+}
+#lay-bar label { display: inline-flex; align-items: center; gap: .25rem; margin: 0; }
+
+/* --- positioning (the arrangement) --- */
+.modules.lay-active { position: relative; }
+.modules.lay-active > .module { position: absolute; margin: 0 !important; overflow: hidden; }
+
+/* --- edit mode --- */
+.modules.lay-free > .module { cursor: move; user-select: none; outline: 1px dashed var(--border-soft); }
+.modules.lay-free > .module.lay-selected { outline: 2px solid var(--link); }
+.modules.lay-free > .module input, .modules.lay-free > .module button,
+.modules.lay-free > .module select, .modules.lay-free > .module textarea,
+.modules.lay-free > .module a { pointer-events: none; }
+.modules.lay-free > .module.lay-dragging { opacity: .9; box-shadow: 0 3px 14px var(--menu-shadow); }
+
+/* --- per-module resize handles (8), inset so overflow:hidden won't clip --- */
+.lay-h { position: absolute; display: none; z-index: 6; }
+.modules.lay-free > .module > .lay-h { display: block; }
+.lay-h.n { top: 0; left: 0; right: 0; height: 6px; cursor: ns-resize; }
+.lay-h.s { bottom: 0; left: 0; right: 0; height: 6px; cursor: ns-resize; }
+.lay-h.e { right: 0; top: 0; bottom: 0; width: 6px; cursor: ew-resize; }
+.lay-h.w { left: 0; top: 0; bottom: 0; width: 6px; cursor: ew-resize; }
+.lay-h.ne, .lay-h.nw, .lay-h.se, .lay-h.sw { width: 12px; height: 12px; z-index: 7; background: var(--btn-border); }
+.lay-h.ne { top: 0; right: 0; cursor: nesw-resize; }
+.lay-h.nw { top: 0; left: 0; cursor: nwse-resize; }
+.lay-h.se { bottom: 0; right: 0; cursor: nwse-resize; }
+.lay-h.sw { bottom: 0; left: 0; cursor: nesw-resize; }
+
+/* --- grid overlay (unique id — was colliding with the checkbox) --- */
+#lay-grid-overlay {
+  position: absolute; inset: 0; pointer-events: none; z-index: 9990; display: none;
+  background-image: linear-gradient(to right, rgba(128,128,128,.32) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(128,128,128,.32) 1px, transparent 1px);
+}
+.modules.lay-grid-on #lay-grid-overlay { display: block; }
+
+/* --- marquee selection band --- */
+#lay-marquee { position: absolute; z-index: 9995; pointer-events: none; border: 1px dashed var(--link); background: rgba(26,86,196,.12); }
+
+/* --- group selection box + its resize handles --- */
+#lay-selbox { position: absolute; z-index: 9996; pointer-events: none; border: 1px solid var(--link); }
+#lay-selbox .lay-sh { position: absolute; width: 12px; height: 12px; background: var(--link); pointer-events: auto; }
+#lay-selbox .lay-sh.n  { top: -6px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+#lay-selbox .lay-sh.s  { bottom: -6px; left: 50%; margin-left: -6px; cursor: ns-resize; }
+#lay-selbox .lay-sh.e  { right: -6px; top: 50%; margin-top: -6px; cursor: ew-resize; }
+#lay-selbox .lay-sh.w  { left: -6px; top: 50%; margin-top: -6px; cursor: ew-resize; }
+#lay-selbox .lay-sh.ne { top: -6px; right: -6px; cursor: nesw-resize; }
+#lay-selbox .lay-sh.nw { top: -6px; left: -6px; cursor: nwse-resize; }
+#lay-selbox .lay-sh.se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+#lay-selbox .lay-sh.sw { bottom: -6px; left: -6px; cursor: nesw-resize; }

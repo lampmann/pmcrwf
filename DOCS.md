@@ -132,12 +132,13 @@ The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.c
 ## Layout (move / resize / snap)
 By default modules flow down the page. The **Layout** bar (above the modules) turns on free-form arranging:
 - **Free (move/resize)** — EDIT mode. Modules become freely positioned; **drag anywhere on a module** to move it, and **drag any edge or corner** (8 handles) to resize. While editing, the modules' inputs are disabled and text-selection is off (so dragging never fights the controls), and — when snap-to-grid is on — a grey grid is overlaid. The arrangement is **kept when you turn Free off**; leaving edit mode just re-enables the inputs, it doesn't revert your layout.
-- **Snap to grid** — positions and sizes snap to a grid; the **grid** box sets the cell size in px (and the overlay spacing).
-- **Snap to modules** — while dragging, edges snap to align with (or sit flush against) other modules' edges.
-- A module you move jumps to the **front and stays there** (persistent stacking order).
-- **Reset layout** — clears positions/stacking and returns to the default flow.
+- **Snap to grid** — positions and sizes (drag **and** resize) snap to a grid; the **grid** box sets the cell size in px. When editing with snap-to-grid on, a grey grid is overlaid.
+- **Snap to modules** — while dragging or resizing, edges snap to align with (or sit flush against) other modules' edges.
+- **Multi-select** — drag a box across empty space to marquee-select modules (Shift-click to add/remove one; Esc clears). Then **drag any selected module to move them all together**, or drag the selection box's handles to **resize them all at once**. A module you move jumps to the **front and stays there**.
+- While dragging, the page **auto-scrolls** when you near an edge (faster the closer you get), and modules track the scroll so they never lag behind.
+- **reset** returns to the default flow; **save file** / **load** export and import the arrangement as a JSON file.
 
-Your arrangement is saved locally (separate from the character; per browser). Implemented in [layout.js](src/layout.js) as a self-contained module that works on any `.module`, so new modules are automatically arrangeable.
+Your arrangement is also saved locally (separate from the character; per browser). Styles live in [css/layout.css](css/layout.css) (theme-aware) and the logic in [layout.js](src/layout.js) — a self-contained module that works on any `.module`, so new modules are automatically arrangeable.
 
 *(Known rough edge: a module's text can reflow oddly mid-resize — to be smoothed once the modules are finalized.)*
 
