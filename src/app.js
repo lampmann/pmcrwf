@@ -67,7 +67,6 @@ function init() {
   });
 
   $("btn-add-class").addEventListener("click", () => { addClassRow(); recompute(); scheduleSave(); });
-  $("btn-add-spell").addEventListener("click", () => { addSpellRow(); scheduleSave(); });
   $("btn-add-item").addEventListener("click", () => { addItemRow(); recompute(); scheduleSave(); });
 
   $("btn-export").addEventListener("click", () => {
@@ -114,6 +113,18 @@ function init() {
   $("spell-lib-reload").addEventListener("click", runSpellAutoLoad);
   runSpellAutoLoad();
 
+  // Spell Library starts collapsed; the Spellcasting module's "+ Add Spell" opens it.
+  $("spell-lib-toggle").addEventListener("click", () => {
+    const open = $("spell-library-body").style.display === "none";
+    $("spell-library-body").style.display = open ? "" : "none";
+    $("spell-lib-collapsed-hint").style.display = open ? "none" : "";
+    if (open) {
+      refreshSpellAddClassSelect();
+      $("spell-search").focus();
+      $("spell-library-body").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  });
+
   // ----- Equipment library wiring -----
   loadItemLib(); renderItemLibrary();
   $("item-import").addEventListener("change", e => { if (e.target.files.length) loadItemFiles(e.target.files); e.target.value = ""; });
@@ -137,7 +148,7 @@ function init() {
     else { addClassRow({ name: "", lvl: 1 }); initMathFields(); }
   } catch (err) {
     console.error("Load failed; starting fresh.", err);
-    $("class-rows").innerHTML = ""; $("spell-rows").innerHTML = ""; $("item-rows").innerHTML = "";
+    $("class-rows").innerHTML = ""; CHARACTER_SPELLS = []; $("item-rows").innerHTML = "";
     addClassRow({ name: "", lvl: 1 }); initMathFields();
   }
 
