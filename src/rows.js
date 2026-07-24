@@ -97,36 +97,6 @@ function getClasses() {
   }));
 }
 
-/* ---------- Spell rows ---------- */
-function addSpellRow(data = {}) {
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-    <td><input type="checkbox" class="sp-prep" ${data.prep ? "checked" : ""}></td>
-    <td><input type="number" class="tiny sp-lvl" value="${data.lvl ?? 0}" min="0" max="9"></td>
-    <td><input type="text" class="sp-name" value="${data.name || ""}" style="width:10rem"></td>
-    <td><button class="roll sp-atk">to hit</button></td>
-    <td><input type="text" class="sp-dmg" value="${data.dmg || ""}" placeholder="e.g. 8d6" style="width:8rem">
-        <button class="roll sp-dmg-btn">roll</button></td>
-    <td><button class="rowbtn sp-del">x</button></td>`;
-  tr.querySelector(".sp-del").addEventListener("click", () => { tr.remove(); scheduleSave(); });
-  // .sp-atk (to-hit) is handled by the delegated D20SEL click/contextmenu handlers
-  tr.querySelector(".sp-dmg-btn").addEventListener("click", () => {
-    const notation = tr.querySelector(".sp-dmg").value.trim();
-    const name = tr.querySelector(".sp-name").value || "spell";
-    if (notation) runRoll(`${notation} ${name} damage`);
-  });
-  tr.querySelectorAll("input").forEach(i => i.addEventListener("input", scheduleSave));
-  $("spell-rows").appendChild(tr);
-}
-function getSpells() {
-  return [...document.querySelectorAll("#spell-rows tr")].map(tr => ({
-    prep: tr.querySelector(".sp-prep").checked,
-    lvl: Number(tr.querySelector(".sp-lvl").value) || 0,
-    name: tr.querySelector(".sp-name").value,
-    dmg: tr.querySelector(".sp-dmg").value,
-  }));
-}
-
 /* ---------- Inventory rows ---------- */
 function addItemRow(data = {}) {
   const tr = document.createElement("tr");

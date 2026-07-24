@@ -2,7 +2,7 @@
 let saveTimer;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 300); }
 function collectState() {
-  const state = { fields: {}, classes: getClasses(), spells: getSpells(), items: getItems(), featChoices: FEAT_CHOICES, usesState: USES_STATE };
+  const state = { fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, items: getItems(), featChoices: FEAT_CHOICES, usesState: USES_STATE };
   document.querySelectorAll("[data-persist]").forEach(el => { state.fields[el.id] = el.type === "checkbox" ? el.checked : el.value; });
   return state;
 }
@@ -10,8 +10,7 @@ function applyState(state) {
   if (!state) return;
   $("class-rows").innerHTML = "";
   (state.classes || [{ name: "", sub: "", lvl: 1 }]).forEach(addClassRow);
-  $("spell-rows").innerHTML = "";
-  (state.spells || []).forEach(addSpellRow);
+  CHARACTER_SPELLS = state.spells || [];
   $("item-rows").innerHTML = "";
   (state.items || []).forEach(addItemRow);
   FEAT_CHOICES = state.featChoices || {};
@@ -21,6 +20,7 @@ function applyState(state) {
     if (el.type === "checkbox") el.checked = val; else el.value = val;
   });
   initMathFields();
+  refreshSpellAddClassSelect();
   recompute();
   renderClassFeatures();
 }

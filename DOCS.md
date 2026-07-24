@@ -54,7 +54,7 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - **Dice Roller** — see below.
 - **Spell Library** — import & search spells; see below.
 - **Features** — import race/class/feat data to see the traits and features your race, subrace, and classes/levels grant, plus a feat picker for Ability Score Improvements; see below.
-- **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; spell table with per-spell to-hit and damage roll buttons.
+- **Spellcasting** — spellcasting ability → auto save DC & spell attack; spell-slot grid **auto-calculated from total casting level** (per the multiclass spellcaster table — Warlock/Pact levels aren't included, since Pact Magic is a separate slot pool), with a per-level override box; a Features-styled **Spells** list (grouped by class, added only from the Spell Library — see below) with a known/prepared/cantrip counter per class.
 
 ## Dice roller (command mode)
 Type a command and press **Enter**. Prefix is `/` (also accepts `!`). Bare notation works too (`4d6kh3`).
@@ -89,15 +89,20 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - If auto-load can't find `data/`, or the page was opened via `file://` (browsers block local-file `fetch()`), a status message next to the count explains which — and the old manual **import files** picker below it still works as a fallback for one-off or homebrew files.
 - The library is cached locally either way, so this only costs time on first load.
 
-**Browsing:** Each filter category (Source, Level, School, Damage, Save, Cast, Components, Misc) is a row of **tri-state buttons** — click a button to cycle **neutral → include (blue) → exclude (red)**.
+This panel is **collapsed by default** — click **+ Add Spell** in the Spellcasting module (below) to open it; it stays open until you click that again.
+
+**Browsing:** Each filter category (Source, Class, Level, School, Damage, Save, Cast, Components, Misc) is a row of **tri-state buttons** — click a button to cycle **neutral → include (blue) → exclude (red)**.
 - **Per category:** `All` (include all), `Clear` (neutral), `None` (exclude all), a **blue** combine-mode button (how the include buttons combine) and a **red** one (how the excludes combine) — each cycles `OR → AND → XOR` — and `Hide`.
 - **Module bar:** `Combine as AND/OR` (how categories combine with each other), `Show All` / `Hide All`, `Reset`, and `Manage Defaults` (saves the current filters as the default that `Reset` restores).
 - **Source** buttons show the full book name on hover. A plain **search** box filters by name.
+- **Class** is populated from `data/spells/sources.json` (5e.tools' separate per-spell class-list file — not part of `spells-*.json` itself), auto-fetched alongside the spell files; also detected by filename in the manual import picker. Without it, this row shows no buttons.
 - Results are shown in aligned columns (level, name, school, save/attack, damage, conc, ritual, source).
 - Click a spell's **name** to expand its full **description** (and higher-level text); click again to collapse.
-- Click **`+`** to add it to your Spellcasting table (fills name, level, and damage — cantrip damage scales to your current level).
+- Click **`+`** to add it to whichever class is selected in the **Add to class** dropdown above the search box (auto-set to your only spellcasting class; pick one yourself if you're multiclassed) — it appears in the Spellcasting module's Spells list under that class.
 
 *Note: nothing from 5e.tools is bundled with the sheet; `data/` is gitignored — you supply it, it's parsed in your browser.*
+
+**Spells list (in the Spellcasting module):** spells you've added render like the Features panel — grouped by class, click a spell's **name** to expand its description with clickable inline dice (click a die roll to roll it) and "spell attack" text (click to make that attack, same as the old to-hit roll). Leveled spells get a **prepared** checkbox (cantrips don't — they're always available); **x** removes a spell. Above each class's spells, a summary line shows **Cantrips**, and either **Known** (Bard/Ranger/Sorcerer/Warlock/Eldritch Knight/Arcane Trickster) or **Prepared** (and, for Wizards, **Spellbook** too) against that class's computed maximum — these are informational only and never stop you from adding more.
 
 ## Features (5e.tools import: race + class + feats)
 Same zero-click setup as the equipment library:
@@ -148,8 +153,9 @@ Your arrangement is saved locally (separate from the character; per browser). Im
 
 ## Roadmap / known limits
 - Layout engine (drag / resize / snap-to-grid) and icon variants — not built yet.
-- Spell rows: save spells still show a "to hit" button; leveled-spell damage shows base dice only (no upcast math); cantrip damage is set at add-time.
-- **Deferred spell filters** (data mostly parsed already, easy to add): Conditions Inflicted, Spell Attack type (melee/ranged), Range, Area style, Duration, Cast-time sub-types, and **Class/Subclass** (needs the class→spell mapping). 5etools' Core/Supplements/Adventures source *groupings* are also deferred (individual sources work).
+- Spell damage shown/rolled from an expanded spell description is base dice only (no upcast math beyond what 5e.tools' own scaling data already resolves for cantrips).
+- **Deferred spell filters** (data mostly parsed already, easy to add): Conditions Inflicted, Spell Attack type (melee/ranged), Range, Area style, Duration, Cast-time sub-types. 5etools' Core/Supplements/Adventures source *groupings* are also deferred (individual sources work).
+- **Subclass "expanded spell list" tables don't render** (e.g. Cleric Life Domain's spell table, Artificer Armorer's, the Mark of \* racial traits' spell grants) — the Features panel shows the trait/feature text itself, but not the little table of "always prepared" spells some of these features grant. Fixing this means parsing 5e.tools' `additionalSpells`/table-entry shapes per class/subclass file and cross-referencing the Spell Library, which is more involved than the plain-text feature rendering the panel does today.
 - A step-by-step character creator, rules-as-written defaults with house-rule toggles, and an allowed-books toggle list are planned.
 - **Not planned:** personality traits, ideals, bonds, flaws, backstory, and appearance fields (age/height/eyes/etc.). This sheet targets optimized play, not roleplay journaling — that content belongs in a separate document, not on the sheet.
 - **Missing vs. big-name sheets (D&D Beyond, Roll20, Fight Club 5e), still worth doing:**

@@ -13,11 +13,14 @@ const SOURCE_NAMES = {
   EFA:"Eberron: Forge of the Artificer", "AitFR-AVT":"Adventures in the Forgotten Realms: A Verdant Tomb",
   XPHB:"Player's Handbook (2024)"
 };
-const LIB_SCHEMA = 2;  // bump when the parsed-spell shape changes (forces a one-time re-import)
+const LIB_SCHEMA = 4;  // bump when the parsed-spell shape changes (forces a one-time re-import)
 function castCat(u) { return (u === "action" || u === "bonus" || u === "reaction") ? u : (u ? "long" : ""); }
 // filter groups. `dynamic` groups (Source) compute their options from the loaded library.
 const SPELL_FGROUPS = [
   { key:"source", label:"Source", dynamic:true, get:s=>[s.source] },
+  // Not every 5e.tools data dump includes per-spell class lists ("classes.fromClassList") —
+  // when it's missing this group just has no options to show (see DOCS re: import-not-hardcode).
+  { key:"cls",    label:"Class",  dynamic:true, get:s=>s.classes||[], dynOpts:spellClassesInLib },
   { key:"level",  label:"Level",  get:s=>[String(s.level)], opts:[["0","0"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"],["9","9"]] },
   { key:"school", label:"School", get:s=>[s.school], opts:["Abjuration","Conjuration","Divination","Enchantment","Evocation","Illusion","Necromancy","Transmutation"].map(x=>[x,x]) },
   { key:"dmg",    label:"Damage", get:s=>s.dmgTypes, opts:["acid","bludgeoning","cold","fire","force","lightning","necrotic","piercing","poison","psychic","radiant","slashing","thunder"].map(x=>[x, x[0].toUpperCase()+x.slice(1)]) },
@@ -32,7 +35,11 @@ let filterState = {};
 let moduleCombine = "and";   // how groups combine: 'and' | 'or'
 function nextMode(m) { return m === "or" ? "and" : m === "and" ? "xor" : "or"; }
 function groupDef(key) { return SPELL_FGROUPS.find(g => g.key === key); }
-function groupOpts(g) { return g.dynamic ? spellSources().map(src => [src, src, SOURCE_NAMES[src] || src]) : g.opts.map(o => [o[0], o[1], ""]); }
+function groupOpts(g) {
+  if (!g.dynamic) return g.opts.map(o => [o[0], o[1], ""]);
+  if (g.dynOpts) return g.dynOpts().map(v => [v, v, ""]);
+  return spellSources().map(src => [src, src, SOURCE_NAMES[src] || src]);
+}
 function ensureStates() {
   SPELL_FGROUPS.forEach(g => {
     if (!filterState[g.key]) filterState[g.key] = { states:{}, blueMode:"or", redMode:"or", hidden:false };
@@ -81,8 +88,13 @@ function parseSpell(raw) {
     cast: (raw.time && raw.time[0] && raw.time[0].unit) || "",
     dmg: spellDice(raw),
     srd: !!raw.srd || !!raw.basicRules,
+    classes: (raw.classes && raw.classes.fromClassList || []).map(c => c.name),
     text: stripTags(flattenEntries(raw.entries)),
-    higher: raw.entriesHigherLevel ? stripTags(flattenEntries(raw.entriesHigherLevel)) : ""
+    higher: raw.entriesHigherLevel ? stripTags(flattenEntries(raw.entriesHigherLevel)) : "",
+    // Tag-preserving versions of the above, kept only so the Spellcasting module can turn
+    // {@damage}/{@dice} tags into click-to-roll links (see renderInlineSpellText in spellcasting.js).
+    rawText: flattenEntries(raw.entries),
+    rawHigher: raw.entriesHigherLevel ? flattenEntries(raw.entriesHigherLevel) : ""
   };
 }
 function mergeSpells(list) {
@@ -90,14 +102,37 @@ function mergeSpells(list) {
   list.forEach(s => { const k = s.name + "|" + s.source; if (!seen.has(k)) { SPELL_LIB.push(s); seen.add(k); } });
   SPELL_LIB.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 }
+// 5e.tools ships per-spell class lists separately, in data/spells/sources.json — keyed by
+// [source][spellName] -> { class:[{name,source}], classVariant:[{name,source,definedInSource}] }
+// (classVariant = the same spell added to a class's list by a *different* sourcebook than the
+// spell's own). Both count as "this class can cast this spell" for the Class filter.
+function applySpellClasses(sourcesMap) {
+  if (!sourcesMap) return;
+  SPELL_LIB.forEach(s => {
+    const bySpell = sourcesMap[s.source];
+    const info = bySpell && bySpell[s.name];
+    if (!info) return;
+    const names = new Set(s.classes || []);
+    (info.class || []).forEach(c => names.add(c.name));
+    (info.classVariant || []).forEach(c => names.add(c.name));
+    s.classes = [...names];
+  });
+}
 function loadSpellFiles(files) {
-  const total = files.length; let done = 0, errs = [];
+  const total = files.length; let done = 0, errs = [], sourcesJson = null;
   [...files].forEach(file => {
     const rd = new FileReader();
     rd.onload = () => {
-      try { const j = JSON.parse(rd.result); mergeSpells((j.spell || []).map(parseSpell)); }
+      try {
+        const j = JSON.parse(rd.result);
+        if (/sources\.json$/i.test(file.name)) sourcesJson = j;
+        else mergeSpells((j.spell || []).map(parseSpell));
+      }
       catch (e) { errs.push(file.name + ": " + e); }
-      if (++done === total) { saveSpellLib(); renderSpellLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n")); }
+      if (++done === total) {
+        if (sourcesJson) applySpellClasses(sourcesJson);
+        saveSpellLib(); renderSpellLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n"));
+      }
     };
     rd.readAsText(file);
   });
@@ -105,6 +140,7 @@ function loadSpellFiles(files) {
 /* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
    Only works when served over http(s) — browsers block fetch() of local files opened via file://. */
 const SPELL_DATA_INDEX = "data/spells/index.json";
+const SPELL_SOURCES_URL = "data/spells/sources.json";
 async function autoLoadSpells() {
   let idx;
   try {
@@ -118,6 +154,10 @@ async function autoLoadSpells() {
   );
   let filesLoaded = 0;
   results.forEach(r => { if (r.status === "fulfilled") { mergeSpells((r.value.spell || []).map(parseSpell)); filesLoaded++; } });
+  try {
+    const res = await fetch(SPELL_SOURCES_URL);
+    if (res.ok) applySpellClasses(await res.json());
+  } catch (e) { /* class filter just stays empty if this one file is missing/unreadable */ }
   if (filesLoaded) saveSpellLib();
   return { found: true, blocked: false, filesLoaded, filesTotal: files.length };
 }
@@ -134,6 +174,7 @@ function loadSpellLib() {
   localStorage.removeItem("charsheet-spellsrcoff"); // retire old keys
 }
 function spellSources() { return [...new Set(SPELL_LIB.map(s => s.source))].sort(); }
+function spellClassesInLib() { return [...new Set(SPELL_LIB.flatMap(s => s.classes || []))].sort(); }
 
 /* ----- filter state persistence ----- */
 function persistFilters() { try { localStorage.setItem("charsheet-spellfilters", JSON.stringify({ combine: moduleCombine, state: filterState })); } catch (e) {} }
@@ -250,6 +291,5 @@ function toggleSpellDetail(link) {
 }
 function addSpellFromLib(key) {
   const s = SPELL_LIB.find(x => (x.name + "|" + x.source) === key); if (!s) return;
-  addSpellRow({ prep: false, lvl: s.level, name: s.name, dmg: s.dmg || "" });
-  scheduleSave();
+  addCharacterSpell($("spell-add-class").value, s.level, s.name);
 }
