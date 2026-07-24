@@ -1,21 +1,29 @@
 /* ============================================================
    TYPEAHEAD — generic search-as-you-type dropdown for a text input.
-   Used by the Race/Subrace/Class/Subclass fields to suggest names
-   from CLASS_LIB/RACE_LIB (see class-library.js) as the user types.
+   Used by the Race/Subrace/Class/Subclass fields (and the ASI feat
+   picker) to suggest names from a lookup library as the user types.
    Matching is substring (not just prefix), so "wi" finds "Wizard".
+   The dropdown is position:fixed and only attached to <body> while
+   open (removed on close) so it can escape a scrollable ancestor
+   (e.g. the Features panel) without leaking DOM nodes as rows/panels
+   get rebuilt.
    ============================================================ */
 function attachTypeahead(input, getOptions) {
-  const wrap = document.createElement("span");
-  wrap.className = "typeahead-wrap";
-  input.parentNode.insertBefore(wrap, input);
-  wrap.appendChild(input);
   const list = document.createElement("div");
   list.className = "typeahead-list";
-  wrap.appendChild(list);
+  let items = [], activeIdx = -1, isOpen = false;
 
-  let items = [], activeIdx = -1;
-
-  function close() { list.style.display = "none"; list.innerHTML = ""; items = []; activeIdx = -1; }
+  function position() {
+    const r = input.getBoundingClientRect();
+    list.style.left = r.left + "px";
+    list.style.top = r.bottom + "px";
+    list.style.minWidth = r.width + "px";
+  }
+  function close() {
+    if (!isOpen) return;
+    isOpen = false;
+    list.remove(); list.innerHTML = ""; items = []; activeIdx = -1;
+  }
   function highlight(idx) {
     [...list.children].forEach((c, i) => c.classList.toggle("active", i === idx));
     activeIdx = idx;
@@ -25,7 +33,9 @@ function attachTypeahead(input, getOptions) {
     items = matches; activeIdx = -1;
     if (!matches.length) { close(); return; }
     list.innerHTML = matches.map((m, i) => `<div class="typeahead-item" data-idx="${i}">${escapeHtml(m)}</div>`).join("");
-    list.style.display = "block";
+    document.body.appendChild(list);
+    position();
+    isOpen = true;
   }
   function select(val) {
     input.value = val;
@@ -35,8 +45,8 @@ function attachTypeahead(input, getOptions) {
   }
   function refresh() {
     const q = input.value.trim().toLowerCase();
-    if (!q) { close(); return; }
     const all = getOptions() || [];
+    if (!q) { open(all.slice().sort((a, b) => a.localeCompare(b)).slice(0, 20)); return; }
     const matches = all.filter(o => o.toLowerCase().includes(q))
       .sort((a, b) => {
         const aP = a.toLowerCase().startsWith(q) ? 0 : 1, bP = b.toLowerCase().startsWith(q) ? 0 : 1;
@@ -48,7 +58,7 @@ function attachTypeahead(input, getOptions) {
   input.addEventListener("input", refresh);
   input.addEventListener("focus", refresh);
   input.addEventListener("keydown", e => {
-    if (list.style.display !== "block") return;
+    if (!isOpen) return;
     if (e.key === "ArrowDown") { e.preventDefault(); highlight(Math.min(activeIdx + 1, items.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); highlight(Math.max(activeIdx - 1, 0)); }
     else if (e.key === "Enter") { if (activeIdx >= 0) { e.preventDefault(); select(items[activeIdx]); } else close(); }
