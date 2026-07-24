@@ -17,6 +17,14 @@ function runItemAutoLoad() {
 function init() {
   buildAbilities(); buildSaves(); buildSkills(); buildSlots();
 
+  // Race/Subrace search-as-you-type (mirrors the class/subclass typeahead in rows.js)
+  const raceInput = $("char-race"), subraceInput = $("char-subrace");
+  attachTypeahead(raceInput, () => Object.keys(RACE_LIB));
+  attachTypeahead(subraceInput, () => {
+    const rec = ciFindRace(raceInput.value);
+    return rec ? Object.values(rec.subs).map(s => s.name) : [];
+  });
+
   // Attach all listeners FIRST, so that even if loading a saved state fails,
   // the sheet stays fully interactive (this is the "nothing auto-calcs" failsafe).
   // live recompute + autosave on any input (math parsing happens on commit below)
