@@ -16,9 +16,34 @@ function ordinalLevel(lvl) {
   const suf = (v >= 11 && v <= 13) ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[lvl % 10] || "th");
   return lvl + suf;
 }
-function addCharacterSpell(cls, lvl, name) {
-  CHARACTER_SPELLS.push({ cls: cls || "", lvl, name, prep: false });
+function addCharacterSpell(cls, lvl, name, opts = {}) {
+  CHARACTER_SPELLS.push({ cls: cls || "", lvl, name, prep: false, grantSrc: opts.grantSrc || "", note: opts.note || "" });
   renderSpellList(); recompute(); scheduleSave();
+}
+/* ----- "prepare from which class?" modal -----
+   Used for spell-list-expansion grants (Dragonmarks, Eldritch Knight, Divine Soul, Warlock
+   patrons, Wizard subschools — the ".gsp-expanded" links built in class-library.js's
+   grantedSpellsHtml()). Unlike a domain/innate grant (free, its own header, never prepared),
+   these spells are only *eligible* to be learned/prepared — they still cost a normal known/
+   prepared slot on a real class, so the user has to say which one. The chosen spell is tagged
+   with a `note` (the granting trait's name) purely for display, so its origin isn't lost once
+   it's sitting in that class's ordinary spell list. */
+let _prepModalCtx = null;
+function openPrepClassModal(name, lvl, header) {
+  const classes = getClasses().map(c => c.name.trim()).filter(Boolean);
+  if (!classes.length) { alert("Add a class in the Character module first — this spell needs to be prepared under one."); return; }
+  _prepModalCtx = { name, lvl, header };
+  $("prep-modal-spell").textContent = name;
+  $("prep-modal-hint").textContent = `Added to your spell list by ${header} — still needs to be prepared/known normally.`;
+  $("prep-modal-select").innerHTML = classes.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  $("prep-class-modal").style.display = "flex";
+}
+function closePrepClassModal() { $("prep-class-modal").style.display = "none"; _prepModalCtx = null; }
+function confirmPrepClassModal() {
+  if (!_prepModalCtx) return;
+  const cls = $("prep-modal-select").value;
+  addCharacterSpell(cls, _prepModalCtx.lvl, _prepModalCtx.name, { note: _prepModalCtx.header });
+  closePrepClassModal();
 }
 function removeCharacterSpell(idx) {
   CHARACTER_SPELLS.splice(idx, 1);
@@ -37,15 +62,22 @@ function refreshSpellAddClassSelect() {
     `<option value="${escapeHtml(n)}" ${n === cur ? "selected" : ""}>${escapeHtml(n)}</option>`).join("");
   if (!names.includes(cur)) sel.value = names[0] || "";
 }
+function spellLineHtml(s, prepBox) {
+  const lib = findLibSpellByName(s.name), src = lib ? lib.source : "";
+  const note = s.note ? ` <span class="hint">(${escapeHtml(s.note)})</span>` : "";
+  return `<div><a class="feat-link sp2-link" data-idx="${s.i}"><b>${ordinalLevel(s.lvl)}</b> ${escapeHtml(s.name)}</a>${note} <span class="hint">${src}</span>${prepBox || ""}
+    <button class="rowbtn sp2-del" data-idx="${s.i}" title="remove">x</button></div>`;
+}
 function renderSpellList() {
   const el = $("spell-feat-results"); if (!el) return;
   const classes = getClasses().filter(c => c.name.trim());
   const casters = classes.filter(c => classSpellAllowance(c));
-  if (!casters.length) { el.innerHTML = "<div class='hint'>Add a spellcasting class in the Character module to track spells here.</div>"; return; }
   const assigned = new Set(casters.map(c => c.name.trim()));
-  const html = casters.map(c => {
+  const casterHtml = casters.map(c => {
     const info = classSpellAllowance(c);
-    const allRows = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => s.cls === c.name.trim())
+    // Granted spells (domain/racial, tagged with grantSrc) get their own header/group below and never
+    // count toward a class's normal Known/Prepared/Spellbook totals — see grantSrc handling further down.
+    const allRows = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => !s.grantSrc && s.cls === c.name.trim())
       .sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
     // Cantrips are tracked separately (their own known-cantrips table) and never count toward a
     // "known"/spellbook/prepared total — e.g. a Wizard's cantrips aren't written in their spellbook.
@@ -65,17 +97,25 @@ function renderSpellList() {
       // Cantrips are always "on" — 5e has no cantrip-preparation step — so only leveled spells get the checkbox.
       const prepBox = (info.style === "prepared" && s.lvl > 0)
         ? `<label class="hint" style="margin-left:.4rem"><input type="checkbox" class="sp2-prep" data-idx="${s.i}" ${s.prep ? "checked" : ""}> prepared</label>` : "";
-      const lib = findLibSpellByName(s.name), src = lib ? lib.source : "";
-      return `<div><a class="feat-link sp2-link" data-idx="${s.i}"><b>${ordinalLevel(s.lvl)}</b> ${escapeHtml(s.name)}</a> <span class="hint">${src}</span>${prepBox}
-        <button class="rowbtn sp2-del" data-idx="${s.i}" title="remove">x</button></div>`;
+      return spellLineHtml(s, prepBox);
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no spells added yet</div>";
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${c.lvl}</b>${subNote} <span class="hint">&mdash; ${notes.join(" &middot; ")}</span></div>${items}`;
   }).join("");
-  const orphans = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => !assigned.has(s.cls));
+  // Granted spells (Cleric domain, Mark of X, etc. — see class-library.js's .gsp-link) are grouped by
+  // their own source name instead of by class, and are always-available so they never show a "prepared"
+  // checkbox or count against any class's Known/Prepared total.
+  const grantedGroups = [...new Set(CHARACTER_SPELLS.filter(s => s.grantSrc).map(s => s.grantSrc))];
+  const grantedHtml = grantedGroups.map(src => {
+    const rows = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => s.grantSrc === src)
+      .sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
+    const items = rows.map(s => spellLineHtml(s)).join("");
+    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(src)}</b> <span class="hint">&mdash; granted spells</span></div>${items}`;
+  }).join("");
+  const orphans = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => !s.grantSrc && !assigned.has(s.cls));
   const orphanHtml = orphans.length ? `<div style="margin:.5rem 0 .1rem"><b>Unassigned</b> <span class="hint">— class removed or not set</span></div>` +
-    orphans.map(s => `<div><a class="feat-link sp2-link" data-idx="${s.i}"><b>${ordinalLevel(s.lvl)}</b> ${escapeHtml(s.name)}</a>
-      <button class="rowbtn sp2-del" data-idx="${s.i}" title="remove">x</button></div>`).join("") : "";
-  el.innerHTML = html + orphanHtml;
+    orphans.map(s => spellLineHtml(s)).join("") : "";
+  if (!casterHtml && !grantedHtml && !orphanHtml) { el.innerHTML = "<div class='hint'>Add a spellcasting class in the Character module to track spells here.</div>"; return; }
+  el.innerHTML = casterHtml + grantedHtml + orphanHtml;
 }
 function findLibSpellByName(name) {
   const q = (name || "").trim().toLowerCase(); if (!q) return null;
@@ -167,4 +207,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const d = e.target.closest(".dice-roll");
     if (d) runRoll(`${d.dataset.dice} ${d.dataset.rolllabel || ""}`);
   });
+  // "prepare from which class?" modal (spell-list-expansion grants)
+  $("prep-modal-confirm").addEventListener("click", confirmPrepClassModal);
+  $("prep-modal-cancel").addEventListener("click", closePrepClassModal);
+  $("prep-class-modal").addEventListener("click", e => { if (e.target.id === "prep-class-modal") closePrepClassModal(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && $("prep-class-modal").style.display !== "none") closePrepClassModal(); });
 });
