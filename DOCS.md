@@ -126,12 +126,15 @@ The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.c
 
 ## Layout (move / resize / snap)
 By default modules flow down the page. The **Layout** bar (above the modules) turns on free-form arranging:
-- **Free (move/resize)** — switches modules to free positioning. **Drag a module's title** to move it; **drag its bottom-right corner** to resize.
-- **Snap to grid** — positions and sizes snap to a grid; the **grid** box sets the cell size in px.
+- **Free (move/resize)** — EDIT mode. Modules become freely positioned; **drag anywhere on a module** to move it, and **drag any edge or corner** (8 handles) to resize. While editing, the modules' inputs are disabled and text-selection is off (so dragging never fights the controls), and — when snap-to-grid is on — a grey grid is overlaid. The arrangement is **kept when you turn Free off**; leaving edit mode just re-enables the inputs, it doesn't revert your layout.
+- **Snap to grid** — positions and sizes snap to a grid; the **grid** box sets the cell size in px (and the overlay spacing).
 - **Snap to modules** — while dragging, edges snap to align with (or sit flush against) other modules' edges.
-- **Reset layout** — clears positions and returns to the default flow.
+- A module you move jumps to the **front and stays there** (persistent stacking order).
+- **Reset layout** — clears positions/stacking and returns to the default flow.
 
-Your arrangement is saved locally (separate from the character; per browser). Implemented in [layout.js](src/layout.js) as a self-contained module that works on any `.module`, so new modules are automatically draggable.
+Your arrangement is saved locally (separate from the character; per browser). Implemented in [layout.js](src/layout.js) as a self-contained module that works on any `.module`, so new modules are automatically arrangeable.
+
+*(Known rough edge: a module's text can reflow oddly mid-resize — to be smoothed once the modules are finalized.)*
 
 ## Saving & loading
 - **Autosave** to the browser (localStorage) on every change.
