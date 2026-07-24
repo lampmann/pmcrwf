@@ -89,37 +89,10 @@
     <div class="hint">Max HP assumes the fixed/"consistent" hit point value per level (4/5/6/7 for d6/d8/d10/d12) rather than rolling, using each class's Hit Die and level from the Classes table above.</div>
   </section>
 
-  <!-- ===== CONDITIONS & STATUS ===== -->
-  <section class="module" data-module="status">
-    <h2>Conditions &amp; Status</h2>
-    <fieldset>
-      <legend>Death Saves</legend>
-      <div>
-        Successes:
-        <input type="checkbox" data-persist id="death-succ-1">
-        <input type="checkbox" data-persist id="death-succ-2">
-        <input type="checkbox" data-persist id="death-succ-3">
-        &nbsp; Failures:
-        <input type="checkbox" data-persist id="death-fail-1">
-        <input type="checkbox" data-persist id="death-fail-2">
-        <input type="checkbox" data-persist id="death-fail-3">
-      </div>
-      <button class="roll" id="btn-death-roll">Roll Death Save</button>
-      <button id="btn-death-reset">reset</button>
-      <div class="hint">Rolls 1d20 to the dice log and marks a box (10+ success, &lt;10 failure, nat 20 = regain 1 HP, nat 1 = two failures).</div>
-    </fieldset>
-    <fieldset>
-      <legend>Exhaustion</legend>
-      Level
-      <select data-persist id="exhaustion-level">
-        <option value="0">0</option><option value="1">1</option><option value="2">2</option>
-        <option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
-      </select>
-      <div class="hint" id="exhaustion-effect">No exhaustion.</div>
-    </fieldset>
-    <fieldset>
-      <legend>Conditions</legend>
-      <div id="conditions-list" style="display:flex;flex-wrap:wrap;gap:.15rem .6rem">
+  <!-- ===== CONDITIONS ===== -->
+  <section class="module" data-module="conditions">
+    <h2>Conditions</h2>
+    <div id="conditions-list" style="display:flex;flex-wrap:wrap;gap:.15rem .6rem">
         <label title="Can't see; auto-fail sight checks. Attacks against you have advantage; your attacks have disadvantage."><input type="checkbox" data-persist id="cond-blinded"> Blinded</label>
         <label title="Can't attack the charmer or target them with harmful effects; the charmer has advantage on social checks with you."><input type="checkbox" data-persist id="cond-charmed"> Charmed</label>
         <label title="Can't hear; auto-fail hearing checks."><input type="checkbox" data-persist id="cond-deafened"> Deafened</label>
@@ -135,7 +108,35 @@
         <label title="Incapacitated, can't move, can barely speak; auto-fail Str & Dex saves; attacks against have advantage."><input type="checkbox" data-persist id="cond-stunned"> Stunned</label>
         <label title="Incapacitated, unaware, drops held items & falls prone; auto-fail Str & Dex saves; attacks have advantage; melee hits within 5 ft are crits."><input type="checkbox" data-persist id="cond-unconscious"> Unconscious</label>
       </div>
-    </fieldset>
+  </section>
+
+  <!-- ===== EXHAUSTION ===== -->
+  <section class="module" data-module="exhaustion">
+    <h2>Exhaustion</h2>
+    Level
+    <select data-persist id="exhaustion-level">
+      <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+      <option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+    </select>
+    <div class="hint" id="exhaustion-effect">No exhaustion.</div>
+  </section>
+
+  <!-- ===== DEATH SAVES ===== -->
+  <section class="module" data-module="death-saves">
+    <h2>Death Saves</h2>
+    <div>
+      Successes:
+      <input type="checkbox" data-persist id="death-succ-1">
+      <input type="checkbox" data-persist id="death-succ-2">
+      <input type="checkbox" data-persist id="death-succ-3">
+      &nbsp; Failures:
+      <input type="checkbox" data-persist id="death-fail-1">
+      <input type="checkbox" data-persist id="death-fail-2">
+      <input type="checkbox" data-persist id="death-fail-3">
+    </div>
+    <button class="roll" id="btn-death-roll">Roll Death Save</button>
+    <button id="btn-death-reset">reset</button>
+    <div class="hint">Rolls 1d20 to the dice log and marks a box (10+ success, &lt;10 failure, nat 20 = regain 1 HP, nat 1 = two failures).</div>
   </section>
 
   <!-- ===== INVENTORY & EQUIPMENT ===== -->
