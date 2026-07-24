@@ -163,6 +163,7 @@ function loadFeatLib() {
 }
 function ciFind(lib, name) { const q = (name || "").trim().toLowerCase(); const k = Object.keys(lib).find(x => x.toLowerCase() === q); return k ? lib[k] : null; }
 function ciFindClass(name) { return ciFind(CLASS_LIB, name); }
+function ciFindFeat(name) { return ciFind(FEAT_LIB, name); }
 function ciFindSub(rec, name) { const q = (name || "").trim().toLowerCase(); if (!q) return null; return Object.values(rec.subs).find(s => s.shortName.toLowerCase() === q || s.name.toLowerCase() === q) || null; }
 function ciFindRaceSub(rec, name) { const q = (name || "").trim().toLowerCase(); if (!q) return null; return Object.values(rec.subs).find(s => s.name.toLowerCase() === q) || null; }
 function isASI(name) { return (name || "").trim().toLowerCase() === "ability score improvement"; }
@@ -325,21 +326,20 @@ function renderClassFeatures() {
         const usesSpec = parseUses(f.text), tracker = usesSpec ? renderUsesTracker(fkey, usesSpec) : "";
         return `<div>${link}${tracker}</div>`;
       }
-      const featNames = Object.keys(FEAT_LIB).sort();
       const chosen = FEAT_CHOICES[fkey] || "";
-      const opts = `<option value="">— no feat chosen —</option>` +
-        featNames.map(n => `<option value="${escapeHtml(n)}" ${n === chosen ? "selected" : ""}>${escapeHtml(n)}</option>`).join("");
+      const featRec = chosen ? ciFindFeat(chosen) : null;
       let tracker = "";
-      if (chosen && FEAT_LIB[chosen]) {
-        FEATURE_TEXT_BY_KEY[fkey] = FEAT_LIB[chosen].text;
-        const usesSpec = parseUses(FEAT_LIB[chosen].text);
+      if (featRec) {
+        FEATURE_TEXT_BY_KEY[fkey] = featRec.text;
+        const usesSpec = parseUses(featRec.text);
         if (usesSpec) tracker = renderUsesTracker(fkey, usesSpec);
       }
-      return `<div>${link} &nbsp;<label class="hint">Feat: <select class="asi-select" data-asikey="${fkey}" ${featNames.length ? "" : "disabled"}>${opts}</select></label>${tracker}</div>`;
+      return `<div>${link} &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${fkey}" value="${escapeHtml(chosen)}" style="width:12rem"></label>${tracker}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)} ${lvl}</b>${subNote}</div>${items}`;
   }).join("");
   el.innerHTML = raceHtml + classHtml;
+  el.querySelectorAll(".asi-input").forEach(inp => attachTypeahead(inp, () => Object.keys(FEAT_LIB).sort()));
 }
 function toggleFeatDetail(link) {
   const div = link.closest("div");
@@ -362,7 +362,7 @@ function toggleFeatDetail(link) {
     if (!f) for (const s of Object.values(rec.subs)) { f = s.feats.find(x => x.name === name && String(x.level) === lvl); if (f) break; }
     if (!f) return;
     if (isASI(f.name) && FEAT_CHOICES[link.dataset.fkey]) {
-      const feat = FEAT_LIB[FEAT_CHOICES[link.dataset.fkey]];
+      const feat = ciFindFeat(FEAT_CHOICES[link.dataset.fkey]);
       text = feat ? ("Feat: " + feat.name + "\n" + feat.text) : f.text;
     } else text = f.text;
   }
@@ -402,8 +402,9 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-short-rest").addEventListener("click", () => applyRest("sr"));
   $("btn-long-rest").addEventListener("click", () => applyRest("lr"));
   $("class-feat-results").addEventListener("change", e => {
-    const sel = e.target.closest(".asi-select"); if (!sel) return;
-    if (sel.value) FEAT_CHOICES[sel.dataset.asikey] = sel.value; else delete FEAT_CHOICES[sel.dataset.asikey];
+    const inp = e.target.closest(".asi-input"); if (!inp) return;
+    const v = inp.value.trim();
+    if (v) FEAT_CHOICES[inp.dataset.asikey] = v; else delete FEAT_CHOICES[inp.dataset.asikey];
     scheduleSave(); renderClassFeatures();
   });
   // Re-render when the Classes table or race/subrace fields change: MutationObserver for row add/remove, input for value edits.

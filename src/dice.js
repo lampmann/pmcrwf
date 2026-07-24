@@ -148,11 +148,12 @@ function runCommand(input) {
   }
   runRoll(s);
 }
-const D20SEL = "[data-roll-check], .sp-atk";   // buttons that roll a d20 check (adv/dis applies)
+const D20SEL = "[data-roll-check], .atk-roll";   // buttons that roll a d20 check (adv/dis applies)
 function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlKey || ev.metaKey || ev.altKey)) ? "dis" : "normal"; }
 function rollInfo(btn) {
   if (btn.dataset.rollCheck) { const k = btn.dataset.rollCheck; return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label }; }
-  if (btn.classList.contains("sp-atk")) { const tr = btn.closest("tr"); const name = tr.querySelector(".sp-name").value || "spell"; return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: name + " attack" }; }
+  // inline "spell attack" phrase inside an expanded spell description (see renderInlineSpellText)
+  if (btn.classList.contains("atk-roll")) return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: btn.dataset.rolllabel || "spell attack" };
   return null;
 }
 function fireRoll(btn, mode) {

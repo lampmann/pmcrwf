@@ -98,6 +98,7 @@ function recompute() {
 
   for (let i = 1; i <= 9; i++) $("slot-total-" + i).textContent = String(slotTotal(i));
 
+  renderSpellList();
   recomputeInventory();
 }
 
