@@ -70,10 +70,9 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 #rollmenu div { padding: 2px 12px; cursor: pointer; }
 #rollmenu div:hover { background: var(--menu-hover-bg); }
 
-/* ----- typeahead (Race/Subrace/Class/Subclass search dropdown) ----- */
-.typeahead-wrap { position: relative; display: inline-block; }
+/* ----- typeahead (Race/Subrace/Class/Subclass/Feat search dropdown) ----- */
 .typeahead-list {
-  display: none; position: absolute; top: 100%; left: 0; min-width: 100%; width: max-content; max-width: 20rem;
+  position: fixed; width: max-content; max-width: 20rem;
   max-height: 12rem; overflow-y: auto; background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border);
   font-size: .8rem; z-index: 1002; box-shadow: 2px 2px 4px var(--menu-shadow);
 }
@@ -88,6 +87,9 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .sp-name-link { text-decoration: none; color: var(--link); cursor: pointer; }
 .sp-name-link:hover { text-decoration: underline; }
 .sp-detail td { white-space: normal; padding: 2px 5px 7px; }
+/* inline click-to-roll text inside an expanded spell description (5e.tools-style) */
+.dice-roll, .atk-roll { color: var(--link); font-weight: bold; text-decoration: none; cursor: pointer; border-bottom: 1px dotted var(--link-border); }
+.dice-roll:hover, .atk-roll:hover { text-decoration: none; background: var(--menu-hover-bg); }
 /* ----- class features ----- */
 .feat-link { color: var(--link); cursor: pointer; text-decoration: none; }
 .feat-link:hover { text-decoration: underline; }

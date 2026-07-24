@@ -166,20 +166,26 @@
   <!-- ===== SPELL LIBRARY (5e.tools import) ===== -->
   <section class="module wide" data-module="spell-library">
     <h2>Spell Library <span class="hint">(auto-loads from <code>data/spells/</code> — 2014 sources only, e.g. spells-phb.json, not spells-<b>x</b>phb.json)</span></h2>
-    <div>
-      <button id="spell-lib-reload">reload from data/ folder</button>
-      <button id="spell-lib-clear">clear library</button>
-      <span class="hint" id="spell-lib-count">no spells loaded</span>
-      <span class="hint" id="spell-lib-autostatus"></span>
+    <div class="hint" id="spell-lib-collapsed-hint">Hidden until you click "+ Add Spell" in the Spellcasting module below.</div>
+    <div id="spell-library-body" style="display:none">
+      <div>
+        <button id="spell-lib-reload">reload from data/ folder</button>
+        <button id="spell-lib-clear">clear library</button>
+        <span class="hint" id="spell-lib-count">no spells loaded</span>
+        <span class="hint" id="spell-lib-autostatus"></span>
+      </div>
+      <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
+        <label style="display:inline">import files manually <input type="file" id="spell-import" accept="application/json" multiple></label>.
+      </div>
+      <div>
+        <label class="hint">Add to class: <select id="spell-add-class"></select></label>
+      </div>
+      <div id="spell-filter-area"></div>
+      <div style="margin:.35rem 0">
+        <input type="text" id="spell-search" placeholder="search name…" style="width:12rem" autocomplete="off">
+      </div>
+      <div id="spell-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
     </div>
-    <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
-      <label style="display:inline">import files manually <input type="file" id="spell-import" accept="application/json" multiple></label>.
-    </div>
-    <div id="spell-filter-area"></div>
-    <div style="margin:.35rem 0">
-      <input type="text" id="spell-search" placeholder="search name…" style="width:12rem" autocomplete="off">
-    </div>
-    <div id="spell-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
   </section>
 
   <!-- ===== SPELLCASTING ===== -->
@@ -210,11 +216,10 @@
     </fieldset>
     <fieldset>
       <legend>Spells</legend>
-      <table id="spell-table">
-        <thead><tr><th>Prep</th><th>Lvl</th><th>Name</th><th>Attack</th><th>Damage/Effect</th><th></th></tr></thead>
-        <tbody id="spell-rows"></tbody>
-      </table>
-      <button id="btn-add-spell">+ add spell</button>
+      <button id="spell-lib-toggle">+ Add Spell</button>
+      <div class="hint">Known/Prepared counts (shown per class above its spells) are informational only and never stop you from adding more.
+        Click a spell's name to show/hide its description (looked up from the Spell Library by name).</div>
+      <div id="spell-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
     </fieldset>
   </section>
 
@@ -229,6 +234,7 @@
 <script src="src/dice.js"></script>
 <script src="src/spell-library.js"></script>
 <script src="src/class-library.js"></script>
+<script src="src/spellcasting.js"></script>
 <script src="src/item-library.js"></script>
 <script src="src/persistence.js"></script>
 <script src="src/theme.js"></script>
