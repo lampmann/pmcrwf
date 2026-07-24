@@ -97,3 +97,10 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .uses-tracker { margin-left: .4rem; }
 .use-pip { border: none; background: none; color: var(--link); cursor: pointer; font-size: .9rem; padding: 0 1px; line-height: 1; }
 .use-pip:not(.used) { color: var(--muted-fg); }
+/* ----- granted spell-list-expansion links (Dragonmarks, Eldritch Knight, etc. — still need prep) ----- */
+.gsp-expanded { border-bottom: 1px dotted var(--link-border); }
+/* ----- generic modal (used by the "prepare from which class?" dialog) ----- */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+.modal-box { background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; min-width: 16rem; max-width: 90vw; box-shadow: 0 4px 16px var(--menu-shadow); }
+.modal-title { font-weight: bold; margin-bottom: .25rem; }
+.modal-actions { margin-top: .6rem; display: flex; gap: .5rem; justify-content: flex-end; }

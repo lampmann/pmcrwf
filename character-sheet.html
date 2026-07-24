@@ -101,31 +101,36 @@
       <label>pp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-pp"></label>
       &nbsp;=&nbsp;<span class="derived" id="coin-total-gp">0</span> gp
     </div>
-    <table id="item-table">
-      <thead><tr><th>Eq</th><th>Qty</th><th>Item</th><th title="lb, per unit">Wt</th><th title="gp, per unit">Value</th><th title="gp, total for the row">Total</th><th></th></tr></thead>
-      <tbody id="item-rows"></tbody>
-    </table>
-    <button id="btn-add-item">+ add item</button>
-    <div class="hint">
-      Total weight: <span class="derived" id="items-weight-total">0</span> lb
-      &nbsp;|&nbsp; Total item value: <span class="derived" id="items-value-total">0</span> gp
-      &nbsp;|&nbsp; <b>Total wealth (coins + items): <span class="derived" id="wealth-total-gp">0</span> gp</b>
-    </div>
     <fieldset>
       <legend>Equipment Library <span class="hint">(auto-loads from <code>data/items-base.json</code> / <code>data/items.json</code>)</span></legend>
-      <div>
-        <button id="item-lib-reload">reload from data/ folder</button>
-        <button id="item-lib-clear">clear library</button>
-        <span class="hint" id="item-lib-count">no equipment loaded</span>
-        <span class="hint" id="item-lib-autostatus"></span>
+      <div class="hint" id="item-lib-collapsed-hint">Hidden until you click "+ Add Item" below.</div>
+      <div id="item-library-body" style="display:none">
+        <div>
+          <button id="item-lib-reload">reload from data/ folder</button>
+          <button id="item-lib-clear">clear library</button>
+          <span class="hint" id="item-lib-count">no equipment loaded</span>
+          <span class="hint" id="item-lib-autostatus"></span>
+        </div>
+        <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
+          <label style="display:inline">import files manually <input type="file" id="item-import" accept="application/json" multiple></label>.
+        </div>
+        <div style="margin:.35rem 0">
+          <input type="text" id="item-search" placeholder="search name / type / rarity / source…" style="width:18rem" autocomplete="off">
+        </div>
+        <div id="item-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
       </div>
-      <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
-        <label style="display:inline">import files manually <input type="file" id="item-import" accept="application/json" multiple></label>.
+    </fieldset>
+    <fieldset>
+      <legend>Items</legend>
+      <button id="item-lib-toggle">+ Add Item</button>
+      <div class="hint">Click an item's name to show/hide its description (looked up from the Equipment Library by name).
+        Attunement: <span class="derived" id="attuned-count">0</span>/3.</div>
+      <div id="char-item-list" style="margin-top:.35rem"></div>
+      <div class="hint" style="margin-top:.35rem">
+        Total weight: <span class="derived" id="items-weight-total">0</span> lb
+        &nbsp;|&nbsp; Total item value: <span class="derived" id="items-value-total">0</span> gp
+        &nbsp;|&nbsp; <b>Total wealth (coins + items): <span class="derived" id="wealth-total-gp">0</span> gp</b>
       </div>
-      <div style="margin:.35rem 0">
-        <input type="text" id="item-search" placeholder="search name / type / rarity / source…" style="width:18rem" autocomplete="off">
-      </div>
-      <div id="item-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
     </fieldset>
   </section>
 
@@ -164,31 +169,6 @@
     <div id="class-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
   </section>
 
-  <!-- ===== SPELL LIBRARY (5e.tools import) ===== -->
-  <section class="module wide" data-module="spell-library">
-    <h2>Spell Library <span class="hint">(auto-loads from <code>data/spells/</code> — 2014 sources only, e.g. spells-phb.json, not spells-<b>x</b>phb.json)</span></h2>
-    <div class="hint" id="spell-lib-collapsed-hint">Hidden until you click "+ Add Spell" in the Spellcasting module below.</div>
-    <div id="spell-library-body" style="display:none">
-      <div>
-        <button id="spell-lib-reload">reload from data/ folder</button>
-        <button id="spell-lib-clear">clear library</button>
-        <span class="hint" id="spell-lib-count">no spells loaded</span>
-        <span class="hint" id="spell-lib-autostatus"></span>
-      </div>
-      <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
-        <label style="display:inline">import files manually <input type="file" id="spell-import" accept="application/json" multiple></label>.
-      </div>
-      <div>
-        <label class="hint">Add to class: <select id="spell-add-class"></select></label>
-      </div>
-      <div id="spell-filter-area"></div>
-      <div style="margin:.35rem 0">
-        <input type="text" id="spell-search" placeholder="search name…" style="width:12rem" autocomplete="off">
-      </div>
-      <div id="spell-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
-    </div>
-  </section>
-
   <!-- ===== SPELLCASTING ===== -->
   <section class="module wide" data-module="spellcasting">
     <h2>Spellcasting</h2>
@@ -216,6 +196,29 @@
       <div class="hint">Total is calculated from each class's Casting type &amp; level (per the multiclass spellcaster table). Fill in "override" for any level to lock in a specific number of slots.</div>
     </fieldset>
     <fieldset>
+      <legend>Spell Library <span class="hint">(auto-loads from <code>data/spells/</code> — 2014 sources only, e.g. spells-phb.json, not spells-<b>x</b>phb.json)</span></legend>
+      <div class="hint" id="spell-lib-collapsed-hint">Hidden until you click "+ Add Spell" below.</div>
+      <div id="spell-library-body" style="display:none">
+        <div>
+          <button id="spell-lib-reload">reload from data/ folder</button>
+          <button id="spell-lib-clear">clear library</button>
+          <span class="hint" id="spell-lib-count">no spells loaded</span>
+          <span class="hint" id="spell-lib-autostatus"></span>
+        </div>
+        <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
+          <label style="display:inline">import files manually <input type="file" id="spell-import" accept="application/json" multiple></label>.
+        </div>
+        <div>
+          <label class="hint">Add to class: <select id="spell-add-class"></select></label>
+        </div>
+        <div id="spell-filter-area"></div>
+        <div style="margin:.35rem 0">
+          <input type="text" id="spell-search" placeholder="search name…" style="width:12rem" autocomplete="off">
+        </div>
+        <div id="spell-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
+      </div>
+    </fieldset>
+    <fieldset>
       <legend>Spells</legend>
       <button id="spell-lib-toggle">+ Add Spell</button>
       <div class="hint">Known/Prepared counts (shown per class above its spells) are informational only and never stop you from adding more.
@@ -224,6 +227,20 @@
     </fieldset>
   </section>
 
+</div>
+
+<!-- ===== "prepare from which class?" modal (spell-list-expansion grants — Dragonmarks, Eldritch
+     Knight, Divine Soul, Warlock patrons, Wizard subschools, etc. — see spellcasting.js) ===== -->
+<div id="prep-class-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">Prepare <b id="prep-modal-spell"></b> from which class?</div>
+    <div class="hint" id="prep-modal-hint"></div>
+    <select id="prep-modal-select" style="width:100%;margin-top:.4rem"></select>
+    <div class="modal-actions">
+      <button id="prep-modal-cancel">Cancel</button>
+      <button id="prep-modal-confirm">Add</button>
+    </div>
+  </div>
 </div>
 
 <script src="src/errors.js"></script>
@@ -237,6 +254,7 @@
 <script src="src/class-library.js"></script>
 <script src="src/spellcasting.js"></script>
 <script src="src/item-library.js"></script>
+<script src="src/inventory.js"></script>
 <script src="src/persistence.js"></script>
 <script src="src/theme.js"></script>
 <script src="src/app.js"></script>

@@ -39,6 +39,8 @@ function parseItem(raw) {
     valueGp: explicitGp != null ? explicitGp : (rarityGp != null ? rarityGp : ""),
     valueDefaulted: rarityGp != null,  // true when the value came from RARITY_DEFAULT_GP, not the source data
     srd: !!raw.srd || !!raw.basicRules,
+    reqAttune: raw.reqAttune === true ? "requires attunement" : raw.reqAttune ? ("requires attunement " + raw.reqAttune) : "",
+    text: stripTags(flattenEntries(raw.entries)),
   };
 }
 function mergeItems(list) {
@@ -92,6 +94,10 @@ function loadItemLib() {
   } catch (e) { ITEM_LIB = []; }
 }
 function itemSources() { return [...new Set(ITEM_LIB.map(i => i.source))].sort(); }
+function findLibItemByName(name) {
+  const q = (name || "").trim().toLowerCase(); if (!q) return null;
+  return ITEM_LIB.find(i => i.name.toLowerCase() === q) || null;
+}
 
 function renderItemLibrary() {
   $("item-lib-count").textContent = ITEM_LIB.length ? (ITEM_LIB.length + " items · " + itemSources().length + " source(s)") : "no equipment loaded";
@@ -112,7 +118,7 @@ function renderItemResults() {
     const key = (it.name + "|" + it.source).replace(/"/g, "&quot;");
     return `<tr>
       <td><button class="itm-lib-add" data-key="${key}" title="add to inventory">+</button></td>
-      <td class="nm">${it.name}</td>
+      <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a></td>
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
       <td class="c hint">${it.weight === "" ? "" : it.weight}</td>
@@ -122,8 +128,16 @@ function renderItemResults() {
   }).join("");
   el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more — narrow your search</div>` : "");
 }
+function toggleItemDetail(link) {
+  const tr = link.closest("tr"), next = tr.nextElementSibling;
+  if (next && next.classList.contains("sp-detail")) { next.remove(); return; }
+  const it = ITEM_LIB.find(x => (x.name + "|" + x.source) === link.dataset.key); if (!it) return;
+  const meta = [it.type, it.rarity, it.reqAttune].filter(Boolean).join(" · ");
+  const det = document.createElement("tr"); det.className = "sp-detail";
+  det.innerHTML = `<td></td><td colspan="6"><div class="hint">${meta}</div><div>${escapeHtml(it.text).replace(/\n/g, "<br>")}</div></td>`;
+  tr.after(det);
+}
 function addItemFromLib(key) {
   const it = ITEM_LIB.find(x => (x.name + "|" + x.source) === key); if (!it) return;
-  addItemRow({ qty: 1, name: it.name, wt: it.weight === "" ? "" : String(it.weight), val: it.valueGp === "" ? "" : String(it.valueGp) });
-  recompute(); scheduleSave();
+  addCharacterItem(it.name);
 }
