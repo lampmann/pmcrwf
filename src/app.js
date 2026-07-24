@@ -67,7 +67,6 @@ function init() {
   });
 
   $("btn-add-class").addEventListener("click", () => { addClassRow(); recompute(); scheduleSave(); });
-  $("btn-add-item").addEventListener("click", () => { addItemRow(); recompute(); scheduleSave(); });
 
   $("btn-export").addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(collectState(), null, 2)], { type: "application/json" });
@@ -130,7 +129,8 @@ function init() {
   $("item-import").addEventListener("change", e => { if (e.target.files.length) loadItemFiles(e.target.files); e.target.value = ""; });
   $("item-search").addEventListener("input", renderItemResults);
   $("item-results").addEventListener("click", e => {
-    const b = e.target.closest(".itm-lib-add"); if (b) addItemFromLib(b.dataset.key);
+    const b = e.target.closest(".itm-lib-add"); if (b) { addItemFromLib(b.dataset.key); return; }
+    const link = e.target.closest(".itm-name-link"); if (link) { e.preventDefault(); toggleItemDetail(link); }
   });
   $("item-lib-clear").addEventListener("click", () => {
     if (confirm("Clear the imported equipment library? (does not affect your character)")) {
@@ -141,6 +141,17 @@ function init() {
   $("item-lib-reload").addEventListener("click", runItemAutoLoad);
   runItemAutoLoad();
 
+  // Equipment Library starts collapsed; the Items fieldset's "+ Add Item" opens it (mirrors "+ Add Spell").
+  $("item-lib-toggle").addEventListener("click", () => {
+    const open = $("item-library-body").style.display === "none";
+    $("item-library-body").style.display = open ? "" : "none";
+    $("item-lib-collapsed-hint").style.display = open ? "none" : "";
+    if (open) {
+      $("item-search").focus();
+      $("item-library-body").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  });
+
   // Load saved state LAST and guarded — if it throws, start fresh but keep the sheet alive.
   try {
     const saved = loadState();
@@ -148,7 +159,7 @@ function init() {
     else { addClassRow({ name: "", lvl: 1 }); initMathFields(); }
   } catch (err) {
     console.error("Load failed; starting fresh.", err);
-    $("class-rows").innerHTML = ""; CHARACTER_SPELLS = []; $("item-rows").innerHTML = "";
+    $("class-rows").innerHTML = ""; CHARACTER_SPELLS = []; CHARACTER_ITEMS = [];
     addClassRow({ name: "", lvl: 1 }); initMathFields();
   }
 

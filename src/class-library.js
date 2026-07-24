@@ -50,7 +50,7 @@ function parseClassFile(j) {
   });
   (j.subclass || []).forEach(sc => {
     const r = CLASS_LIB[sc.className];
-    if (r) r.subs[sc.shortName] = { name: sc.name, shortName: sc.shortName, source: sc.source, feats: [] };
+    if (r) r.subs[sc.shortName] = { name: sc.name, shortName: sc.shortName, source: sc.source, feats: [], grantedSpells: sc.additionalSpells || [] };
   });
   (j.subclassFeature || []).forEach(f => {
     const r = CLASS_LIB[f.className]; if (!r) return;
@@ -67,14 +67,57 @@ function parseRaceEntries(entries) {
 function parseRaceFile(j) {
   (j.race || []).forEach(r => {
     const existing = RACE_LIB[r.name];
-    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), subs: (existing && existing.subs) || {} };
+    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], subs: (existing && existing.subs) || {} };
   });
   (j.subrace || []).forEach(s => {
     if (s._copy) return; // reprinted/variant subraces using 5e.tools' copy-inheritance system aren't resolved
     const raceName = s.raceName || (s._copy && s._copy.raceName);
     const rec = RACE_LIB[raceName]; if (!rec) return;
-    rec.subs[s.name] = { name: s.name, source: s.source, entries: parseRaceEntries(s.entries) };
+    rec.subs[s.name] = { name: s.name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [] };
   });
+}
+/* ----- granted spells (Cleric domain spells, Mark of X subraces, Eldritch Knight/Divine Soul/
+   Warlock-patron/Wizard-subschool spell-list expansions, etc.) -----
+   5e.tools' "additionalSpells" blocks come in a few shapes — "prepared"/"known"/"innate" keyed
+   by the level (class level for a subclass, character level for a subrace) at which the spell
+   unlocks, values either a flat name array or nested one level deeper (e.g. innate "daily"/"rest"
+   counts); these are auto-granted and free (no slot, no preparation). "expanded" keyed by spell
+   level ("s1","s2",...) means something different — "added to your spell list" — the spell is
+   merely *eligible* to be learned/prepared through the class's own normal mechanic, same as any
+   other spell on that list; it still costs a known/prepared slot. Some grants list the same spell
+   in both shapes (e.g. Mark of Warding's "alarm" is both innately known AND list-expanded) — the
+   free/innate version wins in that case, since it's strictly better. collectNames() recurses
+   through either shape uniformly. */
+function collectNames(v) {
+  if (Array.isArray(v)) return v;
+  if (v && typeof v === "object") return Object.values(v).flatMap(collectNames);
+  return [];
+}
+function flattenGrantedSpells(additionalSpells) {
+  const free = new Map(); // name -> lowest minLevel (auto-granted, no prep needed)
+  const expandedNames = new Set(); // name -> merely added to the spell list; still needs normal prep
+  (additionalSpells || []).forEach(block => {
+    Object.entries(block).forEach(([key, val]) => {
+      if (key === "ability") return;
+      if (key === "expanded") { collectNames(val).forEach(n => expandedNames.add(n)); return; }
+      Object.entries(val).forEach(([lvlKey, namesOrObj]) => {
+        const lvlNum = Number(lvlKey) || 0;
+        collectNames(namesOrObj).forEach(n => { if (!free.has(n) || lvlNum < free.get(n)) free.set(n, lvlNum); });
+      });
+    });
+  });
+  const out = [...free.entries()].map(([name, minLevel]) => ({ name, minLevel, expanded: false }));
+  expandedNames.forEach(n => { if (!free.has(n)) out.push({ name: n, minLevel: 0, expanded: true }); });
+  return out;
+}
+function grantedSpellsHtml(spells, header, cls) {
+  if (!spells.length) return "";
+  const links = spells.map(g => {
+    const cls2 = "feat-link gsp-link" + (g.expanded ? " gsp-expanded" : "");
+    const title = g.expanded ? ` title="added to your spell list — still needs to be prepared/known normally, via a class"` : "";
+    return `<a class="${cls2}" data-name="${escapeHtml(g.name)}" data-cls="${escapeHtml(cls || "")}" data-header="${escapeHtml(header)}" data-expanded="${g.expanded ? "1" : "0"}"${title}>${escapeHtml(g.name)}${g.expanded ? "*" : ""}</a>`;
+  }).join(", ");
+  return `<div class="hint" style="margin:.15rem 0 .3rem 1.2rem">${escapeHtml(header)} spells (click to add — <code>*</code> = list expansion, still needs normal preparation): ${links}</div>`;
 }
 function parseFeatFile(j) {
   (j.feat || []).forEach(f => { FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)) }; });
@@ -296,7 +339,11 @@ function renderRaceSection() {
     const usesSpec = parseUses(e.text), tracker = usesSpec ? renderUsesTracker(key, usesSpec) : "";
     return `<div><a class="feat-link" data-fkey="${key}"><b>${escapeHtml(e.name)}</b></a> <span class="hint">${e.source || rec.source}</span>${tracker}</div>`;
   }).join("") || "<div class='hint'>&nbsp;&nbsp;no traits</div>";
-  return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)}</b>${subNote}</div>${items}`;
+  const grantedSrc = (sub && sub.grantedSpells && sub.grantedSpells.length) ? sub.grantedSpells
+    : (rec.grantedSpells && rec.grantedSpells.length) ? rec.grantedSpells : null;
+  const grantedHeader = sub && sub.grantedSpells && sub.grantedSpells.length ? sub.name : rec.name;
+  const grantedHtml = grantedSrc ? grantedSpellsHtml(flattenGrantedSpells(grantedSrc).filter(g => g.minLevel <= totalLevel()), grantedHeader, "") : "";
+  return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)}</b>${subNote}</div>${items}${grantedHtml}`;
 }
 function ciFindRace(name) { return ciFind(RACE_LIB, name); }
 function renderClassFeatures() {
@@ -336,7 +383,9 @@ function renderClassFeatures() {
       }
       return `<div>${link} &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${fkey}" value="${escapeHtml(chosen)}" style="width:12rem"></label>${tracker}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
-    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)} ${lvl}</b>${subNote}</div>${items}`;
+    const grantedHtml = (sub && sub.grantedSpells && sub.grantedSpells.length)
+      ? grantedSpellsHtml(flattenGrantedSpells(sub.grantedSpells).filter(g => g.minLevel <= lvl), sub.name, rec.name) : "";
+    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)} ${lvl}</b>${subNote}</div>${items}${grantedHtml}`;
   }).join("");
   el.innerHTML = raceHtml + classHtml;
   el.querySelectorAll(".asi-input").forEach(inp => attachTypeahead(inp, () => Object.keys(FEAT_LIB).sort()));
@@ -397,6 +446,13 @@ document.addEventListener("DOMContentLoaded", () => {
   runClassAutoLoad();
   $("class-feat-results").addEventListener("click", e => {
     const pip = e.target.closest(".use-pip"); if (pip) { togglePip(pip); return; }
+    const gsp = e.target.closest(".gsp-link");
+    if (gsp) {
+      const name = gsp.dataset.name, lib = findLibSpellByName(name), lvl = lib ? lib.level : 0;
+      if (gsp.dataset.expanded === "1") { openPrepClassModal(name, lvl, gsp.dataset.header); return; }
+      addCharacterSpell(gsp.dataset.cls || "", lvl, name, { grantSrc: gsp.dataset.header });
+      return;
+    }
     const l = e.target.closest(".feat-link"); if (l) { e.preventDefault(); toggleFeatDetail(l); }
   });
   $("btn-short-rest").addEventListener("click", () => applyRest("sr"));

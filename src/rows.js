@@ -96,31 +96,3 @@ function getClasses() {
     casting: tr.querySelector(".cls-cast").value,
   }));
 }
-
-/* ---------- Inventory rows ---------- */
-function addItemRow(data = {}) {
-  const tr = document.createElement("tr");
-  const qty = data.qty ?? 1, wt = data.wt ?? "", val = data.val ?? "";
-  tr.innerHTML = `
-    <td><input type="checkbox" class="itm-eq" ${data.eq ? "checked" : ""}></td>
-    <td><input type="text" inputmode="numeric" class="tiny itm-qty" data-math data-min="0" value="${qty}"></td>
-    <td><input type="text" class="itm-name" value="${data.name || ""}" style="width:12rem"></td>
-    <td><input type="text" inputmode="decimal" class="tiny itm-wt" data-math data-decimal data-min="0" data-allow-empty value="${wt}" placeholder="—"></td>
-    <td><input type="text" inputmode="decimal" class="num itm-val" data-math data-decimal data-min="0" data-allow-empty value="${val}" placeholder="0"></td>
-    <td class="derived itm-total">0</td>
-    <td><button class="rowbtn itm-del">x</button></td>`;
-  tr.querySelector(".itm-qty").dataset.prev = String(qty || 0);
-  tr.querySelector(".itm-wt").dataset.prev = String(wt === "" ? 0 : wt);
-  tr.querySelector(".itm-val").dataset.prev = String(val === "" ? 0 : val);
-  tr.querySelector(".itm-del").addEventListener("click", () => { tr.remove(); recompute(); scheduleSave(); });
-  $("item-rows").appendChild(tr);
-}
-function getItems() {
-  return [...document.querySelectorAll("#item-rows tr")].map(tr => ({
-    eq: tr.querySelector(".itm-eq").checked,
-    qty: Number(tr.querySelector(".itm-qty").value) || 0,
-    name: tr.querySelector(".itm-name").value,
-    wt: tr.querySelector(".itm-wt").value,
-    val: tr.querySelector(".itm-val").value,
-  }));
-}
