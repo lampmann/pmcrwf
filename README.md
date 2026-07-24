@@ -1,6 +1,6 @@
-# PMCRWF
+# pmcrwf
 
-PMCRWF is an offline HTML character sheet for D&D 5.14e. It's very easy to use, extremely customizable, and moderately easy to install. PMCRWF is fully made by AI, zero lines of code were written by humans.
+pmcrwf is an offline HTML character sheet for D&D 5.14e. It's very easy to use, extremely customizable, and moderately easy to install. pmcrwf is fully made by AI, zero lines of code were written by humans.
 
 Here's a list of features:
 - Automatic calculation of ability modifiers, saves, skills, passive Perception, spellcasting, and a lot of other things. If you use homebrew or have other modifiers, there are override boxes to change the math.
