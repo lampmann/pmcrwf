@@ -1,0 +1,181 @@
+/* Crimson Eclipse: Blood Moon Gothic's crimson horror, rendered with the
+   ornate detail of Celestial Aurora and Deep Sea Leviathan — a blood moon
+   rising behind drifting ash, gradient-vein module borders, a pulsing
+   crimson glow on headers, and gothic flourishes throughout. CSS-only —
+   no external images or fonts, safe to open offline. */
+:root {
+  --font-body: Garamond, 'Palatino Linotype', Georgia, 'Book Antiqua', serif;
+  --font-mono: 'Courier New', monospace;
+  --bg: #170808;
+  --fg: #ecdede;
+  --muted-fg: #9c7a7a;
+  --border: #8a2332;
+  --border-soft: #4a1520;
+  --border-hair: #2a1012;
+  --code-bg: #241012;
+  --link: #ff6b7a;
+  --link-border: #c41e3a;
+  --danger: #ff4d5e;
+  --danger-border: #a01830;
+  --btn-bg: #241012;
+  --btn-fg: #ecdede;
+  --btn-border: #6a2530;
+  --tooltip-bg: #170808;
+  --tooltip-fg: #ecdede;
+  --menu-bg: #170808;
+  --menu-hover-bg: #2a1012;
+  --menu-shadow: rgba(196, 30, 58, 0.35);
+  --radius: 3px;
+}
+
+/* ----- the sky: a rising blood moon behind drifting ash and crimson haze ----- */
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(2px 2px at 10% 88%, rgba(255, 138, 99, 0.7), transparent 100%),
+    radial-gradient(1.5px 1.5px at 24% 64%, rgba(255, 107, 122, 0.6), transparent 100%),
+    radial-gradient(2px 2px at 36% 92%, rgba(196, 30, 58, 0.7), transparent 100%),
+    radial-gradient(1.5px 1.5px at 50% 70%, rgba(255, 138, 99, 0.55), transparent 100%),
+    radial-gradient(2.5px 2.5px at 64% 90%, rgba(255, 107, 122, 0.65), transparent 100%),
+    radial-gradient(1.5px 1.5px at 77% 62%, rgba(196, 30, 58, 0.55), transparent 100%),
+    radial-gradient(2px 2px at 88% 94%, rgba(255, 138, 99, 0.7), transparent 100%),
+    radial-gradient(1.5px 1.5px at 95% 66%, rgba(255, 107, 122, 0.55), transparent 100%),
+    linear-gradient(115deg, rgba(196, 30, 58, 0.10) 0%, transparent 35%),
+    linear-gradient(250deg, rgba(120, 10, 30, 0.14) 5%, transparent 45%),
+    radial-gradient(circle at 50% 8%, rgba(255, 90, 90, 0.35) 0%, rgba(180, 30, 45, 0.16) 18%, transparent 40%),
+    radial-gradient(ellipse 130% 65% at 50% 105%, #2a0a10 0%, var(--bg) 60%),
+    linear-gradient(180deg, #0c0404 0%, #170808 45%, #1c0a0c 100%);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+/* ----- module cards: charred plating with a crimson-vein gradient edge ----- */
+.module {
+  position: relative;
+  background: linear-gradient(160deg, #24100f 0%, #180a0a 55%, #1e0d0d 100%);
+  border: 1px solid transparent;
+  border-image: linear-gradient(135deg, #8a2332, #2a1012 45%, #ff6b7a 75%, #8a2332) 1;
+  box-shadow:
+    0 0 0 1px rgba(196, 30, 58, 0.10),
+    0 4px 18px rgba(0, 0, 0, 0.75),
+    inset 0 0 20px rgba(138, 35, 50, 0.08);
+}
+.module.wide { border-image: linear-gradient(90deg, #8a2332, #2a1012 40%, #ff6b7a 70%, #8a2332) 1; }
+
+/* ----- headers: gradient crimson text with a slow pulsing glow ----- */
+@keyframes eclipse-pulse {
+  0%, 100% { text-shadow: 0 0 5px rgba(196, 30, 58, 0.5), 0 0 14px rgba(196, 30, 58, 0.2); }
+  50% { text-shadow: 0 0 9px rgba(255, 107, 122, 0.75), 0 0 22px rgba(196, 30, 58, 0.35); }
+}
+h1, h2 {
+  font-family: Garamond, 'Palatino Linotype', Georgia, serif;
+  letter-spacing: .03em;
+  background: linear-gradient(90deg, #ff9ea8, #c41e3a 45%, #ff6b7a 75%, #ff9ea8);
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #ff8899; /* fallback if background-clip:text is unsupported */
+  animation: eclipse-pulse 5s ease-in-out infinite;
+}
+h1::before { content: "\263E "; -webkit-text-fill-color: #ff6b7a; color: #ff6b7a; }
+h1::after { content: " \263E"; -webkit-text-fill-color: #ff6b7a; color: #ff6b7a; }
+
+/* ----- fieldsets: a mourning-band frame with a dagger-flanked legend ----- */
+fieldset {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(196, 30, 58, 0.05), transparent 40%);
+}
+legend {
+  color: #e2b8bd;
+  padding: 0 .5rem;
+  letter-spacing: .02em;
+  text-shadow: 0 0 4px rgba(196, 30, 58, 0.4);
+}
+legend::before { content: "\2020  "; color: #ff6b7a; text-shadow: 0 0 5px rgba(196, 30, 58, 0.7); }
+legend::after { content: "  \2020"; color: #ff6b7a; text-shadow: 0 0 5px rgba(196, 30, 58, 0.7); }
+
+.hint { color: var(--muted-fg); }
+.derived { color: #ffb3ba; text-shadow: 0 0 4px rgba(196, 30, 58, 0.35); }
+code { background: var(--code-bg); border: 1px solid var(--border-hair); border-radius: 3px; color: #e2b8bd; }
+
+/* ----- buttons: iron-and-blood plates with a crimson hover flare ----- */
+button {
+  background: linear-gradient(180deg, #2a1012, #180a0a);
+  border: 1px solid var(--btn-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: box-shadow .15s ease, transform .1s ease, background .15s ease, border-color .15s ease;
+}
+button:hover {
+  background: linear-gradient(180deg, #3a1418, #200c0c);
+  border-color: #ff6b7a;
+  box-shadow: 0 0 0 1px rgba(196, 30, 58, 0.5), 0 0 10px rgba(196, 30, 58, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+button:active { transform: translateY(1px); }
+
+/* ----- filter pills: living crimson vs. ashen void ----- */
+.fbtn { border-radius: 999px; }
+.fbtn.inc {
+  background: linear-gradient(180deg, #ff6b7a, #c41e3a);
+  color: #2a0006;
+  border-color: #c41e3a;
+  box-shadow: 0 0 6px rgba(255, 107, 122, 0.55);
+}
+.fbtn.exc {
+  background: linear-gradient(180deg, #4a3a3c, #201414);
+  color: #e8d8d8;
+  border-color: #4a1520;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+.fctrl-btn.blue { color: var(--link); border-color: var(--link-border); }
+.fctrl-btn.red { color: var(--danger); border-color: var(--danger-border); }
+
+/* ----- links, dice/attack rolls, spell + feature links carry a faint ember glow ----- */
+.sp-name-link, .feat-link, .dice-roll, .atk-roll {
+  text-shadow: 0 0 4px rgba(196, 30, 58, 0.4);
+}
+.dice-roll:hover, .atk-roll:hover { background: rgba(196, 30, 58, 0.14); }
+
+/* ----- spell table rows shimmer with a crimson current on hover ----- */
+.spell-table tr:hover td { background: linear-gradient(90deg, rgba(196, 30, 58, 0.10), rgba(74, 21, 32, 0.10)); }
+.sp-detail td, .feat-detail { border-left: 2px solid var(--link-border); padding-left: .5rem !important; }
+
+/* ----- feature-use pips: cold ash vs. a lit ember ----- */
+.use-pip { color: var(--muted-fg); }
+.use-pip.used { color: #ff6b7a; text-shadow: 0 0 6px rgba(255, 107, 122, 0.85); }
+
+/* ----- dice log: a blood-inked ledger ----- */
+#dicelog {
+  background: linear-gradient(180deg, #1e0d0d, #120606);
+  border: 1px solid var(--border-soft);
+  box-shadow: inset 0 0 14px rgba(196, 30, 58, 0.10);
+}
+#dicelog > div:first-child { color: #ff9ea8; }
+#dicelog::-webkit-scrollbar { width: 10px; }
+#dicelog::-webkit-scrollbar-track { background: #1e0d0d; }
+#dicelog::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #ff6b7a, #8a2332); border-radius: 6px; }
+
+/* ----- tooltip / context menu / typeahead: dark glass with a crimson rim ----- */
+#rolltip {
+  background: #170808;
+  color: #ff6b7a;
+  box-shadow: 0 0 8px rgba(196, 30, 58, 0.55);
+  border-radius: 4px;
+}
+#rollmenu, .typeahead-list {
+  border: 1px solid var(--link-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65), 0 0 10px rgba(196, 30, 58, 0.25);
+}
+#rollmenu div:hover, .typeahead-list div:hover, .typeahead-list div.active {
+  background: linear-gradient(90deg, rgba(196, 30, 58, 0.18), rgba(74, 21, 32, 0.18));
+}
+
+/* ----- inputs pick up a faint crimson glow on focus ----- */
+input[type="number"], input[type="text"] { background: rgba(255, 255, 255, 0.02); }
+input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(196, 30, 58, 0.45);
+  border-radius: 3px;
+}
