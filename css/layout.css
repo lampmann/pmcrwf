@@ -11,10 +11,14 @@
 
 /* --- positioning (the arrangement) --- */
 .modules.lay-active { position: relative; }
-.modules.lay-active > .module { position: absolute; margin: 0 !important; overflow: hidden; }
+/* overflow:auto → when a resized module is smaller than its content, you get scrollbars (both axes),
+   mouse-wheel scrolling, and native middle-click autoscroll. */
+.modules.lay-active > .module { position: absolute; margin: 0 !important; overflow: auto; }
 
 /* --- edit mode --- */
-.modules.lay-free > .module { cursor: move; user-select: none; outline: 1px dashed var(--border-soft); }
+/* While editing (Free on), clip overflow so the resize handles stay pinned to the module's edges
+   instead of scrolling away with the content. Scrolling is for the arranged, not-editing state above. */
+.modules.lay-free > .module { cursor: move; user-select: none; outline: 1px dashed var(--border-soft); overflow: hidden; }
 .modules.lay-free > .module.lay-selected { outline: 2px solid var(--link); }
 .modules.lay-free > .module input, .modules.lay-free > .module button,
 .modules.lay-free > .module select, .modules.lay-free > .module textarea,
