@@ -90,36 +90,98 @@ function parseRaceFile(j) {
    in both shapes (e.g. Mark of Warding's "alarm" is both innately known AND list-expanded) — the
    free/innate version wins in that case, since it's strictly better. collectNames() recurses
    through either shape uniformly. */
+/* A grant's leaves are usually literal spell names, but 5e.tools also uses *filter objects* —
+   { all: "level=0|class=Wizard" } ("every spell matching this is added to your list", e.g. Eldritch
+   Knight, Chronurgy Magic's "source=EGW") and { choose: "level=0;1;2;3", count: 1 } ("pick this many
+   from the matching spells", e.g. College of Lore, Death Domain). Those aren't spells, so they can't
+   be click-to-add links; collectNames must yield strings only (it used to return arrays verbatim,
+   so a filter object reached escapeHtml and threw), and collectFilters picks them up separately so
+   the grant is still described rather than silently dropped. */
+function isSpellFilterObj(v) {
+  return !!v && typeof v === "object" && !Array.isArray(v) && (typeof v.all === "string" || typeof v.choose === "string");
+}
 function collectNames(v) {
-  if (Array.isArray(v)) return v;
-  if (v && typeof v === "object") return Object.values(v).flatMap(collectNames);
+  if (typeof v === "string") return [v];
+  if (Array.isArray(v)) return v.flatMap(collectNames);
+  if (v && typeof v === "object" && !isSpellFilterObj(v)) return Object.values(v).flatMap(collectNames);
   return [];
+}
+function collectFilters(v) {
+  if (isSpellFilterObj(v)) return [{ spec: v.all || v.choose, count: Number(v.count) || 0, choose: typeof v.choose === "string" }];
+  if (Array.isArray(v)) return v.flatMap(collectFilters);
+  if (v && typeof v === "object") return Object.values(v).flatMap(collectFilters);
+  return [];
+}
+/* "level=0|class=Wizard" -> "any Wizard cantrip". Categories are |-separated (AND), alternatives
+   within one are ;-separated (OR). Falls back to the raw spec so nothing is ever lost. */
+function describeSpellFilter(spec) {
+  const cats = {};
+  String(spec || "").split("|").forEach(part => {
+    const i = part.indexOf("=");
+    if (i < 0) return;
+    const key = part.slice(0, i).trim().toLowerCase();
+    const vals = part.slice(i + 1).split(";").map(s => s.trim()).filter(Boolean);
+    if (vals.length) cats[key] = (cats[key] || []).concat(vals);
+  });
+  const nums = (cats.level || []).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
+  const contiguous = nums.length > 1 && nums[nums.length - 1] - nums[0] === nums.length - 1;
+  const cantripOnly = nums.length === 1 && nums[0] === 0;
+  let lvlAdj = "";
+  if (nums.length && !cantripOnly) lvlAdj = "level " + (contiguous ? nums[0] + "–" + nums[nums.length - 1] : nums.join("/"));
+  const schools = (cats.school || []).map(s => (typeof SPELL_SCHOOLS === "object" && SPELL_SCHOOLS[s.toUpperCase()]) || s);
+  const srcs = (cats.source || []).map(s => (typeof SOURCE_NAMES === "object" && SOURCE_NAMES[s.toUpperCase()]) || s);
+  const words = [lvlAdj, (cats.class || []).join("/"), schools.join("/")].filter(Boolean).join(" ");
+  const noun = cantripOnly ? "cantrip" : "spell";
+  const phrase = ("any " + (words ? words + " " : "") + noun + (srcs.length ? " from " + srcs.join("/") : "")).replace(/\s+/g, " ").trim();
+  return phrase === "any spell" && spec ? "any spell matching " + spec : phrase;
 }
 function flattenGrantedSpells(additionalSpells) {
   const free = new Map(); // name -> lowest minLevel (auto-granted, no prep needed)
   const expandedNames = new Set(); // name -> merely added to the spell list; still needs normal prep
+  const filters = new Map(); // spec -> { spec, count, choose, expanded, minLevel } (not literal spells)
+  const addFilters = (val, expanded, minLevel) => collectFilters(val).forEach(f => {
+    const prev = filters.get(f.spec);
+    if (!prev || minLevel < prev.minLevel) filters.set(f.spec, { ...f, expanded, minLevel });
+  });
   (additionalSpells || []).forEach(block => {
     Object.entries(block).forEach(([key, val]) => {
-      if (key === "ability") return;
-      if (key === "expanded") { collectNames(val).forEach(n => expandedNames.add(n)); return; }
+      // Skip the block's scalar metadata ("ability", "name": "Magical Secrets", "resourceName": "Ki").
+      // Only the keyed spell groups (prepared/known/innate/expanded) are objects; Object.entries on a
+      // string would otherwise spread it into single characters and list them as "spells".
+      if (!val || typeof val !== "object") return;
+      if (key === "expanded") {
+        collectNames(val).forEach(n => expandedNames.add(n));
+        addFilters(val, true, 0);
+        return;
+      }
       Object.entries(val).forEach(([lvlKey, namesOrObj]) => {
         const lvlNum = Number(lvlKey) || 0;
         collectNames(namesOrObj).forEach(n => { if (!free.has(n) || lvlNum < free.get(n)) free.set(n, lvlNum); });
+        addFilters(namesOrObj, false, lvlNum);
       });
     });
   });
   const out = [...free.entries()].map(([name, minLevel]) => ({ name, minLevel, expanded: false }));
   expandedNames.forEach(n => { if (!free.has(n)) out.push({ name: n, minLevel: 0, expanded: true }); });
+  filters.forEach(f => out.push(f));
   return out;
 }
 function grantedSpellsHtml(spells, header, cls) {
   if (!spells.length) return "";
   const links = spells.map(g => {
+    if (g.spec !== undefined) {   // a filter, not a spell: describe it, don't offer click-to-add
+      const label = describeSpellFilter(g.spec) + (g.choose && g.count ? ` (choose ${g.count})` : "");
+      return `<i title="${escapeHtml(g.choose ? "choose from these yourself, then add them from the Spell Library" : "all of these are added to your spell list — add the ones you use from the Spell Library")}">${escapeHtml(label)}${g.expanded ? "*" : ""}</i>`;
+    }
     const cls2 = "feat-link gsp-link" + (g.expanded ? " gsp-expanded" : "");
     const title = g.expanded ? ` title="added to your spell list — still needs to be prepared/known normally, via a class"` : "";
     return `<a class="${cls2}" data-name="${escapeHtml(g.name)}" data-cls="${escapeHtml(cls || "")}" data-header="${escapeHtml(header)}" data-expanded="${g.expanded ? "1" : "0"}"${title}>${escapeHtml(g.name)}${g.expanded ? "*" : ""}</a>`;
   }).join(", ");
-  return `<div class="hint" style="margin:.15rem 0 .3rem 1.2rem">${escapeHtml(header)} spells (click to add — <code>*</code> = list expansion, still needs normal preparation): ${links}</div>`;
+  const anyClickable = spells.some(g => g.spec === undefined);
+  const note = anyClickable
+    ? "click to add — <code>*</code> = list expansion, still needs normal preparation"
+    : "added to your spell list — add the ones you use from the Spell Library";
+  return `<div class="hint" style="margin:.15rem 0 .3rem 1.2rem">${escapeHtml(header)} spells (${note}): ${links}</div>`;
 }
 function parseFeatFile(j) {
   (j.feat || []).forEach(f => { FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)) }; });
