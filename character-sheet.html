@@ -117,12 +117,9 @@
   <!-- ===== EXHAUSTION ===== -->
   <section class="module" data-module="exhaustion">
     <h2>Exhaustion</h2>
-    Level
-    <select data-persist id="exhaustion-level">
-      <option value="0">0</option><option value="1">1</option><option value="2">2</option>
-      <option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
-    </select>
-    <div class="hint" id="exhaustion-effect">No exhaustion.</div>
+    <input type="hidden" data-persist id="exhaustion-level" value="0">
+    <div class="hint">Click a level to set it; click your current level to step down. Rows up to your level are highlighted (effects are cumulative).</div>
+    <div id="exhaustion-effect"></div>
   </section>
 
   <!-- ===== DEATH SAVES ===== -->
