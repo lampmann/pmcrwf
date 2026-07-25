@@ -95,6 +95,7 @@ function paintEffectSpan(el, key, label) {
 }
 function paintEffectAudit() {
   paintEffectSpan($("init"), "init", "Initiative");
+  paintEffectSpan($("ac"), "ac", "AC");
   paintEffectSpan($("passive-perc"), "passive-perception", "Passive Perception");
   paintEffectSpan($("hp-max"), "hpmax", "Max HP");
   paintEffectSpan($("pb"), "profbonus", "Proficiency Bonus");
@@ -112,15 +113,16 @@ function paintEffectAudit() {
       el.title = `${base} base ${sign(eff)} (${effContribs(key).map(c => c.source).join(", ")}) = ${total}`;
     } else { el.style.display = "none"; el.title = ""; }
   });
-  ["ac", "speed"].forEach(key => {
-    const eff = effFlat(key), el = $(key + "-total");
-    if (!el) return;
-    if (eff) {
-      const base = num($(key)), total = base + eff;
-      el.style.display = ""; el.textContent = `= ${total}`;
-      el.title = contribTitle(key === "ac" ? "AC" : "Speed", key);
-    } else { el.style.display = "none"; el.title = ""; }
-  });
+  { // speed is still a plain input (not auto-calculated) — same "base + effects = total" audit span as before
+    const key = "speed", eff = effFlat(key), el = $(key + "-total");
+    if (el) {
+      if (eff) {
+        const base = num($(key)), total = base + eff;
+        el.style.display = ""; el.textContent = `= ${total}`;
+        el.title = contribTitle("Speed", key);
+      } else { el.style.display = "none"; el.title = ""; }
+    }
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

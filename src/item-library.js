@@ -10,7 +10,7 @@ const ITEM_TYPES = {
   P:"Potion", R:"Ranged Weapon", RD:"Rod", RG:"Ring", S:"Shield", SC:"Scroll", SCF:"Spellcasting Focus",
   T:"Tools", TAH:"Tack & Harness", TG:"Trade Good", VEH:"Vehicle (Land)", SHP:"Ship", WD:"Wand",
 };
-const ITEM_LIB_SCHEMA = 2;  // bump when the parsed-item shape changes (forces a one-time re-import)
+const ITEM_LIB_SCHEMA = 3;  // bump when the parsed-item shape changes (forces a one-time re-import)
 let ITEM_LIB = [];
 
 // Individual magic items in 5e.tools rarely carry an explicit "value" — these are the average gp
@@ -27,9 +27,13 @@ function parseItemType(raw) {
   const code = (raw.type || "").split("|")[0];
   return ITEM_TYPES[code] || code || "";
 }
+// Armor category drives the AC formula (see armorClassAuto in derived.js): light armor adds the
+// full DEX mod, medium caps it at +2, heavy ignores it; a shield is a flat +2 rather than a base AC.
+const ARMOR_CAT_BY_TYPE_CODE = { LA: "light", MA: "medium", HA: "heavy", S: "shield" };
 function parseItem(raw) {
   const explicitGp = raw.value != null ? Math.round((raw.value / 100) * 100) / 100 : null;  // 5e.tools stores value in cp
   const rarityGp = explicitGp == null ? defaultRarityValueGp(raw) : null;
+  const typeCode = (raw.type || "").split("|")[0];
   return {
     name: raw.name,
     source: raw.source || "",
@@ -41,6 +45,20 @@ function parseItem(raw) {
     srd: !!raw.srd || !!raw.basicRules,
     reqAttune: raw.reqAttune === true ? "requires attunement" : raw.reqAttune ? ("requires attunement " + raw.reqAttune) : "",
     text: stripTags(flattenEntries(raw.entries)),
+    // ----- armor (see armorClassAuto in derived.js) -----
+    armor: !!raw.armor,
+    armorCat: ARMOR_CAT_BY_TYPE_CODE[typeCode] || "",
+    ac: raw.ac != null ? raw.ac : null,
+    strengthReq: raw.strength ? Number(raw.strength) : null,
+    stealthDisadvantage: !!raw.stealth,
+    // ----- weapon (see the Attacks module, src/attacks.js) -----
+    weapon: !!raw.weapon,
+    weaponCategory: raw.weaponCategory || "",
+    dmg1: raw.dmg1 || "",
+    dmg2: raw.dmg2 || "",
+    dmgType: raw.dmgType || "",
+    range: raw.range || "",
+    weaponProps: raw.property || [],
   };
 }
 function mergeItems(list) {

@@ -29,6 +29,28 @@ function maxHP() {
   return base + effFlat("hpmax");   // override sets the base; effects (e.g. Tough) still add on top
 }
 
+/* ---------- Armor Class (auto-calculated from equipped armor, like initiative) ----------
+   No armor equipped: 10 + DEX. Light armor: armor AC + full DEX. Medium: armor AC + DEX (max +2).
+   Heavy: armor AC only. Equipping any shield adds a flat +2 (multiple shields don't stack — same
+   "only one shield at a time" rule as the books). Ties among multiple equipped body-armor pieces
+   are broken by table order (an edge case the sheet doesn't try to adjudicate); an override box
+   covers anything this formula can't represent (Unarmored Defense, natural armor, etc.). */
+function equippedArmorLibs() {
+  return CHARACTER_ITEMS.filter(it => it.eq).map(it => findLibItemByName(it.name)).filter(Boolean);
+}
+function armorClassAuto() {
+  const equipped = equippedArmorLibs();
+  const armor = equipped.find(lib => lib.armor && lib.armorCat !== "shield");
+  const hasShield = equipped.some(lib => lib.armorCat === "shield");
+  const dex = abilityMod("dex");
+  let base;
+  if (!armor) base = 10 + dex;
+  else if (armor.armorCat === "light") base = armor.ac + dex;
+  else if (armor.armorCat === "medium") base = armor.ac + Math.min(dex, 2);
+  else base = armor.ac; // heavy (or an armor entry with an unrecognized category — treat as flat)
+  return base + (hasShield ? 2 : 0);
+}
+
 /* ---------- Spell slots (multiclass spellcaster table, driven by per-class Casting type) ---------- */
 // index = total effective caster level (0-20); values = slots for spell levels 1-9
 const MULTICLASS_SLOTS = [
@@ -85,6 +107,7 @@ function recompute() {
   });
   $("passive-perc").textContent = 10 + checkBonus("skill-perception") + effFlat("passive-perception");
   { const d = checkDice("init"); $("init").textContent = sign(checkBonus("init")) + (d ? " " + d : ""); }
+  { const d = checkDice("ac"); $("ac").textContent = String(checkBonus("ac")) + (d ? " " + d : ""); }
   const ab = $("spell-ability").value;
   if (ab) {
     $("spell-dc").textContent = 8 + pb + spellMod() + num($("spell-dc-misc")) + effFlat("spelldc");
@@ -119,6 +142,7 @@ function recomputeInventory() {
 
 function miscOf(key) {
   if (key === "init") return $("init-misc").value;
+  if (key === "ac") return $("ac-misc").value;
   if (key.startsWith("save-")) return $("savemisc-" + key.slice(5)).value;
   if (key.startsWith("skill-")) return $("skillmisc-" + key.slice(6)).value;
   return "";
@@ -133,6 +157,10 @@ function skillProfMult(slug) {
 }
 function baseOf(key) {   // the fixed part: ability mod + proficiency (no misc, no effects flat/dice)
   if (key === "init") return abilityMod("dex");
+  if (key === "ac") {
+    const ov = $("ac-override").value;
+    return (ov !== "" && !isNaN(Number(ov))) ? Number(ov) : armorClassAuto();
+  }
   if (key.startsWith("save-")) { const a = key.slice(5); return abilityMod(a) + saveProfMult(a) * profBonus(); }
   if (key.startsWith("skill-")) {
     const slug = key.slice(6);
