@@ -140,6 +140,20 @@
     <div class="hint">Rolls 1d20 to the dice log and marks a box (10+ success, &lt;10 failure, nat 20 = regain 1 HP, nat 1 = two failures).</div>
   </section>
 
+  <!-- ===== ATTACKS / WEAPONS ===== -->
+  <section class="module wide" data-module="attacks">
+    <h2>Attacks <span class="hint">(draft)</span></h2>
+    <table>
+      <thead><tr>
+        <th>Name</th><th>Ability</th><th title="proficient">Pr</th><th title="extra to-hit (flat or dice, e.g. +1 or +1d4)">Hit+</th><th>To&nbsp;Hit</th>
+        <th>Damage</th><th title="add the ability modifier to damage">+mod</th><th title="extra damage (flat or dice, e.g. +2 or +1d6)">Dmg+</th><th>Roll</th><th></th>
+      </tr></thead>
+      <tbody id="attack-rows"></tbody>
+    </table>
+    <button id="btn-add-attack">+ add attack</button>
+    <div class="hint">Ability sets the modifier for to-hit and (with <b>+mod</b>) damage; <b>Finesse</b> uses the higher of Str/Dex. Hit+/Dmg+ take flat numbers or dice (e.g. <code>+1d6</code>). Shift-click <b>to hit</b> for advantage, Ctrl for disadvantage, right-click for a menu.</div>
+  </section>
+
   <!-- ===== INVENTORY & EQUIPMENT ===== -->
   <section class="module wide" data-module="inventory">
     <h2>Inventory &amp; Equipment</h2>
@@ -314,6 +328,7 @@
 <script src="src/spellcasting.js"></script>
 <script src="src/item-library.js"></script>
 <script src="src/inventory.js"></script>
+<script src="src/attacks.js"></script>
 <script src="src/persistence.js"></script>
 <script src="src/theme.js"></script>
 <script src="src/app.js"></script>
