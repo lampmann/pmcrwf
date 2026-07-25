@@ -79,7 +79,7 @@ function classSpellAllowance(c) {
   if (SUBCLASS_CASTING_STYLE[sub]) return { style: "known", max: THIRD_CASTER_KNOWN[lvl] || 0 };
   const style = CASTING_STYLE[name];
   if (!style) return null;
-  const abilMod = mod($("score-" + CASTING_ABILITY[name]).value);
+  const abilMod = abilityMod(CASTING_ABILITY[name]);
   if (style === "known") { const t = SPELLS_KNOWN_TABLE[name]; return t ? { style, max: t[lvl] || 0 } : null; }
   const base = HALF_PREPARED_CLASSES.includes(name) ? Math.floor(lvl / 2) : lvl;
   const result = { style, max: Math.max(1, base + abilMod) };
@@ -115,3 +115,9 @@ const $ = id => document.getElementById(id);
 const mod = score => Math.floor(((Number(score)||10) - 10) / 2);
 const sign = n => (n >= 0 ? "+" : "") + n;
 const num = el => Number(el && el.value) || 0;
+// Ability score/modifier reads route through here everywhere (including data.js's own
+// classSpellAllowance below) so a feature that adds to an ability score — e.g. a half-feat like
+// Observant or Resilient — is picked up automatically. effFlat is defined in effects.js, which
+// loads after this file but before any of these are ever called (all calls happen post-load).
+function abilityScore(key) { return num($("score-" + key)) + effFlat("score-" + key); }
+function abilityMod(key) { return mod(abilityScore(key)); }

@@ -2,20 +2,20 @@
 function totalLevel() { return getClasses().reduce((s, c) => s + c.lvl, 0); }
 function profBonus() {
   const ov = $("pb-override").value;
-  if (ov !== "") return Number(ov);
   const lvl = totalLevel();
-  return lvl < 1 ? 2 : Math.ceil(lvl / 4) + 1;
+  const base = ov !== "" ? Number(ov) : (lvl < 1 ? 2 : Math.ceil(lvl / 4) + 1);
+  return base + effFlat("profbonus");   // override sets the base; effects still add on top
 }
-function spellMod() { const ab = $("spell-ability").value; return ab ? mod($("score-" + ab).value) : 0; }
-function spellAttackBonus() { return profBonus() + spellMod() + parseBonus($("spell-atk-misc").value).flat; }
-function spellAttackDice() { return parseBonus($("spell-atk-misc").value).dice; }
+function spellMod() { const ab = $("spell-ability").value; return ab ? abilityMod(ab) : 0; }
+function spellAttackBonus() { return profBonus() + spellMod() + parseBonus($("spell-atk-misc").value).flat + effFlat("spellatk"); }
+function spellAttackDice() { return parseBonus($("spell-atk-misc").value).dice + effDice("spellatk"); }
 
 /* ---------- Max HP (assumes fixed/"consistent" HP per level, not rolled) ---------- */
 const HIT_DIE_MAX = { d6: 6, d8: 8, d10: 10, d12: 12 };
 const HIT_DIE_FIXED = { d6: 4, d8: 5, d10: 6, d12: 7 };
 function maxHPAuto() {
   const classes = getClasses().filter(c => c.lvl > 0);
-  const conMod = mod($("score-con").value);
+  const conMod = abilityMod("con");
   return classes.reduce((total, c, i) => {
     const hitDie = c.hitDie === "auto" ? classHitDie(c.name) : c.hitDie;
     const dieMax = HIT_DIE_MAX[hitDie] || 8, dieFixed = HIT_DIE_FIXED[hitDie] || 5;
@@ -25,7 +25,8 @@ function maxHPAuto() {
 }
 function maxHP() {
   const ov = $("hp-max-override").value;
-  return ov !== "" && !isNaN(Number(ov)) ? Number(ov) : maxHPAuto();
+  const base = ov !== "" && !isNaN(Number(ov)) ? Number(ov) : maxHPAuto();
+  return base + effFlat("hpmax");   // override sets the base; effects (e.g. Tough) still add on top
 }
 
 /* ---------- Spell slots (multiclass spellcaster table, driven by per-class Casting type) ---------- */
@@ -69,10 +70,11 @@ function parseBonus(str) {
   return { flat, dice };
 }
 function recompute() {
+  invalidateEffects();   // rebuild the effects snapshot at most once for this whole pass (see effects.js)
   const pb = profBonus();
   $("total-level").textContent = totalLevel();
   $("pb").textContent = sign(pb);
-  ABILITIES.forEach(a => { $("mod-" + a.key).textContent = sign(mod($("score-" + a.key).value)); });
+  ABILITIES.forEach(a => { $("mod-" + a.key).textContent = sign(abilityMod(a.key)); });
   ABILITIES.forEach(a => {
     const key = "save-" + a.key, d = checkDice(key);
     $("savebonus-" + a.key).textContent = sign(checkBonus(key)) + (d ? " " + d : "");
@@ -81,12 +83,11 @@ function recompute() {
     const key = "skill-" + tr.dataset.slug, d = checkDice(key);
     $("skillbonus-" + tr.dataset.slug).textContent = sign(checkBonus(key)) + (d ? " " + d : "");
   });
-  const percMult = $("skillexp-perception").checked ? 2 : $("skillprof-perception").checked ? 1 : 0;
-  $("passive-perc").textContent = 10 + mod($("score-wis").value) + pb * percMult + parseBonus($("skillmisc-perception").value).flat;
+  $("passive-perc").textContent = 10 + checkBonus("skill-perception") + effFlat("passive-perception");
   { const d = checkDice("init"); $("init").textContent = sign(checkBonus("init")) + (d ? " " + d : ""); }
   const ab = $("spell-ability").value;
   if (ab) {
-    $("spell-dc").textContent = 8 + pb + spellMod() + num($("spell-dc-misc"));
+    $("spell-dc").textContent = 8 + pb + spellMod() + num($("spell-dc-misc")) + effFlat("spelldc");
     const ad = spellAttackDice();
     $("spell-atk").textContent = sign(spellAttackBonus()) + (ad ? " " + ad : "");
   } else { $("spell-dc").textContent = "—"; $("spell-atk").textContent = "—"; }
@@ -100,6 +101,8 @@ function recompute() {
 
   renderSpellList();
   recomputeInventory();
+  if (typeof renderEffectsStrip === "function") renderEffectsStrip();
+  if (typeof paintEffectAudit === "function") paintEffectAudit();
 }
 
 /* ---------- Inventory (coin purse + item list, all summed in gp) ---------- */
@@ -120,16 +123,23 @@ function miscOf(key) {
   if (key.startsWith("skill-")) return $("skillmisc-" + key.slice(6)).value;
   return "";
 }
-function baseOf(key) {   // the fixed part: ability mod + proficiency (no misc)
-  if (key === "init") return mod($("score-dex").value);
-  if (key.startsWith("save-")) { const a = key.slice(5); return mod($("score-" + a).value) + ($("saveprof-" + a).checked ? profBonus() : 0); }
+// A feature granting proficiency/expertise (Resilient, a subclass "expertise in two skills", etc.)
+// combines with the user's own checkbox as a max over multipliers (0/1/2) — a grant and a checkbox
+// never conflict, the higher one wins.
+function saveProfMult(ab) { return Math.max($("saveprof-" + ab).checked ? 1 : 0, effectsSnapshot().profMult["save-" + ab] || 0); }
+function skillProfMult(slug) {
+  const own = $("skillexp-" + slug).checked ? 2 : $("skillprof-" + slug).checked ? 1 : 0;
+  return Math.max(own, effectsSnapshot().profMult["skill-" + slug] || 0);
+}
+function baseOf(key) {   // the fixed part: ability mod + proficiency (no misc, no effects flat/dice)
+  if (key === "init") return abilityMod("dex");
+  if (key.startsWith("save-")) { const a = key.slice(5); return abilityMod(a) + saveProfMult(a) * profBonus(); }
   if (key.startsWith("skill-")) {
     const slug = key.slice(6);
     const tr = [...document.querySelectorAll("#skill-rows tr")].find(t => t.dataset.slug === slug);
-    const ab = tr.dataset.ability, pmult = $("skillexp-" + slug).checked ? 2 : $("skillprof-" + slug).checked ? 1 : 0;
-    return mod($("score-" + ab).value) + profBonus() * pmult;
+    return abilityMod(tr.dataset.ability) + profBonus() * skillProfMult(slug);
   }
   return 0;
 }
-function checkBonus(key) { return baseOf(key) + parseBonus(miscOf(key)).flat; }   // static numeric bonus
-function checkDice(key) { return parseBonus(miscOf(key)).dice; }                  // dice from misc, e.g. "+1d4"
+function checkBonus(key) { return baseOf(key) + parseBonus(miscOf(key)).flat + effFlat(key); }   // static numeric bonus
+function checkDice(key) { return parseBonus(miscOf(key)).dice + effDice(key); }                   // dice from misc + effects, e.g. "+1d4"

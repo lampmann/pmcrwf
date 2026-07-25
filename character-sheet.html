@@ -11,7 +11,7 @@
 <body>
 
 <div class="toolbar">
-  <strong>pmcrwf</strong> &mdash; prototype v0.11
+  <strong>pmcrwf</strong> &mdash; prototype v0.12
   <span style="float:right">
     <label>Theme <select id="theme-select"></select></label>
     <button id="btn-export">Export JSON</button>
@@ -20,6 +20,8 @@
     <span id="save-status" class="hint"></span>
   </span>
 </div>
+
+<div id="effects-strip"></div>
 
 <div class="modules">
 
@@ -80,8 +82,8 @@
             <span class="hint">(override <input type="number" class="tiny" data-persist id="hp-max-override" placeholder="auto">)</span></td></tr>
       <tr><td>Temp HP</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="hp-temp"></td>
           <td>Hit Dice</td><td><input type="text" class="num" data-persist id="hit-dice" style="width:4rem"></td></tr>
-      <tr><td>AC</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="ac"></td>
-          <td>Speed</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="speed"></td></tr>
+      <tr><td>AC</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="ac"> <span class="derived eff-note" id="ac-total" style="display:none"></span></td>
+          <td>Speed</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="speed"> <span class="derived eff-note" id="speed-total" style="display:none"></span></td></tr>
       <tr><td>Initiative</td><td class="derived" id="init">+0</td>
           <td>misc</td><td><input type="text" data-persist id="init-misc" style="width:4.5rem;text-align:right"></td></tr>
     </table>
@@ -295,6 +297,7 @@
 
 <script src="src/errors.js"></script>
 <script src="src/data.js"></script>
+<script src="src/text-utils.js"></script>
 <script src="src/typeahead.js"></script>
 <script src="src/math-fields.js"></script>
 <script src="src/rows.js"></script>
@@ -302,6 +305,10 @@
 <script src="src/dice.js"></script>
 <script src="src/spell-library.js"></script>
 <script src="src/class-library.js"></script>
+<script src="effects/effects-db.js"></script>
+<script src="effects/db/handwritten.js"></script>
+<script src="src/effects.js"></script>
+<script src="src/effects-ui.js"></script>
 <script src="src/spellcasting.js"></script>
 <script src="src/item-library.js"></script>
 <script src="src/inventory.js"></script>

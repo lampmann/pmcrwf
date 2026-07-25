@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>effects engine tests</title>
+</head>
+<body>
+<!-- Minimal copy of character-sheet.html's structure — just enough DOM for the real src/*.js
+     functions (buildAbilities, recompute, activeFeatures, the effects engine, …) to run
+     unmodified, so this test exercises the actual app code, not a reimplementation of it.
+     No data/ folder is present here; the auto-loaders fail open (as they do in the real app)
+     and every fixture below is injected directly into CLASS_LIB/RACE_LIB/FEAT_LIB/EFFECTS_DB. -->
+<div class="toolbar">
+  <span style="float:right">
+    <label>Theme <select id="theme-select"></select></label>
+    <button id="btn-export">Export JSON</button>
+    <label>Import <input type="file" id="file-import"></label>
+    <button id="btn-reset">Reset</button>
+    <span id="save-status"></span>
+  </span>
+</div>
+<div id="effects-strip"></div>
+<div class="modules">
+  <section class="module wide" data-module="header">
+    <input type="text" id="char-name"><input type="text" id="char-race"><input type="text" id="char-subrace"><input type="text" id="char-bg">
+    <table><tbody id="class-rows"></tbody></table>
+    <button id="btn-add-class">+</button>
+    <span id="total-level">0</span> <span id="pb">+0</span> <input type="number" id="pb-override">
+  </section>
+  <section class="module" data-module="abilities"><table><tbody id="ability-rows"></tbody></table></section>
+  <section class="module" data-module="saves"><table><tbody id="save-rows"></tbody></table></section>
+  <section class="module" data-module="skills">
+    <table><tbody id="skill-rows"></tbody></table>
+    <span id="passive-perc">10</span>
+  </section>
+  <section class="module" data-module="hp">
+    <input type="text" id="hp-cur"><span id="hp-max">0</span><input type="number" id="hp-max-override">
+    <input type="text" id="hp-temp"><input type="text" id="hit-dice">
+    <input type="text" id="ac"><span id="ac-total" style="display:none"></span>
+    <input type="text" id="speed"><span id="speed-total" style="display:none"></span>
+    <span id="init">+0</span><input type="text" id="init-misc">
+  </section>
+  <section class="module wide" data-module="inventory">
+    <input id="coin-cp"><input id="coin-sp"><input id="coin-ep"><input id="coin-gp"><input id="coin-pp">
+    <span id="coin-total-gp">0</span>
+    <div id="item-lib-collapsed-hint"></div>
+    <div id="item-library-body" style="display:none">
+      <button id="item-lib-reload"></button><button id="item-lib-clear"></button>
+      <span id="item-lib-count"></span><span id="item-lib-autostatus"></span>
+      <input type="file" id="item-import"><input id="item-search"><div id="item-results"></div>
+    </div>
+    <button id="item-lib-toggle"></button>
+    <span id="attuned-count">0</span>
+    <div id="char-item-list"></div>
+    <span id="items-weight-total">0</span><span id="items-value-total">0</span><span id="wealth-total-gp">0</span>
+  </section>
+  <section class="module wide" data-module="dice">
+    <input id="cmd-input"><div id="dicelog"><div>—</div></div>
+  </section>
+  <section class="module wide" data-module="class-features">
+    <button id="class-lib-reload"></button><button id="class-lib-clear"></button>
+    <span id="class-lib-count"></span><span id="class-lib-autostatus"></span>
+    <input type="file" id="class-import">
+    <button id="btn-short-rest"></button><button id="btn-long-rest"></button>
+    <div id="class-feat-results"></div>
+  </section>
+  <section class="module wide" data-module="spellcasting">
+    <select id="spell-ability"><option value=""></option><option value="str"></option><option value="dex"></option><option value="con"></option><option value="int"></option><option value="wis"></option><option value="cha"></option></select>
+    <span id="spell-dc">—</span><input type="number" id="spell-dc-misc">
+    <span id="spell-atk">—</span><input id="spell-atk-misc">
+    <table><thead><tr id="slot-head"></tr></thead><tbody><tr id="slot-total"></tr><tr id="slot-override"></tr><tr id="slot-used"></tr></tbody></table>
+    <div id="spell-lib-collapsed-hint"></div>
+    <div id="spell-library-body" style="display:none">
+      <button id="spell-lib-reload"></button><button id="spell-lib-clear"></button>
+      <span id="spell-lib-count"></span><span id="spell-lib-autostatus"></span>
+      <input type="file" id="spell-import"><select id="spell-add-class"></select>
+      <div id="spell-filter-area"></div><input id="spell-search"><div id="spell-results"></div>
+    </div>
+    <button id="spell-lib-toggle"></button>
+    <div id="spell-feat-results"></div>
+  </section>
+</div>
+<div id="prep-class-modal" style="display:none">
+  <div><b id="prep-modal-spell"></b><div id="prep-modal-hint"></div>
+  <select id="prep-modal-select"></select>
+  <button id="prep-modal-cancel"></button><button id="prep-modal-confirm"></button></div>
+</div>
+
+<script>try { localStorage.clear(); } catch (e) {}</script>
+<script src="../src/errors.js"></script>
+<script src="../src/data.js"></script>
+<script src="../src/text-utils.js"></script>
+<script src="../src/typeahead.js"></script>
+<script src="../src/math-fields.js"></script>
+<script src="../src/rows.js"></script>
+<script src="../src/derived.js"></script>
+<script src="../src/dice.js"></script>
+<script src="../src/spell-library.js"></script>
+<script src="../src/class-library.js"></script>
+<script src="../effects/effects-db.js"></script>
+<script src="../effects/db/handwritten.js"></script>
+<script src="../src/effects.js"></script>
+<script src="../src/effects-ui.js"></script>
+<script src="../src/spellcasting.js"></script>
+<script src="../src/item-library.js"></script>
+<script src="../src/inventory.js"></script>
+<script src="../src/persistence.js"></script>
+<script src="../src/app.js"></script>
+
+<style>
+  body { font-family: monospace; font-size: 13px; }
+  .pass { color: #0a0; } .fail { color: #c00; font-weight: bold; }
+  #results { white-space: pre; margin-top: 1rem; border-top: 2px solid #000; padding-top: .5rem; }
+</style>
+<div id="results">running…</div>
+
+<script>
+/* Runs after app.js's own DOMContentLoaded handler (init()) has finished — script tags execute
+   in order, and DOMContentLoaded listeners fire in registration order, so by the time this
+   handler runs the sheet is fully built and interactive, same as in the real page. */
+document.addEventListener("DOMContentLoaded", () => {
+  const lines = [];
+  let pass = 0, fail = 0;
+  function assertEqual(name, actual, expected) {
+    const ok = actual === expected;
+    if (ok) pass++; else fail++;
+    lines.push(`${ok ? "PASS" : "FAIL"}  ${name}  ${ok ? "" : `(expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)})`}`);
+  }
+  function assert(name, cond) {
+    if (cond) pass++; else fail++;
+    lines.push(`${cond ? "PASS" : "FAIL"}  ${name}`);
+  }
+
+  // ----- fixture: Wizard 5 / War Magic, DEX 14, INT 18, with Alert and Tough as its two ASI feats -----
+  CLASS_LIB = {
+    Wizard: {
+      name: "Wizard", source: "PHB", hd: "d6", caster: "full",
+      feats: [{ name: "Ability Score Improvement", level: 4, source: "PHB", text: "" }],
+      subs: { WM: { name: "War Magic", shortName: "WM", source: "XGE", grantedSpells: [], feats: [
+        { name: "Tactical Wit", level: 2, source: "XGE", text: "You can add your Intelligence modifier to your initiative rolls." },
+      ] } },
+    },
+  };
+  RACE_LIB = {};
+  FEAT_LIB = {
+    Alert: { name: "Alert", source: "PHB", text: "You gain a +5 bonus to initiative. You can't be surprised while you are conscious." },
+    Tough: { name: "Tough", source: "PHB", text: "Your hit point maximum increases by an amount equal to twice your level." },
+    Resilient: { name: "Resilient", source: "PHB", text: "Choose one ability score. You gain proficiency in saving throws using the chosen ability." },
+  };
+  document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+  addClassRow({ name: "Wizard", sub: "War Magic", lvl: 5 });
+  $("score-dex").value = 14; $("score-int").value = 18;
+  FEAT_CHOICES = {};
+  FEAT_CHOICES[fkeyFor("Wizard", "Ability Score Improvement", 4)] = "Alert";
+  renderClassLibrary();
+  recompute();
+
+  // ----- assertions -----
+  assertEqual("effKeyFor: subclass feature", effKeyFor({ kind: "subclass", className: "Wizard", subclassName: "War Magic" }, "Tactical Wit"), "subclass|wizard|war magic|tactical wit");
+  assertEqual("effKeyFor: feat", effKeyFor({ kind: "feat" }, "Alert"), "feat|alert");
+
+  const active = activeFeatures();
+  assert("activeFeatures finds Tactical Wit", active.some(f => f.name === "Tactical Wit" && f.effKey === "subclass|wizard|war magic|tactical wit"));
+  assert("activeFeatures finds Alert (resolved ASI)", active.some(f => f.name === "Alert" && f.isAsi && f.effKey === "feat|alert"));
+
+  // Initiative: DEX +2, INT +4 (Tactical Wit), Alert +5 => +11
+  assertEqual("initiative total (DEX+2, INT+4 Tactical Wit, +5 Alert)", $("init").textContent, "+11");
+  assert("initiative span marked has-eff", $("init").classList.contains("has-eff"));
+  assert("initiative title mentions both sources", $("init").title.includes("Tactical Wit") && $("init").title.includes("Alert"));
+
+  // Max HP with only Alert chosen (no Tough yet): Wizard 5, d6, CON 10 (mod 0) -> 6 + 4*4 = 22
+  assertEqual("max HP before Tough", $("hp-max").textContent, "22");
+
+  // Swap the ASI choice to Tough and confirm HP picks it up, Alert's initiative bonus disappears
+  FEAT_CHOICES[fkeyFor("Wizard", "Ability Score Improvement", 4)] = "Tough";
+  renderClassLibrary(); recompute();
+  assertEqual("max HP with Tough (22 + 2*5)", $("hp-max").textContent, "32");
+  assertEqual("initiative drops Alert's +5 once un-chosen", $("init").textContent, "+6");
+
+  // Resilient: choice-gated proficiency + score bump, audited via the "base + effect = total" span
+  FEAT_CHOICES[fkeyFor("Wizard", "Ability Score Improvement", 4)] = "Resilient";
+  renderClassLibrary(); recompute();
+  const resFkey = fkeyFor("Wizard", "Ability Score Improvement", 4);
+  EFFECT_CHOICES[resFkey] = { ability: "con" };
+  invalidateEffects(); recompute();
+  assertEqual("Resilient grants CON save proficiency (PB +3 at total level 5)", $("savebonus-con").textContent, "+3");
+  assertEqual("Resilient's +1 CON shows in the score-eff span", $("score-eff-con").textContent, "= 11");
+
+  // Reserved targets (attack-*/damage-*) never apply, always land in unapplied — proven with Sharpshooter
+  EFFECTS_DB["feat|__sharpshooter test"] = {
+    name: "Sharpshooter", sv: 1,
+    effects: [{ target: "attack-hit", op: "add", value: -5, activation: { kind: "toggle", id: "ps", label: "test" } }],
+  };
+  FEAT_LIB["__Sharpshooter Test"] = { name: "__Sharpshooter Test", source: "TEST", text: "x" };
+  FEAT_CHOICES[resFkey] = "__Sharpshooter Test";
+  renderClassLibrary(); recompute();
+  const snap = effectsSnapshot();
+  assert("reserved attack-* target never lands in flat", effFlat("attack-hit") === 0);
+  assert("reserved attack-* target surfaces in unapplied", snap.unapplied.some(u => u.target === "attack-hit"));
+
+  // Toggle apply/un-apply round-trip
+  toggleEffect(resFkey, "ps");
+  assert("toggle flips EFFECT_TOGGLES", EFFECT_TOGGLES[resFkey + "|ps"] === true);
+  toggleEffect(resFkey, "ps");
+  assert("toggle flips back", EFFECT_TOGGLES[resFkey + "|ps"] === false);
+
+  // applyRest() must act on live activeFeatures(), not a stale FEATURE_TEXT_BY_KEY snapshot
+  CLASS_LIB.Fighter = { name: "Fighter", source: "PHB", hd: "d10", caster: "none", subs: {}, feats: [
+    { name: "Second Wind", level: 1, source: "PHB", text: "Once you use this feature, you can't use it again until you finish a short or long rest." },
+  ] };
+  document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+  addClassRow({ name: "Fighter", sub: "", lvl: 1 });
+  renderClassLibrary();
+  const swFkey = fkeyFor("Fighter", "Second Wind", 1);
+  USES_STATE[swFkey] = { used: 1, pendingRests: null };
+  renderClassFeatures();
+  applyRest("lr");
+  assertEqual("applyRest recovers a live limited-use feature", USES_STATE[swFkey].used, 0);
+
+  USES_STATE[swFkey] = { used: 1, pendingRests: null };
+  CLASS_LIB = {};   // simulate the library being cleared/unloaded while USES_STATE still references it
+  renderClassFeatures();   // hits the early-return branch — FEATURE_TEXT_BY_KEY is now stale
+  applyRest("lr");
+  assertEqual("applyRest ignores a feature no longer in activeFeatures() (stale-map bug fix)", USES_STATE[swFkey].used, 1);
+
+  lines.push("", `${pass} passed, ${fail} failed`);
+  const el = document.getElementById("results");
+  el.textContent = lines.join("\n");
+  el.className = fail ? "fail" : "pass";
+});
+</script>
+</body>
+</html>

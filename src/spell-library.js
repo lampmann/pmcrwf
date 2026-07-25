@@ -47,21 +47,7 @@ function ensureStates() {
   });
 }
 
-function flattenEntries(entries) {
-  const out = [];
-  (entries || []).forEach(e => {
-    if (typeof e === "string") out.push(e);
-    else if (e && Array.isArray(e.entries)) out.push(flattenEntries(e.entries));
-    else if (e && Array.isArray(e.items)) out.push(flattenEntries(e.items));
-  });
-  return out.join("\n");
-}
-function stripTags(s) {   // convert 5e.tools {@tag ...} markup to plain text
-  return (s || "")
-    .replace(/{@(?:h|hit)}/gi, "Hit: ")
-    .replace(/{@\w+ ([^}]+)}/g, (m, p) => { const a = p.split("|"); return (a.length > 2 && a[a.length - 1]) ? a[a.length - 1] : a[0]; })
-    .replace(/{@\w+}/g, "");
-}
+// flattenEntries/stripTags now live in text-utils.js (shared with the Node-side effects pipeline).
 function spellDice(raw) {
   const sc = raw.scalingLevelDice;                                  // cantrips scale with character level
   if (sc) {

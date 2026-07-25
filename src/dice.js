@@ -151,15 +151,23 @@ function runCommand(input) {
 const D20SEL = "[data-roll-check], .atk-roll";   // buttons that roll a d20 check (adv/dis applies)
 function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlKey || ev.metaKey || ev.altKey)) ? "dis" : "normal"; }
 function rollInfo(btn) {
-  if (btn.dataset.rollCheck) { const k = btn.dataset.rollCheck; return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label }; }
+  if (btn.dataset.rollCheck) {
+    const k = btn.dataset.rollCheck;
+    return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label + effAnnotations(k), mode: effMode(k) };
+  }
   // inline "spell attack" phrase inside an expanded spell description (see renderInlineSpellText)
-  if (btn.classList.contains("atk-roll")) return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: btn.dataset.rolllabel || "spell attack" };
+  if (btn.classList.contains("atk-roll")) {
+    return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: (btn.dataset.rolllabel || "spell attack") + effAnnotations("spellatk"), mode: effMode("spellatk") };
+  }
   return null;
 }
 function fireRoll(btn, mode) {
   const info = rollInfo(btn); if (!info) return;
-  // info.dice already carries its sign(s), e.g. "+1d4" (from the Misc field)
-  runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, mode);
+  // info.dice already carries its sign(s), e.g. "+1d4" (from the Misc field or an effect)
+  // A click's own Shift/Ctrl modifier wins over an effect-forced mode (e.g. Alert doesn't force
+  // advantage); an effect wins only when the user didn't ask for anything ("normal" from a plain click).
+  const forced = (mode && mode !== "normal") ? mode : (info.mode || undefined);
+  runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, forced);
 }
 
 /* modifier-aware tooltip + right-click menu on d20 roll buttons */
