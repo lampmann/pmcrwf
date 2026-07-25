@@ -262,7 +262,10 @@ function renderSpellResults() {
   }).join("");
   el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more — narrow your search</div>` : "");
 }
-function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+// String() coercion, not just a null-guard: callers pass values straight out of imported 5e.tools
+// JSON, which is not always the string the surrounding code assumes (see collectNames in
+// class-library.js). A malformed value should render oddly, never throw and kill the whole render.
+function escapeHtml(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 function toggleSpellDetail(link) {
   const tr = link.closest("tr"), next = tr.nextElementSibling;
   if (next && next.classList.contains("sp-detail")) { next.remove(); return; }  // toggle off
