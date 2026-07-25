@@ -43,14 +43,14 @@ Any bounded number box (ability scores, class level, current/temp HP, AC, speed,
 | `30+5`   | **35** (evaluates the expression) |
 | `(4+1)*3`| **15** |
 
-Values are clamped to their limits: ability scores **1–30**, class level **1–20** (total across classes also capped at 20), HP/AC/speed **≥ 0**, current HP **≤ max HP**.
+Values are clamped to their limits: ability scores **1–30**, class level **1–20** (total across classes also capped at 20), HP/speed **≥ 0**, current HP **≤ max HP**. (AC is auto-calculated, not a bounded number box — see HP & Defenses below.)
 
 ## Modules
 - **Character** — name, race, subrace, background, and a multiclass table (each class + subclass + level + Hit Die + Casting type). Hit Die and Casting type default to **auto** — looked up from the SRD class/subclass name you type (see [Where game data comes from](#where-game-data-comes-from)) — and can be set explicitly to override the lookup. Total level auto-drives **proficiency bonus** (with an override box).
 - **Ability Scores** — scores → live modifiers.
 - **Saving Throws** — proficiency toggle + misc bonus → auto total, with a roll button. The **Misc** field accepts dice (e.g. `10+1d4`).
 - **Skills** — proficiency / expertise (mutually exclusive) + misc → auto total + roll button. Passive Perception computed. The **Misc** field accepts dice (see [Roll buttons](#roll-buttons)).
-- **HP & Defenses** — current/temp HP, AC, speed, hit dice, auto initiative + roll button. **Max HP** is auto-calculated from each class's Hit Die & level (fixed/"consistent" value per level, not rolled) + CON mod per level, with an override box.
+- **HP & Defenses** — current/temp HP, speed, hit dice, auto initiative + roll button. **Max HP** is auto-calculated from each class's Hit Die & level (fixed/"consistent" value per level, not rolled) + CON mod per level, with an override box. **AC** is likewise auto-calculated (like initiative) from your equipped armor in the Inventory module: no armor equipped → 10 + DEX; light armor → armor AC + full DEX; medium → armor AC + DEX (capped at +2); heavy → armor AC alone; any equipped shield adds a flat +2 (shields don't stack). A misc field and an override box cover everything the formula can't — Unarmored Defense, natural armor, magic items not itemized in Inventory, etc.
 - **Conditions** — a stacked list of toggles for the 14 conditions (hover any for a multi-line effect reminder). Checking **Paralyzed, Petrified, Stunned, or Unconscious** also flags **Incapacitated** (which they each impose).
 - **Exhaustion** — a Level 0–6 selector with the cumulative 2014 effect table shown, rows up to your current level highlighted.
 - **Death Saves** — 3 success / 3 failure boxes, plus a **Roll Death Save** button that rolls 1d20 to the dice log and auto-marks a box (10+ success, &lt;10 failure, nat 20 clears saves and sets HP to 1, nat 1 marks two failures).

@@ -115,6 +115,25 @@ bonus, level, and choices.
 - `{ kind: "choice", choice: "someId" }` — only active once that choice
   has been made (paired with a `choices` entry of the same id).
 
+## Level gating (optional `when` on an effect, alongside `activation`)
+
+`{ when: { minLevel: N } }` only applies the effect once the character's
+**total character level** (not class level — this is a known approximation;
+see below) is at least N. Use this for a feature whose numeric effect
+itself scales up at a later level within the *same* named feature (see
+"Recurring/leveled features" below) — never invent a conditional inside a
+value expression, `when` is the only conditional the engine has.
+
+Because `minLevel` reads *total* level (multiclassing-aware, matches
+`totalLevel()`), not "levels in this class," a effect gated this way is
+approximate for multiclass characters (e.g. a Cleric 6 / Fighter 4 has
+total level 10, so a `minLevel: 6` Cleric effect and a `minLevel: 8`
+Fighter effect both read the same combined number). This is the existing
+engine's limitation, not something to work around — just be aware a
+`when`-gated entry is slightly optimistic for heavily multiclassed
+characters, same tradeoff the rest of the sheet already makes (see
+`profBonus()`, spell slots, etc., all keyed off total level too).
+
 ## Choices (top-level `choices` array on the entry)
 
 - `{ id: "ability", kind: "ability", label: "..." }` — a full
@@ -171,6 +190,44 @@ ability-choice + flat bonus (Observant), full-ability choice + prof grant
 (Resilient), reserved attack-target + toggle (Sharpshooter), and a fixed
 uses-tracker paired with `unsupported` (Lucky — its 3 luck points get a
 pip tracker even though spending one to reroll isn't automated).
+
+## Class/subclass features: key scheme and recurring features
+
+Same output format as feats, different key: `"class|" + className.trim().toLowerCase() + "|" + featureName.trim().toLowerCase()`
+for a base-class feature, `"subclass|" + className + "|" + subclassName + "|" + featureName`
+(all lowercased/trimmed) for a subclass feature — see `effKeyFor()` in
+src/effects.js. Both `name` in the entry and the key's last segment must
+match the feature's exact display name.
+
+**A feature that recurs at multiple levels collapses to ONE key.** 5e.tools
+often splits one feature across several `classFeature`/`subclassFeature`
+records at different levels (e.g. Cleric's "Channel Divinity" has separate
+level-2/6/18 records; Bard/Rogue's "Expertise" grants two more skill picks
+at a second level). Your input batch pre-merges every level's text for the
+same feature name under one record, in level order — write **one** DB
+entry per key, not one per level-record. For a feature whose *mechanic
+itself* grows at a later level (more uses, more skill picks, a bigger
+die), use `choices`/`effects` gated with `when: { minLevel: N }` (see
+"Level gating" above) for the later-level increment — e.g. Expertise:
+a `pick` choice for the level-1-or-3 picks (always active) plus a second
+`pick` choice for the later-level picks, gated `when: { minLevel: N }`
+using the *class's* stated level (accepting the total-level approximation
+documented above).
+
+**Skip pure placeholder stubs.** Some records exist only to mark "you gain
+a subclass feature at this level" with no mechanical content of their own
+(e.g. a generic "Divine Domain Feature" or "Path Feature" entry whose only
+text is "At Nth level, you gain a feature from your Divine Domain.") —
+these have already been filtered out of your batch where recognized, but
+if you see another one like it (all filler, no mechanic, no reason to
+even mark `unsupported`), omit it rather than manufacture an empty entry.
+
+**Everything else about deciding effects/unsupported/uses/omit is
+identical to feats** — see the rest of this guide, especially "Common feat
+patterns" below, most of which applies just as much to class features
+(fixed skill/save proficiency grants, ability-choice patterns, weapon/
+attack-related features needing the reserved targets, condition-specific
+advantage, etc.).
 
 ## Common feat patterns you'll see
 
