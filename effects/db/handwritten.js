@@ -56,6 +56,7 @@ registerEffects({
   },
   "feat|lucky": {
     name: "Lucky", sv: 1,
+    uses: { max: 3, per: "lr" },
     unsupported: [{ reason: "post-hoc reroll of any d20; no roll-history model", tags: ["reroll", "resource"] }],
   },
 });
