@@ -45,15 +45,21 @@
     "Disadvantage on attack rolls and saving throws", "Hit point maximum halved",
     "Speed reduced to 0", "Death"];
   function updateExhaustion() {
-    const sel = byId("exhaustion-level"), out = byId("exhaustion-effect");
-    if (!sel || !out) return;
-    const lvl = Math.max(0, Math.min(6, Number(sel.value) || 0));
-    let rows = "<tr><th>Level</th><th>Effect</th></tr>";   // rows up to the current level are highlighted (effects are cumulative)
+    const lvlEl = byId("exhaustion-level"), out = byId("exhaustion-effect");
+    if (!lvlEl || !out) return;
+    const lvl = Math.max(0, Math.min(6, Number(lvlEl.value) || 0));
+    let rows = "<tr><th>Lvl</th><th>Effect</th></tr>";   // click a level to set it; rows up to it are highlighted (cumulative)
     for (let i = 1; i <= 6; i++) {
       const active = i <= lvl;
-      rows += `<tr${active ? ' style="background:var(--menu-hover-bg)"' : ""}><td style="text-align:center">${i}</td><td>${EXH[i]}</td></tr>`;
+      rows += `<tr data-exh="${i}" style="cursor:pointer${active ? ";background:var(--menu-hover-bg)" : ""}"><td style="text-align:center">${i}</td><td>${EXH[i]}</td></tr>`;
     }
     out.innerHTML = `<table style="margin-top:.25rem">${rows}</table>`;
+  }
+  function setExhaustion(n) {
+    const lvlEl = byId("exhaustion-level"); if (!lvlEl) return;
+    lvlEl.value = String(Math.max(0, Math.min(6, n)));
+    lvlEl.dispatchEvent(new Event("input", { bubbles: true }));    // persistence (app.js global listener)
+    lvlEl.dispatchEvent(new Event("change", { bubbles: true }));   // re-renders via the change handler below
   }
 
   /* ---- condition dependencies: Paralyzed / Petrified / Stunned / Unconscious also make you Incapacitated ---- */
@@ -74,6 +80,12 @@
     if (roll) roll.addEventListener("click", rollDeathSave);
     if (reset) reset.addEventListener("click", clearDeath);
     if (exh) exh.addEventListener("change", updateExhaustion);
+    const exhOut = byId("exhaustion-effect");
+    if (exhOut) exhOut.addEventListener("click", e => {
+      const tr = e.target.closest("[data-exh]"); if (!tr) return;
+      const clicked = Number(tr.dataset.exh), cur = Number(byId("exhaustion-level").value) || 0;
+      setExhaustion(clicked === cur ? clicked - 1 : clicked);   // clicking the current level steps down
+    });
     wireIncapacitators();
     updateExhaustion();  // runs after app.js has applied any saved state (this script loads after app.js)
   });
