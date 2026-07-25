@@ -42,6 +42,16 @@ let EFFECT_CHOICES = {};   // { fkey: { choiceId: value } }
 let EFFECT_TOGGLES = {};   // { "fkey|toggleId": true }
 
 function dbEntryFor(feature) { return feature.effKey ? EFFECTS_DB[feature.effKey] : null; }
+
+/* ----- limited-use ("N uses per rest") spec, declared on a DB entry as `uses: { max, per, delayed? }` —
+   `max` is an ordinary value expression (see evalValue below), so "proficiency bonus" is
+   `{ prof: true }` and "your CON modifier, minimum 1" is `{ max: [{ mod: "con" }, 1] }`. `per` is
+   "sr" or "lr" (short-rest recovery also happens on a long rest, same as the 2014 rules). `delayed`
+   is only for the "once expended, roll NdN — that many long rests until it recharges" pattern
+   (Sorcerous Restoration-style features), as `{ expr: "1d4" }`. This replaces scanning feature text
+   for phrasings at render time: a feature only gets a uses tracker if its DB entry declares one. */
+function usesSpecFor(feature) { const e = dbEntryFor(feature); return e && e.uses ? e.uses : null; }
+function usesMaxFor(feature, maxExpr) { return Math.max(0, evalValue(feature, maxExpr)); }
 function choiceValue(feature, id) { const c = EFFECT_CHOICES[feature.fkey]; return c ? c[id] : undefined; }
 function resolveTarget(feature, target) {
   return target.replace(/\{choice:([a-zA-Z0-9_]+)\}/g, (_, id) => choiceValue(feature, id) || "");

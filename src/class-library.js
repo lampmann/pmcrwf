@@ -25,8 +25,10 @@ let FEAT_LIB = {};
 // Persisted as part of the character (collectState/applyState in persistence.js).
 let FEAT_CHOICES = {};
 // Limited-use tracking, keyed by the same feature key as FEAT_CHOICES/feat-link.
-// { used: number, pendingRests: number|null } — pendingRests is only set for the
-// "until you finish NdN long/short rests" delayed-recharge pattern (see parseUses).
+// { used: number, pendingRests: number|null } — pendingRests is only set for a DB entry's
+// `uses.delayed` ("until you finish NdN long rests") recharge. The uses spec itself (whether a
+// feature has limited uses at all, and its max/recharge) comes from EFFECTS_DB (see usesSpecFor in
+// effects.js) — declared per-entry, not guessed from the feature's text at render time.
 // Persisted as part of the character (collectState/applyState in persistence.js).
 let USES_STATE = {};
 // Populated at render time: featureKey -> the exact text that was displayed for it
@@ -273,68 +275,19 @@ function activeFeatures() {
   return out;
 }
 
-/* ----- limited-use detection: parse feature/feat text for finite-use + recharge patterns -----
-   Handles (see DOCS for the exact phrasings this was built against):
-     "a number of times equal to your proficiency bonus" / "...your <Ability> modifier (a minimum of X)"
-     "you can use this ability/feature/reaction twice" (word numbers: once/twice/three times/...)
-     "once per day"
-     "once you use this ..., you can't ... again until you finish [Nd?d? long/short rests]"
-   Recharges on "when you finish a short/long/short-or-long rest", or the delayed
-   "until you finish 1d4 long rests" variant (tracked via USES_STATE[key].pendingRests). */
-const USE_NUM_WORDS = { once: 1, twice: 2, thrice: 3, "three times": 3, "four times": 4, "five times": 5, "six times": 6 };
-const USE_ABILITY_NAMES = { strength: "str", dexterity: "dex", constitution: "con", intelligence: "int", wisdom: "wis", charisma: "cha" };
-function parseUses(text) {
-  if (!text) return null;
-  const t = text;
-  let max = null;
-  if (/number of times equal to your proficiency bonus/i.test(t)) max = { type: "prof" };
-  if (!max) {
-    const am = t.match(/number of times equal to your (Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) modifier/i);
-    if (am) {
-      max = { type: "abilitymod", ability: USE_ABILITY_NAMES[am[1].toLowerCase()] };
-      const mm = t.match(/minimum of (once|twice|\d+)/i);
-      if (mm) max.min = USE_NUM_WORDS[mm[1].toLowerCase()] || Number(mm[1]) || 1;
-    }
-  }
-  if (!max) {
-    const wm = t.match(/use (?:this|it) (?:ability|feature|reaction|trait)?\s*(once|twice|thrice|three times|four times|five times|six times)\b/i);
-    if (wm) max = { type: "fixed", n: USE_NUM_WORDS[wm[1].toLowerCase()] };
-  }
-  if (!max && /once per day/i.test(t)) max = { type: "fixed", n: 1 };
-  if (!max && /once you use (?:this|it)\b.*can[’']?t (?:do so|use (?:this|it)) again/i.test(t)) max = { type: "fixed", n: 1 };
-  if (!max) return null;
-
-  let per = null, delayed = null;
-  const dm = t.match(/until you finish (\d*d\d+|a|an) (long|short) rests?/i);
-  if (dm) {
-    const restType = dm[2].toLowerCase() === "long" ? "lr" : "sr";
-    if (/^\d*d\d+$/i.test(dm[1])) { delayed = { restType, expr: dm[1].toLowerCase() }; per = restType; }
-    else per = restType;
-  }
-  if (!per) {
-    const pm = t.match(/when you finish a (short or long|long or short|short|long) rest/i);
-    if (pm) per = pm[1].toLowerCase().includes("short") ? "sr" : "lr";
-  }
-  if (!per) per = "lr";
-  return { max, per, delayed };
-}
-function computeUsesMax(maxSpec) {
-  if (maxSpec.type === "fixed") return maxSpec.n;
-  if (maxSpec.type === "prof") return profBonus();
-  if (maxSpec.type === "abilitymod") {
-    const raw = abilityMod(maxSpec.ability);
-    return maxSpec.min != null ? Math.max(raw, maxSpec.min) : raw;
-  }
-  return 0;
-}
+/* ----- limited-use tracker rendering: the *spec* (whether a feature has finite uses, its max, and
+   its recharge) comes from the feature's EFFECTS_DB entry via usesSpecFor() (src/effects.js) — see
+   effects/tools/conversion-guide.md's "Limited uses" section for the schema. This is purely the
+   render/state half: pip UI and the delayed-recharge dice roll. */
 function rollDiceExpr(expr) {
   const m = /^(\d*)d(\d+)$/i.exec(expr || ""); if (!m) return 1;
   const count = Number(m[1] || 1), sides = Number(m[2]);
   let sum = 0; for (let i = 0; i < count; i++) sum += rollDie(sides);
   return sum;
 }
-function renderUsesTracker(key, usesSpec) {
-  const max = Math.max(0, computeUsesMax(usesSpec.max));
+function renderUsesTracker(feature, usesSpec) {
+  const key = feature.fkey;
+  const max = usesMaxFor(feature, usesSpec.max);
   const st = USES_STATE[key] || (USES_STATE[key] = { used: 0, pendingRests: null });
   const used = Math.min(st.used, max);
   const periodLabel = usesSpec.delayed ? `long rest (${usesSpec.delayed.expr} once expended)` : usesSpec.per === "sr" ? "short/long rest" : "long rest";
@@ -352,16 +305,15 @@ function togglePip(pip) {
   scheduleSave(); renderClassFeatures();
 }
 function applyRest(kind) {   // kind: "sr" or "lr"
-  // Iterates activeFeatures() directly rather than FEATURE_TEXT_BY_KEY (a render-time cache that can
-  // be stale or empty — renderClassFeatures() early-returns before repopulating it when no library
-  // is loaded yet or no race/class is set, which used to make Short/Long Rest silently no-op then).
-  activeFeatures().forEach(({ fkey: key, text }) => {
-    if (text == null) return;
-    const u = parseUses(text); if (!u) return;
+  // Iterates activeFeatures() directly rather than a render-time cache, so Short/Long Rest still
+  // works even if the Features panel hasn't rendered since the library/character last changed.
+  activeFeatures().forEach(feature => {
+    const key = feature.fkey;
+    const u = usesSpecFor(feature); if (!u) return;
     const st = USES_STATE[key]; if (!st) return;
     if (u.delayed) {
       if (kind !== "lr") return;   // delayed recovery is only ever counted in long rests
-      const max = Math.max(0, computeUsesMax(u.max));
+      const max = usesMaxFor(feature, u.max);
       if (st.used < max) return;   // not fully expended yet, nothing to count down
       if (st.pendingRests == null) st.pendingRests = rollDiceExpr(u.delayed.expr);
       st.pendingRests -= 1;
@@ -396,7 +348,7 @@ function renderRaceSection(all) {
     && a.origin.raceName.toLowerCase() === rec.name.toLowerCase());
   const items = entries.map(e => {
     FEATURE_TEXT_BY_KEY[e.fkey] = e.text;
-    const usesSpec = parseUses(e.text), tracker = usesSpec ? renderUsesTracker(e.fkey, usesSpec) : "";
+    const usesSpec = usesSpecFor(e), tracker = usesSpec ? renderUsesTracker(e, usesSpec) : "";
     return `<div><a class="feat-link" data-fkey="${e.fkey}"><b>${escapeHtml(e.name)}</b></a> <span class="hint">${e.source}</span>${tracker}${renderEffectControls(e)}</div>`;
   }).join("") || "<div class='hint'>&nbsp;&nbsp;no traits</div>";
   const grantedSrc = (sub && sub.grantedSpells && sub.grantedSpells.length) ? sub.grantedSpells
@@ -429,14 +381,14 @@ function renderClassFeatures() {
       const link = `<a class="feat-link" data-fkey="${e.fkey}"><b>${e.level}</b> ${escapeHtml(e.isAsi ? e.asiFeatName : e.name)}</a> <span class="hint">${e.source || ""}</span>`;
       if (!e.isAsi) {
         FEATURE_TEXT_BY_KEY[e.fkey] = e.text;
-        const usesSpec = parseUses(e.text), tracker = usesSpec ? renderUsesTracker(e.fkey, usesSpec) : "";
+        const usesSpec = usesSpecFor(e), tracker = usesSpec ? renderUsesTracker(e, usesSpec) : "";
         return `<div>${link}${tracker}${renderEffectControls(e)}</div>`;
       }
       let tracker = "";
       if (e.text != null) {
         FEATURE_TEXT_BY_KEY[e.fkey] = e.text;
-        const usesSpec = parseUses(e.text);
-        if (usesSpec) tracker = renderUsesTracker(e.fkey, usesSpec);
+        const usesSpec = usesSpecFor(e);
+        if (usesSpec) tracker = renderUsesTracker(e, usesSpec);
       }
       return `<div>${link} &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${e.fkey}" value="${escapeHtml(e.asiChosen)}" style="width:12rem"></label>${tracker}${renderEffectControls(e)}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
