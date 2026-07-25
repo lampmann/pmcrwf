@@ -104,3 +104,20 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .modal-box { background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem 1rem; min-width: 16rem; max-width: 90vw; box-shadow: 0 4px 16px var(--menu-shadow); }
 .modal-title { font-weight: bold; margin-bottom: .25rem; }
 .modal-actions { margin-top: .6rem; display: flex; gap: .5rem; justify-content: flex-end; }
+
+/* ----- feature effects (src/effects.js / src/effects-ui.js) ----- */
+/* inline controls appended after a feature's uses-tracker in the Features panel */
+.eff-chip { margin-left: .4rem; font-size: .8rem; color: var(--muted-fg); }
+.eff-toggle, .eff-strip-toggle { font: inherit; font-size: .85rem; margin-left: .3rem; padding: 0 .4rem; border: 1px solid var(--btn-border); border-radius: var(--radius); background: var(--btn-bg); color: var(--btn-fg); cursor: pointer; }
+.eff-toggle.on, .eff-strip-toggle.on { border-color: var(--link-border); color: var(--link); font-weight: bold; }
+.eff-toggle:disabled, .eff-strip-toggle:disabled { opacity: .5; cursor: not-allowed; }
+.eff-unsup { margin-left: .4rem; font-size: .8rem; color: var(--danger); cursor: help; }
+.eff-choice { margin-left: .4rem; font: inherit; }
+/* the always-visible active-effects strip, between the toolbar and the modules */
+#effects-strip { display: none; margin: -.25rem 0 1rem; padding: .3rem .5rem; border: 1px solid var(--border-soft); border-radius: var(--radius); font-size: .85rem; }
+#effects-strip.has-content { display: block; }
+.eff-strip-counter { float: right; }
+/* audit trail: a dotted underline on any derived value an effect touched, and the small
+   "base + effects = total" note next to ability scores / AC / speed */
+.has-eff { border-bottom: 1px dotted var(--link-border); cursor: help; }
+.eff-note { font-size: .8rem; color: var(--muted-fg); cursor: help; }

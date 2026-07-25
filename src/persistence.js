@@ -2,7 +2,12 @@
 let saveTimer;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 300); }
 function collectState() {
-  const state = { fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, items: CHARACTER_ITEMS, featChoices: FEAT_CHOICES, usesState: USES_STATE };
+  const state = {
+    v: 1, effectsSv: 1,
+    fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, items: CHARACTER_ITEMS,
+    featChoices: FEAT_CHOICES, usesState: USES_STATE,
+    effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
+  };
   document.querySelectorAll("[data-persist]").forEach(el => { state.fields[el.id] = el.type === "checkbox" ? el.checked : el.value; });
   return state;
 }
@@ -14,12 +19,15 @@ function applyState(state) {
   CHARACTER_ITEMS = state.items || [];
   FEAT_CHOICES = state.featChoices || {};
   USES_STATE = state.usesState || {};
+  EFFECT_CHOICES = state.effectChoices || {};
+  EFFECT_TOGGLES = state.effectToggles || {};
   Object.entries(state.fields || {}).forEach(([id, val]) => {
     const el = $(id); if (!el) return;
     if (el.type === "checkbox") el.checked = val; else el.value = val;
   });
   initMathFields();
   refreshSpellAddClassSelect();
+  invalidateEffects();
   recompute();
   renderClassFeatures();
 }
