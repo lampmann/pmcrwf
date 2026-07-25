@@ -4,7 +4,7 @@ function buildAbilities() {
   ABILITIES.forEach(a => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${a.name}</td>
-      <td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="1" data-max="30" id="score-${a.key}" value="10"></td>
+      <td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="1" data-max="30" id="score-${a.key}" value="10"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
       <td class="derived" id="mod-${a.key}">+0</td>`;
     tb.appendChild(tr);
   });

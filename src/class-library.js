@@ -5,8 +5,8 @@
    "Ability Score Improvement", also offer a feat picker (from feats.json)
    whose text displays in place of the ASI's own boilerplate once chosen.
    Reads getClasses() + the char-race/char-subrace fields and re-renders on
-   any change. Reuses stripTags / flattenEntries / escapeHtml (defined in
-   spell-library.js) at render time. FEAT_CHOICES is persisted as part of
+   any change. Reuses stripTags / flattenEntries (text-utils.js) and
+   escapeHtml (spell-library.js) at render time. FEAT_CHOICES is persisted as part of
    the character (see persistence.js), not just cached locally, since it's
    a character choice, not imported data.
    ============================================================ */
@@ -213,6 +213,66 @@ function isASI(name) { return (name || "").trim().toLowerCase() === "ability sco
 function fkeyFor(className, name, level) { return (className + "|" + name + "|" + level).replace(/"/g, "&quot;"); }
 function raceFkey(raceName, entryName) { return ("race||" + raceName + "||" + entryName).replace(/"/g, "&quot;"); }
 
+/* ----- the single source of truth for "what features does this character currently have" -----
+   Used by renderClassFeatures()/renderRaceSection() (to build the Features panel), by applyRest()
+   (to re-scan for limited-use recovery), and by the effects engine (effects.js) to know which
+   EFFECTS_DB entries are live. None of those three depends on either of the others having run —
+   each calls this fresh. Race/subrace-trait entries always carry text; class/subclass features do
+   too, except an "Ability Score Improvement" slot with no feat chosen yet, whose `text` is null
+   (isAsi is true either way, so callers can still render its picker). */
+function activeFeatures() {
+  const out = [];
+  const raceName = ($("char-race") && $("char-race").value || "").trim();
+  if (raceName) {
+    const rec = ciFindRace(raceName);
+    if (rec) {
+      const subName = ($("char-subrace") && $("char-subrace").value || "").trim();
+      const sub = ciFindRaceSub(rec, subName);
+      const list = rec.entries.map(e => ({ e, fromSub: false }));
+      if (sub) sub.entries.forEach(e => {
+        const i = e.overwrite ? list.findIndex(x => x.e.name === e.overwrite) : -1;
+        const item = { e, fromSub: true };
+        if (i >= 0) list[i] = item; else list.push(item);
+      });
+      list.forEach(({ e, fromSub }) => {
+        const fkey = raceFkey(rec.name, e.name);
+        const origin = fromSub
+          ? { kind: "subrace", raceName: rec.name, subraceName: sub.name }
+          : { kind: "race", raceName: rec.name };
+        out.push({ fkey, effKey: effKeyFor(origin, e.name), name: e.name, level: 0,
+          source: e.source || rec.source, text: e.text, isAsi: false, origin });
+      });
+    }
+  }
+  getClasses().filter(c => c.name.trim()).forEach(c => {
+    const rec = ciFindClass(c.name); if (!rec) return;
+    const lvl = c.lvl || 0;
+    const sub = ciFindSub(rec, c.sub);
+    const list = rec.feats.filter(f => f.level <= lvl).map(f => ({ f, fromSub: false }));
+    if (sub) sub.feats.filter(f => f.level <= lvl).forEach(f => list.push({ f, fromSub: true }));
+    list.sort((a, b) => a.f.level - b.f.level || a.f.name.localeCompare(b.f.name));
+    list.forEach(({ f, fromSub }) => {
+      const fkey = fkeyFor(rec.name, f.name, f.level);
+      const origin = fromSub
+        ? { kind: "subclass", className: rec.name, subclassName: sub.name }
+        : { kind: "class", className: rec.name };
+      if (!isASI(f.name)) {
+        out.push({ fkey, effKey: effKeyFor(origin, f.name), name: f.name, level: f.level,
+          source: f.source, text: f.text, isAsi: false, origin });
+        return;
+      }
+      const chosen = FEAT_CHOICES[fkey] || "";
+      const featRec = chosen ? ciFindFeat(chosen) : null;
+      out.push({
+        fkey, effKey: featRec ? effKeyFor({ kind: "feat" }, featRec.name) : null,
+        name: featRec ? featRec.name : f.name, level: f.level, source: featRec ? featRec.source : f.source,
+        text: featRec ? featRec.text : null, isAsi: true, asiFeatName: f.name, asiChosen: chosen, origin,
+      });
+    });
+  });
+  return out;
+}
+
 /* ----- limited-use detection: parse feature/feat text for finite-use + recharge patterns -----
    Handles (see DOCS for the exact phrasings this was built against):
      "a number of times equal to your proficiency bonus" / "...your <Ability> modifier (a minimum of X)"
@@ -262,7 +322,7 @@ function computeUsesMax(maxSpec) {
   if (maxSpec.type === "fixed") return maxSpec.n;
   if (maxSpec.type === "prof") return profBonus();
   if (maxSpec.type === "abilitymod") {
-    const raw = mod($("score-" + maxSpec.ability).value);
+    const raw = abilityMod(maxSpec.ability);
     return maxSpec.min != null ? Math.max(raw, maxSpec.min) : raw;
   }
   return 0;
@@ -292,7 +352,11 @@ function togglePip(pip) {
   scheduleSave(); renderClassFeatures();
 }
 function applyRest(kind) {   // kind: "sr" or "lr"
-  Object.entries(FEATURE_TEXT_BY_KEY).forEach(([key, text]) => {
+  // Iterates activeFeatures() directly rather than FEATURE_TEXT_BY_KEY (a render-time cache that can
+  // be stale or empty — renderClassFeatures() early-returns before repopulating it when no library
+  // is loaded yet or no race/class is set, which used to make Short/Long Rest silently no-op then).
+  activeFeatures().forEach(({ fkey: key, text }) => {
+    if (text == null) return;
     const u = parseUses(text); if (!u) return;
     const st = USES_STATE[key]; if (!st) return;
     if (u.delayed) {
@@ -319,25 +383,21 @@ function renderClassLibrary() {
   $("class-lib-count").textContent = counts.length ? counts.join(", ") + " loaded" : "nothing loaded";
   renderClassFeatures();
 }
-function renderRaceSection() {
+function renderRaceSection(all) {
   const raceName = ($("char-race") && $("char-race").value || "").trim();
   if (!raceName) return "";
   const rec = ciFindRace(raceName);
   if (!rec) return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(raceName)}</b> <span class="hint">— not imported (load races.json)</span></div>`;
   const subName = ($("char-subrace") && $("char-subrace").value || "").trim();
   const sub = ciFindRaceSub(rec, subName);
-  const list = rec.entries.slice();
-  if (sub) sub.entries.forEach(e => {
-    const i = e.overwrite ? list.findIndex(x => x.name === e.overwrite) : -1;
-    if (i >= 0) list[i] = e; else list.push(e);
-  });
   const subNote = sub ? ` <span class="hint">/ ${escapeHtml(sub.name)}</span>`
     : (subName ? ` <span class="hint">/ ${escapeHtml(subName)} — subrace not found</span>` : "");
-  const items = list.map(e => {
-    const key = raceFkey(rec.name, e.name);
-    FEATURE_TEXT_BY_KEY[key] = e.text;
-    const usesSpec = parseUses(e.text), tracker = usesSpec ? renderUsesTracker(key, usesSpec) : "";
-    return `<div><a class="feat-link" data-fkey="${key}"><b>${escapeHtml(e.name)}</b></a> <span class="hint">${e.source || rec.source}</span>${tracker}</div>`;
+  const entries = all.filter(a => (a.origin.kind === "race" || a.origin.kind === "subrace")
+    && a.origin.raceName.toLowerCase() === rec.name.toLowerCase());
+  const items = entries.map(e => {
+    FEATURE_TEXT_BY_KEY[e.fkey] = e.text;
+    const usesSpec = parseUses(e.text), tracker = usesSpec ? renderUsesTracker(e.fkey, usesSpec) : "";
+    return `<div><a class="feat-link" data-fkey="${e.fkey}"><b>${escapeHtml(e.name)}</b></a> <span class="hint">${e.source}</span>${tracker}${renderEffectControls(e)}</div>`;
   }).join("") || "<div class='hint'>&nbsp;&nbsp;no traits</div>";
   const grantedSrc = (sub && sub.grantedSpells && sub.grantedSpells.length) ? sub.grantedSpells
     : (rec.grantedSpells && rec.grantedSpells.length) ? rec.grantedSpells : null;
@@ -355,33 +415,30 @@ function renderClassFeatures() {
   }
   if (!raceName && !classes.length) { el.innerHTML = "<div class='hint'>Add a race and/or class name in the Character module to see its features.</div>"; return; }
   FEATURE_TEXT_BY_KEY = {};
-  const raceHtml = renderRaceSection();
+  const all = activeFeatures();
+  const raceHtml = renderRaceSection(all);
   const classHtml = classes.map(c => {
     const rec = ciFindClass(c.name), lvl = c.lvl || 0;
     if (!rec) return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${lvl}</b> <span class="hint">— not imported (load its class-*.json)</span></div>`;
-    const list = rec.feats.filter(f => f.level <= lvl).slice();
     const sub = ciFindSub(rec, c.sub);
-    if (sub) sub.feats.filter(f => f.level <= lvl).forEach(f => list.push(f));
-    list.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
     const subNote = sub ? ` <span class="hint">/ ${escapeHtml(sub.name)}</span>`
       : (c.sub.trim() ? ` <span class="hint">/ ${escapeHtml(c.sub)} — subclass not found</span>` : "");
-    const items = list.map(f => {
-      const fkey = fkeyFor(rec.name, f.name, f.level);
-      const link = `<a class="feat-link" data-fkey="${fkey}"><b>${f.level}</b> ${escapeHtml(f.name)}</a> <span class="hint">${f.source}</span>`;
-      if (!isASI(f.name)) {
-        FEATURE_TEXT_BY_KEY[fkey] = f.text;
-        const usesSpec = parseUses(f.text), tracker = usesSpec ? renderUsesTracker(fkey, usesSpec) : "";
-        return `<div>${link}${tracker}</div>`;
+    const entries = all.filter(a => (a.origin.kind === "class" || a.origin.kind === "subclass")
+      && a.origin.className.toLowerCase() === rec.name.toLowerCase());
+    const items = entries.map(e => {
+      const link = `<a class="feat-link" data-fkey="${e.fkey}"><b>${e.level}</b> ${escapeHtml(e.isAsi ? e.asiFeatName : e.name)}</a> <span class="hint">${e.source || ""}</span>`;
+      if (!e.isAsi) {
+        FEATURE_TEXT_BY_KEY[e.fkey] = e.text;
+        const usesSpec = parseUses(e.text), tracker = usesSpec ? renderUsesTracker(e.fkey, usesSpec) : "";
+        return `<div>${link}${tracker}${renderEffectControls(e)}</div>`;
       }
-      const chosen = FEAT_CHOICES[fkey] || "";
-      const featRec = chosen ? ciFindFeat(chosen) : null;
       let tracker = "";
-      if (featRec) {
-        FEATURE_TEXT_BY_KEY[fkey] = featRec.text;
-        const usesSpec = parseUses(featRec.text);
-        if (usesSpec) tracker = renderUsesTracker(fkey, usesSpec);
+      if (e.text != null) {
+        FEATURE_TEXT_BY_KEY[e.fkey] = e.text;
+        const usesSpec = parseUses(e.text);
+        if (usesSpec) tracker = renderUsesTracker(e.fkey, usesSpec);
       }
-      return `<div>${link} &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${fkey}" value="${escapeHtml(chosen)}" style="width:12rem"></label>${tracker}</div>`;
+      return `<div>${link} &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${e.fkey}" value="${escapeHtml(e.asiChosen)}" style="width:12rem"></label>${tracker}${renderEffectControls(e)}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
     const grantedHtml = (sub && sub.grantedSpells && sub.grantedSpells.length)
       ? grantedSpellsHtml(flattenGrantedSpells(sub.grantedSpells).filter(g => g.minLevel <= lvl), sub.name, rec.name) : "";
@@ -445,6 +502,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("class-lib-reload").addEventListener("click", runClassAutoLoad);
   runClassAutoLoad();
   $("class-feat-results").addEventListener("click", e => {
+    const et = e.target.closest(".eff-toggle"); if (et) { if (!et.disabled) toggleEffect(et.dataset.fkey, et.dataset.toggle); return; }
     const pip = e.target.closest(".use-pip"); if (pip) { togglePip(pip); return; }
     const gsp = e.target.closest(".gsp-link");
     if (gsp) {
@@ -458,10 +516,19 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-short-rest").addEventListener("click", () => applyRest("sr"));
   $("btn-long-rest").addEventListener("click", () => applyRest("lr"));
   $("class-feat-results").addEventListener("change", e => {
-    const inp = e.target.closest(".asi-input"); if (!inp) return;
-    const v = inp.value.trim();
-    if (v) FEAT_CHOICES[inp.dataset.asikey] = v; else delete FEAT_CHOICES[inp.dataset.asikey];
-    scheduleSave(); renderClassFeatures();
+    const inp = e.target.closest(".asi-input");
+    if (inp) {
+      const v = inp.value.trim();
+      if (v) FEAT_CHOICES[inp.dataset.asikey] = v; else delete FEAT_CHOICES[inp.dataset.asikey];
+      scheduleSave(); renderClassFeatures(); return;
+    }
+    const sel = e.target.closest(".eff-choice");
+    if (sel) {
+      const fkey = sel.dataset.fkey, id = sel.dataset.choice, v = sel.value;
+      const c = EFFECT_CHOICES[fkey] || (EFFECT_CHOICES[fkey] = {});
+      if (v) c[id] = v; else delete c[id];
+      invalidateEffects(); scheduleSave(); recompute(); renderClassFeatures(); return;
+    }
   });
   // Re-render when the Classes table or race/subrace fields change: MutationObserver for row add/remove, input for value edits.
   const cr = $("class-rows");

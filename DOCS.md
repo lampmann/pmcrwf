@@ -2,7 +2,7 @@
 
 An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized play. The page (`character-sheet.html`) loads its logic from small modules in `src/`. **Serve the folder** rather than opening the file directly — there's a ready `static` config in `.claude/launch.json` (`python3 -m http.server`) — this is required for the spell/equipment libraries to auto-load (see below); browsers block `fetch()` of local files opened via `file://`. No install, no accounts; game data is user-supplied (see below).
 
-> **Status:** prototype (v0.10), deliberately unstyled ("function over form"). Cosmetics/theming come later.
+> **Status:** prototype (v0.12), deliberately unstyled ("function over form"). Cosmetics/theming come later.
 
 ---
 
@@ -14,6 +14,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Roll buttons](#roll-buttons)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
 - [Features (5e.tools import: race + class + feats)](#features-5etools-import-race--class--feats)
+- [Feature effects (automatic mechanics)](#feature-effects-automatic-mechanics)
 - [Equipment library (5e.tools import)](#equipment-library-5etools-import)
 - [Theme](#theme)
 - [Layout (move / resize / snap)](#layout-move--resize--snap)
@@ -26,10 +27,10 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 ## Where game data comes from
 The sheet draws a line between two kinds of game data:
 
-- **Small SRD facts get hardcoded.** Things like each class's hit die and casting type (`CLASS_DATA`/`SUBCLASS_CASTING` in [data.js](src/data.js)), the multiclass spellcaster slot table (`MULTICLASS_SLOTS` in [derived.js](src/derived.js)), or the default magic-item prices by rarity (`RARITY_DEFAULT_GP` in [item-library.js](src/item-library.js), averaged from XGE's Magic Item Price table), are short, fixed, and covered by the SRD/sourcebooks — so they live directly in the code as lookup tables and drive the auto-calculated fields (selectable as "auto", with an explicit override always available).
-- **Large or non-SRD content is user-supplied.** Anything that's a lot of data (the full spell list, the equipment list) or not in the SRD (most sourcebook content beyond it) is never bundled — you supply it yourself by dropping 5e.tools' own `data/` directory next to `character-sheet.html` (see [Spell library](#spell-library-5etools-import) / [Equipment library](#equipment-library-5etools-import)). This is also why `data/` is gitignored rather than committed.
+- **Small, fixed facts get hardcoded — mechanics only, never prose.** Things like each class's hit die and casting type (`CLASS_DATA`/`SUBCLASS_CASTING` in [data.js](src/data.js), which includes non-SRD facts like Eldritch Knight/Arcane Trickster's third-caster progression), the multiclass spellcaster slot table (`MULTICLASS_SLOTS` in [derived.js](src/derived.js)), the default magic-item prices by rarity (`RARITY_DEFAULT_GP` in [item-library.js](src/item-library.js), averaged from XGE's Magic Item Price table), and the [feature effects database](#feature-effects-automatic-mechanics) (`effects/`) are short, contain no descriptive text lifted from any sourcebook, and drive the auto-calculated fields (selectable as "auto", with an explicit override always available). The effects database in particular is inert overlay, not content — an entry only ever does anything if your own imported `data/` happens to contain a feature with a matching name.
+- **Bulk or descriptive content is user-supplied.** Anything that's a lot of data (the full spell list, the equipment list, every class/race/feat's actual description text) is never bundled — you supply it yourself by dropping 5e.tools' own `data/` directory next to `character-sheet.html` (see [Spell library](#spell-library-5etools-import) / [Features](#features-5etools-import-race--class--feats) / [Equipment library](#equipment-library-5etools-import)). This is also why `data/` is gitignored rather than committed.
 
-When adding a new auto-calculated feature, ask which bucket it falls into: a small SRD table → hardcode it with an override box (see Max HP and Spell Slots below); anything bigger or non-SRD → make it an import, not a bundled dataset.
+When adding a new auto-calculated feature, ask which bucket it falls into: a short, fixed, prose-free table → hardcode it with an override box (see Max HP and Spell Slots below, or the effects database); anything bigger, descriptive, or that reproduces sourcebook text → make it an import, not a bundled dataset.
 
 ## Number boxes (math input)
 Any bounded number box (ability scores, class level, current/temp HP, AC, speed, spell slots used) accepts arithmetic:
@@ -117,6 +118,18 @@ Same zero-click setup as the equipment library:
 
 The library itself (class/race/feat data) is cached locally, separate from your character; use counts are saved as part of your character, same as feat picks. *Subraces that use 5e.tools' internal `_copy` inheritance (mostly non-PHB reprints/variants) aren't resolved and are skipped — direct-entry subraces (the PHB ones: High Elf, Drow, Hill Dwarf, etc.) work fine. Optional/choice class features that live in their own files — Fighting Styles, Battle Master maneuvers, Warlock invocations, Metamagic, etc. — aren't imported yet.*
 
+## Feature effects (automatic mechanics)
+Some features do more than describe themselves — they change a number elsewhere on the sheet. War Wizard's Tactical Wit adds your INT modifier to initiative; Alert adds a flat +5; Tough adds 2×level to max HP. Where the sheet recognizes a feature this way, it applies the effect automatically instead of asking you to type it into a Misc box.
+
+**How it works:** a small, hand-authored, committed database (`effects/effects-db.js` + `effects/db/*.js`) maps a feature's name and origin (e.g. `feat|alert`, `subclass|wizard|war magic|tactical wit`) to a short declarative description of its mechanics — a target (`init`, `save-con`, `hpmax`, a skill, spell DC/attack, proficiency bonus, an ability score, …), an operation (add a flat bonus, add dice, grant proficiency/expertise, force advantage/disadvantage, …), and sometimes a value expression (an ability modifier, proficiency bonus, character/class level) or a choice (which ability Resilient boosts, which skill a feature picks). See [where game data comes from](#where-game-data-comes-from) for why this database is committed while the feature *text* it describes is not: the entries contain no sourcebook prose, and are inert unless your own imported `data/` actually contains a feature by that name — the file ships mechanics as an overlay, never content.
+
+- **Always-on effects** (Tactical Wit, Alert, Tough) just apply — no interaction needed.
+- **Toggleable effects** (things you turn on/off in play) show a small button both inline next to the feature in the Features panel and in the **always-visible effects strip** just under the toolbar, so you don't have to go hunting for it mid-combat. Click either one to flip it; both stay in sync.
+- **Choice-driven effects** (Resilient's chosen ability, Observant's +1 ability) show a dropdown next to the feature; the effect only applies once you've picked.
+- **Auditability:** any number the engine touched gets a dotted underline — hover it (or an ability score's small `= 17` note) to see exactly which features contributed what, e.g. `+7 = +2 DEX, +5 Alert`, or `16 base +1 (Observant) = 17`. Roll-log entries are annotated the same way (`[Alert +5]`). If you've also typed something into that stat's own Misc field, the tooltip warns you to check for double-counting rather than silently stacking.
+- **Not everything is automatable yet.** Anything that would require a weapons/attacks table (Sharpshooter's −5/+10, Great Weapon Master) is recognized and shown — its toggle renders but stays disabled, labeled "serialized; attacks module not implemented yet" — so it'll switch on automatically once that module exists, with no re-conversion needed. Anything the engine genuinely can't represent (Lucky's reroll, anything needing a roll-history model) shows a plain `⚠ not automated` marker with the reason on hover. The effects strip's coverage counter (e.g. "3 feature effect(s) not automated") totals both categories so gaps are visible, never silent.
+- This is deliberately narrow and small today — a handful of hand-written entries proving the schema (see `effects/db/handwritten.js`) rather than full coverage of every feat/class/race. Scaling it up (running an LLM over 5e.tools' feature text to emit more entries, validated against a schema and a hand-checked test corpus before anything is committed) is planned but not yet built; nothing in that pipeline talks to your character or your `data/` folder without you explicitly running it.
+
 ## Equipment library (5e.tools import)
 Same zero-click setup as the spell library, and deliberately the simplest importer on the sheet:
 1. With the same `data/` folder in place (see above), the sheet auto-fetches `data/items-base.json` (mundane gear, weapons, armor) and `data/items.json` (magic items) on load — no format to pick, no per-file settings.
@@ -130,7 +143,7 @@ Same zero-click setup as the spell library, and deliberately the simplest import
 *Note: nothing from 5e.tools is bundled with the sheet; `data/` is gitignored — you supply it, it's parsed in your browser.*
 
 ## Theme
-The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.css` (each just redefines the CSS custom properties set on `:root` in `css/base.css` — colors, borders, fonts). Ships with 5 alternates (Illuminated Manuscript, Cyber Grimoire, Blood Moon Gothic, Verdant Feywild, Infernal Bronze) alongside the plain **Default (unstyled)** look; your choice is remembered (localStorage) across reloads. Drop your own `css/themes/your-theme.css` and add it to `css/themes/index.json` to add more.
+The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.css` (each just redefines the CSS custom properties set on `:root` in `css/base.css` — colors, borders, fonts). Ships with 7 alternates (Illuminated Manuscript, Cyber Grimoire, Blood Moon Gothic, Verdant Feywild, Infernal Bronze, Celestial Aurora, Deep Sea Leviathan) alongside the plain **Default (unstyled)** look; your choice is remembered (localStorage) across reloads. Drop your own `css/themes/your-theme.css` and add it to `css/themes/index.json` to add more.
 
 ## Layout (move / resize / snap)
 By default modules flow down the page. The **Layout** bar (above the modules) turns on free-form arranging:
@@ -159,12 +172,12 @@ Your arrangement is also saved locally (separate from the character; per browser
 - Layout engine (drag / resize / snap-to-grid) and icon variants — not built yet.
 - Spell damage shown/rolled from an expanded spell description is base dice only (no upcast math beyond what 5e.tools' own scaling data already resolves for cantrips).
 - **Deferred spell filters** (data mostly parsed already, easy to add): Conditions Inflicted, Spell Attack type (melee/ranged), Range, Area style, Duration, Cast-time sub-types. 5etools' Core/Supplements/Adventures source *groupings* are also deferred (individual sources work).
-- **Inventory and equipment revamp** Bring it up to standard with the spellcasting section, ideally copy functionality to make them similar.
 - A step-by-step character creator, rules-as-written defaults with house-rule toggles, and an allowed-books toggle list are planned.
 - **Rules-reference buttons** — a small **ⓘ** button next to relevant elements (conditions, exhaustion, death saves, features, spells, etc.) that opens a popover quoting the relevant rules text and its sourcebook page number, so you can check the exact wording without leaving the sheet.
 - **Not planned:** personality traits, ideals, bonds, flaws, backstory, and appearance fields (age/height/eyes/etc.). This sheet targets optimized play, not roleplay journaling — that content belongs in a separate document, not on the sheet.
+- **[Feature effects](#feature-effects-automatic-mechanics)** currently cover a handful of hand-written entries proving the schema, and only targets that already exist on the sheet (initiative, saves, skills, passive perception, max HP, spell DC/attack, proficiency bonus, ability scores). Effects that need a weapons/attacks table (Sharpshooter, GWM) are recognized and serialized but stay disabled until that module exists. Scaling the database up via an LLM conversion pipeline (with a validator and a hand-checked golden test corpus gating what gets committed) is planned, not yet built.
 - **Missing vs. big-name sheets (D&D Beyond, Roll20, Fight Club 5e), still worth doing:**
-  - Weapons/attacks table (melee & ranged, separate from the spell table) with to-hit and damage roll buttons.
+  - Weapons/attacks table (melee & ranged, separate from the spell table) with to-hit and damage roll buttons — this is also the prerequisite for automating Sharpshooter/GWM-style feature effects.
   - Proficiencies — armor, weapon, tool, and language proficiencies have no home (only skill/save proficiency toggles exist).
   - Death saves, exhaustion, and a conditions tracker — **done** (three separate modules; mechanically applying their effects is the next step).
   - A concentration indicator tied to the currently-active concentration spell (spell data already flags `conc`, just not surfaced as an active tracker).
