@@ -148,7 +148,7 @@ function runCommand(input) {
   }
   runRoll(s);
 }
-const D20SEL = "[data-roll-check], .atk-roll";   // buttons that roll a d20 check (adv/dis applies)
+const D20SEL = "[data-roll-check], .atk-roll, .wpn-roll";   // buttons that roll a d20 check (adv/dis applies)
 function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlKey || ev.metaKey || ev.altKey)) ? "dis" : "normal"; }
 function rollInfo(btn) {
   if (btn.dataset.rollCheck) {
@@ -158,6 +158,10 @@ function rollInfo(btn) {
   // inline "spell attack" phrase inside an expanded spell description (see renderInlineSpellText)
   if (btn.classList.contains("atk-roll")) {
     return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: (btn.dataset.rolllabel || "spell attack") + effAnnotations("spellatk"), mode: effMode("spellatk") };
+  }
+  // weapon attack to-hit button (Attacks module) — bonus/dice/label are set on the button by attacks.js
+  if (btn.classList.contains("wpn-roll")) {
+    return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack", mode: "normal" };
   }
   return null;
 }

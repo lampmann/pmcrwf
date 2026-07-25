@@ -5,6 +5,7 @@ function collectState() {
   const state = {
     v: 1, effectsSv: 1,
     fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, items: CHARACTER_ITEMS,
+    attacks: (typeof getAttacks === "function" ? getAttacks() : []),
     featChoices: FEAT_CHOICES, usesState: USES_STATE,
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
@@ -26,6 +27,7 @@ function applyState(state) {
     if (el.type === "checkbox") el.checked = val; else el.value = val;
   });
   initMathFields();
+  if (typeof addAttackRow === "function") { $("attack-rows").innerHTML = ""; (state.attacks || []).forEach(addAttackRow); }
   refreshSpellAddClassSelect();
   invalidateEffects();
   recompute();
