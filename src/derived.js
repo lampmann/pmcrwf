@@ -9,6 +9,8 @@ function profBonus() {
 function spellMod() { const ab = $("spell-ability").value; return ab ? abilityMod(ab) : 0; }
 function spellAttackBonus() { return profBonus() + spellMod() + parseBonus($("spell-atk-misc").value).flat + effFlat("spellatk"); }
 function spellAttackDice() { return parseBonus($("spell-atk-misc").value).dice + effDice("spellatk"); }
+// One source of truth for the save DC, so the Routines module can show it for save-based spells.
+function spellSaveDC() { return 8 + profBonus() + spellMod() + num($("spell-dc-misc")) + effFlat("spelldc"); }
 
 /* ---------- Max HP (assumes fixed/"consistent" HP per level, not rolled) ---------- */
 const HIT_DIE_MAX = { d6: 6, d8: 8, d10: 10, d12: 12 };
@@ -110,7 +112,7 @@ function recompute() {
   { const d = checkDice("ac"); $("ac").textContent = String(checkBonus("ac")) + (d ? " " + d : ""); }
   const ab = $("spell-ability").value;
   if (ab) {
-    $("spell-dc").textContent = 8 + pb + spellMod() + num($("spell-dc-misc")) + effFlat("spelldc");
+    $("spell-dc").textContent = spellSaveDC();
     const ad = spellAttackDice();
     $("spell-atk").textContent = sign(spellAttackBonus()) + (ad ? " " + ad : "");
   } else { $("spell-dc").textContent = "—"; $("spell-atk").textContent = "—"; }
