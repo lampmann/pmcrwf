@@ -6,6 +6,7 @@ function collectState() {
     v: 1, effectsSv: 1,
     fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, items: CHARACTER_ITEMS,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
+    routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
     featChoices: FEAT_CHOICES, usesState: USES_STATE,
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
@@ -28,6 +29,7 @@ function applyState(state) {
   });
   initMathFields();
   if (typeof addAttackRow === "function") { $("attack-rows").innerHTML = ""; (state.attacks || []).forEach(addAttackRow); }
+  if (typeof setRoutines === "function") setRoutines(state.routines || []);   // after attacks, so step pickers resolve names
   refreshSpellAddClassSelect();
   invalidateEffects();
   recompute();
