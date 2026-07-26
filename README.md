@@ -49,6 +49,23 @@ Leave that terminal open — the server runs until you close it or press **Ctrl+
 ### 5. Open the sheet
 Go to **http://localhost:8931/character-sheet.html** in your browser.
 
+### Shortcut: just type `pmcrwf`
+The repo ships a launcher that does steps 4–5 in one word — it starts the server (or reuses one that's already running), waits for it to come up, then opens the sheet in your browser:
+
+```
+pmcrwf          start the server and open the sheet
+pmcrwf stop     stop the server
+pmcrwf help     usage, including which folder and port it will use
+```
+
+Run it from the project folder as `.\pmcrwf` (Windows) or `./pmcrwf` (macOS/Linux/Git Bash). **To type `pmcrwf` from anywhere**, put a copy on your PATH — on Windows the simplest spot is `%LOCALAPPDATA%\Microsoft\WindowsApps`, which is already on PATH, so no PATH editing is needed:
+
+```
+copy pmcrwf.cmd "%LOCALAPPDATA%\Microsoft\WindowsApps\"
+```
+
+On macOS/Linux, `ln -s "$PWD/pmcrwf" ~/.local/bin/pmcrwf` does the same job. The launcher finds its own folder, so it keeps working wherever the project lives. Override the port with `PMCRWF_PORT` (default 8931), or set `PMCRWF_NO_OPEN=1` to start the server without opening a browser.
+
 ### Troubleshooting
 - **`404 / File not found`** — the server is running in the wrong folder. Its startup line prints the directory it's serving; make sure you `cd`'d into the folder that actually contains `character-sheet.html`. Visiting `http://localhost:8931/` should list `character-sheet.html`, `src/`, `css/`, `data/`.
 - **`Address already in use` / port busy** — a server is already running on 8931 (reuse it), or pick another port, e.g. `python -m http.server 8080`, then open `http://localhost:8080/character-sheet.html`.
