@@ -1,0 +1,92 @@
+#!/bin/sh
+# ============================================================
+#  pmcrwf launcher (macOS / Linux / Git Bash)
+#
+#      pmcrwf          start (or reuse) the server, then open the sheet
+#      pmcrwf stop     stop the server on the port
+#      pmcrwf help     usage
+#
+#  Resolves its own folder, so it works from any working directory.
+#  Put that folder on your PATH to type "pmcrwf" anywhere (see README).
+#
+#  Env overrides: PMCRWF_PORT (default 8931), PMCRWF_NO_OPEN=1 to skip
+#  launching a browser.
+# ============================================================
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PORT=${PMCRWF_PORT:-8931}
+URL="http://localhost:$PORT/character-sheet.html"
+
+say() { printf '[pmcrwf] %s\n' "$*"; }
+
+port_up() {
+  # 0 when something is listening on $PORT
+  if command -v curl >/dev/null 2>&1; then
+    curl -s -o /dev/null --max-time 1 "http://localhost:$PORT/" && return 0 || return 1
+  fi
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1 && return 0 || return 1
+  fi
+  netstat -an 2>/dev/null | grep -i listen | grep -q "[:.]$PORT " && return 0 || return 1
+}
+
+open_url() {
+  [ -n "${PMCRWF_NO_OPEN:-}" ] && { say "Ready: $URL"; return 0; }
+  say "Opening $URL"
+  if   command -v open        >/dev/null 2>&1; then open "$URL"
+  elif command -v xdg-open    >/dev/null 2>&1; then xdg-open "$URL" >/dev/null 2>&1 &
+  elif command -v powershell  >/dev/null 2>&1; then powershell -NoProfile -Command "Start-Process '$URL'"
+  elif command -v cmd         >/dev/null 2>&1; then cmd //c start "" "$URL"
+  else say "Open this yourself: $URL"
+  fi
+}
+
+case "${1:-}" in
+  stop)
+    pid=""
+    if command -v lsof >/dev/null 2>&1; then pid=$(lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | head -n 1 || true); fi
+    [ -z "$pid" ] && { say "Nothing is serving port $PORT (or no lsof to find it)."; exit 0; }
+    kill "$pid" 2>/dev/null || kill -9 "$pid" 2>/dev/null || { say "Could not stop pid $pid."; exit 1; }
+    say "Stopped whatever was serving port $PORT (pid $pid)."
+    exit 0 ;;
+  help|-h|--help)
+    printf 'pmcrwf - serve this folder and open the character sheet\n\n'
+    printf '  pmcrwf         start (or reuse) the local server, then open the sheet\n'
+    printf '  pmcrwf stop    stop the server on port %s\n' "$PORT"
+    printf '  pmcrwf help    this message\n\n'
+    printf '  Folder : %s\n  URL    : %s\n' "$ROOT" "$URL"
+    printf '  Env    : PMCRWF_PORT (default 8931), PMCRWF_NO_OPEN=1 to skip the browser\n'
+    exit 0 ;;
+esac
+
+[ -f "$ROOT/character-sheet.html" ] || { say "character-sheet.html is not in $ROOT — keep this script beside the sheet."; exit 1; }
+
+if port_up; then
+  say "Already serving port $PORT."
+  open_url
+  exit 0
+fi
+
+PY=""
+for c in python3 python py; do
+  if command -v "$c" >/dev/null 2>&1 && "$c" -c 'print(1)' >/dev/null 2>&1; then PY=$c; break; fi
+done
+[ -n "$PY" ] || { say "No working Python found. Install it from https://www.python.org/downloads/"; exit 1; }
+
+say "Serving $ROOT on port $PORT ($PY)..."
+( cd "$ROOT" && exec "$PY" -m http.server "$PORT" >/dev/null 2>&1 ) &
+srv=$!
+
+i=0
+while [ "$i" -lt 30 ]; do
+  if port_up; then
+    open_url
+    say "Server running (pid $srv). Stop it with \"pmcrwf stop\" or Ctrl+C here."
+    wait "$srv" 2>/dev/null || true
+    exit 0
+  fi
+  i=$((i + 1)); sleep 0.5
+done
+say "Server did not come up on port $PORT."
+exit 1
