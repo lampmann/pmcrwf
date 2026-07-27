@@ -25,8 +25,8 @@ const SKILL_SLUGS = new Set([
   "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival",
 ]);
 const ABILITIES = new Set(["str", "dex", "con", "int", "wis", "cha"]);
-const FIXED_TARGETS = new Set(["init", "hpmax", "profbonus", "spelldc", "spellatk", "passive-perception"]);
-const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise", "adv", "dis", "note"]);
+const FIXED_TARGETS = new Set(["init", "hpmax", "profbonus", "spelldc", "spellatk", "passive-perception", "spell-grant"]);
+const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise", "adv", "dis", "note", "grant-free", "grant-list"]);
 const ACTIVATION_KINDS = new Set(["always", "toggle", "choice"]);
 const CHOICE_KINDS = new Set(["pick", "ability"]);
 
@@ -78,6 +78,12 @@ function validateEntry(key, entry, errors) {
     }
     if (eff.op === "adddice" && typeof eff.value !== "string") errors.push(`${w} op "adddice" needs a string dice "value"`);
     if (eff.op === "note" && typeof eff.text !== "string") errors.push(`${w} op "note" needs a string "text"`);
+    if (["grant-free", "grant-list"].includes(eff.op) && !(eff.value && typeof eff.value.name === "string" && eff.value.name.trim())) {
+      errors.push(`${w} op "${eff.op}" needs a "value.name" string (the spell's name)`);
+    }
+    if (eff.target === "spell-grant" && !["grant-free", "grant-list"].includes(eff.op)) {
+      errors.push(`${w} target "spell-grant" must use op "grant-free" or "grant-list"`);
+    }
     if (eff.activation) {
       const act = eff.activation;
       if (!ACTIVATION_KINDS.has(act.kind)) errors.push(`${w} unknown activation.kind "${act.kind}"`);

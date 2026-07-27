@@ -1137,6 +1137,9 @@ registerEffects({
   "feat|telekinetic": {
     "name": "Telekinetic",
     "sv": 1,
+    "effects": [
+      { "target": "spell-grant", "op": "grant-free", "value": { "name": "mage hand" } }
+    ],
     "unsupported": [
       {
         "reason": "needs custom ability-based save DC (shove save = 8 + prof + ability mod)",
