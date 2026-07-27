@@ -628,7 +628,7 @@ registerEffects({
     "sv": 1,
     "unsupported": [
       {
-        "reason": "weapon-attack-conditional save DC and frightened/disadvantage effects with resource tracking (requires attacks table, condition model, and use pool)",
+        "reason": "weapon-attack-conditional save DC and frightened/disadvantage effects; needs a condition model and a use pool",
         "tags": [
           "weapon-attack",
           "condition-tracking",
@@ -1064,7 +1064,7 @@ registerEffects({
     "sv": 1,
     "unsupported": [
       {
-        "reason": "once-per-turn attack speed reduction and critical disadvantage; needs attacks table and resource tracking",
+        "reason": "once-per-turn speed reduction and critical-hit rider; needs a condition model and resource tracking",
         "tags": [
           "attack",
           "damage",
@@ -1100,7 +1100,7 @@ registerEffects({
     "sv": 1,
     "unsupported": [
       {
-        "reason": "once-per-turn attack advantage and d8 damage roll (Precise Strike); needs attacks table and resource tracking",
+        "reason": "once-per-turn attack advantage and d8 damage roll (Precise Strike); needs resource tracking",
         "tags": [
           "attack",
           "damage",
@@ -1121,7 +1121,7 @@ registerEffects({
     "sv": 1,
     "unsupported": [
       {
-        "reason": "once-per-turn weapon damage effects with conditional creature saving throws; six strike options; needs attacks table, save mechanics, and resource tracking",
+        "reason": "once-per-turn weapon damage effects with conditional creature saving throws; six strike options; needs a target-save model and resource tracking",
         "tags": [
           "attack",
           "damage",
@@ -1143,7 +1143,7 @@ registerEffects({
     "sv": 1,
     "unsupported": [
       {
-        "reason": "needs weapons/attacks table (proficiency, unarmed damage, grapple)",
+        "reason": "weapon proficiency, unarmed strike damage and grappling aren't tracked",
         "tags": [
           "weapon",
           "unarmed",
