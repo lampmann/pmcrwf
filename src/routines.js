@@ -13,14 +13,24 @@
        (auto, so it tracks your stats) but can be overridden per step, since
        a routine might mix a class DC with an item's fixed DC.
 
-   Running a routine emits ONE log entry containing every roll in order plus
-   a damage total, instead of many separate lines — the roll log prepends
-   entries, so separate lines would read backwards.
+   Running a routine emits ONE log entry: a damage-by-AC-range table up top
+   (how much damage the routine does against AC 0-15, 16-19, 20+, etc., built
+   from each attack's actual to-hit total so it works whatever ACs the swings
+   happen to beat), then the individual swing/save rolls tucked into a
+   collapsed <details> below so the log stays scannable.
 
-   Rolls reuse the Attacks module's plumbing (rollAttackById / diceRollExpr),
-   which in turn uses the dice engine, so advantage/disadvantage and crit
-   flagging behave exactly like a single attack: Shift/Ctrl on Run applies to
-   every attack roll in the routine.
+   Rolls reuse the Attacks module's plumbing (rollAttackForRoutineById /
+   diceRollExpr), which in turn uses the dice engine, so advantage/
+   disadvantage apply exactly like a single attack: Shift/Ctrl on Run applies
+   to every attack roll in the routine. Crits auto-double damage dice here
+   (unlike a lone attack's atk+dmg button, which still leaves that to you),
+   since the AC-range table needs a real number to show.
+
+   Save steps don't know the target's actual save bonus, so instead of
+   guessing pass/fail they roll the target's d20 and report the break-even
+   bonus: "fail at +N or lower, succeed at +N+1 or greater" — mathematically
+   identical to comparing bonus+roll against the DC, just reframed as a
+   threshold on the target's bonus.
 
    ROUTINES is character data, persisted via persistence.js.
    ============================================================ */
@@ -35,6 +45,26 @@
 
   window.ROUTINES = window.ROUTINES || [];
   const routineById = id => ROUTINES.find(r => r.id === id);
+
+  const signed = n => (n >= 0 ? "+" + n : "" + n);
+
+  // builds the damage-by-AC-range table from each attack's raw to-hit total: an attack with total T
+  // hits any AC <= T, so ranges fall between the distinct totals rolled.
+  function acRangeRows(hits) {
+    if (!hits.length) return [];
+    const totals = [...new Set(hits.map(h => h.total))].sort((a, b) => b - a);
+    const rows = [{ lo: totals[0] + 1, hi: null, damage: 0 }];
+    let cum = 0;
+    totals.forEach((t, i) => {
+      cum += hits.filter(h => h.total === t).reduce((s, h) => s + h.damage, 0);
+      rows.push({ lo: i + 1 < totals.length ? totals[i + 1] + 1 : 0, hi: t, damage: cum });
+    });
+    return rows;
+  }
+  function fmtAcRow(r, extra) {
+    const label = r.hi === null ? `AC ${r.lo}+` : (r.lo === r.hi ? `AC ${r.lo}` : `AC ${r.lo}-${r.hi}`);
+    return `${label}: <b>${r.damage + extra}</b> damage`;
+  }
 
   function attackChoices() { return (typeof attacksForRoutines === "function") ? attacksForRoutines() : []; }
   function attackLabel(atkId) {
@@ -99,33 +129,52 @@
 
   /* ---------- running ---------- */
   function runRoutine(rt, mode) {
-    const lines = []; let total = 0, anyDamage = false;
+    const detailLines = [];      // individual swing/save rolls — shown collapsed
+    const hits = [];             // {total, damage} per attack swing, for the AC-range table
+    let saveFailDamage = 0, anySave = false;
+
     rt.steps.forEach(st => {
       if (st.t === "atk") {
         const n = Math.max(1, Math.min(20, Number(st.count) || 1));
         for (let i = 0; i < n; i++) {
-          const res = (typeof rollAttackById === "function") ? rollAttackById(st.atkId, mode) : null;
-          if (!res) { lines.push(`  <i>(skipped a step — its attack no longer exists)</i>`); break; }
-          lines.push(`  <b>${escapeHtml(res.name)}</b>${n > 1 ? ` #${i + 1}` : ""} — ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
-          if (res.dmgText) { total += res.damage; anyDamage = true; }
+          const res = (typeof rollAttackForRoutineById === "function") ? rollAttackForRoutineById(st.atkId, mode) : null;
+          if (!res) { detailLines.push(`  <i>(skipped a step — its attack no longer exists)</i>`); break; }
+          detailLines.push(`  <b>${escapeHtml(res.name)}</b>${n > 1 ? ` #${i + 1}` : ""} — ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
+          hits.push({ total: res.hitTotal, damage: res.damage });
         }
       } else {
+        anySave = true;
         const dc = st.dcMode === "custom" ? (Number(st.dc) || 0) : (typeof spellSaveDC === "function" ? spellSaveDC() : 0);
         const name = st.name || "Save effect";
-        let dmgTxt = "";
+        const roll = (typeof diceRollExpr === "function") ? diceRollExpr("1d20", "normal") : { value: 0, display: "" };
+        const threshold = dc - roll.value;   // succeed if bonus >= threshold — same math as bonus+roll >= dc
+        let failDmg = 0, succDmg = 0, dmgTxt = "";
         if (st.dmg && st.dmg.trim() && typeof diceRollExpr === "function") {
           const dm = diceRollExpr(st.dmg.trim(), "normal");
-          total += dm.value; anyDamage = true;
+          failDmg = dm.value;
+          succDmg = st.onSave === "half" ? Math.floor(dm.value / 2) : 0;
           dmgTxt = ` · <b>${dm.value}</b> damage ← ${dm.display}`;
         }
-        const onSave = st.onSave === "half" ? " <span class='hint'>[half on save]</span>" : " <span class='hint'>[none on save]</span>";
-        lines.push(`  <b>${escapeHtml(name)}</b> — <b>DC ${dc} ${abilLabel(st.abil || "dex")}</b> save${dmgTxt}${onSave}`);
+        saveFailDamage += failDmg;
+        detailLines.push(`  <b>${escapeHtml(name)}</b> — target rolls <b>${roll.value}</b> ← ${roll.display} (DC ${dc} ${abilLabel(st.abil || "dex")} save)${dmgTxt}`);
+        detailLines.push(`    → <b>fail</b> at bonus ${signed(threshold - 1)} or lower, <b>succeed</b> at ${signed(threshold)} or greater — damage: <b>${failDmg}</b> on fail, <b>${succDmg}</b> on success`);
       }
     });
-    if (!lines.length) { log(`<b>${escapeHtml(rt.name || "Routine")}</b> — no steps to roll.`); return; }
+
+    if (!hits.length && !detailLines.length) { log(`<b>${escapeHtml(rt.name || "Routine")}</b> — no steps to roll.`); return; }
+
     const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
-    const totalLine = anyDamage ? `\n  <b>Total damage: ${total}</b> <span class="hint">(before resistances; crits don't auto-double dice yet)</span>` : "";
-    log(`▶ <b>${escapeHtml(rt.name || "Routine")}</b>${modeTag}\n${lines.join("\n")}${totalLine}`);
+    let summaryHtml;
+    if (hits.length) {
+      summaryHtml = acRangeRows(hits).map(r => `  ${fmtAcRow(r, saveFailDamage)}`).join("\n");
+      if (anySave) summaryHtml += `\n  <span class="hint">(includes ${saveFailDamage} save damage, assuming the save is failed; before resistances)</span>`;
+    } else if (anySave) {
+      summaryHtml = `  <b>${saveFailDamage}</b> damage on a failed save <span class="hint">(see below for the pass/fail bonus breakpoint; before resistances)</span>`;
+    } else {
+      summaryHtml = "";
+    }
+    const detailsHtml = detailLines.length ? `<details><summary class="hint">individual rolls</summary>\n${detailLines.join("\n")}\n</details>` : "";
+    log(`▶ <b>${escapeHtml(rt.name || "Routine")}</b>${modeTag}\n${summaryHtml}\n${detailsHtml}`);
   }
 
   /* ---------- events ---------- */

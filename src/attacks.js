@@ -111,6 +111,27 @@
     log(`<b>${res.name}</b> — ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
   }
 
+  // doubles each dice term in a damage expression (e.g. "1d8+3" -> "(1d8+1d8)+3") for crit damage,
+  // per the standard 5e rule: roll damage dice twice, add flat modifiers once
+  function doubleDiceExpr(expr) { return expr.replace(/\d*d\d+[a-z<>\d]*/gi, m => `(${m}+${m})`); }
+
+  // one swing for the Routines module: same as rollAttackOnce, but also reports the raw to-hit total
+  // (needed to build the AC-range damage table) and auto-doubles damage dice on a crit.
+  function rollAttackForRoutine(tr, mode) {
+    const d = rowData(tr), th = toHit(d), name = d.name || "Attack";
+    const hit = rollExpr(`1d20${signed(th.bonus)}${th.dice || ""}`, mode);
+    const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
+    const isCrit = hit.d20.length === 1 && hit.d20[0] === 20;
+    const out = { name, hitTotal: hit.value, isCrit, hitText: `<b>${hit.value}</b> to hit${modeTag} ← ${hit.display}${critNote(hit.d20)}`, dmgText: "", damage: 0 };
+    const de = damageExpr(d);
+    if (de) {
+      const dm = rollExpr(isCrit ? doubleDiceExpr(de) : de, "normal");
+      out.dmgText = `<b>${dm.value}</b> damage ← ${dm.display}${isCrit ? " <i>(crit, dice doubled)</i>" : ""}`;
+      out.damage = dm.value;
+    }
+    return out;
+  }
+
   function addAttackRow(data = {}) {
     const tr = document.createElement("tr");
     tr.dataset.atkid = data.id || newId();
@@ -157,5 +178,7 @@
   });
   // one swing of the attack with this id, as text + damage total (no logging — the caller presents it)
   window.rollAttackById = (id, mode) => { const tr = rowById(id); return tr ? rollAttackOnce(rowData(tr), mode) : null; };
+  // same, but for the Routines module: also reports the raw hit total and auto-doubles crit damage dice
+  window.rollAttackForRoutineById = (id, mode) => { const tr = rowById(id); return tr ? rollAttackForRoutine(tr, mode) : null; };
   window.diceRollExpr = rollExpr;   // routines reuse the same roll/critical plumbing
 })();
