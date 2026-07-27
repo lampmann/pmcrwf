@@ -20,6 +20,20 @@
    snap.unapplied instead of being applied, however their activation
    resolves. That's what lets an entry like Sharpshooter be written once
    now and "switch on" later without re-conversion.
+
+   "spell-grant" is a different kind of target entirely — not numeric, so
+   it's skipped here and rendered directly off entry.effects instead (see
+   renderEffectControls in effects-ui.js), the same way toggle buttons and
+   always-on chips already bypass the snapshot. Two ops: "grant-free" (the
+   spell is known/prepared for free — a Cleric domain spell, a Mark of
+   Warding's innate grant — never counted against a class's Known/Prepared
+   total) and "grant-list" (merely added to your spell list — a Dragonmark
+   or Eldritch-Knight-style expansion — still costs a normal known/prepared
+   slot on whichever class you learn it through). Race/subclass grants
+   already work today via a separate, auto-derived pipeline (5e.tools'
+   `additionalSpells` field, parsed in class-library.js) — this target
+   exists for everything THAT pipeline doesn't reach, chiefly feats (whose
+   additionalSpells the app otherwise ignores entirely).
    ============================================================ */
 
 /* ----- DB key scheme (see activeFeatures() in class-library.js for `origin` shapes) ----- */
@@ -130,6 +144,7 @@ function buildEffectsSnapshot() {
     if (!entry) return;
     (entry.unsupported || []).forEach(u => snap.unapplied.push({ source: feature.name, fkey: feature.fkey, target: null, reason: u.reason }));
     (entry.effects || []).forEach(effect => {
+      if (effect.target === "spell-grant") return;   // rendered directly by renderEffectControls, not numeric
       resolveTargetsAll(feature, effect.target).forEach(target => {
       if (!target) return;
       if (isReservedTarget(target)) {
