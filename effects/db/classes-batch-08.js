@@ -1,0 +1,167 @@
+// Cleric domains (part 4): Tempest, Trickery, Twilight, War, Zeal
+registerEffects({
+  // ----- TEMPEST DOMAIN -----
+  "subclass|cleric|tempest domain|wrath of the storm": {
+    name: "Wrath of the Storm", sv: 1,
+    uses: { max: { mod: "wis" }, per: "lr" },
+    unsupported: [{ reason: "reaction damage on save; requires attack/damage roll tracking", tags: ["damage", "reaction"] }],
+  },
+  "subclass|cleric|tempest domain|channel divinity: destructive wrath": {
+    name: "Channel Divinity: Destructive Wrath", sv: 1,
+    unsupported: [{ reason: "requires damage roll tracking to maximize dice rolls", tags: ["damage", "reroll"] }],
+  },
+  "subclass|cleric|tempest domain|thunderbolt strike": {
+    name: "Thunderbolt Strike", sv: 1,
+    unsupported: [{ reason: "requires damage roll tracking and creature-size checks", tags: ["damage", "condition"] }],
+  },
+  "subclass|cleric|tempest domain|blessed strikes": {
+    name: "Blessed Strikes", sv: 1,
+    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+  },
+  "subclass|cleric|tempest domain|divine strike": {
+    name: "Divine Strike", sv: 1,
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+    ],
+  },
+  "subclass|cleric|tempest domain|stormborn": {
+    name: "Stormborn", sv: 1,
+    unsupported: [{ reason: "flying speed not modeled", tags: ["movement"] }],
+  },
+
+  // ----- TRICKERY DOMAIN -----
+  "subclass|cleric|trickery domain|blessing of the trickster": {
+    name: "Blessing of the Trickster", sv: 1,
+    unsupported: [{ reason: "temporary buff with 1-hour duration; requires action activation and one-time advantage on skill check", tags: ["buff", "advantage"] }],
+  },
+  "subclass|cleric|trickery domain|channel divinity: invoke duplicity": {
+    name: "Channel Divinity: Invoke Duplicity", sv: 1,
+    unsupported: [{ reason: "illusory duplicate not modeled; conditional advantage on attack rolls based on positioning", tags: ["illusion", "advantage"] }],
+  },
+  "subclass|cleric|trickery domain|channel divinity: cloak of shadows": {
+    name: "Channel Divinity: Cloak of Shadows", sv: 1,
+    unsupported: [{ reason: "invisibility condition not modeled", tags: ["condition"] }],
+  },
+  "subclass|cleric|trickery domain|blessed strikes": {
+    name: "Blessed Strikes", sv: 1,
+    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+  },
+  "subclass|cleric|trickery domain|divine strike": {
+    name: "Divine Strike", sv: 1,
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+    ],
+  },
+  "subclass|cleric|trickery domain|improved duplicity": {
+    name: "Improved Duplicity", sv: 1,
+    unsupported: [{ reason: "illusory duplicates not modeled; scales from 1 to 4 copies", tags: ["illusion", "scaling"] }],
+  },
+
+  // ----- TWILIGHT DOMAIN -----
+  "subclass|cleric|twilight domain|bonus proficiencies": {
+    name: "Bonus Proficiencies", sv: 1,
+    unsupported: [{ reason: "weapon and armor proficiency not modeled", tags: ["proficiency"] }],
+  },
+  "subclass|cleric|twilight domain|eyes of night": {
+    name: "Eyes of Night", sv: 1,
+    unsupported: [{ reason: "darkvision not modeled; spell-slot-contingent uses (to share) not modeled", tags: ["vision", "resource"] }],
+  },
+  "subclass|cleric|twilight domain|vigilant blessing": {
+    name: "Vigilant Blessing", sv: 1,
+    unsupported: [{ reason: "one-time initiative advantage per target; requires per-usage activation tracking", tags: ["advantage"] }],
+  },
+  "subclass|cleric|twilight domain|channel divinity: twilight sanctuary": {
+    name: "Channel Divinity: Twilight Sanctuary", sv: 1,
+    unsupported: [{ reason: "aura effect with multiple conditional bonuses (temp HP, condition removal) not modeled", tags: ["aura", "buff"] }],
+  },
+  "subclass|cleric|twilight domain|steps of night": {
+    name: "Steps of Night", sv: 1,
+    unsupported: [{ reason: "flying speed not modeled; requires dim-light/darkness condition check; uses equal to proficiency bonus", tags: ["movement", "condition"] }],
+  },
+  "subclass|cleric|twilight domain|blessed strikes": {
+    name: "Blessed Strikes", sv: 1,
+    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+  },
+  "subclass|cleric|twilight domain|divine strike": {
+    name: "Divine Strike", sv: 1,
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+    ],
+  },
+  "subclass|cleric|twilight domain|twilight shroud": {
+    name: "Twilight Shroud", sv: 1,
+    unsupported: [{ reason: "half cover within aura not modeled", tags: ["ac"] }],
+  },
+
+  // ----- WAR DOMAIN -----
+  "subclass|cleric|war domain|bonus proficiencies": {
+    name: "Bonus Proficiencies", sv: 1,
+    unsupported: [{ reason: "weapon and armor proficiency not modeled", tags: ["proficiency"] }],
+  },
+  "subclass|cleric|war domain|war priest": {
+    name: "War Priest", sv: 1,
+    uses: { max: { mod: "wis" }, per: "lr" },
+    unsupported: [{ reason: "extra bonus action attack not modeled", tags: ["attack"] }],
+  },
+  "subclass|cleric|war domain|channel divinity: guided strike": {
+    name: "Channel Divinity: Guided Strike", sv: 1,
+    unsupported: [{ reason: "requires attack roll tracking and post-hoc modification (after roll seen)", tags: ["attack"] }],
+  },
+  "subclass|cleric|war domain|channel divinity: war god's blessing": {
+    name: "Channel Divinity: War God's Blessing", sv: 1,
+    unsupported: [{ reason: "grants +10 to ally's attack roll as reaction; requires attack roll tracking and post-hoc modification", tags: ["attack"] }],
+  },
+  "subclass|cleric|war domain|blessed strikes": {
+    name: "Blessed Strikes", sv: 1,
+    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+  },
+  "subclass|cleric|war domain|divine strike": {
+    name: "Divine Strike", sv: 1,
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+    ],
+  },
+  "subclass|cleric|war domain|avatar of battle": {
+    name: "Avatar of Battle", sv: 1,
+    unsupported: [{ reason: "damage resistance (bludgeoning/piercing/slashing from nonmagical) not modeled", tags: ["resistance"] }],
+  },
+
+  // ----- ZEAL DOMAIN (PSA) -----
+  "subclass|cleric|zeal domain (psa)|bonus proficiencies": {
+    name: "Bonus Proficiencies", sv: 1,
+    unsupported: [{ reason: "weapon and armor proficiency not modeled", tags: ["proficiency"] }],
+  },
+  "subclass|cleric|zeal domain (psa)|priest of zeal": {
+    name: "Priest of Zeal", sv: 1,
+    uses: { max: { mod: "wis" }, per: "lr" },
+    unsupported: [{ reason: "extra bonus action attack not modeled", tags: ["attack"] }],
+  },
+  "subclass|cleric|zeal domain (psa)|channel divinity: consuming fervor": {
+    name: "Channel Divinity: Consuming Fervor", sv: 1,
+    unsupported: [{ reason: "requires damage roll tracking to maximize dice rolls", tags: ["damage", "reroll"] }],
+  },
+  "subclass|cleric|zeal domain (psa)|resounding strike": {
+    name: "Resounding Strike", sv: 1,
+    unsupported: [{ reason: "requires damage roll tracking and creature-size checks", tags: ["damage", "condition"] }],
+  },
+  "subclass|cleric|zeal domain (psa)|blessed strikes": {
+    name: "Blessed Strikes", sv: 1,
+    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+  },
+  "subclass|cleric|zeal domain (psa)|divine strike": {
+    name: "Divine Strike", sv: 1,
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+    ],
+  },
+  "subclass|cleric|zeal domain (psa)|blaze of glory": {
+    name: "Blaze of Glory", sv: 1,
+    uses: { max: 1, per: "lr" },
+    unsupported: [{ reason: "triggered on 0 HP; extra melee attack with massive dice damage; requires death-tracking mechanics", tags: ["attack", "death"] }],
+  },
+});
