@@ -32,11 +32,20 @@ registerEffects({
   },
   "subclass|cleric|nature domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "weapon/cantrip-attack-dependent bonus damage", tags: ["attack", "damage"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|nature domain|divine strike": {
     name: "Divine Strike", sv: 1,
-    unsupported: [{ reason: "weapon-attack-dependent damage bonus; scales at character level 14", tags: ["attack", "damage", "level-scaling"] }],
+    effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
+    ],
   },
   "subclass|cleric|order domain|voice of authority": {
     name: "Voice of Authority", sv: 1,
@@ -53,11 +62,20 @@ registerEffects({
   },
   "subclass|cleric|order domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "weapon/cantrip-attack-dependent bonus damage", tags: ["attack", "damage"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|order domain|divine strike": {
     name: "Divine Strike", sv: 1,
-    unsupported: [{ reason: "weapon-attack-dependent damage bonus; scales at character level 14", tags: ["attack", "damage", "level-scaling"] }],
+    effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
+    ],
   },
   "subclass|cleric|order domain|order's wrath": {
     name: "Order's Wrath", sv: 1,
@@ -78,7 +96,11 @@ registerEffects({
   },
   "subclass|cleric|peace domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "weapon/cantrip-attack-dependent bonus damage", tags: ["attack", "damage"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|peace domain|potent spellcasting": {
     name: "Potent Spellcasting", sv: 1,
@@ -94,11 +116,20 @@ registerEffects({
   },
   "subclass|cleric|solidarity domain (psa)|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "weapon/cantrip-attack-dependent bonus damage", tags: ["attack", "damage"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|solidarity domain (psa)|divine strike": {
     name: "Divine Strike", sv: 1,
-    unsupported: [{ reason: "weapon-attack-dependent damage bonus; scales at character level 14", tags: ["attack", "damage", "level-scaling"] }],
+    effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
+    ],
   },
   "subclass|cleric|strength domain (psa)|channel divinity: feat of strength": {
     name: "Channel Divinity: Feat of Strength", sv: 1,
@@ -110,11 +141,20 @@ registerEffects({
   },
   "subclass|cleric|strength domain (psa)|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "weapon/cantrip-attack-dependent bonus damage", tags: ["attack", "damage"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|strength domain (psa)|divine strike": {
     name: "Divine Strike", sv: 1,
-    unsupported: [{ reason: "weapon-attack-dependent damage bonus; scales at character level 14", tags: ["attack", "damage", "level-scaling"] }],
+    effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
+    ],
   },
   "subclass|cleric|strength domain (psa)|avatar of battle": {
     name: "Avatar of Battle", sv: 1,

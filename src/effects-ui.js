@@ -69,7 +69,7 @@ function renderEffectControls(feature) {
     if (act.kind === "toggle") {
       if (seenToggle.has(act.id)) return; seenToggle.add(act.id);
       const key = feature.fkey + "|" + act.id, on = !!EFFECT_TOGGLES[key];
-      html += ` <button type="button" class="eff-toggle${on ? " on" : ""}" data-fkey="${feature.fkey}" data-toggle="${act.id}"${reserved ? " disabled" : ""} title="${reserved ? "serialized; attacks module not implemented yet" : "click to toggle"}">${on ? "◉" : "○"} ${escapeHtml(act.label || act.id)}</button>`;
+      html += ` <button type="button" class="eff-toggle${on ? " on" : ""}" data-fkey="${feature.fkey}" data-toggle="${act.id}"${reserved ? " disabled" : ""} title="${reserved ? "serialized; nothing on the sheet reads this target yet" : "click to toggle"}">${on ? "◉" : "○"} ${escapeHtml(act.label || act.id)}</button>`;
     } else if (act.kind === "always" && !reserved && effect.op !== "note") {
       html += ` <span class="eff-chip" title="${escapeHtml(effect.op + " " + target)}">⚙ ${escapeHtml(target)}</span>`;
     }
