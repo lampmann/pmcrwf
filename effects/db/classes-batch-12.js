@@ -128,7 +128,8 @@ registerEffects({
 
   "subclass|monk|way of mercy|hand of ultimate mercy": {
     name: "Hand of Ultimate Mercy", sv: 1,
-    unsupported: [{ reason: "action + 5 ki → revive corpse within 24 hours, restore 4d10 + WIS mod HP, end conditions; once per long rest", tags: ["resource", "ki"] }],
+    uses: { max: 1, per: "lr" },
+    unsupported: [{ reason: "action + 5 ki → revive corpse within 24 hours, restore 4d10 + WIS mod HP, end conditions", tags: ["resource", "ki"] }],
   },
 
   "subclass|monk|way of shadow|shadow arts": {
