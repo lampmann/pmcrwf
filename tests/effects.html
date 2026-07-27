@@ -57,6 +57,10 @@
   <section class="module wide" data-module="dice">
     <input id="cmd-input"><div id="dicelog"><div>—</div></div>
   </section>
+  <section class="module wide" data-module="attacks">
+    <table><tbody id="attack-rows"></tbody></table>
+    <button id="btn-add-attack">+</button>
+  </section>
   <section class="module wide" data-module="class-features">
     <button id="class-lib-reload"></button><button id="class-lib-clear"></button>
     <span id="class-lib-count"></span><span id="class-lib-autostatus"></span>
@@ -132,6 +136,7 @@
 <script src="../src/spellcasting.js"></script>
 <script src="../src/item-library.js"></script>
 <script src="../src/inventory.js"></script>
+<script src="../src/attacks.js"></script>
 <script src="../src/persistence.js"></script>
 <script src="../src/app.js"></script>
 
@@ -214,23 +219,70 @@ document.addEventListener("DOMContentLoaded", () => {
   assertEqual("Resilient grants CON save proficiency (PB +3 at total level 5)", $("savebonus-con").textContent, "+3");
   assertEqual("Resilient's +1 CON shows in the score-eff span", $("score-eff-con").textContent, "= 11");
 
-  // Reserved targets (attack-*/damage-*) never apply, always land in unapplied — proven with Sharpshooter
+  // ----- Attacks module: "attack-hit"/"damage-bonus" reach the weapon rows (src/attacks.js) -----
+  // Sharpshooter's shape end to end: a toggle driving a to-hit penalty, a damage bonus and forced
+  // advantage, plus a sibling effect on a still-reserved target that must stay in `unapplied`.
   EFFECTS_DB["feat|__sharpshooter test"] = {
     name: "Sharpshooter", sv: 1,
-    effects: [{ target: "attack-hit", op: "add", value: -5, activation: { kind: "toggle", id: "ps", label: "test" } }],
+    effects: [
+      { target: "attack-hit", op: "add", value: -5, activation: { kind: "toggle", id: "ps", label: "test" } },
+      { target: "damage-bonus", op: "add", value: 10, activation: { kind: "toggle", id: "ps", label: "test" } },
+      { target: "attack-hit", op: "adv", activation: { kind: "toggle", id: "ps", label: "test" } },
+      { target: "damage-crit", op: "adddice", value: "1d6" },   // nothing reads this one
+    ],
   };
   FEAT_LIB["__Sharpshooter Test"] = { name: "__Sharpshooter Test", source: "TEST", text: "x" };
   FEAT_CHOICES[resFkey] = "__Sharpshooter Test";
   renderClassLibrary(); recompute();
-  const snap = effectsSnapshot();
-  assert("reserved attack-* target never lands in flat", effFlat("attack-hit") === 0);
-  assert("reserved attack-* target surfaces in unapplied", snap.unapplied.some(u => u.target === "attack-hit"));
 
-  // Toggle apply/un-apply round-trip
+  // Wizard 5 (PB +3), DEX 14: both rows are proficient, so each is +5 to hit before any effect.
+  $("attack-rows").innerHTML = "";
+  addAttackRow({ name: "Longbow", abil: "dex", prof: true, dmg: "1d8" });
+  addAttackRow({ name: "Dagger", abil: "dex", prof: true, dmg: "1d4", fx: false });
+  recompute();
+  const atkRow = i => document.querySelectorAll("#attack-rows tr")[i];
+  const hitBtn = i => atkRow(i).querySelector(".wpn-roll");
+  const dmgBtn = i => atkRow(i).querySelector(".wpn-dmg");
+
+  assertEqual("attack row to-hit with the effect toggled off", hitBtn(0).textContent, "to hit +5");
+  assertEqual("attack row damage with the effect toggled off", dmgBtn(0).dataset.expr, "1d8+2");
+  assert("no audit marker while the effect is off", !hitBtn(0).classList.contains("has-eff"));
+
   toggleEffect(resFkey, "ps");
   assert("toggle flips EFFECT_TOGGLES", EFFECT_TOGGLES[resFkey + "|ps"] === true);
+  assertEqual("attack-hit -5 reaches the to-hit button", hitBtn(0).textContent, "to hit +0");
+  assertEqual("damage-bonus +10 reaches the damage expression", dmgBtn(0).dataset.expr, "1d8+2+10");
+  assertEqual("attack-hit adv forces the to-hit button's mode", hitBtn(0).dataset.mode, "adv");
+  assert("to-hit button is marked for the audit trail", hitBtn(0).classList.contains("has-eff"));
+  assert("to-hit tooltip names the contributing feature", hitBtn(0).title.includes("Sharpshooter"));
+  assert("roll label carries the [Feature +N] annotation", hitBtn(0).dataset.rolllabel.includes("Sharpshooter"));
+
+  // A row with fx unticked opts out of the whole bucket — the engine has no per-weapon predicate,
+  // so this checkbox is the only thing keeping Sharpshooter off your dagger.
+  assertEqual("fx-off row keeps its own to-hit", hitBtn(1).textContent, "to hit +5");
+  assertEqual("fx-off row keeps its own damage", dmgBtn(1).dataset.expr, "1d4+2");
+  assertEqual("fx-off row takes no effect-forced mode", hitBtn(1).dataset.mode, "");
+  assert("fx-off row has no audit marker", !dmgBtn(1).classList.contains("has-eff"));
+  assertEqual("fx flag round-trips through getAttacks (persistence)", getAttacks()[1].fx, false);
+
+  // A row carrying no dice and no ability mod of its own (an unarmed strike while Raging, say) is
+  // left holding a bare "+10" — evalExpr can't parse a leading unary sign, so damageExpr strips it.
+  addAttackRow({ name: "Unarmed", abil: "", prof: false, dmg: "", modDmg: false });
+  recompute();
+  assertEqual("a row with nothing of its own still rolls the effect bonus alone", dmgBtn(2).dataset.expr, "10");
+  assertEqual("...and that damage button is enabled", dmgBtn(2).disabled, false);
+  assertEqual("...and it evaluates rather than parsing to NaN", evalExpr(dmgBtn(2).dataset.expr).value, 10);
+
+  // Reserved targets behave exactly as before for every name no module reads
+  const snap = effectsSnapshot();
+  assert("unread damage-* target still lands in unapplied", snap.unapplied.some(u => u.target === "damage-crit"));
+  assertEqual("unread damage-* target is never applied", effDice("damage-crit"), "");
+  assert("a live attack target no longer lands in unapplied", !snap.unapplied.some(u => u.target === "attack-hit"));
+
   toggleEffect(resFkey, "ps");
   assert("toggle flips back", EFFECT_TOGGLES[resFkey + "|ps"] === false);
+  assertEqual("un-toggling restores the plain to-hit", hitBtn(0).textContent, "to hit +5");
+  assertEqual("un-toggling clears the forced mode", hitBtn(0).dataset.mode, "");
 
   // applyRest() must act on live activeFeatures(), not a stale FEATURE_TEXT_BY_KEY snapshot
   CLASS_LIB.Fighter = { name: "Fighter", source: "PHB", hd: "d10", caster: "none", subs: {}, feats: [

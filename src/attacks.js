@@ -1,10 +1,11 @@
 /* ============================================================
    attacks.js — Attacks / Weapons (DRAFT).
    A table of weapon/attack rows. Per row: name, ability (Str / Dex /
-   Finesse=higher of the two / —), proficient toggle, an attack "misc"
-   field, damage dice, "add ability mod to damage" toggle, and a damage
-   "misc" field. From those it computes a to-hit bonus and a damage
-   expression, and gives you roll buttons: to hit, damage, or both at once.
+   Finesse=higher of the two / —), proficient toggle, an "fx" toggle (see
+   below), an attack "misc" field, damage dice, "add ability mod to damage"
+   toggle, and a damage "misc" field. From those it computes a to-hit bonus
+   and a damage expression, and gives you roll buttons: to hit, damage, or
+   both at once.
 
    To-hit buttons use class "wpn-roll" so the shared dice engine
    (dice.js D20SEL / rollInfo / fireRoll) handles advantage/disadvantage,
@@ -21,12 +22,21 @@
    / applyState). Field edits autosave through app.js's global input
    listener; add/delete call scheduleSave directly.
 
-   NOT wired yet: the effects engine's reserved attack-hit / damage-bonus
-   targets (Sharpshooter, Great Weapon Master). They currently land in the
-   effects snapshot's `unapplied` bucket; folding them in here is the next
-   step and needs a small change in effects.js to un-reserve those targets.
-   Crits roll no extra damage dice yet either — the log flags the crit, you
-   double the dice yourself.
+   FEATURE EFFECTS: the engine's "attack-hit" and "damage-bonus" targets
+   (Sharpshooter, Great Weapon Master, Rage, Divine Strike, Hexblade's
+   Curse, …) fold into every row's to-hit and damage exactly like that
+   row's own Hit+ / Dmg+ field, and an adv/dis on "attack-hit" (Reckless
+   Attack, Vow of Enmity, Steady Aim) forces the to-hit roll's mode. The
+   engine has no per-weapon predicate — one global bucket is all it can
+   express — so each row carries an "fx" checkbox to opt out when a bonus
+   doesn't belong to that weapon (Sharpshooter on your dagger, Rage on your
+   longbow). New rows default to fx on. Whenever effects are folded in, the
+   affected button is marked .has-eff and its tooltip names every
+   contributing feature, so no number here is silently inflated; the roll
+   log gets the same "[Feature +N]" annotations as the rest of the sheet.
+
+   Crits roll no extra damage dice yet — the log flags the crit, you double
+   the dice yourself (the Routines module does it for you).
    ============================================================ */
 (function () {
   "use strict";
@@ -48,6 +58,7 @@
       name: tr.querySelector(".atk-name").value,
       abil: tr.querySelector(".atk-abil").value,
       prof: tr.querySelector(".atk-prof").checked,
+      fx: tr.querySelector(".atk-fx").checked,
       atkMisc: tr.querySelector(".atk-misc").value,
       dmg: tr.querySelector(".atk-dmg").value,
       modDmg: tr.querySelector(".atk-moddmg").checked,
@@ -58,29 +69,60 @@
   function getAttacks() { return allRows().map(rowData); }
   function rowById(id) { return allRows().find(tr => tr.dataset.atkid === id) || null; }
 
+  /* ----- feature effects (see the header comment) — every read is gated on the row's own fx flag,
+     so a row with fx off computes exactly as it did before the effects engine reached this module. */
+  const fxFlat = (d, t) => (d.fx ? effFlat(t) : 0);
+  const fxDice = (d, t) => (d.fx ? effDice(t) : "");
+  const fxMode = (d, t) => (d.fx ? effMode(t) : null);
+  const fxLabel = (d, t) => (d.fx ? effAnnotations(t) : "");
+  // tooltip for a row button: which features contributed, plus any `note` reminders on that target
+  function fxTitle(d, target, label) {
+    if (!d.fx) return "";
+    const parts = effContribs(target).map(c => `${c.source} ${typeof c.n === "number" ? signed(c.n) : c.n}`);
+    const notes = effectsSnapshot().notes[target] || [];
+    if (!parts.length && !notes.length) return "";
+    return [parts.length ? `${label}: ${parts.join(", ")}` : "", ...notes].filter(Boolean).join("\n");
+  }
+  // The underline means "a number here was changed", so it tracks contributions only — a feature
+  // that contributes nothing but a `note` still gets its reminder in the tooltip, unmarked.
+  function paintFx(btn, d, target, label) {
+    const title = fxTitle(d, target, label);
+    btn.classList.toggle("has-eff", d.fx && effContribs(target).length > 0);
+    if (title) btn.title = title; else btn.removeAttribute("title");
+  }
+
   function toHit(d) {
-    const b = attackAbilityMod(d.abil) + (d.prof ? profBonus() : 0) + parseBonus(d.atkMisc).flat;
-    return { bonus: b, dice: parseBonus(d.atkMisc).dice };
+    const pb = parseBonus(d.atkMisc);
+    const b = attackAbilityMod(d.abil) + (d.prof ? profBonus() : 0) + pb.flat + fxFlat(d, "attack-hit");
+    return { bonus: b, dice: pb.dice + fxDice(d, "attack-hit") };
   }
   function damageExpr(d) {
     const parts = [];
     if (d.dmg && d.dmg.trim()) parts.push(d.dmg.trim());
     if (d.modDmg) { const m = attackAbilityMod(d.abil); if (m) parts.push(signed(m)); }
-    const pb = parseBonus(d.dmgMisc);
-    if (pb.flat) parts.push(signed(pb.flat));
+    const pb = parseBonus(d.dmgMisc), flat = pb.flat + fxFlat(d, "damage-bonus");
+    if (flat) parts.push(signed(flat));
     if (pb.dice) parts.push(pb.dice);   // already signed, e.g. "+1d6"
-    return parts.join("");
+    const fd = fxDice(d, "damage-bonus");
+    if (fd) parts.push(fd);
+    // A row with no dice and no ability mod (a pure effect bonus, e.g. an unarmed row while Raging)
+    // would otherwise start with a sign, which evalExpr can't parse as a leading unary operator.
+    const expr = parts.join("");
+    return /^\+/.test(expr) ? expr.slice(1) : /^-/.test(expr) ? "0" + expr : expr;
   }
   function updateRowDerived(tr) {
     const d = rowData(tr);
     const th = toHit(d), hitBtn = tr.querySelector(".wpn-roll");
     hitBtn.dataset.bonus = th.bonus; hitBtn.dataset.dice = th.dice;
-    hitBtn.dataset.rolllabel = (d.name || "Attack") + " to hit";
+    hitBtn.dataset.mode = fxMode(d, "attack-hit") || "";   // read back by rollInfo() in dice.js
+    hitBtn.dataset.rolllabel = (d.name || "Attack") + " to hit" + fxLabel(d, "attack-hit");
     hitBtn.textContent = "to hit " + signed(th.bonus) + (th.dice || "");
+    paintFx(hitBtn, d, "attack-hit", "To hit");
     const dmg = damageExpr(d), dmgBtn = tr.querySelector(".wpn-dmg");
     dmgBtn.dataset.expr = dmg;
     dmgBtn.textContent = dmg ? "dmg " + dmg : "dmg —";
     dmgBtn.disabled = !dmg;
+    paintFx(dmgBtn, d, "damage-bonus", "Damage");
   }
   function updateAllDerived() { allRows().forEach(updateRowDerived); }
 
@@ -95,9 +137,13 @@
     if (d20.length === 1) { if (d20[0] === 20) return "  <b>Critical Success!</b>"; if (d20[0] === 1) return "  <b>Critical Failure!</b>"; }
     return "";
   }
+  // Same policy as fireRoll() in dice.js: the caller's own Shift/Ctrl wins, and an effect-forced
+  // mode (Reckless Attack, Vow of Enmity, Steady Aim) only applies to a plain "normal" roll.
+  function resolveMode(d, mode) { return (mode && mode !== "normal") ? mode : (fxMode(d, "attack-hit") || "normal"); }
+
   // { hitText, dmgText, damage } for one swing of an attack; used by both .wpn-both and routines.
-  function rollAttackOnce(d, mode) {
-    const th = toHit(d), name = d.name || "Attack";
+  function rollAttackOnce(d, requested) {
+    const th = toHit(d), name = d.name || "Attack", mode = resolveMode(d, requested);
     const hit = rollExpr(`1d20${signed(th.bonus)}${th.dice || ""}`, mode);
     const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
     const out = { hitText: `<b>${hit.value}</b> to hit${modeTag} ← ${hit.display}${critNote(hit.d20)}`, dmgText: "", damage: 0 };
@@ -117,8 +163,8 @@
 
   // one swing for the Routines module: same as rollAttackOnce, but also reports the raw to-hit total
   // (needed to build the AC-range damage table) and auto-doubles damage dice on a crit.
-  function rollAttackForRoutine(tr, mode) {
-    const d = rowData(tr), th = toHit(d), name = d.name || "Attack";
+  function rollAttackForRoutine(tr, requested) {
+    const d = rowData(tr), th = toHit(d), name = d.name || "Attack", mode = resolveMode(d, requested);
     const hit = rollExpr(`1d20${signed(th.bonus)}${th.dice || ""}`, mode);
     const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
     const isCrit = hit.d20.length === 1 && hit.d20[0] === 20;
@@ -140,6 +186,7 @@
       `<td><input type="text" class="atk-name" value="${esc(data.name)}" style="width:8rem" placeholder="Longsword"></td>
        <td><select class="atk-abil">${opts}</select></td>
        <td style="text-align:center"><input type="checkbox" class="atk-prof"${data.prof ? " checked" : ""}></td>
+       <td style="text-align:center"><input type="checkbox" class="atk-fx"${data.fx !== false ? " checked" : ""} title="apply feature effects (Sharpshooter, Rage, Divine Strike, …) to this attack"></td>
        <td><input type="text" class="atk-misc tiny" value="${esc(data.atkMisc)}" placeholder="+0"></td>
        <td><button class="roll wpn-roll">to hit</button></td>
        <td><input type="text" class="atk-dmg" value="${esc(data.dmg)}" style="width:4.5rem" placeholder="1d8"></td>
@@ -155,22 +202,27 @@
   document.addEventListener("DOMContentLoaded", () => {
     const add = $("btn-add-attack");
     if (add) add.addEventListener("click", () => { addAttackRow(); scheduleSave(); if (typeof renderRoutines === "function") renderRoutines(); });
-    // keep to-hit / damage numbers current as ability scores, level, proficiency, or the row's own fields change
-    document.addEventListener("input", e => { if ($("attack-rows")) updateAllDerived(); });
+    // Row fields, ability scores, level and proficiency all reach these numbers through recompute()
+    // (derived.js), which calls updateAttackRows() below — the same pass that rebuilds the effects
+    // snapshot, so a feature toggle flipped in the effects strip lands here too, not just typing.
     document.addEventListener("click", e => {
       const del = e.target.closest(".atk-del");
       if (del) { del.closest("tr").remove(); scheduleSave(); if (typeof renderRoutines === "function") renderRoutines(); return; }
       const both = e.target.closest(".wpn-both");
       if (both) { rollBoth(both.closest("tr"), modeFromEvent(e)); return; }
       const dmg = e.target.closest(".wpn-dmg");
-      if (dmg && dmg.dataset.expr) { const tr = dmg.closest("tr"); runRoll(dmg.dataset.expr + " " + (tr.querySelector(".atk-name").value || "Attack") + " damage"); }
+      if (dmg && dmg.dataset.expr) {
+        const tr = dmg.closest("tr"), d = rowData(tr);
+        runRoll(dmg.dataset.expr + " " + (d.name || "Attack") + " damage" + fxLabel(d, "damage-bonus"));
+      }
     });
     updateAllDerived();
   });
 
-  // exposed for persistence.js and the Routines module
+  // exposed for persistence.js, derived.js's recompute() and the Routines module
   window.getAttacks = getAttacks;
   window.addAttackRow = addAttackRow;
+  window.updateAttackRows = () => { if ($("attack-rows")) updateAllDerived(); };
   // [{id, name, bonus, dice, dmg}] computed live — the Routines module's attack picker reads this
   window.attacksForRoutines = () => getAttacks().map(d => {
     const th = toHit(d);

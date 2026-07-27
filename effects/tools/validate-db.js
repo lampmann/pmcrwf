@@ -56,7 +56,10 @@ function isKnownTarget(t) {
   if (typeof t !== "string") return false;
   if (t.includes("{choice:")) return true; // resolved at runtime; can't statically verify the slug
   if (FIXED_TARGETS.has(t)) return true;
-  if (/^attack-|^damage-/.test(t)) return true; // reserved, always valid (lands in unapplied)
+  // "attack-hit"/"damage-bonus" are read by the Attacks module (src/attacks.js); every other
+  // attack-/damage- name is still reserved — valid to write, but it lands in `unapplied` until
+  // something reads it. Both cases are accepted here; see isReservedTarget() in src/effects.js.
+  if (/^attack-|^damage-/.test(t)) return true;
   if (t.startsWith("save-")) return ABILITIES.has(t.slice(5));
   if (t.startsWith("skill-")) return SKILL_SLUGS.has(t.slice(6));
   if (t.startsWith("score-")) return ABILITIES.has(t.slice(6));

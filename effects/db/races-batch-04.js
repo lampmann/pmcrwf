@@ -126,7 +126,7 @@ registerEffects({
   },
   "race|half-orc|savage attacks": {
     name: "Savage Attacks", sv: 1,
-    unsupported: [{ reason: "critical-hit bonus damage die; requires weapons/attacks module", tags: ["attack-mechanic", "critical-hit"] }],
+    unsupported: [{ reason: "critical-hit bonus damage die; the Attacks module has no crit-damage model", tags: ["attack-mechanic", "critical-hit"] }],
   },
 
   // ----- Halfling -----

@@ -126,6 +126,9 @@ function recompute() {
 
   renderSpellList();
   recomputeInventory();
+  // Attack rows fold in the effects snapshot's attack-hit/damage-bonus targets (attacks.js), so they
+  // have to be repainted on the same pass that rebuilds it — an effect toggle fires no input event.
+  if (typeof updateAttackRows === "function") updateAttackRows();
   if (typeof renderEffectsStrip === "function") renderEffectsStrip();
   if (typeof paintEffectAudit === "function") paintEffectAudit();
 }
