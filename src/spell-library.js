@@ -17,7 +17,7 @@ const LIB_SCHEMA = 4;  // bump when the parsed-spell shape changes (forces a one
 function castCat(u) { return (u === "action" || u === "bonus" || u === "reaction") ? u : (u ? "long" : ""); }
 // filter groups. `dynamic` groups (Source) compute their options from the loaded library.
 const SPELL_FGROUPS = [
-  { key:"source", label:"Source", dynamic:true, get:s=>[s.source] },
+  { key:"source", label:"Source", dynamic:true, get:s=>[s.source], dynOpts:()=>spellSources().map(src=>[src, src, SOURCE_NAMES[src]||src]) },
   // Not every 5e.tools data dump includes per-spell class lists ("classes.fromClassList") —
   // when it's missing this group just has no options to show (see DOCS re: import-not-hardcode).
   { key:"cls",    label:"Class",  dynamic:true, get:s=>s.classes||[], dynOpts:spellClassesInLib },
@@ -30,22 +30,12 @@ const SPELL_FGROUPS = [
   { key:"misc",   label:"Misc",   get:s=>["conc","ritual","attack","srd"].filter(k=> k==="conc"?s.conc : k==="ritual"?s.ritual : k==="attack"?s.attack : s.srd), opts:[["conc","Concentration"],["ritual","Ritual"],["attack","Attack roll"],["srd","SRD"]] },
 ];
 let SPELL_LIB = [];
-// filter state: per group { states:{val:'ignore'|'include'|'exclude'}, blueMode, redMode, hidden }
-let filterState = {};
-let moduleCombine = "and";   // how groups combine: 'and' | 'or'
-function nextMode(m) { return m === "or" ? "and" : m === "and" ? "xor" : "or"; }
-function groupDef(key) { return SPELL_FGROUPS.find(g => g.key === key); }
-function groupOpts(g) {
-  if (!g.dynamic) return g.opts.map(o => [o[0], o[1], ""]);
-  if (g.dynOpts) return g.dynOpts().map(v => [v, v, ""]);
-  return spellSources().map(src => [src, src, SOURCE_NAMES[src] || src]);
-}
-function ensureStates() {
-  SPELL_FGROUPS.forEach(g => {
-    if (!filterState[g.key]) filterState[g.key] = { states:{}, blueMode:"or", redMode:"or", hidden:false };
-    groupOpts(g).forEach(([v]) => { if (!(v in filterState[g.key].states)) filterState[g.key].states[v] = "ignore"; });
-  });
-}
+// The tri-state filter state machine lives in src/filters.js, shared with the Equipment Library.
+// ns "spell" keeps the existing localStorage keys (charsheet-spellfilters / -spellfilter-defaults).
+const SPELL_FILTERS = createFilterSet({
+  ns: "spell", groups: SPELL_FGROUPS, areaId: "spell-filter-area", searchId: "spell-search",
+  onChange: () => renderSpellResults(),
+});
 
 // flattenEntries/stripTags now live in text-utils.js (shared with the Node-side effects pipeline).
 function spellDice(raw) {
@@ -162,83 +152,18 @@ function loadSpellLib() {
 function spellSources() { return [...new Set(SPELL_LIB.map(s => s.source))].sort(); }
 function spellClassesInLib() { return [...new Set(SPELL_LIB.flatMap(s => s.classes || []))].sort(); }
 
-/* ----- filter state persistence ----- */
-function persistFilters() { try { localStorage.setItem("charsheet-spellfilters", JSON.stringify({ combine: moduleCombine, state: filterState })); } catch (e) {} }
-function loadFilters() { try { const d = JSON.parse(localStorage.getItem("charsheet-spellfilters")); if (d) { moduleCombine = d.combine || "and"; filterState = d.state || {}; } } catch (e) {} }
-function saveFilterDefaults() { try { localStorage.setItem("charsheet-spellfilter-defaults", JSON.stringify({ combine: moduleCombine, state: filterState })); } catch (e) {} persistFilters(); }
-function resetFilters() {
-  let d = null; try { d = JSON.parse(localStorage.getItem("charsheet-spellfilter-defaults")); } catch (e) {}
-  if (d) { moduleCombine = d.combine || "and"; filterState = JSON.parse(JSON.stringify(d.state || {})); }
-  else { filterState = {}; moduleCombine = "and"; }
-  ensureStates(); $("spell-search").value = ""; persistFilters();
-}
-
-/* ----- filter interactions ----- */
-function cycleState(gkey, v) { const st = filterState[gkey].states; st[v] = st[v] === "ignore" ? "include" : st[v] === "include" ? "exclude" : "ignore"; }
-function handleCtrl(action, gkey) {
-  const st = filterState[gkey], g = groupDef(gkey);
-  if (action === "all") groupOpts(g).forEach(([v]) => st.states[v] = "include");
-  else if (action === "clear") Object.keys(st.states).forEach(v => st.states[v] = "ignore");
-  else if (action === "none") groupOpts(g).forEach(([v]) => st.states[v] = "exclude");
-  else if (action === "bluemode") st.blueMode = nextMode(st.blueMode);
-  else if (action === "redmode") st.redMode = nextMode(st.redMode);
-  else if (action === "hide") st.hidden = !st.hidden;
-}
-
-/* ----- filter matching ----- */
-function groupConstrained(g) { return Object.values(filterState[g.key].states).some(x => x !== "ignore"); }
-function groupPass(g, s) {
-  const st = filterState[g.key], vals = g.get(s);
-  const inc = Object.keys(st.states).filter(v => st.states[v] === "include");
-  const exc = Object.keys(st.states).filter(v => st.states[v] === "exclude");
-  let incPass = true;
-  if (inc.length) { const p = inc.filter(v => vals.includes(v)).length; incPass = st.blueMode === "and" ? p === inc.length : st.blueMode === "xor" ? p === 1 : p > 0; }
-  let excPass = true;
-  if (exc.length) { const p = exc.filter(v => vals.includes(v)).length; const excluded = st.redMode === "and" ? p === exc.length : st.redMode === "xor" ? p === 1 : p > 0; excPass = !excluded; }
-  return incPass && excPass;
-}
-
-/* ----- rendering ----- */
-function renderFilterArea() {
-  ensureStates();
-  const modBar = `<div class="modbar">
-    <button id="mod-combine" title="how filter categories combine">Combine as ${moduleCombine.toUpperCase()}</button>
-    <button id="mod-showall">Show All</button><button id="mod-hideall">Hide All</button>
-    <button id="mod-reset">Reset</button><button id="mod-savedefault" title="save current filters as the default that Reset restores">Manage Defaults</button>
-  </div>`;
-  const groups = SPELL_FGROUPS.map(g => {
-    const st = filterState[g.key];
-    const ctrl = `<span class="fctrl">` +
-      `<button class="fctrl-btn" data-fctrl="all" data-fg="${g.key}">All</button>` +
-      `<button class="fctrl-btn" data-fctrl="clear" data-fg="${g.key}">Clear</button>` +
-      `<button class="fctrl-btn" data-fctrl="none" data-fg="${g.key}">None</button>` +
-      `<button class="fctrl-btn blue fmode" data-fctrl="bluemode" data-fg="${g.key}" title="how INCLUDE (blue) options combine">${st.blueMode.toUpperCase()}</button>` +
-      `<button class="fctrl-btn red fmode" data-fctrl="redmode" data-fg="${g.key}" title="how EXCLUDE (red) options combine">${st.redMode.toUpperCase()}</button>` +
-      `<button class="fctrl-btn" data-fctrl="hide" data-fg="${g.key}">${st.hidden ? "Show" : "Hide"}</button></span>`;
-    const opts = st.hidden ? "" : groupOpts(g).map(([v, lab, title]) => {
-      const s = st.states[v] || "ignore", cls = s === "include" ? "inc" : s === "exclude" ? "exc" : "";
-      return `<button class="fbtn ${cls}" data-fgroup="${g.key}" data-fval="${v}"${title ? ` title="${title.replace(/"/g, "&quot;")}"` : ""}>${lab}</button>`;
-    }).join("");
-    return `<div class="fgroup"><div class="flabel">${g.label}</div><div class="fbody">${ctrl}${opts}</div></div>`;
-  }).join("");
-  $("spell-filter-area").innerHTML = modBar + groups;
-}
 function renderSpellLibrary() {
   $("spell-lib-count").textContent = SPELL_LIB.length ? (SPELL_LIB.length + " spells · " + spellSources().length + " source(s)") : "no spells loaded";
-  renderFilterArea();
+  SPELL_FILTERS.renderArea();
   renderSpellResults();
 }
 function renderSpellResults() {
   const q = ($("spell-search").value || "").toLowerCase().trim();
-  const active = SPELL_FGROUPS.filter(groupConstrained);
+  const active = SPELL_FILTERS.activeGroups();
   const rows = []; let more = 0;
   for (const s of SPELL_LIB) {
     if (q && !s.name.toLowerCase().includes(q)) continue;
-    let pass;
-    if (!active.length) pass = true;
-    else if (moduleCombine === "and") pass = active.every(g => groupPass(g, s));
-    else pass = active.some(g => groupPass(g, s));
-    if (!pass) continue;
+    if (!SPELL_FILTERS.passes(s, active)) continue;
     if (rows.length >= 250) { more++; continue; }
     rows.push(s);
   }

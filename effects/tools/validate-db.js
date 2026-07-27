@@ -30,6 +30,28 @@ const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise",
 const ACTIVATION_KINDS = new Set(["always", "toggle", "choice"]);
 const CHOICE_KINDS = new Set(["pick", "ability", "spellfilter"]);
 const SPELL_GRANT_OPS = ["grant-free", "grant-list", "grant-innate"];
+const ENTRY_FIELDS = new Set(["name", "sv", "effects", "choices", "unsupported", "uses"]);
+const EFFECT_FIELDS = new Set(["target", "op", "value", "text", "activation", "when"]);
+const USES_FIELDS = new Set(["max", "per", "delayed"]);
+// whenSatisfied() in src/effects.js returns false for any predicate it doesn't recognize, so an
+// effect carrying a typo'd/invented key is silently inert forever — catch it here instead.
+const WHEN_PREDICATES = new Set(["minLevel", "hasClass", "casting"]);
+// evalValue() dispatches on the FIRST matching key and ignores every other field on the node, so
+// `{ mod: "con", min: 1 }` quietly evaluates to a bare CON modifier — the "minimum 1" vanishes.
+// Each node shape therefore declares exactly which sibling keys are legal.
+const VALUE_NODE_FIELDS = [
+  ["mod", new Set(["mod"])],
+  ["prof", new Set(["prof"])],
+  ["level", new Set(["level", "class"])],
+  ["choice", new Set(["choice"])],
+  ["sum", new Set(["sum"])],
+  ["mul", new Set(["mul"])],
+  ["floor", new Set(["floor"])],
+  ["max", new Set(["max"])],
+  ["min", new Set(["min"])],
+];
+
+function unknownFields(obj, allowed) { return Object.keys(obj).filter(k => !allowed.has(k)); }
 
 function isKnownTarget(t) {
   if (typeof t !== "string") return false;
@@ -58,10 +80,27 @@ function isValidValueExpr(v, choiceIds) {
   return false;
 }
 
+/* Separate from isValidValueExpr's shape check: walks a value expression looking for fields the
+   engine will silently drop (see VALUE_NODE_FIELDS). A node can be structurally "valid" and still
+   mean something other than what it reads like, which is the worse failure of the two. */
+function checkValueFields(where, v, errors) {
+  if (v == null || typeof v !== "object") return;
+  const node = VALUE_NODE_FIELDS.find(([k]) => k in v);
+  if (node) {
+    const stray = unknownFields(v, node[1]);
+    if (stray.length) {
+      errors.push(`${where} value expression {${node[0]}: …} has field(s) ${stray.map(s => `"${s}"`).join(", ")} that evalValue() ignores — ${JSON.stringify(v)}`);
+    }
+  }
+  ["sum", "mul", "max", "min"].forEach(k => { if (Array.isArray(v[k])) v[k].forEach(x => checkValueFields(where, x, errors)); });
+  if (v.floor != null) checkValueFields(where, v.floor, errors);
+}
+
 function validateEntry(key, entry, errors) {
   const where = `[${key}]`;
   if (typeof entry.name !== "string" || !entry.name.trim()) errors.push(`${where} missing/blank "name"`);
   if (entry.sv !== 1) errors.push(`${where} "sv" must be 1`);
+  unknownFields(entry, ENTRY_FIELDS).forEach(f => errors.push(`${where} unknown entry field "${f}"`));
 
   const choiceIds = new Set((entry.choices || []).map(c => c.id));
   (entry.choices || []).forEach(c => {
@@ -69,15 +108,27 @@ function validateEntry(key, entry, errors) {
     if (!CHOICE_KINDS.has(c.kind)) errors.push(`${where} choice "${c.id}" has unknown kind "${c.kind}"`);
     if (c.kind === "pick" && !Array.isArray(c.options)) errors.push(`${where} choice "${c.id}" (kind pick) needs "options" array`);
     if (c.kind === "spellfilter" && !(typeof c.filter === "string" && c.filter.trim())) errors.push(`${where} choice "${c.id}" (kind spellfilter) needs a "filter" spec string`);
+    if (c.kind === "pick" && c.n != null && (!Number.isInteger(c.n) || c.n < 1)) {
+      errors.push(`${where} choice "${c.id}" has n=${c.n}; must be a positive integer`);
+    }
+    if (c.kind === "pick" && Array.isArray(c.options) && c.n > c.options.length) {
+      errors.push(`${where} choice "${c.id}" picks ${c.n} from only ${c.options.length} option(s)`);
+    }
   });
 
   (entry.effects || []).forEach((eff, i) => {
     const w = `${where} effects[${i}]`;
+    unknownFields(eff, EFFECT_FIELDS).forEach(f => errors.push(`${w} unknown field "${f}"`));
     if (!isKnownTarget(eff.target)) errors.push(`${w} unknown target "${eff.target}"`);
     if (!OPS.has(eff.op)) errors.push(`${w} unknown op "${eff.op}"`);
+    if (eff.when) {
+      unknownFields(eff.when, WHEN_PREDICATES).forEach(p =>
+        errors.push(`${w} unrecognized "when" predicate "${p}" — whenSatisfied() will never let this effect apply`));
+    }
     if (["add", "min", "max", "set"].includes(eff.op) && !isValidValueExpr(eff.value, choiceIds)) {
       errors.push(`${w} op "${eff.op}" has invalid/missing "value" expression`);
     }
+    checkValueFields(w, eff.value, errors);
     if (eff.op === "adddice" && typeof eff.value !== "string") errors.push(`${w} op "adddice" needs a string dice "value"`);
     if (eff.op === "note" && typeof eff.text !== "string") errors.push(`${w} op "note" needs a string "text"`);
     if (SPELL_GRANT_OPS.includes(eff.op) && !(eff.value && typeof eff.value.name === "string" && eff.value.name.trim())) {
@@ -108,7 +159,9 @@ function validateEntry(key, entry, errors) {
 
   if (entry.uses) {
     const w = `${where} uses`;
+    unknownFields(entry.uses, USES_FIELDS).forEach(f => errors.push(`${w} unknown field "${f}"`));
     if (!isValidValueExpr(entry.uses.max, choiceIds)) errors.push(`${w} invalid/missing "max" value expression`);
+    checkValueFields(`${w}.max`, entry.uses.max, errors);
     if (!["sr", "lr"].includes(entry.uses.per)) errors.push(`${w} "per" must be "sr" or "lr"`);
     if (entry.uses.delayed != null && !/^\d*d\d+$/i.test(entry.uses.delayed.expr || "")) {
       errors.push(`${w} "delayed.expr" must be dice notation like "1d4"`);
@@ -127,9 +180,29 @@ function loadDbFile(file) {
   return sandbox.registered;
 }
 
+/* A DB file with no <script> tag is inert: it parses, it validates, and the app never sees a byte
+   of it. That's a silent failure the schema checks below can't reach, so check the wiring too —
+   every effects/db/*.js must be loaded by the app page AND by the test page. */
+function checkWiring(files, errors) {
+  [["character-sheet.html", "effects/db/"], ["tests/effects.html", "../effects/db/"]].forEach(([page, prefix]) => {
+    const full = path.join(__dirname, "..", "..", page);
+    let html;
+    try {
+      html = fs.readFileSync(full, "utf8");
+    } catch (e) {
+      errors.push(`${page}: can't read to verify DB wiring — ${e.message}`);
+      return;
+    }
+    files.forEach(f => {
+      if (!html.includes(`src="${prefix}${f}"`)) errors.push(`${page} has no <script> tag for effects/db/${f} — its entries are loaded by nothing and can never fire`);
+    });
+  });
+}
+
 function main() {
   const files = fs.readdirSync(DB_DIR).filter(f => f.endsWith(".js"));
   let errors = [];
+  checkWiring(files, errors);
   const seenKeys = new Map();
   for (const file of files) {
     const full = path.join(DB_DIR, file);
