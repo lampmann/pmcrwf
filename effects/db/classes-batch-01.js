@@ -101,12 +101,12 @@ registerEffects({
 
   "class|warrior sidekick|improved critical": {
     name: "Improved Critical", sv: 1,
-    unsupported: [{ reason: "critical hit threshold (19-20); requires weapons/attacks module", tags: ["attack", "critical"] }],
+    unsupported: [{ reason: "widened critical range (19-20); the Attacks module has no crit-range model", tags: ["attack", "critical"] }],
   },
 
   "class|warrior sidekick|extra attack": {
     name: "Extra Attack", sv: 1,
-    unsupported: [{ reason: "extra attacks per action (2 at level 6, 3 at level 15); requires weapons/attacks module and level-gated uses", tags: ["attack", "action", "level-scaling"] }],
+    unsupported: [{ reason: "extra attacks per action (2 at level 6, 3 at level 15); action economy, not a number on an attack", tags: ["attack", "action", "level-scaling"] }],
   },
 
   "class|warrior sidekick|improved defense": {

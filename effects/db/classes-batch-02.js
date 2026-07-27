@@ -51,7 +51,11 @@ registerEffects({
   "subclass|artificer|armorer|lightning launcher": {
     name: "Lightning Launcher", sv: 1,
     effects: [
-      { target: "damage-bonus", op: "adddice", value: "1d6" },
+      // This is the armor's own built-in weapon, not a rider on every attack, so it's toggled:
+      // switch it on for the attack row that *is* the launcher (dmg 1d6, ranged, magical).
+      { target: "damage-bonus", op: "adddice", value: "1d6",
+        activation: { kind: "toggle", id: "lightning-launcher", label: "Lightning Launcher", default: false } },
+      { target: "damage-bonus", op: "note", text: "the armor's own ranged weapon (1d6 lightning), not a bonus on other attacks" },
     ],
   },
   "subclass|artificer|armorer|powered steps": {
@@ -61,9 +65,13 @@ registerEffects({
   "subclass|artificer|armorer|thunder gauntlets": {
     name: "Thunder Gauntlets", sv: 1,
     effects: [
-      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      // As with Lightning Launcher: the gauntlets are their own melee weapon, so the die is toggled
+      // onto the row that represents them rather than added to every attack you make.
+      { target: "damage-bonus", op: "adddice", value: "1d8",
+        activation: { kind: "toggle", id: "thunder-gauntlets", label: "Thunder Gauntlets", default: false } },
+      { target: "damage-bonus", op: "note", text: "the armor's own melee weapon (1d8 thunder), not a bonus on other attacks" },
     ],
-    unsupported: [{ reason: "gauntlets as melee weapons with 1d8 thunder base damage; disadvantage imposed on attacking creature until next turn start", tags: ["weapon", "disadvantage"] }],
+    unsupported: [{ reason: "a creature hit by the gauntlets has disadvantage on attacks against anyone else until your next turn", tags: ["disadvantage", "target-state"] }],
   },
   "subclass|artificer|armorer|extra attack": {
     name: "Extra Attack", sv: 1,
@@ -98,11 +106,10 @@ registerEffects({
 
   "subclass|artificer|battle smith|battle ready": {
     name: "Battle Ready", sv: 1,
-    effects: [
-      { target: "attack-hit", op: "add", value: { mod: "int" } },
-      { target: "damage-bonus", op: "add", value: { mod: "int" } },
-      { target: "attack-hit", op: "note", text: "magic weapons only" },
-    ],
+    // INT *replaces* STR/DEX on a magic weapon's attack and damage rolls — it isn't added on top,
+    // and the engine has no "swap the ability" op. The Attacks module already covers this manually:
+    // set that weapon's row Ability to Int. Adding { mod: "int" } here would double-count instead.
+    unsupported: [{ reason: "uses INT in place of STR/DEX for magic weapons — set that attack row's Ability to Int (no ability-swap op)", tags: ["ability-swap", "weapon"] }],
   },
   "subclass|artificer|battle smith|steel defender": {
     name: "Steel Defender", sv: 1,

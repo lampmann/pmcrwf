@@ -66,7 +66,7 @@ registerEffects({
   // ===== UNSUPPORTED MECHANICS =====
   "race|aarakocra|talons": {
     name: "Talons", sv: 1,
-    unsupported: [{ reason: "natural unarmed strike damage die (1d6 + STR); requires weapons/attacks module", tags: ["attack", "damage"] }],
+    unsupported: [{ reason: "natural unarmed strike damage die (1d6 + STR); an effect can't create an attack row — add one by hand", tags: ["attack", "damage"] }],
   },
 
   "race|aarakocra|wind caller": {
@@ -101,7 +101,7 @@ registerEffects({
 
   "race|bugbear|long-limbed": {
     name: "Long-Limbed", sv: 1,
-    unsupported: [{ reason: "melee reach bonus on attacks (+5 ft); requires weapons/attacks module", tags: ["attack", "range"] }],
+    unsupported: [{ reason: "melee reach bonus on attacks (+5 ft); reach isn't modeled", tags: ["attack", "range"] }],
   },
 
   "race|bugbear|surprise attack": {
@@ -121,7 +121,7 @@ registerEffects({
 
   "race|centaur|hooves": {
     name: "Hooves", sv: 1,
-    unsupported: [{ reason: "natural unarmed strike damage die (1d6 + STR); requires weapons/attacks module", tags: ["attack", "damage"] }],
+    unsupported: [{ reason: "natural unarmed strike damage die (1d6 + STR); an effect can't create an attack row — add one by hand", tags: ["attack", "damage"] }],
   },
 
   "race|deep gnome|gift of the svirfneblin": {

@@ -35,7 +35,10 @@ registerEffects({
 
   "class|paladin|improved divine smite": {
     name: "Improved Divine Smite", sv: 1,
-    effects: [{ target: "damage-bonus", op: "adddice", value: "1d8" }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "melee weapon attacks only; radiant" },
+    ],
   },
 
   "class|paladin|fighting style": {
@@ -65,7 +68,10 @@ registerEffects({
   // ===== Oathbreaker =====
   "subclass|paladin|oathbreaker|aura of hate": {
     name: "Aura of Hate", sv: 1,
-    effects: [{ target: "damage-bonus", op: "add", value: { max: [{ mod: "cha" }, 1] } }],
+    effects: [
+      { target: "damage-bonus", op: "add", value: { max: [{ mod: "cha" }, 1] } },
+      { target: "damage-bonus", op: "note", text: "melee weapon attacks only" },
+    ],
   },
 
   "subclass|paladin|oathbreaker|supernatural resistance": {

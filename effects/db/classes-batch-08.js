@@ -16,13 +16,19 @@ registerEffects({
   },
   "subclass|cleric|tempest domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|tempest domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
     ],
   },
   "subclass|cleric|tempest domain|stormborn": {
@@ -45,13 +51,19 @@ registerEffects({
   },
   "subclass|cleric|trickery domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|trickery domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
     ],
   },
   "subclass|cleric|trickery domain|improved duplicity": {
@@ -83,13 +95,19 @@ registerEffects({
   },
   "subclass|cleric|twilight domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|twilight domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
     ],
   },
   "subclass|cleric|twilight domain|twilight shroud": {
@@ -109,7 +127,12 @@ registerEffects({
   },
   "subclass|cleric|war domain|channel divinity: guided strike": {
     name: "Channel Divinity: Guided Strike", sv: 1,
-    unsupported: [{ reason: "requires attack roll tracking and post-hoc modification (after roll seen)", tags: ["attack"] }],
+    effects: [
+      // Same shape as Oath of Conquest's Guided Strike (classes-batch-13.js): a toggle, since the
+      // +10 is applied after you see the roll and costs a Channel Divinity use.
+      { target: "attack-hit", op: "add", value: 10, activation: { kind: "toggle", id: "guided-strike", label: "Guided Strike (+10)", default: false } },
+      { target: "attack-hit", op: "note", text: "one attack roll, spending a Channel Divinity use; declared after you see the roll" },
+    ],
   },
   "subclass|cleric|war domain|channel divinity: war god's blessing": {
     name: "Channel Divinity: War God's Blessing", sv: 1,
@@ -117,13 +140,19 @@ registerEffects({
   },
   "subclass|cleric|war domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|war domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
     ],
   },
   "subclass|cleric|war domain|avatar of battle": {
@@ -151,13 +180,19 @@ registerEffects({
   },
   "subclass|cleric|zeal domain (psa)|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
-    unsupported: [{ reason: "requires attack roll tracking and per-turn cooldown", tags: ["damage", "cooldown"] }],
+    effects: [
+      { target: "damage-bonus", op: "adddice", value: "1d8" },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a hit; radiant" },
+    ],
+    unsupported: [{ reason: "the same 1d8 also rides on your cantrips; no cantrip-damage target", tags: ["cantrip-damage"] }],
   },
   "subclass|cleric|zeal domain (psa)|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
+      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
+      { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
     ],
   },
   "subclass|cleric|zeal domain (psa)|blaze of glory": {
