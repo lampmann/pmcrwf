@@ -3,7 +3,7 @@ registerEffects({
   // ----- TEMPEST DOMAIN -----
   "subclass|cleric|tempest domain|wrath of the storm": {
     name: "Wrath of the Storm", sv: 1,
-    uses: { max: { mod: "wis" }, per: "lr" },
+    uses: { max: { max: [{ mod: "wis" }, 1] }, per: "lr" },
     unsupported: [{ reason: "reaction damage on save; requires attack/damage roll tracking", tags: ["damage", "reaction"] }],
   },
   "subclass|cleric|tempest domain|channel divinity: destructive wrath": {
@@ -78,7 +78,8 @@ registerEffects({
   },
   "subclass|cleric|twilight domain|steps of night": {
     name: "Steps of Night", sv: 1,
-    unsupported: [{ reason: "flying speed not modeled; requires dim-light/darkness condition check; uses equal to proficiency bonus", tags: ["movement", "condition"] }],
+    uses: { max: { prof: true }, per: "lr" },
+    unsupported: [{ reason: "flying speed not modeled; requires dim-light/darkness condition check", tags: ["movement", "condition"] }],
   },
   "subclass|cleric|twilight domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
@@ -103,7 +104,7 @@ registerEffects({
   },
   "subclass|cleric|war domain|war priest": {
     name: "War Priest", sv: 1,
-    uses: { max: { mod: "wis" }, per: "lr" },
+    uses: { max: { max: [{ mod: "wis" }, 1] }, per: "lr" },
     unsupported: [{ reason: "extra bonus action attack not modeled", tags: ["attack"] }],
   },
   "subclass|cleric|war domain|channel divinity: guided strike": {
@@ -137,7 +138,7 @@ registerEffects({
   },
   "subclass|cleric|zeal domain (psa)|priest of zeal": {
     name: "Priest of Zeal", sv: 1,
-    uses: { max: { mod: "wis" }, per: "lr" },
+    uses: { max: { max: [{ mod: "wis" }, 1] }, per: "lr" },
     unsupported: [{ reason: "extra bonus action attack not modeled", tags: ["attack"] }],
   },
   "subclass|cleric|zeal domain (psa)|channel divinity: consuming fervor": {

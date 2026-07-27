@@ -265,12 +265,41 @@ advantage, etc.).
 
 ## Before you finish
 
-Run the validator against your output file:
+**Add a `<script>` tag for your new file** to both `character-sheet.html`
+and `tests/effects.html`, next to the other `effects/db/*.js` tags. A DB
+file with no script tag parses fine, validates fine, and is never loaded by
+anything — the entries simply never fire. The validator checks this now, but
+it's the easiest step to forget.
+
+**Move any keys you converted out of `effects/db/uses-*.js`.**
+`registerEffects()` does `Object.assign`, so it replaces whole entries
+rather than merging fields: if a key lives in both your batch and a
+generated `uses-*.js` file, one of them wins outright and the other's data
+vanishes silently (which way depends on script order). Your batch entry is
+the richer record, so it keeps the key — carry the generated `uses` block
+into it and delete the duplicate. Re-running `generate-uses.js` skips
+already-converted keys for you.
+
+Then run the validator:
 
 ```bash
 node effects/tools/validate-db.js
 ```
 
-Fix anything it flags. It only checks structural shape (valid targets/ops/
-choice references) — it can't tell you whether the *mechanics* are game-
-accurate, so double check values against the feat text yourself.
+Fix anything it flags. It checks structural shape (valid targets/ops/choice
+references), fields the engine would silently ignore, duplicate keys, and
+script-tag wiring — but it can't tell you whether the *mechanics* are
+game-accurate, so double check values against the feature text yourself.
+Two things it will catch that are worth understanding, because both look
+correct and mean something else:
+
+- `{ mod: "con", min: 1 }` is **not** "CON modifier, minimum 1" —
+  `evalValue()` dispatches on the first key it recognizes and ignores the
+  rest, so this is a bare CON modifier and the floor is lost. Write
+  `{ max: [{ mod: "con" }, 1] }`.
+- A `when` predicate the engine doesn't know (`{ wearingArmor: true }`)
+  makes the effect inert forever rather than unconditional — only
+  `minLevel`, `hasClass`, and `casting` exist.
+
+Finally, open `tests/effects.html` through the local server and confirm it
+still reports `N passed, 0 failed`.

@@ -51,7 +51,7 @@ registerEffects({
   // ----- Echo Knight (all unsupported) -----
   "subclass|fighter|echo knight|unleash incarnation": {
     name: "Unleash Incarnation", sv: 1,
-    uses: { max: { mod: "con", min: 1 }, per: "lr" },
+    uses: { max: { max: [{ mod: "con" }, 1] }, per: "lr" },
     unsupported: [{ reason: "extra melee attack action from echo position", tags: ["attacks"] }],
   },
 
@@ -63,7 +63,7 @@ registerEffects({
 
   "subclass|fighter|echo knight|reclaim potential": {
     name: "Reclaim Potential", sv: 1,
-    uses: { max: { mod: "con", min: 1 }, per: "lr" },
+    uses: { max: { max: [{ mod: "con" }, 1] }, per: "lr" },
     unsupported: [{ reason: "temporary HP gain (2d6 + CON mod) when echo destroyed by damage", tags: ["temp-hp", "condition-based"] }],
   },
 
