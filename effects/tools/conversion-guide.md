@@ -74,6 +74,7 @@ don't create an empty entry just to have one.
   when the *only* blocker is "needs the attacks table."
 - `"score-{choice:someId}"` — templated target resolved from a choice
   (see Resilient/Observant in handwritten.js).
+- `"spell-grant"` — grants a spell (fixed name only — see below).
 
 Do **not** invent other targets (no `ac`, `speed`, `hitdice`, etc. — not
 wired up yet). If a feat needs one of those, use `unsupported` instead.
@@ -84,6 +85,8 @@ wired up yet). If a feat needs one of those, use `unsupported` instead.
 - `adddice` — append dice notation, e.g. `value: "1d4"` (string)
 - `min` / `max` — clamp: raises/lowers the target to at least/at most `value`
 - `set` — force the target to exactly `value`
+- `grant-free` / `grant-list` — see "Spell grants" below (only valid on
+  target `"spell-grant"`)
 - `prof` — grant proficiency (for `save-*`/`skill-*` targets)
 - `expertise` — grant expertise (double proficiency)
 - `adv` / `dis` — force advantage/disadvantage on that target's rolls
@@ -193,6 +196,54 @@ state one plainly. If a feature clearly has limited uses but the count or
 recharge is genuinely ambiguous or non-standard (e.g. depends on a
 resource this sheet doesn't model, like sorcery points or ki), use
 `unsupported` instead of guessing.
+
+## Spell grants (target `"spell-grant"`)
+
+For a feature that adds a **specific, fixed-name spell** to the character's
+spell list — "you learn the *X* spell", "*X* is added to your spell list"
+— declare one effect per spell:
+
+```js
+effects: [{ target: "spell-grant", op: "grant-free", value: { name: "mage hand" } }]
+```
+
+Two ops, matching the two ways 5e text grants a spell:
+
+- `grant-free` — the spell is known/prepared **for free**: it never costs
+  a known/prepared slot on any class, and doesn't count toward that
+  class's Known/Prepared total. This is the "you innately know this
+  spell, no strings attached" case (e.g. Telekinetic's Mage Hand).
+- `grant-list` — the spell is merely **added to the character's spell
+  list** — it's now *eligible*, but still has to be learned/prepared
+  normally through a class, costing a real known/prepared slot there (e.g.
+  a Dragonmark or Eldritch Knight-style list expansion).
+
+**When to reach for this vs. `unsupported`:** only for a spell named
+outright in the text with no further choice attached. If the text instead
+says "choose a spell from the Wizard list" / "any level 1 spell of your
+choice" — anything requiring picking from a filtered list rather than one
+named spell — that's `unsupported` (reason: e.g. "spell chosen from a
+class list — no way to enumerate/filter the spell library from an effects
+entry"); don't try to fake it by picking one representative spell.
+
+**This is not for at-will/daily innate casting** ("you can cast *X* once
+per day without expending a spell slot") — that's a different mechanic
+(no known/prepared slot is ever involved, and it needs its own uses/cast
+tracking) and stays `unsupported` (reason: "at-will/daily innate
+spellcasting, not modeled — no slot involved at all").
+
+**Why this exists / when NOT to use it:** race and subclass spell grants
+(Cleric domain spells, Mark of \* dragonmarks, Eldritch Knight/Divine
+Soul/Warlock-patron/Wizard-subschool expansions) are **already fully
+automatic** via a separate mechanism — the app parses 5e.tools'
+`additionalSpells` field on the race/subclass record directly (see
+`flattenGrantedSpells`/`grantedSpellsHtml` in `src/class-library.js`) —
+so don't write a `spell-grant` effect for those; if you see one already
+working in the Features panel, that feature's `additionalSpells` is
+already covered and any matching effects-db entry should just omit the
+spell-grant part entirely. `spell-grant` is for filling the gap that
+pipeline doesn't reach — **chiefly feats**, whose own `additionalSpells`
+field the app currently ignores outright.
 
 ## Worked examples to imitate
 

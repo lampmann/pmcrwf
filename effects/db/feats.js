@@ -428,9 +428,10 @@ registerEffects({
     "sv": 1,
     "unsupported": [
       {
-        "reason": "spell granting (cure wounds) and protective wings AC bonus reaction with resource tracking",
+        "reason": "at-will/daily innate casting of cure wounds (no slot involved), plus protective wings AC bonus reaction with resource tracking",
         "tags": [
           "spell",
+          "reaction",
           "resource"
         ]
       }
@@ -1137,6 +1138,9 @@ registerEffects({
   "feat|telekinetic": {
     "name": "Telekinetic",
     "sv": 1,
+    "effects": [
+      { "target": "spell-grant", "op": "grant-free", "value": { "name": "mage hand" } }
+    ],
     "unsupported": [
       {
         "reason": "needs custom ability-based save DC (shove save = 8 + prof + ability mod)",

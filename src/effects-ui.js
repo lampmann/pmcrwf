@@ -17,6 +17,21 @@ function renderEffectControls(feature) {
   let html = "";
   const seenToggle = new Set();
   (entry.effects || []).forEach(effect => {
+    if (effect.target === "spell-grant") {
+      // Reuses the exact same .gsp-link/.gsp-expanded markup and click handler as the
+      // race/subclass additionalSpells-driven grants (grantedSpellsHtml in class-library.js) —
+      // "grant-free" behaves like a domain spell (added via addCharacterSpell w/ grantSrc, never
+      // touches a class's Known/Prepared count), "grant-list" like a Dragonmark (opens the
+      // "prepare from which class?" modal — still costs a normal known/prepared slot). See
+      // effects.js's header comment and conversion-guide.md for why this target is separate from
+      // the numeric snapshot pipeline.
+      const name = effect.value && effect.value.name;
+      if (!name) return;
+      const expanded = effect.op === "grant-list";
+      const title = expanded ? ` title="added to your spell list — still needs to be prepared/known normally, via a class"` : "";
+      html += ` <a class="feat-link gsp-link${expanded ? " gsp-expanded" : ""}" data-name="${escapeHtml(name)}" data-cls="" data-header="${escapeHtml(feature.name)}" data-expanded="${expanded ? "1" : "0"}"${title}>${escapeHtml(name)}${expanded ? "*" : ""}</a>`;
+      return;
+    }
     const act = effect.activation || { kind: "always" };
     const target = resolveTarget(feature, effect.target);
     const reserved = isReservedTarget(target);
