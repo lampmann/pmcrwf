@@ -26,9 +26,10 @@ const SKILL_SLUGS = new Set([
 ]);
 const ABILITIES = new Set(["str", "dex", "con", "int", "wis", "cha"]);
 const FIXED_TARGETS = new Set(["init", "hpmax", "profbonus", "spelldc", "spellatk", "passive-perception", "spell-grant", "ac"]);
-const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise", "adv", "dis", "note", "grant-free", "grant-list"]);
+const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise", "adv", "dis", "note", "grant-free", "grant-list", "grant-innate"]);
 const ACTIVATION_KINDS = new Set(["always", "toggle", "choice"]);
-const CHOICE_KINDS = new Set(["pick", "ability"]);
+const CHOICE_KINDS = new Set(["pick", "ability", "spellfilter"]);
+const SPELL_GRANT_OPS = ["grant-free", "grant-list", "grant-innate"];
 
 function isKnownTarget(t) {
   if (typeof t !== "string") return false;
@@ -67,6 +68,7 @@ function validateEntry(key, entry, errors) {
     if (!c.id) errors.push(`${where} choice missing "id"`);
     if (!CHOICE_KINDS.has(c.kind)) errors.push(`${where} choice "${c.id}" has unknown kind "${c.kind}"`);
     if (c.kind === "pick" && !Array.isArray(c.options)) errors.push(`${where} choice "${c.id}" (kind pick) needs "options" array`);
+    if (c.kind === "spellfilter" && !(typeof c.filter === "string" && c.filter.trim())) errors.push(`${where} choice "${c.id}" (kind spellfilter) needs a "filter" spec string`);
   });
 
   (entry.effects || []).forEach((eff, i) => {
@@ -78,11 +80,15 @@ function validateEntry(key, entry, errors) {
     }
     if (eff.op === "adddice" && typeof eff.value !== "string") errors.push(`${w} op "adddice" needs a string dice "value"`);
     if (eff.op === "note" && typeof eff.text !== "string") errors.push(`${w} op "note" needs a string "text"`);
-    if (["grant-free", "grant-list"].includes(eff.op) && !(eff.value && typeof eff.value.name === "string" && eff.value.name.trim())) {
-      errors.push(`${w} op "${eff.op}" needs a "value.name" string (the spell's name)`);
+    if (SPELL_GRANT_OPS.includes(eff.op) && !(eff.value && typeof eff.value.name === "string" && eff.value.name.trim())) {
+      errors.push(`${w} op "${eff.op}" needs a "value.name" string (the spell's name, or a "{choice:id}" template)`);
     }
-    if (eff.target === "spell-grant" && !["grant-free", "grant-list"].includes(eff.op)) {
-      errors.push(`${w} target "spell-grant" must use op "grant-free" or "grant-list"`);
+    if (eff.target === "spell-grant" && !SPELL_GRANT_OPS.includes(eff.op)) {
+      errors.push(`${w} target "spell-grant" must use op "grant-free", "grant-list", or "grant-innate"`);
+    }
+    if (eff.value && eff.value.name && eff.value.name.includes("{choice:")) {
+      const m = eff.value.name.match(/\{choice:([a-zA-Z0-9_]+)\}/);
+      if (m && !choiceIds.has(m[1])) errors.push(`${w} value.name references undeclared choice "${m[1]}"`);
     }
     if (eff.activation) {
       const act = eff.activation;
