@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>filter engine tests</title>
+</head>
+<body>
+<!-- Tests the shared tri-state filter engine (src/filters.js) used by both the Spell Library and
+     the Equipment Library. Fixtures are synthetic, so this runs with no data/ folder present. -->
+<div id="test-filter-area"></div>
+<input id="test-search">
+
+<script src="../src/errors.js"></script>
+<script src="../src/filters.js"></script>
+
+<style>
+  body { font-family: monospace; font-size: 13px; }
+  .pass { color: #0a0; } .fail { color: #c00; font-weight: bold; }
+  #results { white-space: pre; margin-top: 1rem; border-top: 2px solid #000; padding-top: .5rem; }
+  .modbar, .fgroup { display: none; }   /* the engine renders real markup here; we assert on it, not look at it */
+</style>
+<div id="results">running…</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const lines = [];
+  let pass = 0, fail = 0;
+  function assertEqual(name, actual, expected) {
+    const ok = actual === expected;
+    if (ok) pass++; else fail++;
+    lines.push(`${ok ? "PASS" : "FAIL"}  ${name}  ${ok ? "" : `(expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)})`}`);
+  }
+  function assert(name, cond) {
+    if (cond) pass++; else fail++;
+    lines.push(`${cond ? "PASS" : "FAIL"}  ${name}`);
+  }
+
+  // ----- fixture: six records with two multi-valued facets and one single-valued one -----
+  const RECS = [
+    { name: "a", kind: "weapon", tags: ["fire", "magic"],  src: "PHB" },
+    { name: "b", kind: "weapon", tags: ["cold"],           src: "PHB" },
+    { name: "c", kind: "armor",  tags: ["fire", "cold"],   src: "DMG" },
+    { name: "d", kind: "armor",  tags: [],                 src: "DMG" },
+    { name: "e", kind: "potion", tags: ["magic"],          src: "XGE" },
+    { name: "f", kind: "potion", tags: ["fire"],           src: "TCE" },
+  ];
+  let LIB = RECS.slice();
+  const GROUPS = [
+    { key: "kind", label: "Kind", get: r => [r.kind], opts: [["weapon", "Weapon"], ["armor", "Armor"], ["potion", "Potion"]] },
+    { key: "tags", label: "Tags", get: r => r.tags, opts: [["fire", "Fire"], ["cold", "Cold"], ["magic", "Magic"]] },
+    { key: "src",  label: "Source", dynamic: true, get: r => [r.src], dynOpts: () => [...new Set(LIB.map(r => r.src))].sort() },
+  ];
+  localStorage.removeItem("charsheet-testfilters");
+  localStorage.removeItem("charsheet-testfilter-defaults");
+  let renders = 0;
+  const FS = createFilterSet({ ns: "test", groups: GROUPS, areaId: "test-filter-area", searchId: "test-search", onChange: () => renders++ });
+  const names = () => LIB.filter(r => FS.passes(r)).map(r => r.name).join("");
+
+  // ----- an untouched filter set must never narrow anything -----
+  assertEqual("no filters set: everything passes", names(), "abcdef");
+  assertEqual("no groups are constrained", FS.activeGroups().length, 0);
+
+  // ----- include / exclude cycling -----
+  FS.cycle("kind", "weapon");
+  assertEqual("include weapon", names(), "ab");
+  FS.cycle("kind", "weapon");   // include -> exclude
+  assertEqual("exclude weapon", names(), "cdef");
+  FS.cycle("kind", "weapon");   // exclude -> neutral
+  assertEqual("cycles back to neutral", names(), "abcdef");
+
+  // ----- blue (include) modes within one group -----
+  FS.cycle("tags", "fire"); FS.cycle("tags", "magic");
+  assertEqual("blue OR: fire or magic", names(), "acef");
+  FS.state.tags.blueMode = "and";
+  assertEqual("blue AND: fire and magic", names(), "a");
+  FS.state.tags.blueMode = "xor";
+  assertEqual("blue XOR: exactly one of fire/magic", names(), "cef");
+  FS.state.tags.blueMode = "or";
+
+  // ----- red (exclude) modes -----
+  FS.reset();
+  FS.cycle("tags", "fire"); FS.cycle("tags", "fire");   // -> exclude
+  FS.cycle("tags", "cold"); FS.cycle("tags", "cold");   // -> exclude
+  assertEqual("red OR: drops anything fire or cold", names(), "de");
+  FS.state.tags.redMode = "and";
+  assertEqual("red AND: drops only records with both", names(), "abdef");
+  FS.state.tags.redMode = "or";
+
+  // ----- include and exclude in the same group -----
+  FS.reset();
+  FS.cycle("tags", "fire");                              // include fire
+  FS.cycle("tags", "magic"); FS.cycle("tags", "magic");  // exclude magic
+  assertEqual("include fire but exclude magic", names(), "cf");
+
+  // ----- cross-group combine -----
+  FS.reset();
+  FS.cycle("kind", "weapon"); FS.cycle("tags", "cold");
+  assertEqual("groups combine as AND by default", names(), "b");
+  FS.combine = "or";
+  assertEqual("groups combine as OR when switched", names(), "abc");
+  FS.combine = "and";
+
+  // ----- group-level bulk controls -----
+  FS.reset();
+  FS.ctrl("all", "kind");
+  assertEqual("All marks every option include (OR => everything)", names(), "abcdef");
+  FS.ctrl("none", "kind");
+  assertEqual("None marks every option exclude (=> nothing)", names(), "");
+  FS.ctrl("clear", "kind");
+  assertEqual("Clear returns the group to neutral", names(), "abcdef");
+
+  // ----- dynamic options track the library -----
+  FS.reset();
+  assertEqual("dynamic group reads options from the library", FS.opts(GROUPS[2]).map(o => o[0]).join(","), "DMG,PHB,TCE,XGE");
+  LIB = RECS.filter(r => r.src === "PHB");
+  assertEqual("dynamic options shrink with the library", FS.opts(GROUPS[2]).map(o => o[0]).join(","), "PHB");
+  LIB = RECS.slice();
+
+  // A value that disappeared from a dynamic group must not keep filtering invisibly: it stays in
+  // state (so it comes back if the source is reloaded) but with nothing to match it simply excludes.
+  FS.reset();
+  FS.cycle("src", "XGE");
+  assertEqual("include a dynamic value", names(), "e");
+
+  // ----- persistence round-trip, including the namespaced storage key -----
+  FS.reset();
+  FS.cycle("kind", "potion"); FS.combine = "or"; FS.persist();
+  const stored = JSON.parse(localStorage.getItem("charsheet-testfilters"));
+  assert("persists under charsheet-<ns>filters", !!stored);
+  assertEqual("persisted the option state", stored.state.kind.states.potion, "include");
+  assertEqual("persisted the combine mode", stored.combine, "or");
+  FS.state = {}; FS.combine = "and"; FS.load(); FS.ensureStates();
+  assertEqual("reload restores the filter", names(), "ef");
+  assertEqual("reload restores the combine mode", FS.combine, "or");
+
+  // ----- Manage Defaults / Reset -----
+  FS.saveDefaults();
+  FS.cycle("kind", "potion");   // include -> exclude, so the view changes
+  assert("state changed away from the saved default", names() !== "ef");
+  FS.reset();
+  assertEqual("Reset restores the saved default rather than clearing", names(), "ef");
+  localStorage.removeItem("charsheet-testfilter-defaults");
+  FS.reset();
+  assertEqual("Reset with no saved default clears everything", names(), "abcdef");
+
+  // ----- rendering + the delegated click handler -----
+  // app.js attaches exactly this one listener per filter area; the engine does the rest.
+  const area = document.getElementById("test-filter-area");
+  area.addEventListener("click", e => FS.handleClick(e));
+  FS.renderArea();
+  assertEqual("renders one .fgroup per group", area.querySelectorAll(".fgroup").length, 3);
+  assertEqual("renders a button per option (3 + 3 + 4 sources)", area.querySelectorAll(".fbtn").length, 10);
+  assertEqual("renders the modbar", area.querySelectorAll(".modbar").length, 1);
+
+  const before = renders;
+  area.querySelector('[data-fgroup="kind"][data-fval="armor"]').click();
+  assertEqual("clicking an option filters", names(), "cd");
+  assertEqual("clicking an option notifies onChange", renders, before + 1);
+  assert("clicked option is marked include", area.querySelector('[data-fgroup="kind"][data-fval="armor"]').classList.contains("inc"));
+  area.querySelector('[data-fgroup="kind"][data-fval="armor"]').click();
+  assert("second click marks it exclude", area.querySelector('[data-fgroup="kind"][data-fval="armor"]').classList.contains("exc"));
+
+  area.querySelector('[data-fmod="combine"]').click();
+  assertEqual("modbar toggles the combine mode", FS.combine, "or");
+  area.querySelector('[data-fmod="hideall"]').click();
+  assertEqual("Hide All collapses every group's options", area.querySelectorAll(".fbtn").length, 0);
+  area.querySelector('[data-fmod="showall"]').click();
+  assertEqual("Show All brings them back", area.querySelectorAll(".fbtn").length, 10);
+
+  assert("handleClick ignores clicks on nothing in particular",
+    FS.handleClick({ target: document.getElementById("results") }) === false);
+
+  // ----- two sets on the same page stay independent (the reason this is a factory) -----
+  localStorage.removeItem("charsheet-otherfilters");
+  const OTHER = createFilterSet({ ns: "other", groups: GROUPS, areaId: "nonexistent-area", searchId: null });
+  OTHER.ensureStates(); FS.ensureStates();
+  OTHER.cycle("kind", "weapon");
+  assertEqual("second set filters independently", RECS.filter(r => OTHER.passes(r)).map(r => r.name).join(""), "ab");
+  assert("first set is unaffected by the second", FS.state.kind.states.weapon !== "include");
+  assert("renderArea on a missing element is a no-op, not a crash", (() => { try { OTHER.renderArea(); return true; } catch (e) { return false; } })());
+
+  lines.push("", `${pass} passed, ${fail} failed`);
+  const el = document.getElementById("results");
+  el.textContent = lines.join("\n");
+  el.className = fail ? "fail" : "pass";
+});
+</script>
+</body>
+</html>
