@@ -60,6 +60,14 @@ don't create an empty entry just to have one.
 - `"profbonus"` — proficiency bonus
 - `"spelldc"` / `"spellatk"` — spell save DC / spell attack bonus
 - `"passive-perception"`
+- `"ac"` — armor class. Adds on top of whatever `armorClassAuto()` computes
+  (or the AC override, if set) — see `baseOf("ac")`/`checkBonus("ac")` in
+  src/derived.js. Fine for a flat bonus (a ring of protection, a shield
+  spell's duration-based bonus if you're tracking it manually, etc.).
+  **Not yet suited to a *replacement* base-AC formula** (e.g. an
+  alternate Unarmored Defense like 13 + DEX, or a toggled +4 like Shell
+  Defense) — there's no way to express "use this formula instead, but
+  only when unarmored/toggled on" yet; use `unsupported` for those.
 - `"save-<ability>"` where ability ∈ `str dex con int wis cha`
 - `"skill-<slug>"` where slug is the skill name lowercased with spaces/
   punctuation stripped: `acrobatics animalhandling arcana athletics
@@ -76,8 +84,10 @@ don't create an empty entry just to have one.
   (see Resilient/Observant in handwritten.js).
 - `"spell-grant"` — grants a spell (fixed name only — see below).
 
-Do **not** invent other targets (no `ac`, `speed`, `hitdice`, etc. — not
-wired up yet). If a feat needs one of those, use `unsupported` instead.
+Do **not** invent other targets (no `speed`, `hitdice`, etc. — genuinely
+not wired up: nothing in src/derived.js reads effFlat("speed") or
+effFlat("hitdice") the way it does for ac/init/save-*/skill-*). If a feat
+needs one of those, use `unsupported` instead.
 
 ## Ops
 
