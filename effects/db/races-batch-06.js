@@ -8,6 +8,15 @@
 // included if applicable).
 registerEffects({
   // ----- KOR -----
+  "race|kenku|kenku training": {
+    name: "Kenku Training", sv: 1,
+    choices: [
+      { id: "skill", kind: "pick", n: 2, options: ["acrobatics", "deception", "stealth", "sleightofhand"], label: "Choose two skills" },
+    ],
+    effects: [
+      { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" } },
+    ],
+  },
   "race|kor|kor climbing": {
     name: "Kor Climbing",
     sv: 1,
@@ -167,7 +176,8 @@ registerEffects({
   "subrace|zendikar; ula creed|water creed navigation": {
     name: "Water Creed Navigation",
     sv: 1,
-    unsupported: [{ reason: "proficiency with navigator's tools and Survival skill; tools not in modeled skill targets", tags: ["proficiency", "tools"] }],
+    effects: [{ target: "skill-survival", op: "prof" }],
+    unsupported: [{ reason: "proficiency with navigator's tools; tools not in modeled skill targets", tags: ["proficiency", "tools"] }],
   },
   "subrace|zendikar; ula creed|cantrip": {
     name: "Cantrip",

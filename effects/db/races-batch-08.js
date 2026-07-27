@@ -119,7 +119,13 @@ registerEffects({
 
   "race|warforged|specialized design": {
     name: "Specialized Design", sv: 1,
-    unsupported: [{ reason: "choice of one skill proficiency and one tool proficiency; tool proficiencies not modeled", tags: ["tool-proficiency", "choice-limited"] }],
+    choices: [
+      { id: "skill", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Choose one skill" },
+    ],
+    effects: [
+      { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" } },
+    ],
+    unsupported: [{ reason: "one tool proficiency of choice; tool proficiencies not modeled", tags: ["tool-proficiency", "choice-limited"] }],
   },
 
   // ----- Yuan-Ti -----

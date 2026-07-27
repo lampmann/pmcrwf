@@ -53,8 +53,25 @@ function dbEntryFor(feature) { return feature.effKey ? EFFECTS_DB[feature.effKey
 function usesSpecFor(feature) { const e = dbEntryFor(feature); return e && e.uses ? e.uses : null; }
 function usesMaxFor(feature, maxExpr) { return Math.max(0, evalValue(feature, maxExpr)); }
 function choiceValue(feature, id) { const c = EFFECT_CHOICES[feature.fkey]; return c ? c[id] : undefined; }
+function hasChoiceValue(feature, id) {
+  const v = choiceValue(feature, id);
+  return Array.isArray(v) ? v.some(x => x != null && x !== "") : (v != null && v !== "");
+}
 function resolveTarget(feature, target) {
-  return target.replace(/\{choice:([a-zA-Z0-9_]+)\}/g, (_, id) => choiceValue(feature, id) || "");
+  return target.replace(/\{choice:([a-zA-Z0-9_]+)\}/g, (_, id) => {
+    const v = choiceValue(feature, id);
+    return (Array.isArray(v) ? v[0] : v) || "";
+  });
+}
+// Like resolveTarget, but a multi-pick choice (an array value, from a `pick n>1` choice — see
+// effects-ui.js) expands into one resolved target per filled slot, so the same effect applies once
+// per skill/save the player actually picked instead of collapsing to a single slot.
+function resolveTargetsAll(feature, target) {
+  const m = target.match(/\{choice:([a-zA-Z0-9_]+)\}/);
+  if (!m) return [target];
+  const v = choiceValue(feature, m[1]);
+  const vals = Array.isArray(v) ? v.filter(x => x != null && x !== "") : (v != null && v !== "" ? [v] : [""]);
+  return vals.map(val => target.replace(m[0], val));
 }
 
 /* Conditions the engine can actually evaluate today. Anything else in a `when` block (armor state,
@@ -75,7 +92,7 @@ function isActivated(feature, effect) {
   if (!whenSatisfied(effect.when)) return false;
   if (act.kind === "always") return true;
   if (act.kind === "toggle") return !!EFFECT_TOGGLES[feature.fkey + "|" + act.id];
-  if (act.kind === "choice") return choiceValue(feature, act.choice) != null && choiceValue(feature, act.choice) !== "";
+  if (act.kind === "choice") return hasChoiceValue(feature, act.choice);
   return false;
 }
 
@@ -113,7 +130,7 @@ function buildEffectsSnapshot() {
     if (!entry) return;
     (entry.unsupported || []).forEach(u => snap.unapplied.push({ source: feature.name, fkey: feature.fkey, target: null, reason: u.reason }));
     (entry.effects || []).forEach(effect => {
-      const target = resolveTarget(feature, effect.target);
+      resolveTargetsAll(feature, effect.target).forEach(target => {
       if (!target) return;
       if (isReservedTarget(target)) {
         snap.unapplied.push({ source: feature.name, fkey: feature.fkey, target, reason: "not automated yet (attacks module not implemented)" });
@@ -142,6 +159,7 @@ function buildEffectsSnapshot() {
         case "dis": snap.mode[target] = snap.mode[target] === "adv" ? "normal" : "dis"; addContrib(target, { source: feature.name, fkey: feature.fkey, op: "dis", n: "dis" }); break;
         case "note": (snap.notes[target] || (snap.notes[target] = [])).push(feature.name + ": " + effect.text); break;
       }
+      });
     });
   });
   Object.keys(mins).forEach(t => { snap.flat[t] = Math.max(snap.flat[t] || 0, mins[t]); });
