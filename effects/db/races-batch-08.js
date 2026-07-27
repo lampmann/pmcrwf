@@ -20,12 +20,23 @@ registerEffects({
 
   "race|tortle|natural armor": {
     name: "Natural Armor", sv: 1,
-    unsupported: [{ reason: "base AC 17 (armor as class feature, not AC enhancement)", tags: ["ac-modifier"] }],
+    // Not a flat bonus — replaces the whole base-AC formula (flat 17, no DEX at
+    // all) rather than adding to it. "min"/"max" ops only clamp the *effects
+    // layer's own contribution*, not the combined final AC (add(17) would double
+    // up with armorClassAuto()'s already-computed base) — there's no "set/replace
+    // the base formula" op yet, so this stays unsupported.
+    unsupported: [{ reason: "base AC 17, no DEX — replaces the whole AC formula rather than adding to it; no override/replace op exists yet", tags: ["ac"] }],
   },
 
   "race|tortle|shell defense": {
     name: "Shell Defense", sv: 1,
-    unsupported: [{ reason: "+4 AC toggle; disadvantage on DEX saves while active; AC modifier not modeled", tags: ["ac-modifier", "toggle"] }],
+    effects: [
+      { target: "ac", op: "add", value: 4, activation: { kind: "toggle", id: "shell", label: "In Shell" } },
+      { target: "save-str", op: "adv", activation: { kind: "toggle", id: "shell", label: "In Shell" } },
+      { target: "save-con", op: "adv", activation: { kind: "toggle", id: "shell", label: "In Shell" } },
+      { target: "save-dex", op: "dis", activation: { kind: "toggle", id: "shell", label: "In Shell" } },
+    ],
+    unsupported: [{ reason: "while in shell: prone, speed 0, can't take reactions, only a bonus action to emerge — not modeled", tags: ["condition", "speed", "reaction"] }],
   },
 
   // ----- Troglodyte -----
@@ -38,7 +49,7 @@ registerEffects({
 
   "race|troglodyte|natural armor": {
     name: "Natural Armor", sv: 1,
-    unsupported: [{ reason: "+1 bonus to Armor Class", tags: ["ac-modifier"] }],
+    effects: [{ target: "ac", op: "add", value: 1 }],
   },
 
   "race|troglodyte|stench": {
@@ -114,7 +125,7 @@ registerEffects({
 
   "race|warforged|integrated protection": {
     name: "Integrated Protection", sv: 1,
-    unsupported: [{ reason: "+1 bonus to Armor Class", tags: ["ac-modifier"] }],
+    effects: [{ target: "ac", op: "add", value: 1 }],
   },
 
   "race|warforged|specialized design": {
