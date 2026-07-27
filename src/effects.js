@@ -15,11 +15,20 @@
    evalValue below — there is deliberately no "read another target" node),
    cross-effect cycles are impossible by construction, not by a solver.
 
-   Targets prefixed "attack-"/"damage-" are reserved: no module reads them
-   yet (there's no weapons/attacks module), so they always land in
-   snap.unapplied instead of being applied, however their activation
-   resolves. That's what lets an entry like Sharpshooter be written once
-   now and "switch on" later without re-conversion.
+   "attack-hit" and "damage-bonus" are read by the Attacks module
+   (attacks.js): they fold into every attack row's to-hit bonus / damage
+   expression the same way a row's own Hit+ / Dmg+ field does, and an
+   adv/dis on "attack-hit" forces the to-hit roll's mode. Because the
+   engine has no per-weapon predicate, the bucket is global — a row opts
+   out with its own `fx` checkbox (see attacks.js) when the effect doesn't
+   apply to that weapon (Sharpshooter on your dagger, Rage on your bow).
+
+   Every OTHER "attack-"/"damage-"-prefixed target is still reserved: no
+   module reads it, so it always lands in snap.unapplied instead of being
+   applied, however its activation resolves. That's what lets an entry
+   needing e.g. crit-only damage dice be written once now and "switch on"
+   later without re-conversion — which is exactly how Sharpshooter and
+   Great Weapon Master reached the Attacks module.
 
    "spell-grant" is a different kind of target entirely — not numeric, so
    it's skipped here and rendered directly off entry.effects instead (see
@@ -49,7 +58,10 @@ function effKeyFor(origin, name) {
     default: return null;
   }
 }
-function isReservedTarget(t) { return /^(attack-|damage-)/.test(t); }
+/* attack-/damage- targets a module actually reads today (attacks.js). Anything else under those
+   prefixes stays reserved — see the header comment. */
+const LIVE_ATTACK_TARGETS = new Set(["attack-hit", "damage-bonus"]);
+function isReservedTarget(t) { return /^(attack-|damage-)/.test(t) && !LIVE_ATTACK_TARGETS.has(t); }
 
 /* ----- persisted per-instance state (character choices, not library data — see persistence.js) ----- */
 let EFFECT_CHOICES = {};   // { fkey: { choiceId: value } }
@@ -154,7 +166,7 @@ function buildEffectsSnapshot() {
       resolveTargetsAll(feature, effect.target).forEach(target => {
       if (!target) return;
       if (isReservedTarget(target)) {
-        snap.unapplied.push({ source: feature.name, fkey: feature.fkey, target, reason: "not automated yet (attacks module not implemented)" });
+        snap.unapplied.push({ source: feature.name, fkey: feature.fkey, target, reason: `not automated yet (no module reads "${target}")` });
         return;
       }
       if (!isActivated(feature, effect)) return;

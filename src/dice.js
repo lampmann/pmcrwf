@@ -159,9 +159,10 @@ function rollInfo(btn) {
   if (btn.classList.contains("atk-roll")) {
     return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: (btn.dataset.rolllabel || "spell attack") + effAnnotations("spellatk"), mode: effMode("spellatk") };
   }
-  // weapon attack to-hit button (Attacks module) — bonus/dice/label are set on the button by attacks.js
+  // weapon attack to-hit button (Attacks module) — bonus/dice/label/mode are all set on the button by
+  // attacks.js, which is what already folds that row's feature effects (attack-hit) into them
   if (btn.classList.contains("wpn-roll")) {
-    return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack", mode: "normal" };
+    return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack", mode: btn.dataset.mode || null };
   }
   return null;
 }

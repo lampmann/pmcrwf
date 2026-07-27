@@ -51,7 +51,7 @@ registerEffects({
   "race|giff|firearms mastery": {
     name: "Firearms Mastery", sv: 1,
     unsupported: [
-      { reason: "firearm proficiency and ignore loading property; weapons/attacks not modeled", tags: ["weapon", "firearm", "property"] },
+      { reason: "firearm proficiency and ignoring the loading property; weapon proficiencies and properties aren't tracked", tags: ["weapon", "firearm", "property"] },
       { reason: "no disadvantage on long-range firearm attacks; range handling not modeled", tags: ["range", "attack"] },
     ],
   },
