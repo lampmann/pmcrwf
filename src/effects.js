@@ -107,6 +107,12 @@ function buildEffectsSnapshot() {
   const snap = { flat: {}, dice: {}, profMult: {}, mode: {}, notes: {}, contribs: {}, unapplied: [] };
   const addContrib = (target, c) => { (snap.contribs[target] || (snap.contribs[target] = [])).push(c); };
   const mins = {}, maxes = {};
+  // Published while building so a re-entrant read resolves against the partial snapshot instead of
+  // recursing (see effectsSnapshot). An L3 value expression legitimately reaches L1: `{ prof: true }`
+  // calls profBonus(), which is itself `base + effFlat("profbonus")`. Without this the first entry to
+  // put { prof: true } on a real target blows the stack — the layering in the header comment is a
+  // rule for authors, not something the single-pass build enforces on itself.
+  _effBuilding = snap;
   const features = (typeof activeFeatures === "function") ? activeFeatures() : [];
   features.forEach(feature => {
     const entry = dbEntryFor(feature);
@@ -146,6 +152,7 @@ function buildEffectsSnapshot() {
   });
   Object.keys(mins).forEach(t => { snap.flat[t] = Math.max(snap.flat[t] || 0, mins[t]); });
   Object.keys(maxes).forEach(t => { snap.flat[t] = Math.min(snap.flat[t] || 0, maxes[t]); });
+  _effBuilding = null;
   return snap;
 }
 
@@ -154,9 +161,16 @@ function buildEffectsSnapshot() {
    The Features panel and recompute() are two independent `input` listeners with no guaranteed
    order — this makes that order irrelevant, since whichever fires first builds the snapshot and
    the other just reuses it. ----- */
-let _effGen = 0, _effCache = null, _effCacheGen = -1;
-function invalidateEffects() { _effGen++; }
+let _effGen = 0, _effCache = null, _effCacheGen = -1, _effBuilding = null;
+function invalidateEffects() { _effGen++; _effBuilding = null; }
 function effectsSnapshot() {
+  // A build in progress answers reads from its own partial snapshot. The cache generation is only
+  // stamped once the build finishes, so without this an effect value that reads back into the
+  // snapshot (any { prof: true }, via profBonus -> effFlat("profbonus")) would restart the build
+  // and recurse until the stack blows. Reading the partial result means such a value sees the
+  // profbonus contributions applied so far — exact whenever nothing targets profbonus, which is
+  // every entry in the database today.
+  if (_effBuilding) return _effBuilding;
   if (_effCacheGen !== _effGen) { _effCache = buildEffectsSnapshot(); _effCacheGen = _effGen; }
   return _effCache;
 }

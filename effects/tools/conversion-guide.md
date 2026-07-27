@@ -142,6 +142,13 @@ characters, same tradeoff the rest of the sheet already makes (see
 - `{ id: "ability", kind: "pick", n: 1, options: ["int", "wis"], label: "..." }`
   — pick N from a fixed list (Observant's INT-or-WIS).
 
+**Always write `n: 1` and give every pick its own id.** `renderEffectControls()`
+draws exactly one `<select>` per choice id and never reads `n`, so a single
+`{ n: 2 }` choice silently records only one of the two picks. A feature that
+grants two skills needs two ids (see Rogue/Bard Expertise, which use four:
+two for the level-1/3 picks and two more gated with `when: { minLevel: N }`).
+`validate-db.js` fails the build if any entry declares `n > 1`.
+
 ## Limited uses (top-level `uses` object on the entry)
 
 For a feature/feat with a finite number of uses that recharges on a rest —

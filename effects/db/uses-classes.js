@@ -664,16 +664,5 @@ registerEffects({
       "per": "lr",
       "delayed": null
     }
-  },
-  "subclass|wizard|bladesinging|bladesong": {
-    "name": "Bladesong",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
   }
 });
