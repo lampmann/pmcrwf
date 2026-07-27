@@ -29,12 +29,25 @@ function renderEffectControls(feature) {
     }
   });
   (entry.choices || []).forEach(c => {
-    const cur = choiceValue(feature, c.id) || "";
-    let opts = "";
-    if (c.kind === "ability") opts = ABILITIES.map(a => `<option value="${a.key}"${cur === a.key ? " selected" : ""}>${a.name}</option>`).join("");
-    else if (c.kind === "pick") opts = (c.options || []).map(o => `<option value="${o}"${cur === o ? " selected" : ""}>${escapeHtml(String(o))}</option>`).join("");
-    else return;   // "skill" choice kind: deferred, none of the shipped entries use it yet
-    html += ` <label class="hint">${escapeHtml(c.label || "choice")}: <select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"><option value="">—</option>${opts}</select></label>`;
+    if (c.kind === "ability") {
+      const cur = choiceValue(feature, c.id) || "";
+      const opts = ABILITIES.map(a => `<option value="${a.key}"${cur === a.key ? " selected" : ""}>${a.name}</option>`).join("");
+      html += ` <label class="hint">${escapeHtml(c.label || "choice")}: <select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"><option value="">—</option>${opts}</select></label>`;
+    } else if (c.kind === "pick") {
+      // n > 1 ("pick 2 of these skills") renders one <select> per slot, each excluding whatever
+      // the other slots already picked, so the same option can't be chosen twice — see resolveTargetsAll
+      // in effects.js for how an array of per-slot values turns into one effect application per slot.
+      const n = Math.max(1, c.n || 1);
+      const curArr = n > 1 ? (Array.isArray(choiceValue(feature, c.id)) ? choiceValue(feature, c.id) : []) : [choiceValue(feature, c.id) || ""];
+      let selects = "";
+      for (let i = 0; i < n; i++) {
+        const cur = curArr[i] || "";
+        const others = curArr.filter((v, j) => j !== i && v);
+        const opts = (c.options || []).filter(o => !others.includes(o)).map(o => `<option value="${o}"${cur === o ? " selected" : ""}>${escapeHtml(String(o))}</option>`).join("");
+        selects += `<select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"${n > 1 ? ` data-slot="${i}"` : ""}><option value="">—</option>${opts}</select> `;
+      }
+      html += ` <label class="hint">${escapeHtml(c.label || "choice")}: ${selects}</label>`;
+    }   // "skill" choice kind: deferred, none of the shipped entries use it yet
   });
   (entry.unsupported || []).forEach(u => { html += ` <span class="eff-unsup" title="${escapeHtml(u.reason)}">⚠ not automated</span>`; });
   return html;

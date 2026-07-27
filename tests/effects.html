@@ -116,6 +116,14 @@
 <script src="../effects/db/classes-batch-16.js"></script>
 <script src="../effects/db/classes-batch-17.js"></script>
 <script src="../effects/db/classes-batch-18.js"></script>
+<script src="../effects/db/races-batch-01.js"></script>
+<script src="../effects/db/races-batch-02.js"></script>
+<script src="../effects/db/races-batch-03.js"></script>
+<script src="../effects/db/races-batch-04.js"></script>
+<script src="../effects/db/races-batch-05.js"></script>
+<script src="../effects/db/races-batch-06.js"></script>
+<script src="../effects/db/races-batch-07.js"></script>
+<script src="../effects/db/races-batch-08.js"></script>
 <script src="../effects/db/uses-classes.js"></script>
 <script src="../effects/db/uses-races.js"></script>
 <script src="../src/effects.js"></script>
@@ -294,10 +302,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Every `pick` choice must have its own id — renderEffectControls draws one <select> per id and
   // ignores `n`, so a single n:2 choice would silently record only one of the two picks.
-  const multiPick = Object.entries(EFFECTS_DB)
-    .filter(([, e]) => (e.choices || []).some(c => c.kind === "pick" && c.n > 1))
+  const badPick = Object.entries(EFFECTS_DB)
+    .filter(([, e]) => (e.choices || []).some(c => c.kind === "pick" && c.n > (c.options || []).length))
     .map(([k]) => k);
-  assertEqual("no pick choice claims n > 1 (the UI renders one select per choice id)", multiPick.join(", "), "");
+  assertEqual("no pick choice asks for more slots than it has options", badPick.join(", "), "");
 
   // Draconic Resilience scales off levels in the granting class, not total character level: with
   // Wizard 5 already in the fixture, a total-level reading would give 8 instead of 3.
