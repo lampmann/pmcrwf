@@ -142,12 +142,17 @@ characters, same tradeoff the rest of the sheet already makes (see
 - `{ id: "ability", kind: "pick", n: 1, options: ["int", "wis"], label: "..." }`
   — pick N from a fixed list (Observant's INT-or-WIS).
 
-**Always write `n: 1` and give every pick its own id.** `renderEffectControls()`
-draws exactly one `<select>` per choice id and never reads `n`, so a single
-`{ n: 2 }` choice silently records only one of the two picks. A feature that
-grants two skills needs two ids (see Rogue/Bard Expertise, which use four:
-two for the level-1/3 picks and two more gated with `when: { minLevel: N }`).
-`validate-db.js` fails the build if any entry declares `n > 1`.
+**`n > 1` is supported: one `<select>` is rendered per slot.** A `pick` with
+`n: 2` stores an *array* of chosen values, `renderEffectControls()` draws one
+dropdown per slot (each excluding what the other slots already took, so the
+same skill can't be picked twice), and `resolveTargetsAll()` in `effects.js`
+expands a `{choice:id}` target into one application per filled slot. So
+"choose two skills" is a single `{ n: 2 }` choice, not two ids.
+
+Separate ids are still correct when the picks are *mechanically distinct* —
+most often when a later batch of picks is level-gated, e.g. Rogue Expertise
+grants two at 1st level and two more at 6th, so it uses one choice for the
+first pair and a second choice gated `when: { minLevel: 6 }` for the rest.
 
 ## Limited uses (top-level `uses` object on the entry)
 

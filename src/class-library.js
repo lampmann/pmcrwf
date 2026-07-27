@@ -538,9 +538,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const sel = e.target.closest(".eff-choice");
     if (sel) {
-      const fkey = sel.dataset.fkey, id = sel.dataset.choice, v = sel.value;
+      const fkey = sel.dataset.fkey, id = sel.dataset.choice, v = sel.value, slot = sel.dataset.slot;
       const c = EFFECT_CHOICES[fkey] || (EFFECT_CHOICES[fkey] = {});
-      if (v) c[id] = v; else delete c[id];
+      if (slot != null) {
+        // multi-pick ("choose N"): store one array per choice id, one slot per rendered <select>
+        const arr = Array.isArray(c[id]) ? c[id].slice() : [];
+        arr[Number(slot)] = v;
+        if (arr.some(x => x)) c[id] = arr; else delete c[id];
+      } else if (v) c[id] = v; else delete c[id];
       invalidateEffects(); scheduleSave(); recompute(); renderClassFeatures(); return;
     }
   });
