@@ -386,7 +386,19 @@ function applyRest(kind) {   // kind: "sr" or "lr"
       st.used = 0;
     }
   });
-  scheduleSave(); renderClassFeatures();
+  // A long rest also restores HP to full and clears every expended spell slot (2014 rules — a
+  // short rest does neither by itself). Hit Dice aren't restored here: the sheet only has a single
+  // freeform "Hit Dice" box (character.js's hit-dice field), not the per-die-size used/max tracker
+  // regaining "up to half your total, minimum 1" would need to compute against — still manual.
+  if (kind === "lr") {
+    const hpCur = $("hp-cur");
+    if (hpCur) hpCur.value = String(maxHP());
+    for (let i = 1; i <= 9; i++) {
+      const used = $("slot-used-" + i);
+      if (used) used.value = "";
+    }
+  }
+  scheduleSave(); recompute(); renderClassFeatures();
 }
 
 function renderClassLibrary() {
