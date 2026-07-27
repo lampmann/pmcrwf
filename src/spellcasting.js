@@ -9,6 +9,20 @@
    FEAT_CHOICES/USES_STATE.
    ============================================================ */
 let CHARACTER_SPELLS = []; // [{cls, lvl, name, prep}]
+let CONCENTRATING = null; // { name, cls } of the one spell currently being concentrated on, or null
+
+/* ----- concentration: 5e only allows one concentration spell at a time, so starting a new one
+   always drops whatever came before. Identified by name+cls rather than a CHARACTER_SPELLS array
+   index, since indices shift whenever an earlier spell is removed — this stays valid across
+   reloads/edits regardless of array position. */
+function isConcentratingOn(s) { return !!CONCENTRATING && CONCENTRATING.name === s.name && CONCENTRATING.cls === (s.cls || ""); }
+function startConcentrating(name, cls) { CONCENTRATING = { name, cls: cls || "" }; scheduleSave(); renderSpellList(); }
+function dropConcentration() { CONCENTRATING = null; scheduleSave(); renderSpellList(); }
+function concentrationBannerHtml() {
+  if (!CONCENTRATING) return "";
+  const clsNote = CONCENTRATING.cls ? ` <span class="hint">(${escapeHtml(CONCENTRATING.cls)})</span>` : "";
+  return `<div class="conc-banner">🔒 Concentrating: <b>${escapeHtml(CONCENTRATING.name)}</b>${clsNote} <button type="button" class="rowbtn sp2-conc-drop" title="drop concentration">drop</button></div>`;
+}
 
 function ordinalLevel(lvl) {
   if (!lvl) return "Cantrip";
@@ -65,7 +79,12 @@ function refreshSpellAddClassSelect() {
 function spellLineHtml(s, prepBox) {
   const lib = findLibSpellByName(s.name), src = lib ? lib.source : "";
   const note = s.note ? ` <span class="hint">(${escapeHtml(s.note)})</span>` : "";
-  return `<div><a class="feat-link sp2-link" data-idx="${s.i}"><b>${ordinalLevel(s.lvl)}</b> ${escapeHtml(s.name)}</a>${note} <span class="hint">${src}</span>${prepBox || ""}
+  const concBtn = (lib && lib.conc)
+    ? (isConcentratingOn(s)
+        ? ` <button type="button" class="rowbtn sp2-conc on" data-idx="${s.i}" title="concentrating — click to drop">◉ conc</button>`
+        : ` <button type="button" class="rowbtn sp2-conc" data-idx="${s.i}" title="click to start concentrating (drops any other spell you're concentrating on)">○ conc</button>`)
+    : "";
+  return `<div><a class="feat-link sp2-link" data-idx="${s.i}"><b>${ordinalLevel(s.lvl)}</b> ${escapeHtml(s.name)}</a>${note} <span class="hint">${src}</span>${concBtn}${prepBox || ""}
     <button class="rowbtn sp2-del" data-idx="${s.i}" title="remove">x</button></div>`;
 }
 function renderSpellList() {
@@ -114,8 +133,11 @@ function renderSpellList() {
   const orphans = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => !s.grantSrc && !assigned.has(s.cls));
   const orphanHtml = orphans.length ? `<div style="margin:.5rem 0 .1rem"><b>Unassigned</b> <span class="hint">— class removed or not set</span></div>` +
     orphans.map(s => spellLineHtml(s)).join("") : "";
-  if (!casterHtml && !grantedHtml && !orphanHtml) { el.innerHTML = "<div class='hint'>Add a spellcasting class in the Character module to track spells here.</div>"; return; }
-  el.innerHTML = casterHtml + grantedHtml + orphanHtml;
+  if (!casterHtml && !grantedHtml && !orphanHtml) {
+    el.innerHTML = concentrationBannerHtml() || "<div class='hint'>Add a spellcasting class in the Character module to track spells here.</div>";
+    return;
+  }
+  el.innerHTML = concentrationBannerHtml() + casterHtml + grantedHtml + orphanHtml;
 }
 function findLibSpellByName(name) {
   const q = (name || "").trim().toLowerCase(); if (!q) return null;
@@ -193,6 +215,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const results = $("spell-feat-results");
   if (results) results.addEventListener("click", e => {
     const del = e.target.closest(".sp2-del"); if (del) { removeCharacterSpell(Number(del.dataset.idx)); return; }
+    const dropBtn = e.target.closest(".sp2-conc-drop"); if (dropBtn) { dropConcentration(); return; }
+    const conc = e.target.closest(".sp2-conc");
+    if (conc) {
+      const s = CHARACTER_SPELLS[Number(conc.dataset.idx)]; if (!s) return;
+      if (isConcentratingOn(s)) dropConcentration(); else startConcentrating(s.name, s.cls || "");
+      return;
+    }
     // Handled on click (not "change"): a checkbox's native "input" event fires before "change", and the
     // app's global input-listener triggers a full recompute()/re-render that replaces this very checkbox —
     // by the time "change" would bubble here it's already detached and the event never arrives. Click fires

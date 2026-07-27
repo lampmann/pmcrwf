@@ -4,7 +4,7 @@ function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveSt
 function collectState() {
   const state = {
     v: 1, effectsSv: 1,
-    fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, items: CHARACTER_ITEMS,
+    fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, concentrating: CONCENTRATING, items: CHARACTER_ITEMS,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
     routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
     featChoices: FEAT_CHOICES, usesState: USES_STATE,
@@ -18,6 +18,7 @@ function applyState(state) {
   $("class-rows").innerHTML = "";
   (state.classes || [{ name: "", sub: "", lvl: 1 }]).forEach(addClassRow);
   CHARACTER_SPELLS = state.spells || [];
+  CONCENTRATING = state.concentrating || null;
   CHARACTER_ITEMS = state.items || [];
   FEAT_CHOICES = state.featChoices || {};
   USES_STATE = state.usesState || {};
