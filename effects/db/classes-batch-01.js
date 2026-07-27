@@ -105,7 +105,7 @@ registerEffects({
 
   "class|warrior sidekick|improved defense": {
     name: "Improved Defense", sv: 1,
-    unsupported: [{ reason: "AC +1; AC target not yet wired", tags: ["ac"] }],
+    effects: [{ target: "ac", op: "add", value: 1 }],
   },
 
   "class|warrior sidekick|indomitable": {

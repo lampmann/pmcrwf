@@ -98,7 +98,8 @@ registerEffects({
   },
   "subrace|beasthide|shifting feature": {
     name: "Shifting Feature", sv: 1,
-    unsupported: [{ reason: "state-dependent temp HP + AC bonus while shifted; no state/toggle tracking for shifting form", tags: ["state", "ac"] }],
+    effects: [{ target: "ac", op: "add", value: 1, activation: { kind: "toggle", id: "shifted", label: "Shifted" } }],
+    unsupported: [{ reason: "1d6 temporary HP granted at the moment you shift; not modeled (no one-time-grant mechanic)", tags: ["temp-hp"] }],
   },
   "subrace|longtooth|fierce": {
     name: "Fierce", sv: 1,
