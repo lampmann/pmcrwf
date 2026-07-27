@@ -32,4 +32,8 @@ registerEffects({
     name: "Dwarven Toughness", sv: 1,
     effects: [{ target: "hpmax", op: "add", value: { level: "total" } }],
   },
+  "race|dwarf|stonecunning": {
+    name: "Stonecunning", sv: 1,
+    unsupported: [{ reason: "double proficiency bonus, but only on History checks related to stonework's origin; not a blanket skill expertise", tags: ["skill", "conditional"] }],
+  },
 });
