@@ -36,7 +36,7 @@
   <section class="module" data-module="hp">
     <input type="text" id="hp-cur"><span id="hp-max">0</span><input type="number" id="hp-max-override">
     <input type="text" id="hp-temp"><input type="text" id="hit-dice">
-    <input type="text" id="ac"><span id="ac-total" style="display:none"></span>
+    <span id="ac">10</span><input type="text" id="ac-misc"><input type="number" id="ac-override">
     <input type="text" id="speed"><span id="speed-total" style="display:none"></span>
     <span id="init">+0</span><input type="text" id="init-misc">
   </section>
@@ -47,7 +47,7 @@
     <div id="item-library-body" style="display:none">
       <button id="item-lib-reload"></button><button id="item-lib-clear"></button>
       <span id="item-lib-count"></span><span id="item-lib-autostatus"></span>
-      <input type="file" id="item-import"><input id="item-search"><div id="item-results"></div>
+      <input type="file" id="item-import"><div id="item-filter-area"></div><input id="item-search"><div id="item-results"></div>
     </div>
     <button id="item-lib-toggle"></button>
     <span id="attuned-count">0</span>
@@ -95,11 +95,36 @@
 <script src="../src/rows.js"></script>
 <script src="../src/derived.js"></script>
 <script src="../src/dice.js"></script>
+<script src="../src/filters.js"></script>
 <script src="../src/spell-library.js"></script>
 <script src="../src/class-library.js"></script>
 <script src="../effects/effects-db.js"></script>
 <script src="../effects/db/handwritten.js"></script>
 <script src="../effects/db/feats.js"></script>
+<script src="../effects/db/classes-batch-01.js"></script>
+<script src="../effects/db/classes-batch-02.js"></script>
+<script src="../effects/db/classes-batch-03.js"></script>
+<script src="../effects/db/classes-batch-04.js"></script>
+<script src="../effects/db/classes-batch-05.js"></script>
+<script src="../effects/db/classes-batch-07.js"></script>
+<script src="../effects/db/classes-batch-08.js"></script>
+<script src="../effects/db/classes-batch-09.js"></script>
+<script src="../effects/db/classes-batch-11.js"></script>
+<script src="../effects/db/classes-batch-12.js"></script>
+<script src="../effects/db/classes-batch-13.js"></script>
+<script src="../effects/db/classes-batch-14.js"></script>
+<script src="../effects/db/classes-batch-15.js"></script>
+<script src="../effects/db/classes-batch-16.js"></script>
+<script src="../effects/db/classes-batch-17.js"></script>
+<script src="../effects/db/classes-batch-18.js"></script>
+<script src="../effects/db/races-batch-01.js"></script>
+<script src="../effects/db/races-batch-02.js"></script>
+<script src="../effects/db/races-batch-03.js"></script>
+<script src="../effects/db/races-batch-04.js"></script>
+<script src="../effects/db/races-batch-05.js"></script>
+<script src="../effects/db/races-batch-06.js"></script>
+<script src="../effects/db/races-batch-07.js"></script>
+<script src="../effects/db/races-batch-08.js"></script>
 <script src="../effects/db/uses-classes.js"></script>
 <script src="../effects/db/uses-races.js"></script>
 <script src="../src/effects.js"></script>
@@ -225,6 +250,95 @@ document.addEventListener("DOMContentLoaded", () => {
   renderClassFeatures();   // hits the early-return branch — FEATURE_TEXT_BY_KEY is now stale
   applyRest("lr");
   assertEqual("applyRest ignores a feature no longer in activeFeatures() (stale-map bug fix)", USES_STATE[swFkey].used, 1);
+
+  // ----- converted class/subclass batches: wiring + the uses-merge these files went through -----
+  // These assert against EFFECTS_DB directly (no CLASS_LIB fixture needed): the point is that the
+  // classes-batch-*.js files are actually loaded, and that folding the generated uses-classes.js
+  // trackers into them kept BOTH halves of each entry. registerEffects() assigns whole entries, so
+  // a `uses`-only duplicate of one of these keys would silently erase its effects/unsupported list.
+  const echoKey = "subclass|fighter|echo knight|unleash incarnation";
+  assert("classes-batch-*.js are loaded (script-tag wiring)", !!EFFECTS_DB[echoKey]);
+  assert("batch entry kept its unsupported list alongside its uses tracker",
+    !!EFFECTS_DB[echoKey] && !!EFFECTS_DB[echoKey].uses && !!EFFECTS_DB[echoKey].unsupported);
+
+  const fakeFeat = key => ({ effKey: key, fkey: "test|" + key, origin: { kind: "subclass", className: "Fighter", subclassName: "Echo Knight" } });
+  const usesMaxOf = key => { const f = fakeFeat(key); const s = usesSpecFor(f); return s ? usesMaxFor(f, s.max) : null; };
+
+  // "a number of times equal to your CON modifier (a minimum of once)" — the minimum is the whole
+  // point of the expression, and { mod: "con", min: 1 } silently drops it (evalValue reads the
+  // first matching key and ignores the rest), so pin both ends of the range.
+  $("score-con").value = 10;
+  assertEqual("Unleash Incarnation uses at CON 10 (mod +0) floors at the stated minimum of 1", usesMaxOf(echoKey), 1);
+  $("score-con").value = 16;
+  assertEqual("Unleash Incarnation uses at CON 16 (mod +3)", usesMaxOf(echoKey), 3);
+  $("score-con").value = 10;
+
+  $("score-wis").value = 8;
+  assertEqual("Wrath of the Storm uses at WIS 8 (mod −1) floors at 1", usesMaxOf("subclass|cleric|tempest domain|wrath of the storm"), 1);
+  $("score-wis").value = 10;
+
+  assertEqual("Shadow Martyr recharges on a short rest, not a long one",
+    (usesSpecFor(fakeFeat("subclass|fighter|echo knight|shadow martyr")) || {}).per, "sr");
+  assert("Steps of Night kept a uses tracker through the merge",
+    !!usesSpecFor(fakeFeat("subclass|cleric|twilight domain|steps of night")));
+
+  // ----- newly converted classes (bard/paladin/ranger/rogue/sorcerer/warlock/wizard batches) -----
+  assert("bard/paladin/ranger/rogue/sorcerer/warlock/wizard batches are loaded",
+    ["class|bard|expertise", "class|paladin|aura of protection", "subclass|ranger|gloom stalker|dread ambusher",
+     "class|rogue|slippery mind", "subclass|sorcerer|draconic bloodline|draconic resilience",
+     "class|warlock|mystic arcanum (6th level)", "subclass|wizard|war magic|durable magic"]
+      .every(k => !!EFFECTS_DB[k]));
+
+  // Aura of Protection is the paladin's signature number: +CHA (min +1) on every save, so it must
+  // hit all six save targets and floor at +1 for a low-CHA paladin rather than going negative.
+  const auraEffects = EFFECTS_DB["class|paladin|aura of protection"].effects.filter(e => e.op === "add");
+  assertEqual("Aura of Protection covers all six saving throws", auraEffects.length, 6);
+  const auraFeat = { effKey: "class|paladin|aura of protection", fkey: "test|aura",
+                     origin: { kind: "class", className: "Paladin" } };
+  $("score-cha").value = 8;
+  assertEqual("Aura of Protection floors at +1 at CHA 8 (mod −1)", evalValue(auraFeat, auraEffects[0].value), 1);
+  $("score-cha").value = 18;
+  assertEqual("Aura of Protection gives +4 at CHA 18", evalValue(auraFeat, auraEffects[0].value), 4);
+  $("score-cha").value = 10;
+
+  // Every `pick` choice must have its own id — renderEffectControls draws one <select> per id and
+  // ignores `n`, so a single n:2 choice would silently record only one of the two picks.
+  const badPick = Object.entries(EFFECTS_DB)
+    .filter(([, e]) => (e.choices || []).some(c => c.kind === "pick" && c.n > (c.options || []).length))
+    .map(([k]) => k);
+  assertEqual("no pick choice asks for more slots than it has options", badPick.join(", "), "");
+
+  // Draconic Resilience scales off levels in the granting class, not total character level: with
+  // Wizard 5 already in the fixture, a total-level reading would give 8 instead of 3.
+  addClassRow({ name: "Sorcerer", sub: "Draconic Bloodline", lvl: 3 });
+  recompute();
+  const dracFeat = { effKey: "subclass|sorcerer|draconic bloodline|draconic resilience", fkey: "test|drac",
+                     origin: { kind: "subclass", className: "Sorcerer", subclassName: "Draconic Bloodline" } };
+  assertEqual("Draconic Resilience adds max HP equal to sorcerer level, not total level",
+    evalValue(dracFeat, EFFECTS_DB[dracFeat.effKey].effects[0].value), 3);
+
+  // Regression: an effect whose value is { prof: true } on a real (non-reserved) target reads back
+  // into the snapshot mid-build, because profBonus() is itself `base + effFlat("profbonus")`. Before
+  // effectsSnapshot() learned to answer re-entrant reads from the partial snapshot, this recursed
+  // until the stack blew — taking the whole sheet down, not just the effect. Aura of the Sentinel
+  // (+PB to initiative) is the first shipped entry to do it.
+  document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+  addClassRow({ name: "Paladin", sub: "Oath of the Watchers", lvl: 7 });
+  $("score-dex").value = 14; $("score-cha").value = 18;
+  CLASS_LIB = {
+    Paladin: {
+      name: "Paladin", source: "PHB", hd: "d10", caster: "half", feats: [],
+      subs: { Watchers: { name: "Oath of the Watchers", shortName: "Watchers", source: "TCE", grantedSpells: [], feats: [
+        { name: "Aura of the Sentinel", level: 7, source: "TCE", text: "" },
+      ] } },
+    },
+  };
+  renderClassLibrary(); invalidateEffects(); recompute();
+  // DEX +2, plus proficiency bonus +3 at level 7 from Aura of the Sentinel
+  assertEqual("{ prof: true } on a real target resolves instead of recursing (Aura of the Sentinel)",
+    $("init").textContent, "+5");
+  assert("Aura of the Sentinel is credited in the initiative audit",
+    $("init").title.includes("Aura of the Sentinel"));
 
   lines.push("", `${pass} passed, ${fail} failed`);
   const el = document.getElementById("results");

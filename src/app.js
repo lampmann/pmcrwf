@@ -84,21 +84,10 @@ function init() {
   });
 
   // ----- Spell library wiring -----
-  loadSpellLib(); loadFilters(); renderSpellLibrary();
+  loadSpellLib(); SPELL_FILTERS.load(); renderSpellLibrary();
   $("spell-import").addEventListener("change", e => { if (e.target.files.length) loadSpellFiles(e.target.files); e.target.value = ""; });
   $("spell-search").addEventListener("input", renderSpellResults);
-  $("spell-filter-area").addEventListener("click", e => {
-    const opt = e.target.closest("[data-fval]");
-    if (opt) { cycleState(opt.dataset.fgroup, opt.dataset.fval); persistFilters(); renderFilterArea(); renderSpellResults(); return; }
-    const ctrl = e.target.closest("[data-fctrl]");
-    if (ctrl) { handleCtrl(ctrl.dataset.fctrl, ctrl.dataset.fg); persistFilters(); renderFilterArea(); renderSpellResults(); return; }
-    const id = e.target.id;
-    if (id === "mod-combine") { moduleCombine = moduleCombine === "and" ? "or" : "and"; persistFilters(); renderFilterArea(); renderSpellResults(); }
-    else if (id === "mod-showall") { SPELL_FGROUPS.forEach(g => filterState[g.key].hidden = false); persistFilters(); renderFilterArea(); }
-    else if (id === "mod-hideall") { SPELL_FGROUPS.forEach(g => filterState[g.key].hidden = true); persistFilters(); renderFilterArea(); }
-    else if (id === "mod-reset") { resetFilters(); renderFilterArea(); renderSpellResults(); }
-    else if (id === "mod-savedefault") { saveFilterDefaults(); alert("Current filters saved as the default (Reset restores them)."); }
-  });
+  $("spell-filter-area").addEventListener("click", e => SPELL_FILTERS.handleClick(e));
   $("spell-results").addEventListener("click", e => {
     const b = e.target.closest(".sp-lib-add"); if (b) { addSpellFromLib(b.dataset.key); return; }
     const link = e.target.closest(".sp-name-link"); if (link) { e.preventDefault(); toggleSpellDetail(link); }
@@ -125,9 +114,10 @@ function init() {
   });
 
   // ----- Equipment library wiring -----
-  loadItemLib(); renderItemLibrary();
+  loadItemLib(); ITEM_FILTERS.load(); renderItemLibrary();
   $("item-import").addEventListener("change", e => { if (e.target.files.length) loadItemFiles(e.target.files); e.target.value = ""; });
   $("item-search").addEventListener("input", renderItemResults);
+  $("item-filter-area").addEventListener("click", e => ITEM_FILTERS.handleClick(e));
   $("item-results").addEventListener("click", e => {
     const b = e.target.closest(".itm-lib-add"); if (b) { addItemFromLib(b.dataset.key); return; }
     const link = e.target.closest(".itm-name-link"); if (link) { e.preventDefault(); toggleItemDetail(link); }
