@@ -103,12 +103,19 @@
 <script src="../effects/db/classes-batch-01.js"></script>
 <script src="../effects/db/classes-batch-02.js"></script>
 <script src="../effects/db/classes-batch-03.js"></script>
+<script src="../effects/db/classes-batch-04.js"></script>
 <script src="../effects/db/classes-batch-05.js"></script>
 <script src="../effects/db/classes-batch-07.js"></script>
 <script src="../effects/db/classes-batch-08.js"></script>
 <script src="../effects/db/classes-batch-09.js"></script>
 <script src="../effects/db/classes-batch-11.js"></script>
 <script src="../effects/db/classes-batch-12.js"></script>
+<script src="../effects/db/classes-batch-13.js"></script>
+<script src="../effects/db/classes-batch-14.js"></script>
+<script src="../effects/db/classes-batch-15.js"></script>
+<script src="../effects/db/classes-batch-16.js"></script>
+<script src="../effects/db/classes-batch-17.js"></script>
+<script src="../effects/db/classes-batch-18.js"></script>
 <script src="../effects/db/uses-classes.js"></script>
 <script src="../effects/db/uses-races.js"></script>
 <script src="../src/effects.js"></script>
@@ -265,6 +272,64 @@ document.addEventListener("DOMContentLoaded", () => {
     (usesSpecFor(fakeFeat("subclass|fighter|echo knight|shadow martyr")) || {}).per, "sr");
   assert("Steps of Night kept a uses tracker through the merge",
     !!usesSpecFor(fakeFeat("subclass|cleric|twilight domain|steps of night")));
+
+  // ----- newly converted classes (bard/paladin/ranger/rogue/sorcerer/warlock/wizard batches) -----
+  assert("bard/paladin/ranger/rogue/sorcerer/warlock/wizard batches are loaded",
+    ["class|bard|expertise", "class|paladin|aura of protection", "subclass|ranger|gloom stalker|dread ambusher",
+     "class|rogue|slippery mind", "subclass|sorcerer|draconic bloodline|draconic resilience",
+     "class|warlock|mystic arcanum (6th level)", "subclass|wizard|war magic|durable magic"]
+      .every(k => !!EFFECTS_DB[k]));
+
+  // Aura of Protection is the paladin's signature number: +CHA (min +1) on every save, so it must
+  // hit all six save targets and floor at +1 for a low-CHA paladin rather than going negative.
+  const auraEffects = EFFECTS_DB["class|paladin|aura of protection"].effects.filter(e => e.op === "add");
+  assertEqual("Aura of Protection covers all six saving throws", auraEffects.length, 6);
+  const auraFeat = { effKey: "class|paladin|aura of protection", fkey: "test|aura",
+                     origin: { kind: "class", className: "Paladin" } };
+  $("score-cha").value = 8;
+  assertEqual("Aura of Protection floors at +1 at CHA 8 (mod −1)", evalValue(auraFeat, auraEffects[0].value), 1);
+  $("score-cha").value = 18;
+  assertEqual("Aura of Protection gives +4 at CHA 18", evalValue(auraFeat, auraEffects[0].value), 4);
+  $("score-cha").value = 10;
+
+  // Every `pick` choice must have its own id — renderEffectControls draws one <select> per id and
+  // ignores `n`, so a single n:2 choice would silently record only one of the two picks.
+  const multiPick = Object.entries(EFFECTS_DB)
+    .filter(([, e]) => (e.choices || []).some(c => c.kind === "pick" && c.n > 1))
+    .map(([k]) => k);
+  assertEqual("no pick choice claims n > 1 (the UI renders one select per choice id)", multiPick.join(", "), "");
+
+  // Draconic Resilience scales off levels in the granting class, not total character level: with
+  // Wizard 5 already in the fixture, a total-level reading would give 8 instead of 3.
+  addClassRow({ name: "Sorcerer", sub: "Draconic Bloodline", lvl: 3 });
+  recompute();
+  const dracFeat = { effKey: "subclass|sorcerer|draconic bloodline|draconic resilience", fkey: "test|drac",
+                     origin: { kind: "subclass", className: "Sorcerer", subclassName: "Draconic Bloodline" } };
+  assertEqual("Draconic Resilience adds max HP equal to sorcerer level, not total level",
+    evalValue(dracFeat, EFFECTS_DB[dracFeat.effKey].effects[0].value), 3);
+
+  // Regression: an effect whose value is { prof: true } on a real (non-reserved) target reads back
+  // into the snapshot mid-build, because profBonus() is itself `base + effFlat("profbonus")`. Before
+  // effectsSnapshot() learned to answer re-entrant reads from the partial snapshot, this recursed
+  // until the stack blew — taking the whole sheet down, not just the effect. Aura of the Sentinel
+  // (+PB to initiative) is the first shipped entry to do it.
+  document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+  addClassRow({ name: "Paladin", sub: "Oath of the Watchers", lvl: 7 });
+  $("score-dex").value = 14; $("score-cha").value = 18;
+  CLASS_LIB = {
+    Paladin: {
+      name: "Paladin", source: "PHB", hd: "d10", caster: "half", feats: [],
+      subs: { Watchers: { name: "Oath of the Watchers", shortName: "Watchers", source: "TCE", grantedSpells: [], feats: [
+        { name: "Aura of the Sentinel", level: 7, source: "TCE", text: "" },
+      ] } },
+    },
+  };
+  renderClassLibrary(); invalidateEffects(); recompute();
+  // DEX +2, plus proficiency bonus +3 at level 7 from Aura of the Sentinel
+  assertEqual("{ prof: true } on a real target resolves instead of recursing (Aura of the Sentinel)",
+    $("init").textContent, "+5");
+  assert("Aura of the Sentinel is credited in the initiative audit",
+    $("init").title.includes("Aura of the Sentinel"));
 
   lines.push("", `${pass} passed, ${fail} failed`);
   const el = document.getElementById("results");
