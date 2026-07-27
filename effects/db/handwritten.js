@@ -44,7 +44,10 @@ registerEffects({
       { target: "score-{choice:ability}", op: "add", value: 1, activation: { kind: "choice", choice: "ability" } },
     ],
   },
-  "feat|sharpshooter": {   // serialized now; applied once a weapons/attacks module exists (attack-*/damage-* are reserved targets)
+  // Written against attack-hit/damage-bonus while both were still reserved, and applied — with no
+  // re-conversion — the day the Attacks module learned to read them. The working example of why
+  // the reserved-target scheme exists (see the header comment in src/effects.js).
+  "feat|sharpshooter": {
     name: "Sharpshooter", sv: 1,
     effects: [
       { target: "attack-hit", op: "add", value: -5,

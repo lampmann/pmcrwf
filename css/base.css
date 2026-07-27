@@ -120,4 +120,6 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 /* audit trail: a dotted underline on any derived value an effect touched, and the small
    "base + effects = total" note next to ability scores / AC / speed */
 .has-eff { border-bottom: 1px dotted var(--link-border); cursor: help; }
+/* same audit marker on an Attacks-module roll button, which keeps its own border and click cursor */
+button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link); cursor: pointer; }
 .eff-note { font-size: .8rem; color: var(--muted-fg); cursor: help; }

@@ -52,7 +52,7 @@ registerEffects({
 
   "class|monk|extra attack": {
     name: "Extra Attack", sv: 1,
-    unsupported: [{ reason: "attack twice on Attack action (needs weapons/attacks module)", tags: ["attack"] }],
+    unsupported: [{ reason: "attack twice on the Attack action; action economy, not a number on an attack", tags: ["attack"] }],
   },
 
   "class|monk|focused aim": {
