@@ -106,10 +106,11 @@ function validateEntry(key, entry, errors) {
     if (!c.id) errors.push(`${where} choice missing "id"`);
     if (!CHOICE_KINDS.has(c.kind)) errors.push(`${where} choice "${c.id}" has unknown kind "${c.kind}"`);
     if (c.kind === "pick" && !Array.isArray(c.options)) errors.push(`${where} choice "${c.id}" (kind pick) needs "options" array`);
-    // renderEffectControls() draws one <select> per choice id and never reads `n`, so an n>1 choice
-    // silently records only the first pick. Two skills means two ids.
-    if (c.kind === "pick" && c.n != null && c.n !== 1) {
-      errors.push(`${where} choice "${c.id}" has n=${c.n}; the UI renders one select per choice id, so give each pick its own id with n:1`);
+    if (c.kind === "pick" && c.n != null && (!Number.isInteger(c.n) || c.n < 1)) {
+      errors.push(`${where} choice "${c.id}" has n=${c.n}; must be a positive integer`);
+    }
+    if (c.kind === "pick" && Array.isArray(c.options) && c.n > c.options.length) {
+      errors.push(`${where} choice "${c.id}" picks ${c.n} from only ${c.options.length} option(s)`);
     }
   });
 
