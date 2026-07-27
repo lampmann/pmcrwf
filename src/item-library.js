@@ -4,13 +4,37 @@
    with either array — one search box, one import button, nothing to configure.
    ============================================================ */
 const ITEM_TYPES = {
-  $:"Treasure", A:"Ammunition", AF:"Ammunition (Firearm)", AT:"Artisan's Tools", EM:"Eldritch Machine",
-  EXP:"Explosive", FD:"Food & Drink", G:"Adventuring Gear", GS:"Gaming Set", HA:"Heavy Armor",
+  $:"Treasure", "$A":"Treasure (Art Object)", "$C":"Treasure (Coinage)", "$G":"Treasure (Gemstone)",
+  A:"Ammunition", AF:"Ammunition (Firearm)", AIR:"Vehicle (Air)", AT:"Artisan's Tools", EM:"Eldritch Machine",
+  EXP:"Explosive", FD:"Food & Drink", G:"Adventuring Gear", GS:"Gaming Set", GV:"Generic Variant", HA:"Heavy Armor",
   INS:"Instrument", LA:"Light Armor", M:"Melee Weapon", MA:"Medium Armor", MNT:"Mount", OTH:"Other",
   P:"Potion", R:"Ranged Weapon", RD:"Rod", RG:"Ring", S:"Shield", SC:"Scroll", SCF:"Spellcasting Focus",
-  T:"Tools", TAH:"Tack & Harness", TG:"Trade Good", VEH:"Vehicle (Land)", SHP:"Ship", WD:"Wand",
+  SPC:"Vehicle (Space)", T:"Tools", TAH:"Tack & Harness", TG:"Trade Good", VEH:"Vehicle (Land)",
+  SHP:"Vehicle (Water)", WD:"Wand",
 };
-const ITEM_LIB_SCHEMA = 3;  // bump when the parsed-item shape changes (forces a one-time re-import)
+// 5e.tools weapon/armor property codes (data/items-base.json "property"), suffixed with |SOURCE
+// for the non-core ones (e.g. "Vst|EGW") — split on "|" the same way item type codes are.
+const ITEM_PROPS = {
+  "2H":"Two-Handed", A:"Ammunition", AF:"Ammunition (Firearm)", BF:"Burst Fire", F:"Finesse", H:"Heavy",
+  L:"Light", LD:"Loading", R:"Reach", RLD:"Reload", S:"Special", T:"Thrown", V:"Versatile", Vst:"Vestige of Divergence",
+};
+// data/items*.json "miscTags"
+const ITEM_MISC_TAGS = { "CF/W":"Creates Food/Water", CNS:"Consumable", TT:"Trinket Table" };
+// 5e.tools damage-type codes (weapon dmgType / dmg2)
+const DMG_TYPE_NAMES = {
+  A:"Acid", B:"Bludgeoning", C:"Cold", F:"Fire", O:"Force", L:"Lightning", N:"Necrotic",
+  P:"Piercing", I:"Poison", Y:"Psychic", R:"Radiant", S:"Slashing", T:"Thunder",
+};
+// resist/immune/vulnerable are stored as full lowercase names, not codes
+const DMG_FILTER_TYPES = ["acid","bludgeoning","cold","fire","force","lightning","necrotic","piercing","poison","psychic","radiant","slashing","thunder"];
+// Which classes each spellcasting-focus type serves — 5e.tools presents this category by class
+// rather than by the raw arcane/druid/holy code the data stores.
+const SCF_CLASSES = {
+  arcane: ["Artificer", "Sorcerer", "Warlock", "Wizard"],
+  druid: ["Druid", "Ranger"],
+  holy: ["Cleric", "Paladin"],
+};
+const ITEM_LIB_SCHEMA = 4;  // bump when the parsed-item shape changes (forces a one-time re-import)
 let ITEM_LIB = [];
 
 // Individual magic items in 5e.tools rarely carry an explicit "value" — these are the average gp
@@ -30,7 +54,59 @@ function parseItemType(raw) {
 // Armor category drives the AC formula (see armorClassAuto in derived.js): light armor adds the
 // full DEX mod, medium caps it at +2, heavy ignores it; a shield is a flat +2 rather than a base AC.
 const ARMOR_CAT_BY_TYPE_CODE = { LA: "light", MA: "medium", HA: "heavy", S: "shield" };
-function parseItem(raw) {
+
+/* ----- filterable facets, derived once at parse time so filtering never re-reads raw JSON ----- */
+// "Requires Attunement By..." is its own bucket in 5e.tools because attunement restricted to a
+// class/race/alignment is a very different shopping constraint from plain attunement.
+function attuneBucket(raw) {
+  if (raw.reqAttune === true) return "required";
+  if (raw.reqAttune === "optional") return "optional";
+  if (typeof raw.reqAttune === "string" && raw.reqAttune) return "by";
+  return "none";
+}
+// baseitem/itemGroup/baseItem-reference is how 5e.tools distinguishes a plain longsword from the
+// generic "+1 Weapon" template from the specific "+1 Longsword" it expands into.
+function itemCategory(raw, sourceArray) {
+  if (sourceArray === "baseitem") return "Basic";
+  if (sourceArray === "itemGroup") return "Generic Variant";
+  if (raw.baseItem) return "Specific Variant";
+  return "Other";
+}
+function itemBonuses(raw) {
+  const out = [];
+  const add = (label, val) => { if (val) { out.push(label); out.push(label + " (" + val + ")"); } };
+  add("Weapon Attack and Damage Rolls", raw.bonusWeapon);
+  add("Weapon Attack Rolls", raw.bonusWeaponAttack);
+  add("Weapon Damage Rolls", raw.bonusWeaponDamage);
+  add("Armor Class", raw.bonusAc);
+  add("Spell Attacks", raw.bonusSpellAttack);
+  add("Spell Save DC", raw.bonusSpellSaveDc);
+  add("Saving Throws", raw.bonusSavingThrow);
+  add("Proficiency Bonus", raw.bonusProficiencyBonus);
+  return out;
+}
+function itemMisc(raw) {
+  const t = [];
+  (raw.miscTags || []).forEach(m => { if (ITEM_MISC_TAGS[m]) t.push(ITEM_MISC_TAGS[m]); });
+  if (raw.rarity && raw.rarity !== "none") t.push("Magic"); else t.push("Mundane");
+  if (raw.curse) t.push("Cursed");
+  if (raw.sentient) t.push("Sentient");
+  if (raw.charges != null) t.push("Charges");
+  if (raw.stealth) t.push("Disadvantage on Stealth");
+  if (raw.strength) t.push("Strength Requirement");
+  if (raw.grantsLanguage) t.push("Grants Language");
+  if (raw.grantsProficiency) t.push("Grants Proficiency");
+  if (raw.modifySpeed) t.push("Speed Adjustment");
+  if (raw.ability) t.push("Ability Score Adjustment");
+  if (raw.items) t.push("Bundle");
+  if (raw.srd) t.push("SRD 5.1");
+  if (raw.basicRules) t.push("Basic Rules (2014)");
+  if (raw.reprintedAs) t.push("Reprinted");
+  if (raw._isItemGroup || raw.items) t.push("Item Group");
+  return [...new Set(t)];
+}
+
+function parseItem(raw, sourceArray) {
   const explicitGp = raw.value != null ? Math.round((raw.value / 100) * 100) / 100 : null;  // 5e.tools stores value in cp
   const rarityGp = explicitGp == null ? defaultRarityValueGp(raw) : null;
   const typeCode = (raw.type || "").split("|")[0];
@@ -59,7 +135,32 @@ function parseItem(raw) {
     dmgType: raw.dmgType || "",
     range: raw.range || "",
     weaponProps: raw.property || [],
+    // ----- filter facets (see ITEM_FGROUPS) -----
+    tier: raw.tier || "",
+    props: (raw.property || []).map(p => ITEM_PROPS[String(p).split("|")[0]]).filter(Boolean),
+    attune: attuneBucket(raw),
+    category: itemCategory(raw, sourceArray),
+    scfClasses: SCF_CLASSES[raw.scfType] || [],
+    dmgTypeName: DMG_TYPE_NAMES[raw.dmgType] || "",
+    bonuses: itemBonuses(raw),
+    vulnerable: raw.vulnerable || [],
+    resist: raw.resist || [],
+    immune: raw.immune || [],
+    conditionImmune: raw.conditionImmune || [],
+    misc: itemMisc(raw),
+    recharge: raw.recharge || "",
+    poisonTypes: raw.poisonTypes || [],
+    lootTables: raw.lootTables || [],
   };
+}
+// Which array an entry came from is itself a filter facet (Basic / Generic Variant / …), so parse
+// each array separately rather than concatenating them first.
+function parseItemArrays(j) {
+  return [].concat(
+    (j.baseitem || []).map(r => parseItem(r, "baseitem")),
+    (j.item || []).map(r => parseItem(r, "item")),
+    (j.itemGroup || []).map(r => parseItem(r, "itemGroup")),
+  );
 }
 function mergeItems(list) {
   const seen = new Set(ITEM_LIB.map(i => i.name + "|" + i.source));
@@ -73,8 +174,7 @@ function loadItemFiles(files) {
     rd.onload = () => {
       try {
         const j = JSON.parse(rd.result);
-        const raws = [].concat(j.baseitem || [], j.item || [], j.itemGroup || []);
-        mergeItems(raws.map(parseItem));
+        mergeItems(parseItemArrays(j));
       } catch (e) { errs.push(file.name + ": " + e); }
       if (++done === total) { saveItemLib(); renderItemLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n")); }
     };
@@ -92,8 +192,7 @@ async function autoLoadItems() {
       if (!res.ok) continue;
       found = true;
       const j = await res.json();
-      const raws = [].concat(j.baseitem || [], j.item || [], j.itemGroup || []);
-      mergeItems(raws.map(parseItem));
+      mergeItems(parseItemArrays(j));
       filesLoaded++;
     } catch (e) { blocked = true; }
   }
@@ -112,6 +211,57 @@ function loadItemLib() {
   } catch (e) { ITEM_LIB = []; }
 }
 function itemSources() { return [...new Set(ITEM_LIB.map(i => i.source))].sort(); }
+function itemLootTables() { return [...new Set(ITEM_LIB.flatMap(i => i.lootTables || []))].sort(); }
+function itemDmgDice() {
+  // sorted by die size then count, so 1d4 … 1d12 reads naturally instead of alphabetically
+  const parse = d => { const m = /^(\d*)d(\d+)$/.exec(d); return m ? [Number(m[2]), Number(m[1] || 1)] : [0, Number(d) || 0]; };
+  return [...new Set(ITEM_LIB.map(i => i.dmg1).filter(Boolean))]
+    .sort((a, b) => { const pa = parse(a), pb = parse(b); return pa[0] - pb[0] || pa[1] - pb[1]; });
+}
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+
+/* Filter categories, mirroring 5e.tools' own item filter panel. Range-valued facets it also
+   offers (Cost, Weight, Armor Class, Range) need a slider rather than tri-state buttons and
+   aren't here yet — see DOCS. Free-text facets over huge value sets (Base Item, Attached
+   Spells) are likewise left to the search box. */
+const ITEM_FGROUPS = [
+  { key:"source", label:"Source", dynamic:true, get:i=>[i.source],
+    dynOpts:()=>itemSources().map(src=>[src, src, (typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[src]) || src]) },
+  { key:"type", label:"Type", dynamic:true, get:i=>i.type?[i.type]:[], dynOpts:()=>[...new Set(ITEM_LIB.map(i=>i.type).filter(Boolean))].sort() },
+  { key:"tier", label:"Tier", get:i=>[i.tier||"none"], opts:[["none","None"],["minor","Minor"],["major","Major"]] },
+  { key:"rarity", label:"Rarity", get:i=>[i.rarity||"none"],
+    opts:[["none","None"],["common","Common"],["uncommon","Uncommon"],["rare","Rare"],["very rare","Very Rare"],["legendary","Legendary"],["artifact","Artifact"],["varies","Varies"],["unknown","Unknown"],["unknown (magic)","Unknown (Magic)"]] },
+  { key:"property", label:"Property", dynamic:true, get:i=>i.props||[],
+    dynOpts:()=>[...new Set(ITEM_LIB.flatMap(i=>i.props||[]))].sort() },
+  { key:"attune", label:"Attunement", get:i=>[i.attune],
+    opts:[["required","Requires Attunement"],["by","Requires Attunement By…"],["optional","Attunement Optional"],["none","No Attunement Required"]] },
+  { key:"category", label:"Category", get:i=>[i.category],
+    opts:[["Basic","Basic"],["Generic Variant","Generic Variant"],["Specific Variant","Specific Variant"],["Other","Other"]] },
+  { key:"scf", label:"Spellcasting Focus", get:i=>i.scfClasses||[],
+    opts:["Artificer","Bard","Cleric","Druid","Paladin","Ranger","Sorcerer","Warlock","Wizard"].map(c=>[c,c]) },
+  { key:"wdmgtype", label:"Weapon Damage Type", get:i=>i.dmgTypeName?[i.dmgTypeName]:[],
+    opts:["Bludgeoning","Cold","Fire","Force","Necrotic","Piercing","Radiant","Slashing"].map(x=>[x,x]) },
+  { key:"wdmgdice", label:"Weapon Damage Dice", dynamic:true, get:i=>i.dmg1?[i.dmg1]:[], dynOpts:itemDmgDice },
+  { key:"bonus", label:"Bonus", dynamic:true, get:i=>i.bonuses||[],
+    dynOpts:()=>[...new Set(ITEM_LIB.flatMap(i=>i.bonuses||[]))].sort() },
+  { key:"vuln", label:"Vulnerability", get:i=>i.vulnerable||[], opts:DMG_FILTER_TYPES.map(x=>[x,cap(x)]) },
+  { key:"resist", label:"Resistance", get:i=>i.resist||[], opts:DMG_FILTER_TYPES.map(x=>[x,cap(x)]) },
+  { key:"immune", label:"Immunity", get:i=>i.immune||[], opts:DMG_FILTER_TYPES.map(x=>[x,cap(x)]) },
+  { key:"condimm", label:"Condition Immunity", get:i=>i.conditionImmune||[],
+    opts:["blinded","charmed","deafened","disease","exhaustion","frightened","grappled","incapacitated","invisible","paralyzed","petrified","poisoned","prone","restrained","stunned","unconscious"].map(x=>[x,cap(x)]) },
+  { key:"misc", label:"Miscellaneous", dynamic:true, get:i=>i.misc||[],
+    dynOpts:()=>[...new Set(ITEM_LIB.flatMap(i=>i.misc||[]))].sort() },
+  { key:"recharge", label:"Recharge Type", get:i=>i.recharge?[i.recharge]:[],
+    opts:[["dawn","Dawn"],["dusk","Dusk"],["midnight","Midnight"],["restLong","Long Rest"],["restShort","Short Rest"],["special","Special"]] },
+  { key:"poison", label:"Poison Type", get:i=>i.poisonTypes||[],
+    opts:[["contact","Contact"],["ingested","Ingested"],["inhaled","Inhaled"],["injury","Injury"]] },
+  { key:"foundon", label:"Found On", dynamic:true, get:i=>i.lootTables||[], dynOpts:itemLootTables },
+];
+const ITEM_FILTERS = createFilterSet({
+  ns: "item", groups: ITEM_FGROUPS, areaId: "item-filter-area", searchId: "item-search",
+  onChange: () => renderItemResults(),
+});
+
 function findLibItemByName(name) {
   const q = (name || "").trim().toLowerCase(); if (!q) return null;
   return ITEM_LIB.find(i => i.name.toLowerCase() === q) || null;
@@ -119,13 +269,16 @@ function findLibItemByName(name) {
 
 function renderItemLibrary() {
   $("item-lib-count").textContent = ITEM_LIB.length ? (ITEM_LIB.length + " items · " + itemSources().length + " source(s)") : "no equipment loaded";
+  ITEM_FILTERS.renderArea();
   renderItemResults();
 }
 function renderItemResults() {
   const q = ($("item-search").value || "").toLowerCase().trim();
+  const active = ITEM_FILTERS.activeGroups();
   const rows = []; let more = 0;
   for (const it of ITEM_LIB) {
     if (q && !(it.name + " " + it.type + " " + it.rarity + " " + it.source).toLowerCase().includes(q)) continue;
+    if (!ITEM_FILTERS.passes(it, active)) continue;
     if (rows.length >= 250) { more++; continue; }
     rows.push(it);
   }

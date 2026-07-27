@@ -5,135 +5,16 @@
    what it catches and deliberately skips, e.g. features whose use-count
    itself scales by level, like Action Surge or Channel Divinity, are left
    out rather than given a flat number that would be wrong at most levels).
-   `uses`-only for now — these classes/subclasses have no other effects/db
-   entries yet (full class/subclass mechanics conversion is future work,
-   see DOCS.md); this only restores the finite-use pip tracker the app used
-   to derive live from feature text (see conversion-guide.md).
+
+   `uses`-only: these are features whose class/subclass has no fuller entry
+   in a classes-batch-*.js file yet, so this restores just the finite-use pip
+   tracker the app used to derive live from feature text (see
+   conversion-guide.md). Any key a converted batch file already defines is
+   omitted here on purpose — registerEffects() assigns whole entries, so a
+   `uses`-only duplicate would silently erase that batch entry's effects
+   rather than merge with them. generate-uses.js skips those keys for you.
    ============================================================ */
 registerEffects({
-  "class|artificer|flash of genius": {
-    "name": "Flash of Genius",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "int"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|artificer|alchemist|restorative reagents": {
-    "name": "Restorative Reagents",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "int"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|artificer|armorer|defensive field": {
-    "name": "Defensive Field",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|artificer|armorer|guardian": {
-    "name": "Guardian",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|artificer|battle smith|arcane jolt": {
-    "name": "Arcane Jolt",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "int"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|barbarian|path of the beast|infectious fury": {
-    "name": "Infectious Fury",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|barbarian|path of the beast|call the hunt": {
-    "name": "Call the Hunt",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|barbarian|path of wild magic|magic awareness": {
-    "name": "Magic Awareness",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|barbarian|path of wild magic|bolstering magic": {
-    "name": "Bolstering Magic",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|barbarian|path of the zealot|zealous presence": {
-    "name": "Zealous Presence",
-    "sv": 1,
-    "uses": {
-      "max": 1,
-      "per": "lr",
-      "delayed": null
-    }
-  },
   "class|bard|bardic inspiration": {
     "name": "Bardic Inspiration",
     "sv": 1,
@@ -218,133 +99,6 @@ registerEffects({
       "delayed": null
     }
   },
-  "subclass|cleric|tempest domain|wrath of the storm": {
-    "name": "Wrath of the Storm",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "wis"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|cleric|war domain|war priest": {
-    "name": "War Priest",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "wis"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|cleric|ambition domain (psa)|warding flare": {
-    "name": "Warding Flare",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "wis"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|cleric|solidarity domain (psa)|solidarity's action": {
-    "name": "Solidarity's Action",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "wis"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|cleric|zeal domain (psa)|priest of zeal": {
-    "name": "Priest of Zeal",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "wis"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|cleric|order domain|embodiment of the law": {
-    "name": "Embodiment of the Law",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "wis"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|cleric|peace domain|emboldening bond": {
-    "name": "Emboldening Bond",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|cleric|twilight domain|steps of night": {
-    "name": "Steps of Night",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|cleric|forge domain|blessing of the forge": {
-    "name": "Blessing of the Forge",
-    "sv": 1,
-    "uses": {
-      "max": 1,
-      "per": "lr",
-      "delayed": null
-    }
-  },
   "subclass|cleric|grave domain|eyes of the grave": {
     "name": "Eyes of the Grave",
     "sv": 1,
@@ -377,84 +131,12 @@ registerEffects({
       "delayed": null
     }
   },
-  "class|druid|wild shape": {
-    "name": "Wild Shape",
-    "sv": 1,
-    "uses": {
-      "max": 2,
-      "per": "sr",
-      "delayed": null
-    }
-  },
-  "subclass|druid|circle of spores|fungal infestation": {
-    "name": "Fungal Infestation",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "wis"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|druid|circle of stars|star map": {
-    "name": "Star Map",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
   "subclass|druid|circle of stars|cosmic omen": {
     "name": "Cosmic Omen",
     "sv": 1,
     "uses": {
       "max": {
         "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|druid|circle of wildfire|cauterizing flames": {
-    "name": "Cauterizing Flames",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|druid|circle of wildfire|blazing revival": {
-    "name": "Blazing Revival",
-    "sv": 1,
-    "uses": {
-      "max": 1,
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|druid|circle of dreams|hidden paths": {
-    "name": "Hidden Paths",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "wis"
-          },
-          1
-        ]
       },
       "per": "lr",
       "delayed": null
@@ -475,58 +157,6 @@ registerEffects({
     "uses": {
       "max": 1,
       "per": "sr",
-      "delayed": null
-    }
-  },
-  "subclass|fighter|echo knight|unleash incarnation": {
-    "name": "Unleash Incarnation",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "con"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|fighter|echo knight|shadow martyr": {
-    "name": "Shadow Martyr",
-    "sv": 1,
-    "uses": {
-      "max": 1,
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|fighter|echo knight|reclaim potential": {
-    "name": "Reclaim Potential",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "max": [
-          {
-            "mod": "con"
-          },
-          1
-        ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|fighter|rune knight|giant's might": {
-    "name": "Giant's Might",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
       "delayed": null
     }
   },
@@ -569,46 +199,6 @@ registerEffects({
           1
         ]
       },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|fighter|samurai|fighting spirit": {
-    "name": "Fighting Spirit",
-    "sv": 1,
-    "uses": {
-      "max": 3,
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|monk|way of the ascendant dragon|breath of the dragon": {
-    "name": "Breath of the Dragon",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|monk|way of the ascendant dragon|wings unfurled": {
-    "name": "Wings Unfurled",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|monk|way of mercy|hand of ultimate mercy": {
-    "name": "Hand of Ultimate Mercy",
-    "sv": 1,
-    "uses": {
-      "max": 1,
       "per": "lr",
       "delayed": null
     }
@@ -1070,17 +660,6 @@ registerEffects({
           },
           1
         ]
-      },
-      "per": "lr",
-      "delayed": null
-    }
-  },
-  "subclass|wizard|bladesinging|bladesong": {
-    "name": "Bladesong",
-    "sv": 1,
-    "uses": {
-      "max": {
-        "prof": true
       },
       "per": "lr",
       "delayed": null
