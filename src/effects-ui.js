@@ -9,6 +9,31 @@
    back to the feature that produced it (paintEffectAudit).
    ============================================================ */
 
+/* ----- "level=X|class=Y;Z" filter-spec matching against a parsed SPELL_LIB entry (spell-library.js) —
+   same spec syntax as describeSpellFilter/collectFilters in class-library.js (pipe = AND across
+   categories, semicolon = OR within one), just matching instead of describing. Used by the
+   "spellfilter" choice kind below. */
+function spellMatchesFilterSpec(sp, spec) {
+  const cats = {};
+  String(spec || "").split("|").forEach(part => {
+    const i = part.indexOf("="); if (i < 0) return;
+    const key = part.slice(0, i).trim().toLowerCase();
+    const vals = part.slice(i + 1).split(";").map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (vals.length) cats[key] = vals;
+  });
+  if (cats.level && !cats.level.includes(String(sp.level))) return false;
+  if (cats.class && !(sp.classes || []).some(c => cats.class.includes(c.toLowerCase()))) return false;
+  // 5e.tools' filter specs use single-letter school codes (e.g. "E"/"D"), but SPELL_LIB stores the
+  // full name (parseSpell in spell-library.js already expands raw.school via SPELL_SCHOOLS) — expand
+  // the spec's codes the same way describeSpellFilter does before comparing.
+  if (cats.school) {
+    const wanted = cats.school.map(s => ((typeof SPELL_SCHOOLS === "object" && SPELL_SCHOOLS[s.toUpperCase()]) || s).toLowerCase());
+    if (!wanted.includes((sp.school || "").toLowerCase())) return false;
+  }
+  if (cats.source && !cats.source.includes((sp.source || "").toLowerCase())) return false;
+  return true;
+}
+
 /* ----- inline controls: toggle / choice / always-on chip / unsupported marker, appended after
    a feature's uses-tracker in the Features panel (class-library.js's renderRaceSection/renderClassFeatures) ----- */
 function renderEffectControls(feature) {
@@ -22,10 +47,16 @@ function renderEffectControls(feature) {
       // race/subclass additionalSpells-driven grants (grantedSpellsHtml in class-library.js) —
       // "grant-free" behaves like a domain spell (added via addCharacterSpell w/ grantSrc, never
       // touches a class's Known/Prepared count), "grant-list" like a Dragonmark (opens the
-      // "prepare from which class?" modal — still costs a normal known/prepared slot). See
-      // effects.js's header comment and conversion-guide.md for why this target is separate from
-      // the numeric snapshot pipeline.
-      const name = effect.value && effect.value.name;
+      // "prepare from which class?" modal — still costs a normal known/prepared slot), "grant-innate"
+      // like Telepathic's Detect Thoughts (renders identically to grant-free — the distinction is
+      // purely that it should be paired with an entry-level `uses` block, since it's an at-will/daily
+      // cast rather than a permanently-known spell). See effects.js's header comment and
+      // conversion-guide.md for why this target is separate from the numeric snapshot pipeline.
+      if (effect.activation && effect.activation.kind === "choice" && !hasChoiceValue(feature, effect.activation.choice)) return;
+      let name = effect.value && effect.value.name;
+      if (name && name.includes("{choice:")) {
+        name = name.replace(/\{choice:([a-zA-Z0-9_]+)\}/g, (_, id) => { const v = choiceValue(feature, id); return (Array.isArray(v) ? v[0] : v) || ""; });
+      }
       if (!name) return;
       const expanded = effect.op === "grant-list";
       const title = expanded ? ` title="added to your spell list — still needs to be prepared/known normally, via a class"` : "";
@@ -62,6 +93,21 @@ function renderEffectControls(feature) {
         selects += `<select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"${n > 1 ? ` data-slot="${i}"` : ""}><option value="">—</option>${opts}</select> `;
       }
       html += ` <label class="hint">${escapeHtml(c.label || "choice")}: ${selects}</label>`;
+    } else if (c.kind === "spellfilter") {
+      // Populates its <select> from the user's own loaded Spell Library (SPELL_LIB, spell-library.js),
+      // filtered by the same "level=X|class=Y;Z" spec syntax already used to *describe* class-side
+      // filter grants (describeSpellFilter/collectFilters in class-library.js) — this is the same
+      // syntax, now driving an actual picker instead of just prose. Paired with a spell-grant effect
+      // whose value.name is "{choice:<id>}" (see above).
+      const cur = choiceValue(feature, c.id) || "";
+      const lib = (typeof SPELL_LIB !== "undefined") ? SPELL_LIB : [];
+      const matches = lib.filter(sp => spellMatchesFilterSpec(sp, c.filter));
+      const opts = matches.map(sp => {
+        const v = sp.name.toLowerCase();
+        return `<option value="${escapeHtml(v)}"${cur === v ? " selected" : ""}>${escapeHtml(sp.name)}${sp.source ? " (" + escapeHtml(sp.source) + ")" : ""}</option>`;
+      }).join("");
+      const hint = lib.length ? "" : ` <span class="hint">(Spell Library empty — import it first)</span>`;
+      html += ` <label class="hint">${escapeHtml(c.label || "choose a spell")}: <select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"><option value="">—</option>${opts}</select></label>${hint}`;
     }   // "skill" choice kind: deferred, none of the shipped entries use it yet
   });
   (entry.unsupported || []).forEach(u => { html += ` <span class="eff-unsup" title="${escapeHtml(u.reason)}">⚠ not automated</span>`; });

@@ -205,7 +205,7 @@ spell list — "you learn the *X* spell", "*X* is added to your spell list"
 effects: [{ target: "spell-grant", op: "grant-free", value: { name: "mage hand" } }]
 ```
 
-Two ops, matching the two ways 5e text grants a spell:
+Three ops, matching the three ways 5e text grants a spell:
 
 - `grant-free` — the spell is known/prepared **for free**: it never costs
   a known/prepared slot on any class, and doesn't count toward that
@@ -215,20 +215,54 @@ Two ops, matching the two ways 5e text grants a spell:
   list** — it's now *eligible*, but still has to be learned/prepared
   normally through a class, costing a real known/prepared slot there (e.g.
   a Dragonmark or Eldritch Knight-style list expansion).
+- `grant-innate` — "you can cast *X* once per day/rest without expending a
+  spell slot" (e.g. Telepathic's Detect Thoughts). Renders identically to
+  `grant-free` (same link, same header) — the difference is purely that
+  this is an at-will/daily cast, not a permanently-known spell, so **pair
+  it with an entry-level `uses` block** (see "Limited uses" above) so it
+  gets a real pip tracker instead of being silently treated as unlimited:
+  ```js
+  effects: [{ target: "spell-grant", op: "grant-innate", value: { name: "detect thoughts" } }],
+  uses: { max: 1, per: "lr" },
+  ```
+  If the text also says the spell can be cast normally via spell slots
+  once you have them (many feats phrase it this way), that's a *separate*
+  `grant-free`/`grant-list` effect for the same spell name, alongside the
+  `grant-innate` one — see Fey Touched-style feats.
 
-**When to reach for this vs. `unsupported`:** only for a spell named
-outright in the text with no further choice attached. If the text instead
-says "choose a spell from the Wizard list" / "any level 1 spell of your
-choice" — anything requiring picking from a filtered list rather than one
-named spell — that's `unsupported` (reason: e.g. "spell chosen from a
-class list — no way to enumerate/filter the spell library from an effects
-entry"); don't try to fake it by picking one representative spell.
+**When to reach for `unsupported` instead:** if the text names one
+specific spell outright, always use one of the three ops above — don't
+fall back to `unsupported` just because it's "only" an at-will cast
+(that's exactly what `grant-innate` is for). `unsupported` is still right
+when there's a genuinely non-representable rider: a resource this sheet
+doesn't model (sorcery points, Hit Dice spent), a save DC needing an
+ability the feat itself doesn't fix, DM-adjudicated randomness, etc.
 
-**This is not for at-will/daily innate casting** ("you can cast *X* once
-per day without expending a spell slot") — that's a different mechanic
-(no known/prepared slot is ever involved, and it needs its own uses/cast
-tracking) and stays `unsupported` (reason: "at-will/daily innate
-spellcasting, not modeled — no slot involved at all").
+**Choosing from a filtered spell list** ("any level 1 spell of your
+choice from the Wizard list", "choose a cantrip"): use a `spellfilter`
+choice instead of guessing one spell. It populates its dropdown live from
+the user's own loaded Spell Library (SPELL_LIB), filtered by the *same*
+`"level=X|class=Y;Z"` spec syntax already used to describe class-side
+filter grants (see `describeSpellFilter` in `class-library.js` — pipe
+`|` = AND across categories, semicolon `;` = OR within one):
+
+```js
+choices: [
+  { id: "feySpell", kind: "spellfilter", filter: "level=1|school=E;D", label: "Choose a 1st-level divination/enchantment spell" },
+],
+effects: [
+  { target: "spell-grant", op: "grant-free", value: { name: "{choice:feySpell}" }, activation: { kind: "choice", choice: "feySpell" } },
+],
+```
+
+The `{choice:id}` template in `value.name` resolves the same way target
+templates do. The link only renders once a choice has been made (gated by
+`activation: { kind: "choice", ... }`, same as any other choice-gated
+effect) — before that, nothing shows for that effect. **Still don't use
+this** for a choice that depends on *another* choice already made on the
+same entry (e.g. Magic Initiate's "pick a class, then pick spells from
+that class's list") — the filter spec is static, it can't reference
+another choice's value; that stays `unsupported`.
 
 **Why this exists / when NOT to use it:** race and subclass spell grants
 (Cleric domain spells, Mark of \* dragonmarks, Eldritch Knight/Divine

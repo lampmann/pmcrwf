@@ -340,6 +340,23 @@ registerEffects({
       }
     ]
   },
+  "feat|fey touched": {
+    "name": "Fey Touched",
+    "sv": 1,
+    "choices": [
+      { "id": "feySpell", "kind": "spellfilter", "filter": "level=1|school=E;D", "label": "Choose a 1st-level divination/enchantment spell" }
+    ],
+    "effects": [
+      { "target": "spell-grant", "op": "grant-free", "value": { "name": "misty step" } },
+      { "target": "spell-grant", "op": "grant-free", "value": { "name": "{choice:feySpell}" }, "activation": { "kind": "choice", "choice": "feySpell" } }
+    ],
+    "unsupported": [
+      {
+        "reason": "each spell can also be cast once without a slot, recharging on a long rest — at-will/daily casting not modeled here",
+        "tags": ["spellcasting", "resource"]
+      }
+    ]
+  },
   "feat|fighting initiate": {
     "name": "Fighting Initiate",
     "sv": 1,
@@ -1148,6 +1165,20 @@ registerEffects({
           "spell",
           "save-dc"
         ]
+      }
+    ]
+  },
+  "feat|telepathic": {
+    "name": "Telepathic",
+    "sv": 1,
+    "effects": [
+      { "target": "spell-grant", "op": "grant-innate", "value": { "name": "detect thoughts" } }
+    ],
+    "uses": { "max": 1, "per": "lr" },
+    "unsupported": [
+      {
+        "reason": "telepathic communication with any creature you can see within 60 feet — no telepathy/communication model",
+        "tags": ["telepathy", "communication"]
       }
     ]
   },
