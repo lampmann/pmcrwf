@@ -82,6 +82,7 @@ registerEffects({
   // ----- Unsupported: Forge Domain -----
   "subclass|cleric|forge domain|blessing of the forge": {
     name: "Blessing of the Forge", sv: 1,
+    uses: { max: 1, per: "lr" },
     unsupported: [{ reason: "creates temporary +1 magic item (AC or attack/damage); requires equipment tracking and persistence", tags: ["magic-item-creation", "equipment"] }],
   },
 });

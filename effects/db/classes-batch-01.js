@@ -3,13 +3,19 @@ registerEffects({
   // ===== EXPERT SIDEKICK — automatable =====
   "class|expert sidekick|expertise": {
     name: "Expertise", sv: 1,
+    // One choice id per skill picked: renderEffectControls() draws a single <select> per id and
+    // ignores `n`, so a single n:2 choice would only ever record one of the two skills.
     choices: [
-      { id: "expertise1", kind: "pick", n: 2, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Expertise (Level 3)" },
-      { id: "expertise2", kind: "pick", n: 2, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Expertise (Level 15)" },
+      { id: "expertise1a", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Expertise 1 (Level 3)" },
+      { id: "expertise1b", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Expertise 2 (Level 3)" },
+      { id: "expertise2a", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Expertise 3 (Level 15)" },
+      { id: "expertise2b", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Expertise 4 (Level 15)" },
     ],
     effects: [
-      { target: "skill-{choice:expertise1}", op: "expertise", activation: { kind: "choice", choice: "expertise1" } },
-      { target: "skill-{choice:expertise2}", op: "expertise", activation: { kind: "choice", choice: "expertise2" }, when: { minLevel: 15 } },
+      { target: "skill-{choice:expertise1a}", op: "expertise", activation: { kind: "choice", choice: "expertise1a" } },
+      { target: "skill-{choice:expertise1b}", op: "expertise", activation: { kind: "choice", choice: "expertise1b" } },
+      { target: "skill-{choice:expertise2a}", op: "expertise", activation: { kind: "choice", choice: "expertise2a" }, when: { minLevel: 15 } },
+      { target: "skill-{choice:expertise2b}", op: "expertise", activation: { kind: "choice", choice: "expertise2b" }, when: { minLevel: 15 } },
     ],
   },
 

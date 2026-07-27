@@ -20,6 +20,7 @@
    ============================================================ */
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 const { flattenEntries, stripTags } = require("../../src/text-utils.js");
 
 const DATA_DIR = path.join(__dirname, "..", "..", "data");
@@ -76,7 +77,11 @@ function detectUses(rawText) {
   const dm = t.match(/until you finish (\d*d\d+) (?:long|short) rests?/i);
   if (dm) { delayed = { expr: dm[1].toLowerCase() }; per = "lr"; }
   else {
-    const pm = t.match(/(?:when|before) you (?:can use it again,? )?finish an? (short or long|long or short|short|long) rest/i)
+    // "until" matters as much as "when"/"before" here: "you can't use it again until you finish a
+    // short or long rest" is the single most common recharge phrasing in the class data, and
+    // missing it silently fell through to the `per = "lr"` default — turning every short-rest
+    // feature phrased that way into a long-rest one (Echo Knight's Shadow Martyr, and others).
+    const pm = t.match(/(?:when|before|until) you (?:can use it again,? )?finish an? (short or long|long or short|short|long) rest/i)
       || t.match(/must finish an? (short or long|long or short|short|long) rest/i);
     if (pm) per = pm[1].toLowerCase().includes("short") ? "sr" : "lr";
   }
@@ -145,7 +150,32 @@ function genClasses() {
   return out;
 }
 
+/* Keys already carried by a hand-written or LLM-converted DB file are dropped from the output.
+   registerEffects() assigns whole entries rather than merging fields, so emitting a `uses`-only
+   duplicate of (say) a classes-batch-*.js entry doesn't add a tracker to it — depending on script
+   order it erases that entry's effects outright, or is itself erased. The converted entry is the
+   richer record and wins; this generator only fills the gaps around it. The uses-<mode>.js file
+   being regenerated is excluded from the ownership scan, so re-running doesn't drop everything. */
+function ownedElsewhere(mode) {
+  const dbDir = path.join(__dirname, "..", "db");
+  const self = `uses-${mode}.js`;
+  const owned = new Map();
+  fs.readdirSync(dbDir).filter(f => f.endsWith(".js") && f !== self).forEach(file => {
+    const sandbox = { registered: {} };
+    sandbox.registerEffects = entries => Object.assign(sandbox.registered, entries);
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(dbDir, file), "utf8"), sandbox, { filename: file });
+    Object.keys(sandbox.registered).forEach(k => owned.set(k, file));
+  });
+  return owned;
+}
+
 const mode = process.argv[2];
 const fn = { feats: genFeats, races: genRaces, classes: genClasses }[mode];
 if (!fn) { console.error("usage: node generate-uses.js <feats|races|classes>"); process.exit(1); }
-console.log(JSON.stringify(fn(), null, 2));
+const all = fn();
+const owned = ownedElsewhere(mode);
+const kept = all.filter(r => !owned.has(r.key));
+all.filter(r => owned.has(r.key)).forEach(r => console.error(`skipped ${r.key} — already defined in ${owned.get(r.key)}`));
+if (kept.length !== all.length) console.error(`(${all.length - kept.length} of ${all.length} detected features skipped as already-converted)`);
+console.log(JSON.stringify(kept, null, 2));
