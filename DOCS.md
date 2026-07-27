@@ -135,12 +135,28 @@ Some features do more than describe themselves — they change a number elsewher
 - Features not covered by a full conversion still get their **limited-use pip trackers** from `effects/db/uses-classes.js` and `uses-races.js` — a `uses`-only stopgap produced by the deterministic scanner `effects/tools/generate-uses.js`, which recognizes explicit finite-use + recharge phrasing and deliberately skips features whose use-count itself scales by level (Action Surge, Channel Divinity) rather than committing a flat number that would be wrong at most levels. When a feature gets a full conversion pass, its key moves out of that file and into the batch: `registerEffects()` assigns whole entries rather than merging fields, so a key defined in both places would erase one side or the other rather than combine them. `generate-uses.js` skips already-converted keys automatically, and `validate-db.js` fails on any duplicate that slips through.
 
 ## Equipment library (5e.tools import)
-Same zero-click setup as the spell library, and deliberately the simplest importer on the sheet:
+Same zero-click setup as the spell library:
 1. With the same `data/` folder in place (see above), the sheet auto-fetches `data/items-base.json` (mundane gear, weapons, armor) and `data/items.json` (magic items) on load — no format to pick, no per-file settings.
 2. **Reload from data/ folder** re-runs the fetch; the **import files** picker below it is the fallback for `file://` use or homebrew item files.
 3. The library is cached locally, so this only costs time once.
 
-**Browsing:** a single **search** box matches name, type, rarity, and source all at once — type "potion", "rare", or "phb" and it filters. Results show name, type, rarity, weight (lb), and value (gp, converted from 5e.tools' copper-piece figure). Click **`+`** to add a row straight into your Inventory table (qty 1, weight and value pre-filled) — from there it's counted in the item-value and total-wealth sums automatically.
+**Browsing:** a **search** box matches name, type, rarity, and source all at once — type "potion", "rare", or "phb" and it filters. Results show name, type, rarity, weight (lb), and value (gp, converted from 5e.tools' copper-piece figure). Click **`+`** to add a row straight into your Inventory table (qty 1, weight and value pre-filled) — from there it's counted in the item-value and total-wealth sums automatically.
+
+**Filters:** the same tri-state button system as the [Spell library](#spell-library-5etools-import) — click a button to cycle **neutral → include (blue) → exclude (red)**, with per-category `All`/`Clear`/`None`, blue and red combine-mode buttons (`OR → AND → XOR`) and `Hide`, plus the module bar's `Combine as AND/OR`, `Show All`/`Hide All`, `Reset` and `Manage Defaults`. Both libraries share one engine ([src/filters.js](src/filters.js)); only the category list differs. Item categories are:
+
+| Category | Notes |
+|---|---|
+| Source, Type, Property, Weapon Damage Dice, Bonus, Miscellaneous, Found On | populated from whatever you actually loaded, so they shrink to fit your `data/` |
+| Tier, Rarity, Category | Category is Basic / Generic Variant / Specific Variant / Other — how 5e.tools separates a plain longsword from the generic "+1 Weapon" template from the specific "+1 Longsword" |
+| Attunement | Requires Attunement · Requires Attunement By… · Attunement Optional · No Attunement Required |
+| Spellcasting Focus | listed by class rather than by the raw arcane/druid/holy code the data stores |
+| Weapon Damage Type | the weapon's own damage type |
+| Vulnerability, Resistance, Immunity | three separate categories rather than 5e.tools' one nested "Damage" group |
+| Condition Immunity, Recharge Type, Poison Type | |
+
+**Bonus** offers both a bare form and a valued one — `Weapon Attack and Damage Rolls` matches any `+N` weapon, `Weapon Attack and Damage Rolls (+2)` only the `+2`s.
+
+*Not yet implemented:* the four **range** facets 5e.tools also offers (Cost, Weight, Armor Class, Range) need a slider rather than tri-state buttons, and the free-text ones over huge value sets (Base Item, Attached Spells) are left to the search box.
 
 **Default magic item prices:** individual magic items rarely carry an explicit price in the source data — when one doesn't, the sheet fills in the average of XGE's "Magic Item Price" table (Xanathar's Guide to Everything, p.126) instead of leaving it blank: **common 45gp · uncommon 350gp · rare 11,000gp · very rare 35,000gp · legendary 175,000gp** (halved for single-use consumables, per that table's own footnote, when the item's data marks it as one). Artifact/varies/unknown-rarity items are left blank rather than guessed — that table doesn't cover them. Defaulted values show with a `~` prefix in the results table so they're never confused for an item's actual listed price.
 
@@ -178,6 +194,7 @@ Your arrangement is also saved locally (separate from the character; per browser
 - Icon variants for modules/toolbar — not built yet. (The free-form layout engine itself — drag/resize/snap-to-grid/multi-select — is done; see [Layout](#layout-move--resize--snap).)
 - Spell damage shown/rolled from an expanded spell description is base dice only (no upcast math beyond what 5e.tools' own scaling data already resolves for cantrips).
 - **Deferred spell filters** (data mostly parsed already, easy to add): Conditions Inflicted, Spell Attack type (melee/ranged), Range, Area style, Duration, Cast-time sub-types. 5etools' Core/Supplements/Adventures source *groupings* are also deferred (individual sources work).
+- **Range-valued filters** — the filter engine ([src/filters.js](src/filters.js)) only knows tri-state buttons, so the Equipment Library can't yet offer 5e.tools' Cost / Weight / Armor Class / Range sliders. Adding a second control kind to the engine would give both libraries numeric-range filtering at once (spells would gain Range and Duration from it too).
 - A step-by-step character creator, rules-as-written defaults with house-rule toggles, and an allowed-books toggle list are planned.
 - **Rules-reference buttons** — a small **ⓘ** button next to relevant elements (conditions, exhaustion, death saves, features, spells, etc.) that opens a popover quoting the relevant rules text and its sourcebook page number, so you can check the exact wording without leaving the sheet.
 - **Not planned:** personality traits, ideals, bonds, flaws, backstory, and appearance fields (age/height/eyes/etc.). This sheet targets optimized play, not roleplay journaling — that content belongs in a separate document, not on the sheet.
