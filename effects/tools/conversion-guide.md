@@ -41,8 +41,8 @@ Each entry:
 - `unsupported` (array, optional) — `[{ reason: "...", tags: [...] }]`. Use
   **only** when the feat has a genuinely automatable-sounding effect that
   the engine still can't represent (needs a roll-history model, an
-  attacks/weapons table that doesn't exist yet, DM adjudication, random
-  tables, etc.) — see Lucky and Sharpshooter in handwritten.js.
+  action-economy model, a crit model, DM adjudication, random tables,
+  etc.) — see Lucky in handwritten.js.
 - `uses` (object, optional) — see "Limited uses" below.
 - An entry must have at least one of `effects` / `unsupported` / `uses`.
   Effects and a uses tracker aren't exclusive: a feature can have both (an
@@ -75,11 +75,16 @@ don't create an empty entry just to have one.
   perception performance persuasion religion sleightofhand stealth
   survival`
 - `"score-<ability>"` — a raw ability score (str/dex/con/int/wis/cha)
-- `"attack-hit"` / `"damage-bonus"` (and other `attack-`/`damage-`
-  prefixed names) — **reserved**: always valid to write (e.g. for
-  Sharpshooter/GWM-style feats), but never actually applied yet since
-  there's no weapons/attacks module. Use these rather than `unsupported`
-  when the *only* blocker is "needs the attacks table."
+- `"attack-hit"` / `"damage-bonus"` — a flat/dice bonus on a weapon
+  attack's to-hit roll and damage roll. **Live**: the Attacks module folds
+  these into every attack row (rows can opt out individually). `adv`/`dis`
+  on `"attack-hit"` forces that row's roll mode.
+- Any *other* `attack-`/`damage-`-prefixed name (`"damage-crit"`,
+  `"damage-type"`, …) — **reserved**: always valid to write, but nothing
+  reads it, so it lands in the audit's "not automated" bucket instead of
+  applying. Use one rather than `unsupported` when the mechanic is a clean
+  number on a target the engine will plausibly grow later; `attack-hit` /
+  `damage-bonus` reached the Attacks module exactly this way.
 - `"score-{choice:someId}"` — templated target resolved from a choice
   (see Resilient/Observant in handwritten.js).
 - `"spell-grant"` — grants a spell (fixed name only — see below).
@@ -294,7 +299,7 @@ field the app currently ignores outright.
 See `effects/db/handwritten.js` in full before starting — it has one
 example each of: flat add (Alert), scaling add via level (Tough),
 ability-choice + flat bonus (Observant), full-ability choice + prof grant
-(Resilient), reserved attack-target + toggle (Sharpshooter), and a fixed
+(Resilient), weapon to-hit/damage + toggle (Sharpshooter), and a fixed
 uses-tracker paired with `unsupported` (Lucky — its 3 luck points get a
 pip tracker even though spending one to reroll isn't automated).
 
@@ -359,12 +364,27 @@ advantage, etc.).
   (`save-str`..`save-cha`). If the feat grants advantage tied to a specific
   *condition* rather than a specific ability, that's `unsupported`
   (reason: "conditional advantage, not modeled per-ability").
-- Weapon/attack-related feats (Great Weapon Master, Sharpshooter, Crossbow
-  Expert, Polearm Master's extra attack, Dual Wielder, etc.) → use the
-  reserved `attack-`/`damage-` targets where the mechanic is a flat
-  to-hit/damage modifier gated by a toggle (see Sharpshooter). Anything
-  needing an actual extra attack action, not just a number tweak, is
-  `unsupported`.
+- Weapon/attack-related feats and features (Great Weapon Master,
+  Sharpshooter, Rage, Divine Strike, Hexblade's Curse, etc.) → use
+  `attack-hit` / `damage-bonus` where the mechanic is a flat or dice
+  to-hit/damage modifier (see Sharpshooter). Three rules matter, because
+  this bucket applies to **every** attack row the player hasn't opted out
+  of:
+  - **Anything that costs a resource or a declaration gets a `toggle`** —
+    a Channel Divinity spend, a −5/+10 choice, a "while raging" rider.
+    Leaving it always-on quietly inflates every weapon on the sheet.
+  - **Always-on is only for a passive that really is passive** (Improved
+    Divine Smite, Aura of Hate). Add a `note` naming the restriction the
+    engine can't check ("melee weapon attacks only", "once per turn") —
+    it surfaces in the row's tooltip, which is what tells the player to
+    untick that row's Fx box.
+  - **`adddice` accumulates**, so a feature that grows from 1d8 to 2d8 at
+    14th writes the *increment* — `"1d8"` plus a second `"1d8"` gated
+    `when: { minLevel: 14 }`, never `"2d8"`.
+
+  Anything needing an actual extra attack action, a crit-only die, a
+  widened crit range, a weapon proficiency, or an ability *swap* rather
+  than a bonus (Battle Smith's Battle Ready) is still `unsupported`.
 - Anything requiring tracking a resource this sheet has no model for
   (extra reactions, uses tied to a homebrew resource pool not covered by
   the Features panel's pip-counting, rerolls, "once per turn" riders on

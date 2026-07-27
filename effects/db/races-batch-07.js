@@ -54,7 +54,7 @@ registerEffects({
   },
   "race|satyr|ram": {
     name: "Ram", sv: 1,
-    unsupported: [{ reason: "custom unarmed strike damage (1d6 + STR bludgeoning); needs attacks/weapons module", tags: ["attack"] }],
+    unsupported: [{ reason: "custom unarmed strike damage (1d6 + STR bludgeoning); an effect can't create an attack row — add one by hand", tags: ["attack"] }],
   },
   "race|satyr|reveler": {
     name: "Reveler", sv: 1,
@@ -107,7 +107,7 @@ registerEffects({
   },
   "subrace|longtooth|shifting feature": {
     name: "Shifting Feature", sv: 1,
-    unsupported: [{ reason: "custom unarmed strike bonus action while shifted (1d6 + STR piercing); needs attacks module + state tracking", tags: ["attack", "state"] }],
+    unsupported: [{ reason: "custom unarmed strike bonus action while shifted (1d6 + STR piercing); an effect can't create an attack row, and shifting isn't tracked", tags: ["attack", "state"] }],
   },
   "subrace|swiftstride|graceful": {
     name: "Graceful", sv: 1,
@@ -131,7 +131,7 @@ registerEffects({
   },
   "race|tabaxi|cat's claws": {
     name: "Cat's Claws", sv: 1,
-    unsupported: [{ reason: "custom unarmed strike damage (1d4 + STR slashing) + climbing speed; needs attacks module", tags: ["attack", "speed"] }],
+    unsupported: [{ reason: "custom unarmed strike damage (1d4 + STR slashing) + climbing speed; an effect can't create an attack row, and speed isn't a target", tags: ["attack", "speed"] }],
   },
   "race|tabaxi|cat's talents": {
     name: "Cat's Talents", sv: 1,

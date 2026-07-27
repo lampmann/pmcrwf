@@ -4,13 +4,18 @@ registerEffects({
     name: "Rage", sv: 1,
     effects: [
       { target: "save-str", op: "adv", activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
+      // Rage damage is +2 / +3 (9th) / +4 (16th); the later effects are increments, since `add`
+      // accumulates. Melee Strength attacks only — untick a row's Fx box for anything else.
       { target: "damage-bonus", op: "add", value: 2, activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
+      { target: "damage-bonus", op: "add", value: 1, when: { minLevel: 9 }, activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
+      { target: "damage-bonus", op: "add", value: 1, when: { minLevel: 16 }, activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
+      { target: "damage-bonus", op: "note", text: "melee Strength attacks only, while raging" },
     ],
     uses: { max: 2, per: "lr" },
     unsupported: [
       { reason: "resistance to bludgeoning/piercing/slashing while raging", tags: ["resistance", "conditional"] },
       { reason: "can't cast spells or concentrate on spells while raging", tags: ["spellcasting"] },
-      { reason: "damage bonus and uses count scale at class levels 3/6/9/12/16/17", tags: ["scaling-uses", "scaling-effect"] },
+      { reason: "uses count scales at class levels 3/6/12/17 (the damage bonus itself is applied)", tags: ["scaling-uses"] },
     ],
   },
 
@@ -55,7 +60,7 @@ registerEffects({
   "class|barbarian|extra attack": {
     name: "Extra Attack", sv: 1,
     unsupported: [
-      { reason: "extra melee attack action requires attacks/weapons module", tags: ["attack", "action-economy"] },
+      { reason: "extra melee attack action; action economy, not a number on an attack", tags: ["attack", "action-economy"] },
     ],
   },
 
@@ -246,7 +251,7 @@ registerEffects({
   "subclass|barbarian|path of the giant|elemental cleaver": {
     name: "Elemental Cleaver", sv: 1,
     unsupported: [
-      { reason: "weapon infusion with damage type + 1d6 bonus damage + thrown property; requires weapon system", tags: ["weapon", "damage-type", "property"] },
+      { reason: "weapon infusion changing damage type and adding the thrown property; weapon properties aren't tracked", tags: ["weapon", "damage-type", "property"] },
     ],
   },
 
@@ -332,7 +337,7 @@ registerEffects({
     effects: [
       { target: "damage-bonus", op: "adddice", value: "1d6" },
       { target: "damage-bonus", op: "add", value: { floor: { mul: [0.5, { level: "class", class: "@self" }] } } },
-      { target: "damage-bonus", op: "note", text: "first creature hit per turn only; necrotic or radiant damage (choose one at feature gain)" },
+      { target: "damage-bonus", op: "note", text: "while raging, first creature hit per turn only; necrotic or radiant damage (choose one at feature gain)" },
     ],
   },
 
