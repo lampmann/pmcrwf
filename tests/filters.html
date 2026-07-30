@@ -37,18 +37,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ----- fixture: six records with two multi-valued facets and one single-valued one -----
   const RECS = [
-    { name: "a", kind: "weapon", tags: ["fire", "magic"],  src: "PHB" },
-    { name: "b", kind: "weapon", tags: ["cold"],           src: "PHB" },
-    { name: "c", kind: "armor",  tags: ["fire", "cold"],   src: "DMG" },
-    { name: "d", kind: "armor",  tags: [],                 src: "DMG" },
-    { name: "e", kind: "potion", tags: ["magic"],          src: "XGE" },
-    { name: "f", kind: "potion", tags: ["fire"],           src: "TCE" },
+    { name: "a", kind: "weapon", tags: ["fire", "magic"],  src: "PHB", cost: 5 },
+    { name: "b", kind: "weapon", tags: ["cold"],           src: "PHB", cost: 10 },
+    { name: "c", kind: "armor",  tags: ["fire", "cold"],   src: "DMG", cost: null },   // unknown cost
+    { name: "d", kind: "armor",  tags: [],                 src: "DMG", cost: 20 },
+    { name: "e", kind: "potion", tags: ["magic"],          src: "XGE", cost: 15 },
+    { name: "f", kind: "potion", tags: ["fire"],           src: "TCE", cost: 8 },
   ];
   let LIB = RECS.slice();
   const GROUPS = [
     { key: "kind", label: "Kind", get: r => [r.kind], opts: [["weapon", "Weapon"], ["armor", "Armor"], ["potion", "Potion"]] },
     { key: "tags", label: "Tags", get: r => r.tags, opts: [["fire", "Fire"], ["cold", "Cold"], ["magic", "Magic"]] },
     { key: "src",  label: "Source", dynamic: true, get: r => [r.src], dynOpts: () => [...new Set(LIB.map(r => r.src))].sort() },
+    { key: "cost", label: "Cost", kind: "range", getNum: r => r.cost },
   ];
   localStorage.removeItem("charsheet-testfilters");
   localStorage.removeItem("charsheet-testfilter-defaults");
@@ -143,14 +144,40 @@ document.addEventListener("DOMContentLoaded", () => {
   FS.reset();
   assertEqual("Reset with no saved default clears everything", names(), "abcdef");
 
-  // ----- rendering + the delegated click handler -----
-  // app.js attaches exactly this one listener per filter area; the engine does the rest.
+  // ----- numeric-range groups (kind: "range") -----
+  FS.reset();
+  assertEqual("no bound set: everything passes, including the null-cost record", names(), "abcdef");
+  assertEqual("range group starts unconstrained", FS.constrained(GROUPS[3]), false);
+  FS.state.cost.lo = "8"; FS.state.cost.hi = "15";
+  assertEqual("range group becomes constrained once a bound is set", FS.constrained(GROUPS[3]), true);
+  assertEqual("[8,15] matches b(10) e(15) f(8), skips a(5) d(20)", names(), "bef");
+  assertEqual("a record with no numeric value fails an active bound rather than passing", FS.groupPass(GROUPS[3], RECS[2]), false);
+  FS.state.cost.lo = ""; // only a hi bound
+  assertEqual("only a hi bound: everyone at or under it (nulls still excluded)", names(), "abef");
+  FS.ctrl("clear", "cost");
+  assertEqual("Clear resets the lo bound", FS.state.cost.lo, "");
+  assertEqual("Clear resets the hi bound", FS.state.cost.hi, "");
+  assertEqual("cleared range group filters nothing again", names(), "abcdef");
+
+  // ----- rendering + the delegated click/input handlers -----
+  // app.js attaches exactly these two listeners per filter area; the engine does the rest.
   const area = document.getElementById("test-filter-area");
   area.addEventListener("click", e => FS.handleClick(e));
+  area.addEventListener("input", e => FS.handleInput(e));
   FS.renderArea();
-  assertEqual("renders one .fgroup per group", area.querySelectorAll(".fgroup").length, 3);
-  assertEqual("renders a button per option (3 + 3 + 4 sources)", area.querySelectorAll(".fbtn").length, 10);
+  assertEqual("renders one .fgroup per group", area.querySelectorAll(".fgroup").length, 4);
+  assertEqual("renders a button per option (3 + 3 + 4 sources; the range group has none)", area.querySelectorAll(".fbtn").length, 10);
   assertEqual("renders the modbar", area.querySelectorAll(".modbar").length, 1);
+  assertEqual("the range group renders two number inputs", area.querySelectorAll(".frange").length, 2);
+
+  const loInput = area.querySelector('.frange[data-fg="cost"][data-fbound="lo"]');
+  const rendersBeforeInput = renders;
+  loInput.value = "12";
+  loInput.dispatchEvent(new Event("input", { bubbles: true }));
+  assertEqual("typing a bound updates state", FS.state.cost.lo, "12");
+  assertEqual("typing a bound notifies onChange", renders, rendersBeforeInput + 1);
+  assertEqual("typing a bound narrows results without a re-render", names(), "de");
+  FS.state.cost.lo = ""; FS.state.cost.hi = "";   // clear the bound the input test left active
 
   const before = renders;
   area.querySelector('[data-fgroup="kind"][data-fval="armor"]').click();

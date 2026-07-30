@@ -219,6 +219,13 @@ function itemDmgDice() {
     .sort((a, b) => { const pa = parse(a), pb = parse(b); return pa[0] - pb[0] || pa[1] - pb[1]; });
 }
 const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+// A weapon's "range" field is 5e.tools' raw "normal/long" string (e.g. "80/320"); melee weapons
+// without one have "". Only the normal range is filterable as a single number.
+function itemNormalRange(i) {
+  if (!i.range) return null;
+  const n = parseInt(i.range.split("/")[0], 10);
+  return isNaN(n) ? null : n;
+}
 
 /* Filter categories, mirroring 5e.tools' own item filter panel. Range-valued facets it also
    offers (Cost, Weight, Armor Class, Range) need a slider rather than tri-state buttons and
@@ -259,6 +266,11 @@ const ITEM_FGROUPS = [
   { key:"poison", label:"Poison Type", get:i=>i.poisonTypes||[],
     opts:[["contact","Contact"],["ingested","Ingested"],["inhaled","Inhaled"],["injury","Injury"]] },
   { key:"foundon", label:"Found On", dynamic:true, get:i=>i.lootTables||[], dynOpts:itemLootTables },
+  // ----- numeric-range filters (src/filters.js's "range" control kind) -----
+  { key:"cost", label:"Cost", kind:"range", unit:"gp", min:0, max:1000000, getNum:i=>i.valueGp===""?null:i.valueGp },
+  { key:"weight", label:"Weight", kind:"range", unit:"lb", min:0, max:2000, getNum:i=>i.weight===""?null:i.weight },
+  { key:"ac", label:"Armor Class", kind:"range", unit:"AC", min:0, max:25, getNum:i=>i.armor?i.ac:null },
+  { key:"wrange", label:"Range", kind:"range", unit:"ft (normal)", min:0, max:600, getNum:i=>itemNormalRange(i) },
 ];
 const ITEM_FILTERS = createFilterSet({
   ns: "item", groups: ITEM_FGROUPS, areaId: "item-filter-area", searchId: "item-search",

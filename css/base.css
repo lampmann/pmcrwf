@@ -79,6 +79,7 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .typeahead-list div { padding: 2px 6px; cursor: pointer; white-space: nowrap; }
 .typeahead-list div:hover, .typeahead-list div.active { background: var(--menu-hover-bg); }
 .fmode { width: 2.9rem; box-sizing: border-box; text-align: center; }   /* fixed width so OR/AND/XOR never shift the row */
+.frange-inputs input.frange { width: 4rem; }   /* wider than .tiny — placeholders show a real min/max, not just "min"/"max" */
 /* ----- spell results table ----- */
 .spell-table { border-collapse: collapse; width: 100%; }
 .spell-table td { padding: 0 5px; white-space: nowrap; vertical-align: top; }

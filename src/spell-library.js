@@ -21,7 +21,7 @@ const SOURCE_GROUP = {
   ToR:"adventure", DD:"adventure", FS:"adventure", US:"adventure", IDRotF:"adventure", LLK:"adventure", "AitFR-AVT":"adventure",
 };
 function sourceGroupOf(src) { return SOURCE_GROUP[src] || "supplement"; }
-const LIB_SCHEMA = 5;  // bump when the parsed-spell shape changes (forces a one-time re-import)
+const LIB_SCHEMA = 6;  // bump when the parsed-spell shape changes (forces a one-time re-import)
 function castCat(u) { return (u === "action" || u === "bonus" || u === "reaction" || u === "minute" || u === "hour") ? u : ""; }
 // 5e.tools' Parser.SPELL_AREA_TYPE_TO_FULL — short area-of-effect shape codes from a spell's own
 // areaTags field (not every spell has one; single-target spells usually don't).
@@ -36,6 +36,12 @@ function rangeCat(raw) {
   const d = r.distance; if (!d) return "special";
   if (d.type === "self" || d.type === "touch" || d.type === "sight" || d.type === "unlimited") return d.type;
   return "ranged"; // feet or miles
+}
+// Exact numeric range in feet, for the Range-valued (numeric) filter — only meaningful for a
+// feet-based range (miles/touch/self/sight/unlimited have no comparable "how far" number).
+function rangeFeet(raw) {
+  const d = raw.range && raw.range.distance;
+  return (d && d.type === "feet" && typeof d.amount === "number") ? d.amount : null;
 }
 function durationCat(raw) { const du = raw.duration && raw.duration[0]; return du ? du.type : ""; }
 // filter groups. `dynamic` groups (Source) compute their options from the loaded library.
@@ -54,6 +60,9 @@ const SPELL_FGROUPS = [
     opts:["blinded","charmed","deafened","exhaustion","frightened","grappled","incapacitated","invisible","paralyzed","petrified","poisoned","prone","restrained","stunned","unconscious"]
       .map(x=>[x, x[0].toUpperCase()+x.slice(1)]) },
   { key:"range",  label:"Range",  get:s=>s.rangeCat?[s.rangeCat]:[], opts:[["self","Self"],["touch","Touch"],["ranged","Ranged"],["sight","Sight"],["unlimited","Unlimited"],["special","Special"]] },
+  // Exact-distance filter — only spells with a plain feet-based range have a value here (see
+  // rangeFeet() above); the categorical Range group just above covers Self/Touch/Sight/Unlimited/Special.
+  { key:"rangeft", label:"Range (ft)", kind:"range", unit:"ft", min:5, max:1000, getNum:s=>s.rangeFt },
   { key:"area",   label:"Area of Effect", get:s=>s.areaTags||[], opts:Object.entries(SPELL_AREA_TYPES).map(([v,lab])=>[v,lab]) },
   { key:"dur",    label:"Duration", get:s=>s.durType?[s.durType]:[], opts:[["instant","Instantaneous"],["timed","Timed"],["permanent","Permanent"],["special","Special"]] },
   { key:"cast",   label:"Cast",   get:s=>[castCat(s.cast)], opts:[["action","Action"],["bonus","Bonus"],["reaction","Reaction"],["minute","Minute+"],["hour","Hour+"]] },
@@ -92,6 +101,7 @@ function parseSpell(raw) {
     conds: raw.conditionInflict || [],
     areaTags: raw.areaTags || [],
     rangeCat: rangeCat(raw),
+    rangeFt: rangeFeet(raw),
     durType: durationCat(raw),
     conc: !!(raw.duration && raw.duration.some(d => d && d.concentration)),
     comp: { v: !!comp.v, s: !!comp.s, m: !!comp.m },

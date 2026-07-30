@@ -88,6 +88,7 @@ function init() {
   $("spell-import").addEventListener("change", e => { if (e.target.files.length) loadSpellFiles(e.target.files); e.target.value = ""; });
   $("spell-search").addEventListener("input", renderSpellResults);
   $("spell-filter-area").addEventListener("click", e => SPELL_FILTERS.handleClick(e));
+  $("spell-filter-area").addEventListener("input", e => SPELL_FILTERS.handleInput(e));
   $("spell-results").addEventListener("click", e => {
     const b = e.target.closest(".sp-lib-add"); if (b) { addSpellFromLib(b.dataset.key); return; }
     const link = e.target.closest(".sp-name-link"); if (link) { e.preventDefault(); toggleSpellDetail(link); }
@@ -118,6 +119,7 @@ function init() {
   $("item-import").addEventListener("change", e => { if (e.target.files.length) loadItemFiles(e.target.files); e.target.value = ""; });
   $("item-search").addEventListener("input", renderItemResults);
   $("item-filter-area").addEventListener("click", e => ITEM_FILTERS.handleClick(e));
+  $("item-filter-area").addEventListener("input", e => ITEM_FILTERS.handleInput(e));
   $("item-results").addEventListener("click", e => {
     const b = e.target.closest(".itm-lib-add"); if (b) { addItemFromLib(b.dataset.key); return; }
     const link = e.target.closest(".itm-name-link"); if (link) { e.preventDefault(); toggleItemDetail(link); }
