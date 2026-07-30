@@ -527,8 +527,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const l = e.target.closest(".feat-link"); if (l) { e.preventDefault(); toggleFeatDetail(l); }
   });
-  $("btn-short-rest").addEventListener("click", () => applyRest("sr"));
-  $("btn-long-rest").addEventListener("click", () => applyRest("lr"));
+  // performRest() (src/rest.js) wraps applyRest() with the rest of what a rest actually does —
+  // temp HP, current HP, Hit Dice, spell slots — see DOCS.md's "Resting" section.
+  $("btn-short-rest").addEventListener("click", () => performRest("sr"));
+  $("btn-long-rest").addEventListener("click", () => performRest("lr"));
   $("class-feat-results").addEventListener("change", e => {
     const inp = e.target.closest(".asi-input");
     if (inp) {
