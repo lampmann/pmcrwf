@@ -227,6 +227,9 @@ const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 const ITEM_FGROUPS = [
   { key:"source", label:"Source", dynamic:true, get:i=>[i.source],
     dynOpts:()=>itemSources().map(src=>[src, src, (typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[src]) || src]) },
+  // Shared with the Spell Library's own "Source Group" filter — see sourceGroupOf() in spell-library.js.
+  { key:"srcgroup", label:"Source Group", get:i=>[typeof sourceGroupOf === "function" ? sourceGroupOf(i.source) : "supplement"],
+    opts:[["core","Core"],["supplement","Supplement"],["adventure","Adventure"]] },
   { key:"type", label:"Type", dynamic:true, get:i=>i.type?[i.type]:[], dynOpts:()=>[...new Set(ITEM_LIB.map(i=>i.type).filter(Boolean))].sort() },
   { key:"tier", label:"Tier", get:i=>[i.tier||"none"], opts:[["none","None"],["minor","Minor"],["major","Major"]] },
   { key:"rarity", label:"Rarity", get:i=>[i.rarity||"none"],

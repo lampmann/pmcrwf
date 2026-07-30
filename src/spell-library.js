@@ -13,11 +13,35 @@ const SOURCE_NAMES = {
   EFA:"Eberron: Forge of the Artificer", "AitFR-AVT":"Adventures in the Forgotten Realms: A Verdant Tomb",
   XPHB:"Player's Handbook (2024)"
 };
-const LIB_SCHEMA = 4;  // bump when the parsed-spell shape changes (forces a one-time re-import)
-function castCat(u) { return (u === "action" || u === "bonus" || u === "reaction") ? u : (u ? "long" : ""); }
+// 5e.tools' own Core/Supplement/Adventure split (Parser.SOURCES_ADVENTURES vs. everything else in
+// Parser.SOURCE_JSON_TO_FULL, with the 3 actual core rulebooks carved out of "everything else"):
+// a short, fixed, prose-free lookup, same footing as SOURCE_NAMES above.
+const SOURCE_GROUP = {
+  PHB:"core", XPHB:"core",
+  ToR:"adventure", DD:"adventure", FS:"adventure", US:"adventure", IDRotF:"adventure", LLK:"adventure", "AitFR-AVT":"adventure",
+};
+function sourceGroupOf(src) { return SOURCE_GROUP[src] || "supplement"; }
+const LIB_SCHEMA = 5;  // bump when the parsed-spell shape changes (forces a one-time re-import)
+function castCat(u) { return (u === "action" || u === "bonus" || u === "reaction" || u === "minute" || u === "hour") ? u : ""; }
+// 5e.tools' Parser.SPELL_AREA_TYPE_TO_FULL — short area-of-effect shape codes from a spell's own
+// areaTags field (not every spell has one; single-target spells usually don't).
+const SPELL_AREA_TYPES = {
+  ST:"Single Target", MT:"Multiple Targets", C:"Cube", N:"Cone", Y:"Cylinder", S:"Sphere",
+  R:"Circle", Q:"Square", L:"Line", H:"Hemisphere", W:"Wall", E:"Emanation",
+};
+// Categorized range (Parser.SPELL_ATTACK_TYPE_TO_FULL groups distance into a handful of buckets;
+// exact distances are a numeric-range filter, tracked separately — see DOCS.md's Range-valued filters).
+function rangeCat(raw) {
+  const r = raw.range; if (!r) return "";
+  const d = r.distance; if (!d) return "special";
+  if (d.type === "self" || d.type === "touch" || d.type === "sight" || d.type === "unlimited") return d.type;
+  return "ranged"; // feet or miles
+}
+function durationCat(raw) { const du = raw.duration && raw.duration[0]; return du ? du.type : ""; }
 // filter groups. `dynamic` groups (Source) compute their options from the loaded library.
 const SPELL_FGROUPS = [
   { key:"source", label:"Source", dynamic:true, get:s=>[s.source], dynOpts:()=>spellSources().map(src=>[src, src, SOURCE_NAMES[src]||src]) },
+  { key:"srcgroup", label:"Source Group", get:s=>[sourceGroupOf(s.source)], opts:[["core","Core"],["supplement","Supplement"],["adventure","Adventure"]] },
   // Not every 5e.tools data dump includes per-spell class lists ("classes.fromClassList") —
   // when it's missing this group just has no options to show (see DOCS re: import-not-hardcode).
   { key:"cls",    label:"Class",  dynamic:true, get:s=>s.classes||[], dynOpts:spellClassesInLib },
@@ -25,7 +49,14 @@ const SPELL_FGROUPS = [
   { key:"school", label:"School", get:s=>[s.school], opts:["Abjuration","Conjuration","Divination","Enchantment","Evocation","Illusion","Necromancy","Transmutation"].map(x=>[x,x]) },
   { key:"dmg",    label:"Damage", get:s=>s.dmgTypes, opts:["acid","bludgeoning","cold","fire","force","lightning","necrotic","piercing","poison","psychic","radiant","slashing","thunder"].map(x=>[x, x[0].toUpperCase()+x.slice(1)]) },
   { key:"save",   label:"Save",   get:s=>s.save?[s.save]:[], opts:[["strength","Str"],["dexterity","Dex"],["constitution","Con"],["intelligence","Int"],["wisdom","Wis"],["charisma","Cha"]] },
-  { key:"cast",   label:"Cast",   get:s=>[castCat(s.cast)], opts:[["action","Action"],["bonus","Bonus"],["reaction","Reaction"],["long","Min+"]] },
+  { key:"atk",    label:"Spell Attack", get:s=>s.attack?[s.atkType]:[], opts:[["M","Melee"],["R","Ranged"],["O","Other"]] },
+  { key:"cond",   label:"Conditions Inflicted", get:s=>s.conds||[],
+    opts:["blinded","charmed","deafened","exhaustion","frightened","grappled","incapacitated","invisible","paralyzed","petrified","poisoned","prone","restrained","stunned","unconscious"]
+      .map(x=>[x, x[0].toUpperCase()+x.slice(1)]) },
+  { key:"range",  label:"Range",  get:s=>s.rangeCat?[s.rangeCat]:[], opts:[["self","Self"],["touch","Touch"],["ranged","Ranged"],["sight","Sight"],["unlimited","Unlimited"],["special","Special"]] },
+  { key:"area",   label:"Area of Effect", get:s=>s.areaTags||[], opts:Object.entries(SPELL_AREA_TYPES).map(([v,lab])=>[v,lab]) },
+  { key:"dur",    label:"Duration", get:s=>s.durType?[s.durType]:[], opts:[["instant","Instantaneous"],["timed","Timed"],["permanent","Permanent"],["special","Special"]] },
+  { key:"cast",   label:"Cast",   get:s=>[castCat(s.cast)], opts:[["action","Action"],["bonus","Bonus"],["reaction","Reaction"],["minute","Minute+"],["hour","Hour+"]] },
   { key:"comp",   label:"Components", get:s=>["v","s","m"].filter(k=>s.comp&&s.comp[k]), opts:[["v","Verbal"],["s","Somatic"],["m","Material"]] },
   { key:"misc",   label:"Misc",   get:s=>["conc","ritual","attack","srd"].filter(k=> k==="conc"?s.conc : k==="ritual"?s.ritual : k==="attack"?s.attack : s.srd), opts:[["conc","Concentration"],["ritual","Ritual"],["attack","Attack roll"],["srd","SRD"]] },
 ];
@@ -59,6 +90,9 @@ function parseSpell(raw) {
     save: raw.savingThrow ? raw.savingThrow[0] : null,
     dmgTypes: raw.damageInflict || [],
     conds: raw.conditionInflict || [],
+    areaTags: raw.areaTags || [],
+    rangeCat: rangeCat(raw),
+    durType: durationCat(raw),
     conc: !!(raw.duration && raw.duration.some(d => d && d.concentration)),
     comp: { v: !!comp.v, s: !!comp.s, m: !!comp.m },
     cast: (raw.time && raw.time[0] && raw.time[0].unit) || "",
