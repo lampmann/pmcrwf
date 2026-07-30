@@ -125,6 +125,12 @@ function recompute() {
   $("hp-max").textContent = String(hpMax);
   const hpCur = $("hp-cur");
   if (hpCur.value !== "" && Number(hpCur.value) > hpMax) hpCur.value = String(hpMax);
+  // renderHitDice() (src/rest.js) is deliberately NOT called from here — recompute() runs on every
+  // keystroke anywhere on the page (see app.js's document-level "input" listener), and its own pool
+  // markup contains editable inputs; rebuilding them on every unrelated keystroke would blow away
+  // whatever a player is mid-typing into a pool's own spent-count box. Same reason renderClassFeatures()
+  // isn't called from here either — rest.js re-renders itself explicitly after anything that actually
+  // changes a pool (spend/correct/rest) or the Classes table.
 
   for (let i = 1; i <= 9; i++) $("slot-total-" + i).textContent = String(slotTotal(i));
 

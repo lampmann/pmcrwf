@@ -34,8 +34,8 @@
     <span id="passive-perc">10</span>
   </section>
   <section class="module" data-module="hp">
-    <input type="text" id="hp-cur"><span id="hp-max">0</span><input type="number" id="hp-max-override">
-    <input type="text" id="hp-temp"><input type="text" id="hit-dice">
+    <input type="text" id="hp-cur" data-math data-min="0" data-max-from="hp-max" data-allow-empty><span id="hp-max">0</span><input type="number" id="hp-max-override">
+    <input type="text" id="hp-temp" data-math data-min="0" data-allow-empty><div id="hit-dice-pools"></div>
     <span id="ac">10</span><input type="text" id="ac-misc"><input type="number" id="ac-override">
     <input type="text" id="speed"><span id="speed-total" style="display:none"></span>
     <span id="init">+0</span><input type="text" id="init-misc">
@@ -102,6 +102,7 @@
 <script src="../src/filters.js"></script>
 <script src="../src/spell-library.js"></script>
 <script src="../src/class-library.js"></script>
+<script src="../src/rest.js"></script>
 <script src="../effects/effects-db.js"></script>
 <script src="../effects/db/handwritten.js"></script>
 <script src="../effects/db/feats.js"></script>
@@ -136,6 +137,7 @@
 <script src="../src/spellcasting.js"></script>
 <script src="../src/item-library.js"></script>
 <script src="../src/inventory.js"></script>
+<script src="../src/proficiencies.js"></script>
 <script src="../src/attacks.js"></script>
 <script src="../src/persistence.js"></script>
 <script src="../src/app.js"></script>
@@ -391,6 +393,157 @@ document.addEventListener("DOMContentLoaded", () => {
     $("init").textContent, "+5");
   assert("Aura of the Sentinel is credited in the initiative audit",
     $("init").title.includes("Aura of the Sentinel"));
+
+  // ----- Resting (src/rest.js) — Hit Dice pools + full Short/Long Rest automation, PHB'14 p186 -----
+  document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+  CLASS_LIB = {};
+  addClassRow({ name: "Fighter", sub: "", lvl: 5, hitDie: "auto" });
+  addClassRow({ name: "Wizard", sub: "", lvl: 3, hitDie: "auto" });
+  // CON 3 (mod -4) is fixed for this whole section and never changed again — Max HP sums CON mod
+  // per level for every level, so touching CON mid-section would retroactively shift Max HP and
+  // contaminate every HP assertion below it. A low-but-fixed mod also lets the floor-at-0 test
+  // (right below) force a guaranteed-negative roll purely via Math.random, with nothing else to undo.
+  $("score-con").value = 3;
+  HD_STATE = {};
+  renderClassLibrary(); invalidateEffects(); recompute();
+
+  const pools = hitDicePools();
+  assertEqual("hitDicePools: one pool per class-table row", pools.length, 2);
+  const fighterPool = pools.find(p => p.className === "Fighter"), wizardPool = pools.find(p => p.className === "Wizard");
+  assertEqual("Fighter pool: d10, max = class level", fighterPool.hitDie + " " + fighterPool.max, "d10 5");
+  assertEqual("Wizard pool: d6, max = class level", wizardPool.hitDie + " " + wizardPool.max, "d6 3");
+  assertEqual("neither pool has anything spent yet", fighterPool.spent + wizardPool.spent, 0);
+
+  // spendHitDie: rolls, heals (never below the current total), and marks exactly one die spent
+  $("hp-cur").value = "10"; commitMath($("hp-cur"));
+  const hpBeforeSpend = num($("hp-cur"));
+  spendHitDie(fighterPool.key);
+  assert("spendHitDie never reduces current HP", num($("hp-cur")) >= hpBeforeSpend);
+  assertEqual("spendHitDie marks exactly one Fighter die spent", hitDicePools().find(p => p.className === "Fighter").spent, 1);
+  assertEqual("spendHitDie doesn't touch the Wizard pool", hitDicePools().find(p => p.className === "Wizard").spent, 0);
+
+  // minimum-of-0 healing: force every die to roll its lowest face — with CON mod -4, 1d6's worst
+  // case (1 - 4 = -3) goes negative before the floor, so the clamp is exercised deterministically.
+  {
+    const origRandom = Math.random;
+    Math.random = () => 0;   // rollDie() -> 1 on every call
+    const hpBefore = num($("hp-cur"));
+    spendHitDie(wizardPool.key);
+    Math.random = origRandom;
+    assertEqual("a Hit Die roll that would heal negative HP floors at +0", num($("hp-cur")), hpBefore);
+    assertEqual("the die is still marked spent even though it healed nothing", hitDicePools().find(p => p.className === "Wizard").spent, 1);
+  }
+
+  // overheal clamps to max HP, exactly like every other HP-setting path in the app
+  {
+    const max = maxHP();
+    $("hp-cur").value = String(max - 1); commitMath($("hp-cur"));
+    const origRandom = Math.random;
+    Math.random = () => 0.999;   // rollDie() -> sides (max face) on every call
+    spendHitDie(fighterPool.key);
+    Math.random = origRandom;
+    assertEqual("healing past max HP clamps to max HP, not past it", num($("hp-cur")), max);
+  }
+
+  // a fully-spent pool can't be spent again
+  {
+    const key = fighterPool.key;
+    while (hitDicePools().find(p => p.key === key).spent < fighterPool.max) spendHitDie(key);
+    const spentAtMax = hitDicePools().find(p => p.key === key).spent;
+    const hpAtMax = num($("hp-cur"));
+    spendHitDie(key);   // should no-op: already fully spent
+    assertEqual("spending an exhausted pool is a no-op (spent count)", hitDicePools().find(p => p.key === key).spent, spentAtMax);
+    assertEqual("spending an exhausted pool is a no-op (no phantom healing)", num($("hp-cur")), hpAtMax);
+  }
+
+  // manual correction — the "always give an override" box, mirrors USES_STATE's own pip semantics
+  {
+    const inp = document.createElement("input");
+    inp.className = "hd-spent"; inp.dataset.hdkey = wizardPool.key; inp.value = "7";   // way over max (3)
+    correctHitDiceSpent(inp);
+    assertEqual("manual correction clamps to the pool's max", hitDicePools().find(p => p.className === "Wizard").spent, 3);
+    inp.value = "-2";
+    correctHitDiceSpent(inp);
+    assertEqual("manual correction clamps to 0", hitDicePools().find(p => p.className === "Wizard").spent, 0);
+  }
+
+  // Short Rest: clears Temp HP (PHB p197 — lasts until depleted or "you finish a rest", not just a
+  // long one), but does NOT touch current HP, spell slots, or Hit Dice — spending a die is always the
+  // player's own choice (see spendHitDie above), never something a rest button decides for you.
+  {
+    HD_STATE = {}; renderClassLibrary(); recompute();
+    $("hp-cur").value = "20"; commitMath($("hp-cur"));
+    $("hp-temp").value = "8"; commitMath($("hp-temp"));
+    $("slot-used-1").value = "2"; commitMath($("slot-used-1"));
+    spendHitDie(fighterPool.key);
+    const hpAfterSpend = $("hp-cur").value, fighterSpentAfterSpend = hitDicePools().find(p => p.className === "Fighter").spent;
+
+    performRest("sr");
+    assertEqual("Short Rest clears Temp HP", $("hp-temp").value, "");
+    assertEqual("Short Rest doesn't touch current HP", $("hp-cur").value, hpAfterSpend);
+    assertEqual("Short Rest doesn't reset used spell slots", $("slot-used-1").value, "2");
+    assertEqual("Short Rest doesn't regain spent Hit Dice", hitDicePools().find(p => p.className === "Fighter").spent, fighterSpentAfterSpend);
+  }
+
+  // Long Rest: full HP, Temp HP cleared, spell slots cleared, and spent Hit Dice regained up to half
+  // the total (min 1) — RAW doesn't say which pool a mixed-die-size multiclass regains into, so this
+  // fills pools in Classes-table order (documented as an approximation, same as elsewhere in the app).
+  {
+    HD_STATE = {}; renderClassLibrary(); recompute();
+    // spend every Fighter die (5) and every Wizard die (3) -> 8 total spent, half of 8 = 4 to regain
+    while (hitDicePools().find(p => p.className === "Fighter").spent < 5) spendHitDie(fighterPool.key);
+    while (hitDicePools().find(p => p.className === "Wizard").spent < 3) spendHitDie(wizardPool.key);
+    $("hp-cur").value = "1"; commitMath($("hp-cur"));
+    $("hp-temp").value = "3"; commitMath($("hp-temp"));
+    $("slot-used-1").value = "4"; commitMath($("slot-used-1"));
+
+    performRest("lr");
+    assertEqual("Long Rest restores current HP to max", $("hp-cur").value, String(maxHP()));
+    assertEqual("Long Rest clears Temp HP", $("hp-temp").value, "");
+    assertEqual("Long Rest clears used spell slots", $("slot-used-1").value, "");
+    // Fighter pool (table order first) gets the full 4-die regain; Wizard's 3 spent stay spent.
+    assertEqual("Long Rest regains into the first pool up to the half-total cap (Fighter: 5 spent - 4 regained = 1 left)",
+      hitDicePools().find(p => p.className === "Fighter").spent, 1);
+    assertEqual("the half-total cap is spent before reaching the second pool (Wizard stays fully spent)",
+      hitDicePools().find(p => p.className === "Wizard").spent, 3);
+  }
+
+  // Long Rest at 0 HP: PHB p186 — no benefit without at least 1 HP at the start of the rest. The
+  // guard runs before any mutation, so declining it must leave every rest-affected field untouched.
+  {
+    HD_STATE = {}; renderClassLibrary(); recompute();
+    spendHitDie(fighterPool.key);   // create a nonzero "spent" fixture, spent BEFORE zeroing HP so the heal can't un-zero it
+    const fighterSpentBefore = hitDicePools().find(p => p.className === "Fighter").spent;
+    $("hp-cur").value = "0"; commitMath($("hp-cur"));
+    $("hp-temp").value = "3"; commitMath($("hp-temp"));
+    $("slot-used-1").value = "2"; commitMath($("slot-used-1"));
+
+    const origConfirm = window.confirm;
+    window.confirm = () => false;   // decline the "apply anyway?" prompt
+    performRest("lr");
+    assertEqual("declining the 0-HP long rest leaves HP at 0", $("hp-cur").value, "0");
+    assertEqual("declining the 0-HP long rest leaves Temp HP alone", $("hp-temp").value, "3");
+    assertEqual("declining the 0-HP long rest leaves spell slots alone", $("slot-used-1").value, "2");
+    assertEqual("declining the 0-HP long rest leaves Hit Dice alone", hitDicePools().find(p => p.className === "Fighter").spent, fighterSpentBefore);
+
+    window.confirm = () => true;   // accept it this time — should proceed exactly like a normal long rest
+    performRest("lr");
+    assertEqual("accepting the 0-HP long rest still restores HP to max", $("hp-cur").value, String(maxHP()));
+    window.confirm = origConfirm;
+  }
+
+  // A character with no classes yet (fresh sheet) gets a plain hint, not an empty/broken render.
+  // renderHitDice() isn't hooked into recompute() (see derived.js's comment on why — it would blow
+  // away an in-progress edit in a pool's own spent-count box on every unrelated keystroke), so the
+  // production listener that would normally catch this class-rows mutation is a MutationObserver —
+  // async/microtask-queued, so it won't have fired yet by the next line of this synchronous test.
+  // Calling it directly here is exactly what that observer would otherwise do.
+  {
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    HD_STATE = {}; recompute(); renderHitDice();
+    assertEqual("hitDicePools is empty with no classes", hitDicePools().length, 0);
+    assert("the empty state renders a hint instead of nothing", $("hit-dice-pools").textContent.length > 0);
+  }
 
   lines.push("", `${pass} passed, ${fail} failed`);
   const el = document.getElementById("results");
