@@ -84,6 +84,10 @@
     <div id="spell-feat-results"></div>
   </section>
 </div>
+<div id="short-rest-modal" style="display:none">
+  <div id="sr-modal-hp"></div><div id="sr-modal-pools"></div>
+  <button id="sr-modal-cancel"></button><button id="sr-modal-finish"></button>
+</div>
 <div id="prep-class-modal" style="display:none">
   <div><b id="prep-modal-spell"></b><div id="prep-modal-hint"></div>
   <select id="prep-modal-select"></select>
@@ -98,6 +102,7 @@
 <script src="../src/math-fields.js"></script>
 <script src="../src/rows.js"></script>
 <script src="../src/derived.js"></script>
+<script src="../src/event-log.js"></script>
 <script src="../src/dice.js"></script>
 <script src="../src/filters.js"></script>
 <script src="../src/spell-library.js"></script>
@@ -456,15 +461,21 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("spending an exhausted pool is a no-op (no phantom healing)", num($("hp-cur")), hpAtMax);
   }
 
-  // manual correction — the "always give an override" box, mirrors USES_STATE's own pip semantics
+  // manual correction — the "always give an override" box. The box shows REMAINING, so its value is
+  // stored back as max - remaining; clamping is in remaining-space at both ends.
   {
     const inp = document.createElement("input");
-    inp.className = "hd-spent"; inp.dataset.hdkey = wizardPool.key; inp.value = "7";   // way over max (3)
-    correctHitDiceSpent(inp);
-    assertEqual("manual correction clamps to the pool's max", hitDicePools().find(p => p.className === "Wizard").spent, 3);
+    inp.className = "hd-remaining"; inp.dataset.hdkey = wizardPool.key; inp.value = "7";   // way over max (3)
+    correctHitDiceRemaining(inp);
+    assertEqual("manual correction clamps remaining to the pool's max (nothing spent)", hitDicePools().find(p => p.className === "Wizard").spent, 0);
     inp.value = "-2";
-    correctHitDiceSpent(inp);
-    assertEqual("manual correction clamps to 0", hitDicePools().find(p => p.className === "Wizard").spent, 0);
+    correctHitDiceRemaining(inp);
+    assertEqual("manual correction clamps remaining to 0 (everything spent)", hitDicePools().find(p => p.className === "Wizard").spent, 3);
+    inp.value = "1";
+    correctHitDiceRemaining(inp);
+    assertEqual("remaining 1 of 3 stores as 2 spent", hitDicePools().find(p => p.className === "Wizard").spent, 2);
+    inp.value = "3";
+    correctHitDiceRemaining(inp);   // back to full for the assertions below
   }
 
   // Short Rest: clears Temp HP (PHB p197 — lasts until depleted or "you finish a rest", not just a
@@ -530,6 +541,99 @@ document.addEventListener("DOMContentLoaded", () => {
     performRest("lr");
     assertEqual("accepting the 0-HP long rest still restores HP to max", $("hp-cur").value, String(maxHP()));
     window.confirm = origConfirm;
+  }
+
+  // ----- Hit Dice count DOWN from the maximum: 17 dice reads 17/17, then 16/17 after one roll -----
+  {
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    addClassRow({ name: "Fighter", sub: "", lvl: 17, hitDie: "auto" });
+    HD_STATE = {}; recompute(); renderHitDice();
+    const pool = hitDicePools()[0];
+    assertEqual("a fresh 17-level pool starts with all 17 remaining", pool.remaining + "/" + pool.max, "17/17");
+    assertEqual("the rendered box shows remaining, not spent",
+      $("hit-dice-pools").querySelector("input.hd-remaining").value, "17");
+    spendHitDie(pool.key);
+    assertEqual("one roll counts remaining down, max unchanged",
+      hitDicePools()[0].remaining + "/" + hitDicePools()[0].max, "16/17");
+    assertEqual("the rendered box follows it down",
+      $("hit-dice-pools").querySelector("input.hd-remaining").value, "16");
+    assertEqual("remaining and spent stay complementary", hitDicePools()[0].spent, 1);
+  }
+
+  // ----- Short Rest dialog: opens instead of resting, rolls dice, finishes the rest -----
+  {
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    addClassRow({ name: "Fighter", sub: "", lvl: 5, hitDie: "auto" });
+    HD_STATE = {}; recompute(); renderHitDice();
+    $("hp-cur").value = "10"; commitMath($("hp-cur"));
+    $("hp-temp").value = "7"; commitMath($("hp-temp"));
+
+    openShortRestModal();
+    assert("Short Rest opens the dialog", $("short-rest-modal").style.display !== "none");
+    assertEqual("opening the dialog does NOT apply the rest yet (Temp HP still set)", $("hp-temp").value, "7");
+    assert("the dialog renders a pool row per Hit Dice pool",
+      $("sr-modal-pools").querySelectorAll("input.hd-remaining").length === 1);
+    assert("the dialog shows current HP", /10/.test($("sr-modal-hp").textContent));
+
+    // spending from inside the dialog updates the dialog AND the HP module's inline row
+    const key = hitDicePools()[0].key;
+    spendHitDie(key);
+    assertEqual("rolling in the dialog counts the dialog's box down",
+      $("sr-modal-pools").querySelector("input.hd-remaining").value, "4");
+    assertEqual("...and the inline HP-module box stays in sync",
+      $("hit-dice-pools").querySelector("input.hd-remaining").value, "4");
+
+    // finishing applies the rest proper
+    closeShortRestModal(); performRest("sr");
+    assert("finishing closes the dialog", $("short-rest-modal").style.display === "none");
+    assertEqual("finishing applies the rest (Temp HP cleared)", $("hp-temp").value, "");
+    assertEqual("finishing does not refund the die that was spent", hitDicePools()[0].remaining, 4);
+
+    // cancelling leaves the rest unapplied, but keeps dice already rolled spent (they were real rolls)
+    $("hp-temp").value = "5"; commitMath($("hp-temp"));
+    openShortRestModal();
+    spendHitDie(key);
+    closeShortRestModal();
+    assertEqual("cancelling leaves the rest unapplied (Temp HP untouched)", $("hp-temp").value, "5");
+    assertEqual("cancelling still leaves a rolled die spent", hitDicePools()[0].remaining, 3);
+    $("hp-temp").value = ""; commitMath($("hp-temp"));
+  }
+
+  // ----- Event Log: rests and other non-roll events are recorded, tagged by kind -----
+  {
+    clearLog();
+    const entries = () => [...$("dicelog").querySelectorAll(".ev")];
+    assertEqual("a cleared log holds only its header", entries().length, 0);
+
+    logEvent("info", "hello");
+    assertEqual("logEvent adds an entry", entries().length, 1);
+    assert("the entry carries its kind as a class", entries()[0].classList.contains("ev-info"));
+
+    log("a roll");
+    assert("log() is still the roll shorthand", entries()[0].classList.contains("ev-roll"));
+    assertEqual("newest entry goes on top", entries()[0].textContent, "a roll");
+    assertEqual("the header row is never displaced", $("dicelog").children[0].textContent, "— event log —");
+
+    // an unregistered kind must still log rather than losing the event
+    logEvent("not-a-real-kind", "still recorded");
+    assertEqual("an unregistered kind still logs", entries()[0].textContent, "still recorded");
+    assert("...falling back to the info kind", entries()[0].classList.contains("ev-info"));
+
+    // a rest records itself even though nothing was rolled
+    clearLog();
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    addClassRow({ name: "Fighter", sub: "", lvl: 5, hitDie: "auto" });
+    HD_STATE = {}; recompute();
+    $("hp-temp").value = "4"; commitMath($("hp-temp"));
+    performRest("sr");
+    const restEntries = $("dicelog").querySelectorAll(".ev-rest");
+    assertEqual("a rest logs one event even with no dice rolled", restEntries.length, 1);
+    assert("the rest event names the rest", /Short Rest/.test(restEntries[0].textContent));
+    assert("the rest event says what it changed", /Temp HP cleared/.test(restEntries[0].textContent));
+
+    clearLog();
+    performRest("lr");
+    assert("a long rest logs too", /Long Rest/.test($("dicelog").querySelector(".ev-rest").textContent));
   }
 
   // A character with no classes yet (fresh sheet) gets a plain hint, not an empty/broken render.

@@ -196,6 +196,6 @@ function showRollMenu(x, y, btn) {
   document.body.appendChild(m); m.style.left = x + "px"; m.style.top = y + "px"; _menuOpen = true;
 }
 
-/* ---------- Log ---------- */
-function log(html) { const d = document.createElement("div"); d.innerHTML = html; const el = $("dicelog"); el.insertBefore(d, el.children[1] || null); }
-function clearLog() { $("dicelog").innerHTML = "<div>— roll log —</div>"; }
+/* ---------- Log ----------
+   log()/clearLog() moved to src/event-log.js when the roll log became a general Event Log —
+   log(html) is now logEvent("roll", html). See that file to add a new kind of event. */

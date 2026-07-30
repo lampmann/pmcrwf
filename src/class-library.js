@@ -374,10 +374,15 @@ function applyRest(kind) {   // kind: "sr" or "lr"
   //
   // Iterates activeFeatures() directly rather than a render-time cache, so Short/Long Rest still
   // works even if the Features panel hasn't rendered since the library/character last changed.
+  //
+  // Returns how many features actually got uses back, so performRest() can report it in the event
+  // log — counted rather than inferred, since "recovered" means a tracker that was genuinely spent.
+  let recovered = 0;
   activeFeatures().forEach(feature => {
     const key = feature.fkey;
     const u = usesSpecFor(feature); if (!u) return;
     const st = USES_STATE[key]; if (!st) return;
+    const before = st.used;
     if (u.delayed) {
       if (kind !== "lr") return;   // delayed recovery is only ever counted in long rests
       const max = usesMaxFor(feature, u.max);
@@ -390,8 +395,10 @@ function applyRest(kind) {   // kind: "sr" or "lr"
     } else if (kind === "lr") {
       st.used = 0;
     }
+    if (st.used < before) recovered++;
   });
   scheduleSave(); recompute(); renderClassFeatures();
+  return recovered;
 }
 
 function renderClassLibrary() {
@@ -534,7 +541,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   // performRest() (src/rest.js) wraps applyRest() with the rest of what a rest actually does —
   // temp HP, current HP, Hit Dice, spell slots — see DOCS.md's "Resting" section.
-  $("btn-short-rest").addEventListener("click", () => performRest("sr"));
+  // Short Rest opens a dialog first, since spending Hit Dice is a per-die decision made at the end
+  // of the rest (PHB p186); "Finish Short Rest" in there is what calls performRest("sr"). A long
+  // rest has no such choice to make, so it applies straight away. Both live in src/rest.js.
+  $("btn-short-rest").addEventListener("click", openShortRestModal);
   $("btn-long-rest").addEventListener("click", () => performRest("lr"));
   $("class-feat-results").addEventListener("change", e => {
     const inp = e.target.closest(".asi-input");
