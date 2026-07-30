@@ -167,7 +167,8 @@
 
     "subclass|rogue|scout|superior mobility": {
       name: "Superior Mobility", sv: 1,
-      unsupported: [{ reason: "+10 ft walking speed; speed isn't an effects target", tags: ["speed"] }],
+      effects: [{ target: "speed", op: "add", value: 10 }],
+      unsupported: [{ reason: "also raises climbing/swimming speed by 10 ft if you have one — no separate speed-type targets", tags: ["speed"] }],
     },
 
     "subclass|rogue|scout|ambush master": {

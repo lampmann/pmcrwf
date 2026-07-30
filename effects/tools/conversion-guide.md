@@ -75,6 +75,15 @@ don't create an empty entry just to have one.
   perception performance persuasion religion sleightofhand stealth
   survival`
 - `"score-<ability>"` — a raw ability score (str/dex/con/int/wis/cha)
+- `"speed"` — walking speed, in feet. Adds on top of whatever the user typed
+  into the Speed box — see `speedTotal()` in src/derived.js (same
+  base-input + effects-total pattern as an ability score). Fine for a flat,
+  *unconditional* bonus (Powered Steps' +5 ft, Mobile's +10 ft). **Not
+  suited to** a conditional bonus (Fast Movement's "+10 ft while not
+  wearing heavy armor", anything gated on being mounted/raging/dashing) —
+  there's no armor-equipped/state predicate yet, so those stay
+  `unsupported`; likewise anything granting a *different* speed type
+  (flying/climbing/swimming) rather than adding to walking speed.
 - `"attack-hit"` / `"damage-bonus"` — a flat/dice bonus on a weapon
   attack's to-hit roll and damage roll. **Live**: the Attacks module folds
   these into every attack row (rows can opt out individually). `adv`/`dis`
@@ -89,10 +98,10 @@ don't create an empty entry just to have one.
   (see Resilient/Observant in handwritten.js).
 - `"spell-grant"` — grants a spell (fixed name only — see below).
 
-Do **not** invent other targets (no `speed`, `hitdice`, etc. — genuinely
-not wired up: nothing in src/derived.js reads effFlat("speed") or
-effFlat("hitdice") the way it does for ac/init/save-*/skill-*). If a feat
-needs one of those, use `unsupported` instead.
+Do **not** invent other targets (no `hitdice`, etc. — genuinely not wired
+up: nothing in src/derived.js reads effFlat("hitdice") the way it does for
+ac/init/speed/save-*/skill-*). If a feat needs one of those, use
+`unsupported` instead.
 
 ## Ops
 
