@@ -128,3 +128,6 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 /* same audit marker on an Attacks-module roll button, which keeps its own border and click cursor */
 button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link); cursor: pointer; }
 .eff-note { font-size: .8rem; color: var(--muted-fg); cursor: help; }
+/* ----- rules-reference buttons (src/rules-ref.js) ----- */
+.rules-ref-btn { border: none; background: none; color: var(--link); cursor: pointer; font-size: .85rem; padding: 0; margin-left: .25rem; line-height: 1; }
+.rules-ref-detail { margin: .15rem 0 .3rem 1.2rem; max-width: 32rem; }
