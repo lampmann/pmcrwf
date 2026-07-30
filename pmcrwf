@@ -14,7 +14,20 @@
 # ============================================================
 set -eu
 
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Follow symlinks to find where this script *really* lives — README's own setup instructions
+# (`ln -s "$PWD/pmcrwf" ~/.local/bin/pmcrwf`) mean $0 is routinely a symlink, and a plain
+# `dirname "$0"` would resolve to the symlink's directory (e.g. ~/.local/bin) instead of the
+# project folder next to character-sheet.html. Portable loop (no GNU-only `readlink -f`, so this
+# still works on macOS/BSD readlink) — handles chained and relative-target symlinks alike.
+SELF=$0
+while [ -L "$SELF" ]; do
+  link=$(readlink -- "$SELF")
+  case "$link" in
+    /*) SELF=$link ;;
+    *) SELF=$(dirname -- "$SELF")/$link ;;
+  esac
+done
+ROOT=$(CDPATH= cd -- "$(dirname -- "$SELF")" && pwd)
 PORT=${PMCRWF_PORT:-8931}
 URL="http://localhost:$PORT/character-sheet.html"
 

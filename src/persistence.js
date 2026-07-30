@@ -4,7 +4,8 @@ function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveSt
 function collectState() {
   const state = {
     v: 1, effectsSv: 1,
-    fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, items: CHARACTER_ITEMS,
+    fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, concentrating: CONCENTRATING, items: CHARACTER_ITEMS,
+    proficiencies: PROFICIENCIES,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
     routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
     featChoices: FEAT_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
@@ -18,7 +19,9 @@ function applyState(state) {
   $("class-rows").innerHTML = "";
   (state.classes || [{ name: "", sub: "", lvl: 1 }]).forEach(addClassRow);
   CHARACTER_SPELLS = state.spells || [];
+  CONCENTRATING = state.concentrating || null;
   CHARACTER_ITEMS = state.items || [];
+  PROFICIENCIES = state.proficiencies || { weapons: [], tools: [], languages: [] };
   FEAT_CHOICES = state.featChoices || {};
   USES_STATE = state.usesState || {};
   HD_STATE = state.hdState || {};
@@ -36,6 +39,7 @@ function applyState(state) {
   recompute();
   renderClassFeatures();
   if (typeof renderHitDice === "function") renderHitDice();
+  if (typeof renderAllProficiencyLists === "function") renderAllProficiencyLists();
 }
 function saveState() { localStorage.setItem("charsheet-v0", JSON.stringify(collectState())); $("save-status").textContent = "saved " + new Date().toLocaleTimeString(); }
 function loadState() { try { return JSON.parse(localStorage.getItem("charsheet-v0")); } catch (e) { return null; } }

@@ -117,6 +117,10 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 #effects-strip { display: none; margin: -.25rem 0 1rem; padding: .3rem .5rem; border: 1px solid var(--border-soft); border-radius: var(--radius); font-size: .85rem; }
 #effects-strip.has-content { display: block; }
 .eff-strip-counter { float: right; }
+/* ----- concentration indicator (src/spellcasting.js) ----- */
+.conc-banner { margin: -.1rem 0 .5rem; padding: .3rem .5rem; border: 1px solid var(--link-border); border-radius: var(--radius); font-size: .85rem; }
+.sp2-conc { font: inherit; font-size: .8rem; margin-left: .4rem; padding: 0 .3rem; border: 1px solid var(--btn-border); border-radius: var(--radius); background: var(--btn-bg); color: var(--btn-fg); cursor: pointer; }
+.sp2-conc.on { border-color: var(--link-border); color: var(--link); font-weight: bold; }
 /* audit trail: a dotted underline on any derived value an effect touched, and the small
    "base + effects = total" note next to ability scores / AC / speed */
 .has-eff { border-bottom: 1px dotted var(--link-border); cursor: help; }

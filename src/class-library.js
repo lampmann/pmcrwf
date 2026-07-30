@@ -367,6 +367,11 @@ function togglePip(pip) {
   scheduleSave(); renderClassFeatures();
 }
 function applyRest(kind) {   // kind: "sr" or "lr"
+  // Deliberately scoped to ONLY feature-effect uses trackers (limited-use pips) — everything else a
+  // rest actually does (current/temp HP, Hit Dice, spell slots, the PHB p186 "no benefit below 1 HP"
+  // guard) lives in performRest() (src/rest.js), which wraps this function and is what the two Rest
+  // buttons actually call. Keeping this narrow matches its own tests, which call it directly.
+  //
   // Iterates activeFeatures() directly rather than a render-time cache, so Short/Long Rest still
   // works even if the Features panel hasn't rendered since the library/character last changed.
   activeFeatures().forEach(feature => {
@@ -386,7 +391,7 @@ function applyRest(kind) {   // kind: "sr" or "lr"
       st.used = 0;
     }
   });
-  scheduleSave(); renderClassFeatures();
+  scheduleSave(); recompute(); renderClassFeatures();
 }
 
 function renderClassLibrary() {
