@@ -9,7 +9,7 @@
   :root, body { background: #fff !important; color: #000 !important; }
 
   /* Chrome that only makes sense interactively. */
-  .toolbar, #lay-bar, #effects-strip, .rowbtn, .use-pip,
+  .toolbar, #lay-bar, #effects-strip, .rowbtn, .use-pip, .rules-ref-btn,
   #btn-add-class, #btn-add-attack, #btn-add-routine, .prof-add-btn,
   #item-lib-toggle, #spell-lib-toggle, #item-lib-reload, #item-lib-clear,
   #spell-lib-reload, #spell-lib-clear, #class-lib-reload, #class-lib-clear,
