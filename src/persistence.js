@@ -8,7 +8,7 @@ function collectState() {
     proficiencies: PROFICIENCIES,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
     routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
-    featChoices: FEAT_CHOICES, usesState: USES_STATE,
+    featChoices: FEAT_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
   document.querySelectorAll("[data-persist]").forEach(el => { state.fields[el.id] = el.type === "checkbox" ? el.checked : el.value; });
@@ -24,6 +24,7 @@ function applyState(state) {
   PROFICIENCIES = state.proficiencies || { weapons: [], tools: [], languages: [] };
   FEAT_CHOICES = state.featChoices || {};
   USES_STATE = state.usesState || {};
+  HD_STATE = state.hdState || {};
   EFFECT_CHOICES = state.effectChoices || {};
   EFFECT_TOGGLES = state.effectToggles || {};
   Object.entries(state.fields || {}).forEach(([id, val]) => {
@@ -37,7 +38,8 @@ function applyState(state) {
   invalidateEffects();
   recompute();
   renderClassFeatures();
-  renderAllProficiencyLists();
+  if (typeof renderHitDice === "function") renderHitDice();
+  if (typeof renderAllProficiencyLists === "function") renderAllProficiencyLists();
 }
 function saveState() { localStorage.setItem("charsheet-v0", JSON.stringify(collectState())); $("save-status").textContent = "saved " + new Date().toLocaleTimeString(); }
 function loadState() { try { return JSON.parse(localStorage.getItem("charsheet-v0")); } catch (e) { return null; } }

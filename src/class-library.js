@@ -367,6 +367,11 @@ function togglePip(pip) {
   scheduleSave(); renderClassFeatures();
 }
 function applyRest(kind) {   // kind: "sr" or "lr"
+  // Deliberately scoped to ONLY feature-effect uses trackers (limited-use pips) — everything else a
+  // rest actually does (current/temp HP, Hit Dice, spell slots, the PHB p186 "no benefit below 1 HP"
+  // guard) lives in performRest() (src/rest.js), which wraps this function and is what the two Rest
+  // buttons actually call. Keeping this narrow matches its own tests, which call it directly.
+  //
   // Iterates activeFeatures() directly rather than a render-time cache, so Short/Long Rest still
   // works even if the Features panel hasn't rendered since the library/character last changed.
   activeFeatures().forEach(feature => {
@@ -386,18 +391,6 @@ function applyRest(kind) {   // kind: "sr" or "lr"
       st.used = 0;
     }
   });
-  // A long rest also restores HP to full and clears every expended spell slot (2014 rules — a
-  // short rest does neither by itself). Hit Dice aren't restored here: the sheet only has a single
-  // freeform "Hit Dice" box (character.js's hit-dice field), not the per-die-size used/max tracker
-  // regaining "up to half your total, minimum 1" would need to compute against — still manual.
-  if (kind === "lr") {
-    const hpCur = $("hp-cur");
-    if (hpCur) hpCur.value = String(maxHP());
-    for (let i = 1; i <= 9; i++) {
-      const used = $("slot-used-" + i);
-      if (used) used.value = "";
-    }
-  }
   scheduleSave(); recompute(); renderClassFeatures();
 }
 
@@ -539,8 +532,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const l = e.target.closest(".feat-link"); if (l) { e.preventDefault(); toggleFeatDetail(l); }
   });
-  $("btn-short-rest").addEventListener("click", () => applyRest("sr"));
-  $("btn-long-rest").addEventListener("click", () => applyRest("lr"));
+  // performRest() (src/rest.js) wraps applyRest() with the rest of what a rest actually does —
+  // temp HP, current HP, Hit Dice, spell slots — see DOCS.md's "Resting" section.
+  $("btn-short-rest").addEventListener("click", () => performRest("sr"));
+  $("btn-long-rest").addEventListener("click", () => performRest("lr"));
   $("class-feat-results").addEventListener("change", e => {
     const inp = e.target.closest(".asi-input");
     if (inp) {
