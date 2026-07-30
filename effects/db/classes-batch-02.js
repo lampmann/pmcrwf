@@ -60,7 +60,7 @@ registerEffects({
   },
   "subclass|artificer|armorer|powered steps": {
     name: "Powered Steps", sv: 1,
-    unsupported: [{ reason: "speed increase (+5 feet); speed target not yet wired in effects engine", tags: ["speed"] }],
+    effects: [{ target: "speed", op: "add", value: 5 }],
   },
   "subclass|artificer|armorer|thunder gauntlets": {
     name: "Thunder Gauntlets", sv: 1,
