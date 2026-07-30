@@ -25,7 +25,7 @@ const SKILL_SLUGS = new Set([
   "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival",
 ]);
 const ABILITIES = new Set(["str", "dex", "con", "int", "wis", "cha"]);
-const FIXED_TARGETS = new Set(["init", "hpmax", "profbonus", "spelldc", "spellatk", "passive-perception", "spell-grant", "ac"]);
+const FIXED_TARGETS = new Set(["init", "hpmax", "profbonus", "spelldc", "spellatk", "passive-perception", "spell-grant", "ac", "speed"]);
 const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise", "adv", "dis", "note", "grant-free", "grant-list", "grant-innate"]);
 const ACTIVATION_KINDS = new Set(["always", "toggle", "choice"]);
 const CHOICE_KINDS = new Set(["pick", "ability", "spellfilter"]);

@@ -31,6 +31,10 @@ function maxHP() {
   return base + effFlat("hpmax");   // override sets the base; effects (e.g. Tough) still add on top
 }
 
+/* speed is a plain user-typed input (not auto-calculated like AC/initiative), but effects can still
+   add to it — same "base + effects = total" pattern as an ability score (see abilityScore in data.js). */
+function speedTotal() { return num($("speed")) + effFlat("speed"); }
+
 /* ---------- Armor Class (auto-calculated from equipped armor, like initiative) ----------
    No armor equipped: 10 + DEX. Light armor: armor AC + full DEX. Medium: armor AC + DEX (max +2).
    Heavy: armor AC only. Equipping any shield adds a flat +2 (multiple shields don't stack — same
