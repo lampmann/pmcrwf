@@ -43,6 +43,7 @@ function createFilterSet(cfg) {
   };
   fs.ensureStates = () => {
     fs.groups.forEach(g => {
+      if (g.kind === "range") { if (!fs.state[g.key]) fs.state[g.key] = { kind: "range", lo: "", hi: "", hidden: false }; return; }
       if (!fs.state[g.key]) fs.state[g.key] = { states: {}, blueMode: "or", redMode: "or", hidden: false };
       fs.opts(g).forEach(([v]) => { if (!(v in fs.state[g.key].states)) fs.state[g.key].states[v] = "ignore"; });
     });
@@ -71,6 +72,7 @@ function createFilterSet(cfg) {
   };
   fs.ctrl = (action, gkey) => {
     const st = fs.state[gkey], g = fs.groupDef(gkey);
+    if (g.kind === "range") { if (action === "clear") { st.lo = ""; st.hi = ""; } return; }
     if (action === "all") fs.opts(g).forEach(([v]) => st.states[v] = "include");
     else if (action === "clear") Object.keys(st.states).forEach(v => st.states[v] = "ignore");
     else if (action === "none") fs.opts(g).forEach(([v]) => st.states[v] = "exclude");
@@ -80,8 +82,18 @@ function createFilterSet(cfg) {
   };
 
   /* ----- matching ----- */
-  fs.constrained = g => Object.values(fs.state[g.key].states).some(x => x !== "ignore");
+  fs.constrained = g => {
+    if (g.kind === "range") { const st = fs.state[g.key]; return st.lo !== "" || st.hi !== ""; }
+    return Object.values(fs.state[g.key].states).some(x => x !== "ignore");
+  };
   fs.groupPass = (g, rec) => {
+    if (g.kind === "range") {
+      const st = fs.state[g.key], v = g.getNum(rec);
+      if (v == null) return false;   // unknown value can't be confirmed within an active bound
+      if (st.lo !== "" && v < Number(st.lo)) return false;
+      if (st.hi !== "" && v > Number(st.hi)) return false;
+      return true;
+    }
     const st = fs.state[g.key], vals = g.get(rec) || [];
     const inc = Object.keys(st.states).filter(v => st.states[v] === "include");
     const exc = Object.keys(st.states).filter(v => st.states[v] === "exclude");
@@ -110,6 +122,17 @@ function createFilterSet(cfg) {
     </div>`;
     const groups = fs.groups.map(g => {
       const st = fs.state[g.key];
+      if (g.kind === "range") {
+        const rctrl = `<span class="fctrl">` +
+          `<button class="fctrl-btn" data-fctrl="clear" data-fg="${g.key}">Clear</button>` +
+          `<button class="fctrl-btn" data-fctrl="hide" data-fg="${g.key}">${st.hidden ? "Show" : "Hide"}</button></span>`;
+        const body = st.hidden ? "" :
+          `<span class="frange-inputs">` +
+          `<input type="number" class="tiny frange" data-fg="${g.key}" data-fbound="lo" placeholder="${g.min != null ? g.min : "min"}" value="${st.lo}">` +
+          ` – <input type="number" class="tiny frange" data-fg="${g.key}" data-fbound="hi" placeholder="${g.max != null ? g.max : "max"}" value="${st.hi}">` +
+          (g.unit ? ` <span class="hint">${g.unit}</span>` : "") + `</span>`;
+        return `<div class="fgroup"><div class="flabel">${g.label}</div><div class="fbody">${rctrl}${body}</div></div>`;
+      }
       const ctrl = `<span class="fctrl">` +
         `<button class="fctrl-btn" data-fctrl="all" data-fg="${g.key}">All</button>` +
         `<button class="fctrl-btn" data-fctrl="clear" data-fg="${g.key}">Clear</button>` +
@@ -126,6 +149,15 @@ function createFilterSet(cfg) {
       return `<div class="fgroup"><div class="flabel">${g.label}</div><div class="fbody">${ctrl}${body}</div></div>`;
     }).join("");
     el.innerHTML = modBar + groups;
+  };
+
+  // Range-group number inputs fire on "input", not click — kept separate so typing a bound
+  // doesn't re-render the whole filter area (and steal focus) on every keystroke.
+  fs.handleInput = e => {
+    const inp = e.target.closest(".frange"); if (!inp) return false;
+    fs.state[inp.dataset.fg][inp.dataset.fbound] = inp.value;
+    fs.persist(); cfg.onChange && cfg.onChange();
+    return true;
   };
 
   /* ----- one delegated click handler for the whole area; returns true if it handled the event ----- */
