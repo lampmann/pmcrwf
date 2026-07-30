@@ -697,11 +697,15 @@ registerEffects({
   "feat|mobile": {
     "name": "Mobile",
     "sv": 1,
+    "effects": [
+      { "target": "speed", "op": "add", "value": 10 }
+    ],
     "unsupported": [
       {
-        "reason": "speed increase and movement mechanics not modeled",
+        "reason": "no extra Dash movement cost in difficult terrain, and no opportunity-attack immunity after a melee attack",
         "tags": [
-          "speed"
+          "movement",
+          "reaction"
         ]
       }
     ]

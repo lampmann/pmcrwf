@@ -191,8 +191,7 @@ function paintEffectAudit() {
     const key = "speed", eff = effFlat(key), el = $(key + "-total");
     if (el) {
       if (eff) {
-        const base = num($(key)), total = base + eff;
-        el.style.display = ""; el.textContent = `= ${total}`;
+        el.style.display = ""; el.textContent = `= ${speedTotal()}`;
         el.title = contribTitle("Speed", key);
       } else { el.style.display = "none"; el.title = ""; }
     }
