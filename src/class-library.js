@@ -14,7 +14,7 @@ const CLASS_SCHEMA = 1;
 // { className: { name, source, hd, caster, feats:[{name,level,source,text}],
 //                subs:{ shortName:{name,shortName,source,feats:[...]} } } }
 let CLASS_LIB = {};
-const RACE_SCHEMA = 1;
+const RACE_SCHEMA = 2;   // bumped when `ability` (racial ASI) was added to the parsed shape
 // { raceName: { name, source, entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
@@ -69,13 +69,13 @@ function parseRaceEntries(entries) {
 function parseRaceFile(j) {
   (j.race || []).forEach(r => {
     const existing = RACE_LIB[r.name];
-    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], subs: (existing && existing.subs) || {} };
+    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], subs: (existing && existing.subs) || {} };
   });
   (j.subrace || []).forEach(s => {
     if (s._copy) return; // reprinted/variant subraces using 5e.tools' copy-inheritance system aren't resolved
     const raceName = s.raceName || (s._copy && s._copy.raceName);
     const rec = RACE_LIB[raceName]; if (!rec) return;
-    rec.subs[s.name] = { name: s.name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [] };
+    rec.subs[s.name] = { name: s.name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [] };
   });
 }
 /* ----- granted spells (Cleric domain spells, Mark of X subraces, Eldritch Knight/Divine Soul/
