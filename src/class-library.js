@@ -10,17 +10,23 @@
    the character (see persistence.js), not just cached locally, since it's
    a character choice, not imported data.
    ============================================================ */
-const CLASS_SCHEMA = 1;
+const CLASS_SCHEMA = 2;   // 2: multiclassing requirements + startingEquipment retained (character creator)
 // { className: { name, source, hd, caster, feats:[{name,level,source,text}],
-//                subs:{ shortName:{name,shortName,source,feats:[...]} } } }
+//                mcReq, startEq, subs:{ shortName:{name,shortName,source,feats:[...]} } } }
 let CLASS_LIB = {};
-const RACE_SCHEMA = 3;   // 2: `ability` (racial ASI) added to the parsed shape; 3: nameless subraces named BASE_SUBRACE
-// { raceName: { name, source, entries:[{name,text,source}],
+const RACE_SCHEMA = 4;   // 2: `ability` (racial ASI); 3: nameless subraces named BASE_SUBRACE; 4: `size` retained
+// { raceName: { name, source, size:["S","M"], entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
 const FEAT_SCHEMA = 1;
 // { featName: { name, source, text } }
 let FEAT_LIB = {};
+const BACKGROUND_SCHEMA = 1;
+/* Backgrounds are imported like everything else — 5e.tools' own data/backgrounds.json, which most
+   people won't have unless they copied the whole data/ folder. Everything that reads BACKGROUND_LIB
+   degrades to free text when it's empty, so the sheet never depends on the file being there.
+   { name: { name, source, skills:[..], tools:[..], languages:n|[..], feature:{name,text}, equipment } } */
+let BACKGROUND_LIB = {};
 // ASI feat picks, keyed by the same string used for that ASI feature's feat-link (see fkeyFor).
 // Persisted as part of the character (collectState/applyState in persistence.js).
 let FEAT_CHOICES = {};
@@ -47,6 +53,11 @@ function parseClassFile(j) {
       feats: (j.classFeature || []).filter(f => f.className === c.name)
         .map(f => ({ name: f.name, level: f.level, source: f.source, text: stripTags(flattenEntries(f.entries)) }))
         .sort((a, b) => a.level - b.level),
+      // Kept for the character creator: multiclassing prerequisites (PHB p163) and the starting
+      // equipment / starting gold the class offers (PHB p14). Both are small structured blocks, not
+      // prose, so they're cheap to carry and there's nothing to strip.
+      mcReq: (c.multiclassing && c.multiclassing.requirements) || null,
+      startEq: c.startingEquipment || null,
       subs: {},
     };
   });
@@ -73,7 +84,7 @@ function parseRaceEntries(entries) {
 function parseRaceFile(j) {
   (j.race || []).forEach(r => {
     const existing = RACE_LIB[r.name];
-    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], subs: (existing && existing.subs) || {} };
+    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], size: r.size || [], subs: (existing && existing.subs) || {} };
   });
   (j.subrace || []).forEach(s => {
     if (s._copy) return; // reprinted/variant subraces using 5e.tools' copy-inheritance system aren't resolved
@@ -197,6 +208,27 @@ function grantedSpellsHtml(spells, header, cls) {
 function parseFeatFile(j) {
   (j.feat || []).forEach(f => { FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)) }; });
 }
+/* Backgrounds. 5e.tools stores the mechanical parts in the same "proficiencies" shapes the classes
+   use — a flat list, or a { choose: { from, count } } block. Both are kept as-is and interpreted at
+   render time (see creator.js), rather than flattened here, because a `choose` is a decision the
+   player has to make and the sheet needs to know that it's outstanding.
+
+   `feature` is the background's named feature (Folk Hero's Rustic Hospitality and so on); it's the
+   one part of a background PHB p125 lets you swap for another background's, so it's stored whole. */
+function parseBackgroundFile(j) {
+  (j.background || []).forEach(b => {
+    const feature = (b.entries || []).find(e => e && e.name && /^Feature:/i.test(e.name));
+    BACKGROUND_LIB[b.name] = {
+      name: b.name, source: b.source,
+      skills: b.skillProficiencies || [],
+      tools: b.toolProficiencies || [],
+      languages: b.languageProficiencies || [],
+      startingEquipment: b.startingEquipment || [],
+      equipmentText: stripTags(flattenEntries((b.entries || []).filter(e => e && e.name && /^Equipment/i.test(e.name)))),
+      feature: feature ? { name: feature.name.replace(/^Feature:\s*/i, ""), text: stripTags(flattenEntries(feature.entries)) } : null,
+    };
+  });
+}
 function loadClassFiles(files) {
   // Files are auto-detected by content: class-*.json / races.json / feats.json can all be dropped in together.
   let done = 0; const total = files.length, errs = [];
@@ -209,9 +241,10 @@ function loadClassFiles(files) {
         if (j.class || j.classFeature || j.subclass || j.subclassFeature) { parseClassFile(j); matched = true; }
         if (j.race || j.subrace) { parseRaceFile(j); matched = true; }
         if (j.feat) { parseFeatFile(j); matched = true; }
-        if (!matched) errs.push(file.name + ": not a recognized class/race/feat file");
+        if (j.background) { parseBackgroundFile(j); matched = true; }
+        if (!matched) errs.push(file.name + ": not a recognized class/race/feat/background file");
       } catch (e) { errs.push(file.name + ": " + e); }
-      if (++done === total) { saveClassLib(); saveRaceLib(); saveFeatLib(); renderClassLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n")); }
+      if (++done === total) { saveClassLib(); saveRaceLib(); saveFeatLib(); saveBackgroundLib(); renderClassLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n")); }
     };
     rd.readAsText(file);
   });
@@ -246,6 +279,7 @@ async function autoLoadOne(url, parseFn, save) {
 }
 function autoLoadRaces() { return autoLoadOne("data/races.json", parseRaceFile, saveRaceLib); }
 function autoLoadFeats() { return autoLoadOne("data/feats.json", parseFeatFile, saveFeatLib); }
+function autoLoadBackgrounds() { return autoLoadOne("data/backgrounds.json", parseBackgroundFile, saveBackgroundLib); }
 function saveClassLib() {
   try { localStorage.setItem("charsheet-classlib", JSON.stringify({ v: CLASS_SCHEMA, lib: CLASS_LIB })); }
   catch (e) { console.warn("Class library too large for localStorage; kept in memory for this session only.", e); }
@@ -279,6 +313,18 @@ function loadFeatLib() {
     else { FEAT_LIB = {}; if (d) localStorage.removeItem("charsheet-featlib"); }
   } catch (e) { FEAT_LIB = {}; }
 }
+function saveBackgroundLib() {
+  try { localStorage.setItem("charsheet-bglib", JSON.stringify({ v: BACKGROUND_SCHEMA, lib: BACKGROUND_LIB })); }
+  catch (e) { console.warn("Background library too large for localStorage; kept in memory for this session only.", e); }
+}
+function loadBackgroundLib() {
+  try {
+    const d = JSON.parse(localStorage.getItem("charsheet-bglib"));
+    if (d && d.v === BACKGROUND_SCHEMA) BACKGROUND_LIB = d.lib || {};
+    else { BACKGROUND_LIB = {}; if (d) localStorage.removeItem("charsheet-bglib"); }
+  } catch (e) { BACKGROUND_LIB = {}; }
+}
+function ciFindBackground(name) { return ciFind(BACKGROUND_LIB, name); }
 function ciFind(lib, name) { const q = (name || "").trim().toLowerCase(); const k = Object.keys(lib).find(x => x.toLowerCase() === q); return k ? lib[k] : null; }
 function ciFindClass(name) { return ciFind(CLASS_LIB, name); }
 function ciFindFeat(name) { return ciFind(FEAT_LIB, name); }
@@ -516,23 +562,25 @@ function toggleFeatDetail(link) {
 }
 function runClassAutoLoad() {
   $("class-lib-autostatus").textContent = "loading from data/ …";
-  Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats()]).then(([cls, race, feat]) => {
+  Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats(), autoLoadBackgrounds()]).then(([cls, race, feat, bg]) => {
     renderClassLibrary();
     const parts = [
       cls.filesLoaded ? `${cls.filesLoaded}/${cls.filesTotal} class file(s)` : (cls.blocked ? "classes blocked" : "no class data"),
       race.found ? "races" : (race.blocked ? "races blocked" : "no races.json"),
       feat.found ? "feats" : (feat.blocked ? "feats blocked" : "no feats.json"),
+      bg.found ? "backgrounds" : (bg.blocked ? "backgrounds blocked" : "no backgrounds.json"),
     ];
     $("class-lib-autostatus").textContent = "auto-loaded: " + parts.join(", ");
   });
 }
 document.addEventListener("DOMContentLoaded", () => {
-  loadClassLib(); loadRaceLib(); loadFeatLib();
+  loadClassLib(); loadRaceLib(); loadFeatLib(); loadBackgroundLib();
   $("class-import").addEventListener("change", e => { if (e.target.files.length) loadClassFiles(e.target.files); e.target.value = ""; });
   $("class-lib-clear").addEventListener("click", () => {
-    if (confirm("Clear the imported class/race/feat library? (does not affect your character)")) {
-      CLASS_LIB = {}; RACE_LIB = {}; FEAT_LIB = {};
-      localStorage.removeItem("charsheet-classlib"); localStorage.removeItem("charsheet-racelib"); localStorage.removeItem("charsheet-featlib");
+    if (confirm("Clear the imported class/race/feat/background library? (does not affect your character)")) {
+      CLASS_LIB = {}; RACE_LIB = {}; FEAT_LIB = {}; BACKGROUND_LIB = {};
+      localStorage.removeItem("charsheet-classlib"); localStorage.removeItem("charsheet-racelib");
+      localStorage.removeItem("charsheet-featlib"); localStorage.removeItem("charsheet-bglib");
       renderClassLibrary();
     }
   });

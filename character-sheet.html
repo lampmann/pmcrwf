@@ -349,11 +349,15 @@
 <!-- Character creation wizard (PHB'14 p11-15 order). See src/creator.js. -->
 <div id="creator-modal" class="modal-overlay" style="display:none">
   <div class="modal-box" style="max-width:42rem">
-    <div class="modal-title">New character <span class="hint" id="cr-stepper"></span></div>
+    <div class="modal-title">New character</div>
+    <div id="cr-stepper"></div>
     <div id="cr-body"></div>
     <div class="hint cr-blocker" id="cr-blocker"></div>
-    <div class="modal-actions">
+    <!-- Cancel sits alone on the left, away from Back/Next/Create: it is the one button here that
+         throws the whole character away, and it should not be adjacent to the one you press most. -->
+    <div class="modal-actions cr-actions">
       <button id="cr-cancel">Cancel</button>
+      <span class="cr-actions-gap"></span>
       <button id="cr-back">Back</button>
       <button id="cr-next">Next</button>
       <button id="cr-create">Create character</button>

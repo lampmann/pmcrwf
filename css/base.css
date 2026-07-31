@@ -164,3 +164,11 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cr-classes { border-collapse: collapse; margin-top: .3rem; }
 .cr-classes td { padding: .1rem .3rem .1rem 0; vertical-align: middle; }
 .cr-cls-del { color: var(--danger); }
+.cr-ok { color: var(--link); }
+.cr-choice-trait { border-bottom: 1px dotted currentColor; cursor: help; }
+.cr-racial-slot { margin-right: .5rem; }
+.cr-custom-bg { border-left: 2px solid var(--border); padding-left: .5rem; }
+/* Cancel is pushed away from Back/Next/Create — it discards the character, and sitting next to the
+   button you press five times in a row makes a misclick expensive. */
+.cr-actions { display: flex; align-items: center; }
+.cr-actions-gap { flex: 1; }

@@ -675,31 +675,64 @@ document.addEventListener("DOMContentLoaded", () => {
       } },
       "Half-Elf": { name: "Half-Elf", source: "PHB", entries: [], subs: {},
         ability: [{ cha: 2, choose: { from: ["str", "dex", "con", "int", "wis"], count: 2 } }] },
-      Human: { name: "Human", source: "PHB", entries: [], subs: {},
-        ability: [{ str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }] },
+      Human: { name: "Human", source: "PHB", entries: [], subs: {
+        // 5e.tools' real shape: the PHB Human's +1-to-everything lives on its NAMELESS subrace, and
+        // Variant replaces that wholesale rather than adding to it.
+        "(base)": { name: "(base)", source: "PHB", entries: [], ability: [{ str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }] },
+        Variant: { name: "Variant", source: "PHB", entries: [], ability: [{ choose: { from: ["str", "dex", "con", "int", "wis", "cha"], count: 2 } }] },
+      } },
+      Dragonborn: { name: "Dragonborn", source: "PHB", ability: [{ str: 2, cha: 1 }], entries: [], subs: {
+        // An EGW subrace whose increase is its OWN whole package, not an extra +3 on the race's.
+        Draconblood: { name: "Draconblood", source: "EGW", entries: [], ability: [{ int: 2, cha: 1 }] },
+      } },
+      "Custom Lineage": { name: "Custom Lineage", source: "TCE", entries: [], subs: {},
+        ability: [{ choose: { from: ["str", "dex", "con", "int", "wis", "cha"], amount: 2 } }] },
     };
 
     CREATOR = blankCreator();
     CREATOR.race = "Dwarf";
     assertEqual("race-only bonus: Dwarf gives CON +2", JSON.stringify(racialAbilityBonus("Dwarf", "").fixed), '{"con":2}');
-    assertEqual("subrace bonus stacks with the race's: Mountain Dwarf is CON +2, STR +2",
+    assertEqual("a small subrace block ADDS to the race's: Mountain Dwarf is CON +2, STR +2",
       JSON.stringify(racialAbilityBonus("Dwarf", "Mountain").fixed), '{"con":2,"str":2}');
     assertEqual("a race with no ability block at all yields nothing, not a crash",
       JSON.stringify(racialAbilityBonus("Nonexistent", "").fixed), "{}");
     assertEqual("Half-Elf's 'two others of your choice' is reported as a choose block",
-      racialAbilityBonus("Half-Elf", "").choose.count, 2);
-    assertEqual("Variant-style all-ones race gives every ability +1",
-      Object.values(racialAbilityBonus("Human", "").fixed).join(","), "1,1,1,1,1,1");
+      racialAbilityBonus("Half-Elf", "").choose[0].count, 2);
+    assertEqual("Human's nameless base subrace is where its +1-to-everything lives",
+      Object.values(racialAbilityBonus("Human", "(base)").fixed).join(","), "1,1,1,1,1,1");
+
+    // A subrace block that is already a complete racial increase REPLACES the race's rather than
+    // stacking with it — otherwise a Draconblood Dragonborn would get six points of increases.
+    assertEqual("a complete subrace block replaces the race's",
+      JSON.stringify(racialAbilityBonus("Dragonborn", "Draconblood").fixed), '{"int":2,"cha":1}');
+    assertEqual("...and the race's own block still applies with no subrace",
+      JSON.stringify(racialAbilityBonus("Dragonborn", "").fixed), '{"str":2,"cha":1}');
+    assertEqual("a choose-only subrace replaces too (Variant Human isn't +1-all AND two picks)",
+      JSON.stringify(racialAbilityBonus("Human", "Variant").fixed), "{}");
+
+    // `amount` on a choose block is the size of each increase, not always 1.
+    assertEqual("Custom Lineage's choose carries amount 2, not 1",
+      racialAbilityBonus("Custom Lineage", "").choose[0].amount, 2);
+    CREATOR.race = "Custom Lineage"; CREATOR.subrace = ""; CREATOR.racialChoice = { "0:0": "int" };
+    assertEqual("...so the chosen ability gets +2", racialIncrease("int"), 2);
+    assertEqual("...and only one slot is offered", racialChoiceSlots().length, 1);
 
     // --- final scores: base + racial, and the wizard's own defaults ---
-    CREATOR.subrace = "Mountain";
+    CREATOR = blankCreator();
+    CREATOR.race = "Dwarf"; CREATOR.subrace = "Mountain";
     CREATOR.scores = { str: 15, dex: 13, con: 14, int: 10, wis: 12, cha: 8 };
     assertEqual("final STR = 15 base + 2 subrace", creatorFinalScore("str"), 17);
     assertEqual("final CON = 14 base + 2 race", creatorFinalScore("con"), 16);
     assertEqual("an ability with no racial increase is left alone", creatorFinalScore("cha"), 8);
-    CREATOR.race = "Half-Elf"; CREATOR.subrace = ""; CREATOR.racialChoice = ["str"];
+    CREATOR.race = "Half-Elf"; CREATOR.subrace = "";
+    assertEqual("a 'choose 2' race opens exactly two slots", racialChoiceSlots().length, 2);
+    assert("...and step 1 is blocked until both are picked", !creatorStepValid(1));
+    CREATOR.racialChoice = { "0:0": "str", "0:1": "dex" };
+    assert("...then unblocked", creatorStepValid(1));
     assertEqual("a chosen 'choose' ability gets +1", creatorFinalScore("str"), 16);
-    assertEqual("an unchosen one does not", creatorFinalScore("dex"), 13);
+    assertEqual("...and so does the second", creatorFinalScore("dex"), 14);
+    assertEqual("an unchosen one does not", creatorFinalScore("con"), 14);
+    assertEqual("the race's fixed part still applies alongside the picks", creatorFinalScore("cha"), 10);
 
     // --- point buy: the PHB p13 cost table and its 27-point budget ---
     CREATOR = blankCreator(); CREATOR.method = "pointbuy"; CREATOR.step = 3;
@@ -735,7 +768,61 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...but the 20-level cap is on the total, not the row", creatorStepBlocker(), "Total level is 21 — the cap is 20.");
     CREATOR.classes[1].lvl = 3;
 
+    // --- multiclassing prerequisites, PHB p163 ---
+    {
+      const savedLib = CLASS_LIB;
+      CLASS_LIB = {
+        Fighter: { name: "Fighter", hd: "d10", feats: [], subs: {}, mcReq: { or: [{ str: 13 }, { dex: 13 }] } },
+        Wizard: { name: "Wizard", hd: "d6", feats: [], subs: {}, mcReq: { int: 13 } },
+        Paladin: { name: "Paladin", hd: "d10", feats: [], subs: {}, mcReq: { str: 13, cha: 13 } },
+        Homebrew: { name: "Homebrew", hd: "d8", feats: [], subs: {}, mcReq: null },
+      };
+      const scores = { str: 10, dex: 14, con: 12, int: 12, wis: 10, cha: 10 };
+      const scoreOf = ab => scores[ab];
+
+      assertEqual("an 'or' requirement reads as either option", mcRequirementText(CLASS_LIB.Fighter.mcReq), "STR 13 or DEX 13");
+      assertEqual("an 'and' requirement lists both", mcRequirementText(CLASS_LIB.Paladin.mcReq), "STR 13 and CHA 13");
+      assert("DEX 14 satisfies STR 13 or DEX 13", meetsMcRequirement(CLASS_LIB.Fighter.mcReq, scoreOf));
+      assert("...but STR 10 alone does not satisfy STR 13 and CHA 13", !meetsMcRequirement(CLASS_LIB.Paladin.mcReq, scoreOf));
+
+      const rows = n => n.map(name => ({ name, sub: "", lvl: 1 }));
+      assertEqual("a single class has no prerequisite to meet", mcFailures(rows(["Wizard"]), scoreOf).length, 0);
+      assertEqual("INT 12 fails Wizard's INT 13 when multiclassing",
+        mcFailures(rows(["Fighter", "Wizard"]), scoreOf).map(f => f.name).join(), "Wizard");
+      scores.int = 13;
+      assertEqual("...and passes at INT 13", mcFailures(rows(["Fighter", "Wizard"]), scoreOf).length, 0);
+      assertEqual("every class in the mix is checked, not just the new one",
+        mcFailures(rows(["Fighter", "Wizard", "Paladin"]), scoreOf).map(f => f.name).join(), "Paladin");
+      assertEqual("a class with no requirement data is not failed for it",
+        mcFailures(rows(["Fighter", "Homebrew"]), scoreOf).length, 0);
+      assertEqual("a class not in the library at all is skipped too",
+        mcFailures(rows(["Fighter", "Nonexistent"]), scoreOf).length, 0);
+
+      // ...and the creator's step 2 blocks on it.
+      CREATOR = blankCreator(); CREATOR.step = 2; CREATOR.method = "manual";
+      CREATOR.scores = { str: 10, dex: 14, con: 12, int: 10, wis: 10, cha: 10 };
+      CREATOR.classes = rows(["Fighter", "Wizard"]);
+      assert("step 2 is blocked while a prerequisite is unmet", !creatorStepValid(2));
+      assert("...naming the class and what it needs", /INT 13 for Wizard/.test(creatorStepBlockerFor(2)));
+      CREATOR.scores.int = 13;
+      assert("...and clears once the score is high enough", creatorStepValid(2));
+      CLASS_LIB = savedLib;
+    }
+
+    // --- DMG p38, Starting at Higher Level ---
+    assertEqual("levels 1-4 get no extra gold", higherLevelBand(3).gp, 0);
+    assertEqual("level 5 lands in the 5-10 band", higherLevelBand(5).gp + "+1d10×" + higherLevelBand(5).mult, "500+1d10×25");
+    assertEqual("level 10 is still that band", higherLevelBand(10).min, 5);
+    assertEqual("level 11 moves up", higherLevelBand(11).gp, 5000);
+    assertEqual("level 20 is the top band", higherLevelBand(20).gp, 20000);
+    assertEqual("a low-magic campaign at 5-10 gets no magic item", higherLevelBand(7).items.low, "");
+    assertEqual("a high-magic campaign at 5-10 gets one uncommon", higherLevelBand(7).items.high, "one uncommon magic item");
+    assertEqual("standard at 17-20 is the book's wording",
+      higherLevelBand(18).items.standard, "two uncommon magic items and one rare item");
+
     // Step validity is asked about a named step, so Create can check a step you aren't standing on.
+    CREATOR = blankCreator(); CREATOR.step = 2;
+    CREATOR.classes = [{ name: "Fighter", sub: "Champion", lvl: 5 }, { name: "Wizard", sub: "", lvl: 3 }];
     CREATOR.step = 1; CREATOR.method = "standard"; CREATOR.assign = {};
     assertEqual("the first blocker anywhere is found from any step", creatorFirstBlocker().step, 3);
     CREATOR_ABILITIES.forEach((ab, i) => { CREATOR.assign[ab] = i; });
@@ -756,6 +843,42 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("a multiclass build carries every row through", creatorBuildState().classes.map(c => c.name + " " + c.lvl).join(", "), "Fighter 3, Rogue 2");
     CREATOR.classes.push({ name: "", sub: "", lvl: 1 });
     assertEqual("...but an added-and-never-filled row is dropped", creatorBuildState().classes.length, 2);
+
+    // --- background: what gets applied, and what is deliberately left as an open choice ---
+    {
+      const savedBg = BACKGROUND_LIB;
+      BACKGROUND_LIB = {
+        "Folk Hero": { name: "Folk Hero", source: "PHB",
+          skills: [{ "animal handling": true, survival: true }],
+          tools: [{ "vehicles (land)": true }, { choose: { from: ["artisan's tools"], count: 1 } }],
+          languages: [], feature: { name: "Rustic Hospitality", text: "..." } },
+        Sage: { name: "Sage", source: "PHB",
+          skills: [{ arcana: true, history: true }], tools: [], languages: [{ anyStandard: 2 }],
+          feature: { name: "Researcher", text: "..." } },
+      };
+      CREATOR = blankCreator();
+      CREATOR.background = "Folk Hero";
+      const bg = creatorBuildState();
+      assert("a background's stated skills become proficiencies", bg.fields["skillprof-animalhandling"] === true && bg.fields["skillprof-survival"] === true);
+      assertEqual("...its stated tools go to Proficiencies", bg.proficiencies.tools.join(), "vehicles (land)");
+      assert("...but a 'choose' tool is NOT picked for you", !bg.proficiencies.tools.some(t => /artisan/.test(t)));
+      CREATOR.background = "Sage";
+      const sage = creatorBuildState();
+      assert("a different background applies its own skills", sage.fields["skillprof-arcana"] === true);
+      assertEqual("...and an 'anyStandard' language count is left open, not invented", sage.proficiencies.languages.length, 0);
+
+      // Custom background, PHB p125 — every pick is explicit, so all of it applies.
+      CREATOR = blankCreator();
+      CREATOR.customBg = true; CREATOR.bgSkills = ["Athletics", "Perception"]; CREATOR.bgTools = ["Smith's tools", "Dwarvish"];
+      const custom = creatorBuildState();
+      assert("a custom background's two skills apply", custom.fields["skillprof-athletics"] === true && custom.fields["skillprof-perception"] === true);
+      assertEqual("...and its two tool/language picks land in Proficiencies", custom.proficiencies.tools.join(", "), "Smith's tools, Dwarvish");
+      assertEqual("...and it is labelled as custom on the sheet", custom.fields["char-bg"], "Custom");
+      CREATOR.bgSkills = ["Athletics", "Not A Skill"];
+      assertEqual("a skill name that isn't one is ignored rather than written to a bogus field",
+        Object.keys(creatorBuildState().fields).filter(k => k.startsWith("skillprof-")).length, 1);
+      BACKGROUND_LIB = savedBg;
+    }
 
     // --- malformed library records must not throw out of the render (they used to) ---
     {
