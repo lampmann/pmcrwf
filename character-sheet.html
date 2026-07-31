@@ -22,6 +22,9 @@
   </span>
 </div>
 
+<!-- Character tabs: one per character in the roster (src/characters.js). -->
+<div id="char-tabs"></div>
+
 <div id="effects-strip"></div>
 
 <div class="modules">
@@ -42,6 +45,7 @@
       </table>
       <button id="btn-add-class">+ add class</button>
       <div class="hint">Hit Die &amp; Casting default to "auto" — looked up from the SRD class (and subclass, for Eldritch Knight/Arcane Trickster) name you type. Pick an explicit value to override.</div>
+      <button id="btn-level-up" title="gain a level in one of your classes, or multiclass into a new one (PHB p15)">Level Up</button>
       <span class="hint">Total level: <span class="derived" id="total-level">0</span>
         &nbsp;|&nbsp; Proficiency bonus: <span class="derived" id="pb">+2</span>
         (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
@@ -342,6 +346,33 @@
 
 <!-- ===== "prepare from which class?" modal (spell-list-expansion grants — Dragonmarks, Eldritch
      Knight, Divine Soul, Warlock patrons, Wizard subschools, etc. — see spellcasting.js) ===== -->
+<!-- Character creation wizard (PHB'14 p11-15 order). See src/creator.js. -->
+<div id="creator-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:42rem">
+    <div class="modal-title">New character <span class="hint" id="cr-stepper"></span></div>
+    <div id="cr-body"></div>
+    <div class="hint cr-blocker" id="cr-blocker"></div>
+    <div class="modal-actions">
+      <button id="cr-cancel">Cancel</button>
+      <button id="cr-back">Back</button>
+      <button id="cr-next">Next</button>
+      <button id="cr-create">Create character</button>
+    </div>
+  </div>
+</div>
+
+<!-- Level Up dialog (PHB'14 p15, "Beyond 1st Level"). See src/creator.js. -->
+<div id="levelup-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:38rem">
+    <div class="modal-title">Level Up</div>
+    <div id="lu-body"></div>
+    <div class="modal-actions">
+      <button id="lu-cancel">Cancel</button>
+      <button id="lu-confirm">Level up</button>
+    </div>
+  </div>
+</div>
+
 <!-- Short Rest dialog: spend Hit Dice at the end of the rest (PHB'14 p186). Opened by the
      Short Rest button; see openShortRestModal() in src/rest.js. -->
 <div id="short-rest-modal" class="modal-overlay" style="display:none">
@@ -423,6 +454,8 @@
 <script src="src/attacks.js"></script>
 <script src="src/routines.js"></script>
 <script src="src/persistence.js"></script>
+<script src="src/characters.js"></script>
+<script src="src/creator.js"></script>
 <script src="src/theme.js"></script>
 <script src="src/app.js"></script>
 <script src="src/status.js"></script>

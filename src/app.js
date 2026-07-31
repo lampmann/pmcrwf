@@ -155,6 +155,9 @@ function init() {
     addClassRow({ name: "", lvl: 1 }); initMathFields();
   }
 
+  // The roster is populated by loadState() above, so the tab bar can only be drawn once that has run.
+  if (typeof renderCharacterTabs === "function") renderCharacterTabs();
+
   recompute();
 }
 document.addEventListener("DOMContentLoaded", init);

@@ -43,8 +43,9 @@
        not "stabilised" / "died" when the third box fills) — kind "hp"
      - damage/healing typed straight into the HP boxes — kind "hp"; would
        need a change-watcher on hp-cur rather than a discrete action
-     - XP gained and level-up (the XP field is a plain persisted input) —
-       kind "info"
+     - XP gained (a plain persisted input, with no discrete "awarded"
+       action to hang an event off) — kind "info". Level-up itself already
+       logs, from levelUpConfirm() in creator.js.
    ============================================================ */
 const EVENT_KINDS = new Set(["roll", "rest", "hp", "resource", "condition", "info"]);
 

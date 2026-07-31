@@ -19,10 +19,13 @@
     <span id="save-status"></span>
   </span>
 </div>
+<div id="char-tabs"></div>
 <div id="effects-strip"></div>
 <div class="modules">
   <section class="module wide" data-module="header">
-    <input type="text" id="char-name"><input type="text" id="char-race"><input type="text" id="char-subrace"><input type="text" id="char-bg">
+    <!-- data-persist matters: collectState() only captures fields carrying it, so a stub without it
+         is silently absent from every saved character. -->
+    <input type="text" data-persist id="char-name"><input type="text" data-persist id="char-race"><input type="text" data-persist id="char-subrace"><input type="text" data-persist id="char-bg">
     <table><tbody id="class-rows"></tbody></table>
     <button id="btn-add-class">+</button>
     <span id="total-level">0</span> <span id="pb">+0</span> <input type="number" id="pb-override">
@@ -93,6 +96,15 @@
   <select id="prep-modal-select"></select>
   <button id="prep-modal-cancel"></button><button id="prep-modal-confirm"></button></div>
 </div>
+<div id="creator-modal" style="display:none">
+  <div id="cr-stepper"></div><div id="cr-body"></div><div id="cr-blocker"></div>
+  <button id="cr-cancel"></button><button id="cr-back"></button><button id="cr-next"></button><button id="cr-create"></button>
+</div>
+<div id="levelup-modal" style="display:none">
+  <div id="lu-body"></div>
+  <button id="lu-cancel"></button><button id="lu-confirm"></button>
+</div>
+<button id="btn-level-up"></button>
 
 <script>try { localStorage.clear(); } catch (e) {}</script>
 <script src="../src/errors.js"></script>
@@ -145,6 +157,8 @@
 <script src="../src/proficiencies.js"></script>
 <script src="../src/attacks.js"></script>
 <script src="../src/persistence.js"></script>
+<script src="../src/characters.js"></script>
+<script src="../src/creator.js"></script>
 <script src="../src/app.js"></script>
 
 <style>
@@ -647,6 +661,132 @@ document.addEventListener("DOMContentLoaded", () => {
     HD_STATE = {}; recompute(); renderHitDice();
     assertEqual("hitDicePools is empty with no classes", hitDicePools().length, 0);
     assert("the empty state renders a hint instead of nothing", $("hit-dice-pools").textContent.length > 0);
+  }
+
+  // ===== character roster (characters.js) and creation wizard (creator.js) =====
+  // These run last because they replace the whole sheet: addCharacter/switchCharacter call
+  // applyState(), which overwrites every field the fixtures above set up.
+  {
+    // --- racial ability increases, read off RACE_LIB the same way the wizard does ---
+    RACE_LIB = {
+      Dwarf: { name: "Dwarf", source: "PHB", ability: [{ con: 2 }], entries: [], subs: {
+        Mountain: { name: "Mountain", source: "PHB", ability: [{ str: 2 }], entries: [] },
+        Hill: { name: "Hill", source: "PHB", ability: [{ wis: 1 }], entries: [] },
+      } },
+      "Half-Elf": { name: "Half-Elf", source: "PHB", entries: [], subs: {},
+        ability: [{ cha: 2, choose: { from: ["str", "dex", "con", "int", "wis"], count: 2 } }] },
+      Human: { name: "Human", source: "PHB", entries: [], subs: {},
+        ability: [{ str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }] },
+    };
+
+    CREATOR = blankCreator();
+    CREATOR.race = "Dwarf";
+    assertEqual("race-only bonus: Dwarf gives CON +2", JSON.stringify(racialAbilityBonus("Dwarf", "").fixed), '{"con":2}');
+    assertEqual("subrace bonus stacks with the race's: Mountain Dwarf is CON +2, STR +2",
+      JSON.stringify(racialAbilityBonus("Dwarf", "Mountain").fixed), '{"con":2,"str":2}');
+    assertEqual("a race with no ability block at all yields nothing, not a crash",
+      JSON.stringify(racialAbilityBonus("Nonexistent", "").fixed), "{}");
+    assertEqual("Half-Elf's 'two others of your choice' is reported as a choose block",
+      racialAbilityBonus("Half-Elf", "").choose.count, 2);
+    assertEqual("Variant-style all-ones race gives every ability +1",
+      Object.values(racialAbilityBonus("Human", "").fixed).join(","), "1,1,1,1,1,1");
+
+    // --- final scores: base + racial, and the wizard's own defaults ---
+    CREATOR.subrace = "Mountain";
+    CREATOR.scores = { str: 15, dex: 13, con: 14, int: 10, wis: 12, cha: 8 };
+    assertEqual("final STR = 15 base + 2 subrace", creatorFinalScore("str"), 17);
+    assertEqual("final CON = 14 base + 2 race", creatorFinalScore("con"), 16);
+    assertEqual("an ability with no racial increase is left alone", creatorFinalScore("cha"), 8);
+    CREATOR.race = "Half-Elf"; CREATOR.subrace = ""; CREATOR.racialChoice = ["str"];
+    assertEqual("a chosen 'choose' ability gets +1", creatorFinalScore("str"), 16);
+    assertEqual("an unchosen one does not", creatorFinalScore("dex"), 13);
+
+    // --- point buy: the PHB p13 cost table and its 27-point budget ---
+    CREATOR = blankCreator(); CREATOR.method = "pointbuy"; CREATOR.step = 3;
+    CREATOR.scores = { str: 15, dex: 15, con: 15, int: 8, wis: 8, cha: 8 };
+    assertEqual("15/15/15/8/8/8 costs exactly the 27-point budget", pointsSpent(), 27);
+    assert("...and is therefore allowed", creatorStepValid());
+    CREATOR.scores.int = 9;
+    assertEqual("one point over budget is reported as such", creatorStepBlocker(), "Over budget by 1 point(s).");
+    assert("...and blocks the step", !creatorStepValid());
+
+    // --- standard array: every number must be assigned before the step can advance ---
+    CREATOR = blankCreator(); CREATOR.step = 3;
+    assertEqual("standard array is the PHB's six numbers", STANDARD_ARRAY.join(","), "15,14,13,12,10,8");
+    assert("nothing assigned yet blocks the step", !creatorStepValid());
+    assertEqual("...with a blocker that says why", creatorStepBlocker(), "Assign every number to an ability.");
+    CREATOR_ABILITIES.forEach((ab, i) => { CREATOR.assign[ab] = i; });
+    assert("all six assigned unblocks it", creatorStepValid());
+
+    // --- level: the user's requirement is that a new character defaults to 1 but can be changed ---
+    CREATOR = blankCreator();
+    assertEqual("a new character starts at level 1", CREATOR.level, 1);
+    CREATOR.step = 2; CREATOR.level = 20;
+    assert("level 20 is allowed", creatorStepValid());
+    CREATOR.level = 21;
+    assert("level 21 is not", !creatorStepValid());
+
+    // --- the state the wizard hands to the roster is an ordinary character state ---
+    CREATOR = blankCreator();
+    Object.assign(CREATOR, { race: "Dwarf", subrace: "Mountain", className: "Fighter", subclass: "Champion",
+      level: 3, name: "Bruenor", background: "Folk Hero",
+      scores: { str: 15, dex: 13, con: 14, int: 10, wis: 12, cha: 8 } });
+    const built = creatorBuildState();
+    assertEqual("built state carries the name", built.fields["char-name"], "Bruenor");
+    assertEqual("...the race and subrace", built.fields["char-race"] + "/" + built.fields["char-subrace"], "Dwarf/Mountain");
+    assertEqual("...scores with racial increases already applied", built.fields["score-str"], "17");
+    assertEqual("...and one class row at the chosen level", built.classes.map(c => c.name + " " + c.sub + " " + c.lvl).join(), "Fighter Champion 3");
+
+    // --- the roster itself ---
+    const firstId = ROSTER.activeId;
+    assertEqual("a fresh install has exactly one character", ROSTER.chars.length, 1);
+    assert("...which is the active one", !!activeChar());
+
+    $("char-name").value = "First"; saveState();
+    const secondId = addCharacter(built, "Bruenor");
+    assertEqual("adding a character grows the roster", ROSTER.chars.length, 2);
+    assertEqual("...and switches to it", ROSTER.activeId, secondId);
+    assertEqual("...applying its state to the sheet", $("char-name").value, "Bruenor");
+    assertEqual("...including its scores", $("score-str").value, "17");
+
+    switchCharacter(firstId);
+    assertEqual("switching back restores the other character", $("char-name").value, "First");
+    assert("...and does not leak the second one's scores", $("score-str").value !== "17");
+    switchCharacter(secondId);
+    assertEqual("switching forward again restores the second", $("char-name").value, "Bruenor");
+
+    assert("the tab bar draws one tab per character plus the add button",
+      document.querySelectorAll("#char-tabs .char-tab").length === 2 && !!$("char-tab-add"));
+    assertEqual("the active character's tab is marked active",
+      document.querySelector("#char-tabs .char-tab.active").dataset.charid, secondId);
+    assert("a tab shows its character's total level", /lv 3/.test(document.querySelector(".char-tab.active").textContent));
+
+    // Round-trip through storage: what persistRoster wrote must reload as the same roster.
+    persistRoster();
+    const reloaded = JSON.parse(localStorage.getItem("charsheet-roster"));
+    assertEqual("the persisted roster holds both characters", reloaded.chars.length, 2);
+    assertEqual("...and remembers which was active", reloaded.activeId, secondId);
+    assert("...with each character's own state alongside it", reloaded.chars.every(c => c.state && c.state.fields));
+
+    // Migration. loadRoster() adopts a pre-roster charsheet-v0 only when no roster exists, and must
+    // never delete it — it is the user's only copy if anything about the migration is wrong.
+    const savedRoster = localStorage.getItem("charsheet-roster");
+    localStorage.removeItem("charsheet-roster");
+    localStorage.setItem("charsheet-v0", JSON.stringify({ v: 1, fields: { "char-name": "Legacy Hero" }, classes: [] }));
+    const migrated = loadRoster();
+    assertEqual("a pre-roster character is adopted as the first roster entry", ROSTER.chars.length, 1);
+    assertEqual("...under its own name", ROSTER.chars[0].name, "Legacy Hero");
+    assertEqual("...and its state is returned for the sheet to apply", migrated.fields["char-name"], "Legacy Hero");
+    assert("...leaving the old key on disk as a fallback copy", !!localStorage.getItem("charsheet-v0"));
+    loadRoster();
+    assertEqual("migration is idempotent — a second load finds the roster, not the legacy key", ROSTER.chars.length, 1);
+
+    localStorage.removeItem("charsheet-v0"); localStorage.removeItem("charsheet-roster");
+    assertEqual("a genuinely fresh install seeds one empty entry and applies no state", loadRoster(), null);
+    assertEqual("...so the first save has somewhere to go", ROSTER.chars.length, 1);
+
+    localStorage.setItem("charsheet-roster", savedRoster);
+    loadRoster();
   }
 
   lines.push("", `${pass} passed, ${fail} failed`);
