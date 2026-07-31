@@ -43,11 +43,13 @@ const CREATOR_ABILITIES = ["str", "dex", "con", "int", "wis", "cha"];
    so closing the dialog genuinely discards it rather than leaving a partial entry on the tab bar. */
 let CREATOR = null;
 
+const CREATOR_STEPS = ["Race", "Class", "Ability Scores", "Description", "Equipment"];
+
 function blankCreator() {
   return {
     step: 1,
     race: "", subrace: "",
-    className: "", subclass: "", level: 1,
+    classes: [{ name: "", sub: "", lvl: 1 }],            // multiclass from the start, same shape as the Classes table
     method: "standard",                                  // standard | pointbuy | roll | manual
     scores: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
     assign: {},                                          // ability -> index into STANDARD_ARRAY / rolled
@@ -55,6 +57,54 @@ function blankCreator() {
     racialChoice: [],                                    // abilities picked for a race's `choose` bonus
     name: "", background: "",
   };
+}
+
+function creatorTotalLevel() { return CREATOR.classes.reduce((s, c) => s + (Number(c.lvl) || 0), 0); }
+
+/* ----- pickers -----
+   A dropdown is the right control when the sheet knows the full list of valid answers, and it is
+   also the only one that can't lose focus mid-edit: rebuilding cr-body on every keystroke of a text
+   box tore the box out from under the cursor, so race/class are <select>s that re-render on `change`
+   (a discrete event, fired when the user is done) instead of on `input`.
+
+   The fallback matters, though. Libraries are user-supplied (see DOCS' "Where game data comes from")
+   and may be absent entirely, so with nothing loaded this degrades to a free-text box rather than an
+   empty dropdown you can't get past. A value that isn't in the list — typed before the data loaded,
+   or from a source you've since removed — is added as an option so selecting it isn't silently lost. */
+function creatorPicker(id, value, options, placeholder) {
+  if (!options.length) {
+    return `<input type="text" id="${id}" class="cr-text" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}" style="width:12rem" autocomplete="off">`;
+  }
+  const opts = options.slice();
+  if (value && !opts.some(o => o.toLowerCase() === value.toLowerCase())) opts.unshift(value);
+  return `<select id="${id}" class="cr-pick" style="width:12rem"><option value="">— ${escapeHtml(placeholder)} —</option>` +
+    opts.map(o => `<option value="${escapeHtml(o)}"${o.toLowerCase() === (value || "").toLowerCase() ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") +
+    `</select>`;
+}
+
+/* Same control, for one row of the class table — ids have to be per-row, so these carry a data-crrow
+   index and a class instead of an id. */
+function creatorRowPicker(cls, row, value, options, placeholder) {
+  if (!options.length) {
+    return `<input type="text" class="cr-text ${cls}" data-crrow="${row}" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}" style="width:11rem" autocomplete="off">`;
+  }
+  const opts = options.slice();
+  if (value && !opts.some(o => o.toLowerCase() === value.toLowerCase())) opts.unshift(value);
+  return `<select class="cr-pick ${cls}" data-crrow="${row}" style="width:11rem"><option value="">— ${escapeHtml(placeholder)} —</option>` +
+    opts.map(o => `<option value="${escapeHtml(o)}"${o.toLowerCase() === (value || "").toLowerCase() ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") +
+    `</select>`;
+}
+
+/* Subrace / subclass names, defensively. 5e.tools data has entries this sheet can't assume are
+   well-formed (a subrace with no name at all is a real shape — see BASE_SUBRACE in class-library.js),
+   and one malformed record used to throw out of the whole render, which reads to the user as "Back
+   and Next don't work" rather than as an error. */
+function subNames(rec) {
+  return rec ? Object.values(rec.subs || {}).map(s => (s && s.name) || "").filter(Boolean).sort() : [];
+}
+function findSubByName(rec, name) {
+  const q = (name || "").trim().toLowerCase(); if (!rec || !q) return null;
+  return Object.values(rec.subs || {}).find(s => s && (s.name || "").toLowerCase() === q) || null;
 }
 
 /* ----- racial ability increases (races.json `ability`, parsed into RACE_LIB by class-library.js) -----
@@ -65,7 +115,7 @@ function racialAbilityBonus(raceName, subraceName) {
   const rec = (typeof ciFindRace === "function") ? ciFindRace(raceName) : null;
   if (!rec) return out;
   const blocks = [].concat(rec.ability || []);
-  const sub = subraceName ? Object.values(rec.subs || {}).find(s => s.name.toLowerCase() === subraceName.trim().toLowerCase()) : null;
+  const sub = findSubByName(rec, subraceName);
   if (sub) blocks.push(...(sub.ability || []));
   blocks.forEach(b => {
     if (!b || typeof b !== "object") return;
@@ -91,6 +141,22 @@ function pointsSpent() {
   return CREATOR_ABILITIES.reduce((s, ab) => s + (POINT_COST[CREATOR.scores[ab]] != null ? POINT_COST[CREATOR.scores[ab]] : 0), 0);
 }
 
+/* Two small readouts that a typed number changes, factored out so the `input` handler can refresh
+   just them. Redrawing the whole step on a keystroke isn't only a focus problem: it detaches the
+   buttons around the field, so the very next click (on "+ add class", say) lands on a node that is no
+   longer in the document and does nothing. Anything derived from a text/number box updates in place. */
+function creatorStep2Hint() {
+  const first = CREATOR.classes[0] || { name: "" };
+  const hd = first.name ? classHitDie(first.name) : "";
+  return (hd ? `At 1st level you start with your first class's Hit Die (<b>${hd}</b>) at its maximum + your CON modifier.`
+             : "Pick a class to see its hit die.")
+    + (creatorTotalLevel() > 1 ? ` You're starting above 1st level, so you'll also want to set XP (Character module) and pick anything your classes grant on the way up &mdash; the Features panel lists it all once you're in.` : "");
+}
+function creatorFinalCell(ab) {
+  const final = creatorFinalScore(ab);
+  return `= <b>${final}</b> <span class="hint">(${sign(mod(final))})</span>`;
+}
+
 /* ----- step rendering -----
    Each step returns plain HTML; the shell wires the shared Back/Next/Create controls, so a step only
    has to describe its own fields and its own validity (see creatorStepValid). */
@@ -99,36 +165,43 @@ function creatorStepHtml() {
   if (c.step === 1) {
     const races = Object.keys(RACE_LIB).sort();
     const rec = ciFindRace(c.race);
-    const subs = rec ? Object.values(rec.subs).map(s => s.name).sort() : [];
+    const subs = subNames(rec);
     const bonus = racialAbilityBonus(c.race, c.subrace);
     const fixedTxt = Object.entries(bonus.fixed).map(([k, v]) => `${k.toUpperCase()} +${v}`).join(", ");
     return `<div class="cr-step"><b>Step 1 &middot; Choose a Race</b> <span class="hint">PHB p11</span>
       <div class="hint">Your race sets your general appearance, natural talents, and one or more ability score increases (applied in step 3).</div>
-      <label>Race <input type="text" id="cr-race" list="cr-race-list" value="${escapeHtml(c.race)}" style="width:12rem" autocomplete="off"></label>
-      <datalist id="cr-race-list">${races.map(r => `<option value="${escapeHtml(r)}">`).join("")}</datalist>
-      <label style="margin-left:.6rem">Subrace <input type="text" id="cr-subrace" list="cr-subrace-list" value="${escapeHtml(c.subrace)}" style="width:12rem" autocomplete="off"></label>
-      <datalist id="cr-subrace-list">${subs.map(r => `<option value="${escapeHtml(r)}">`).join("")}</datalist>
+      <label>Race ${creatorPicker("cr-race", c.race, races, "choose a race")}</label>
+      ${subs.length || c.subrace ? `<label style="margin-left:.6rem">Subrace ${creatorPicker("cr-subrace", c.subrace, subs, "none")}</label>` : ""}
       <div class="hint" style="margin-top:.4rem">${races.length
         ? (fixedTxt ? `Ability increases from this race: <b>${fixedTxt}</b>${bonus.choose ? `, plus ${bonus.choose.count} of your choice (step 3)` : ""}`
-                    : (c.race ? "No fixed ability increase found for this race in your data." : "Start typing to search your imported races."))
+                    : (c.race ? (subs.length && !c.subrace ? "This race's ability increases come from its subrace — pick one." : "No fixed ability increase found for this race in your data.")
+                              : "Pick a race from your imported list."))
         : "No race data loaded — you can still type a race name freely, and fill ability scores in yourself."}</div>
+      ${subs.includes(BASE_SUBRACE) ? `<div class="hint"><b>(base)</b> is this race's default version, the one with no subrace of its own — for a PHB Human that's the +1-to-everything build, as opposed to Variant.</div>` : ""}
     </div>`;
   }
 
   if (c.step === 2) {
     const classes = Object.keys(CLASS_LIB).sort();
-    const rec = ciFindClass(c.className);
-    const subs = rec ? Object.values(rec.subs).map(s => s.name).sort() : [];
-    const hd = c.className ? classHitDie(c.className) : "";
+    const total = creatorTotalLevel();
+    const rows = c.classes.map((row, i) => {
+      const rec = ciFindClass(row.name);
+      const subs = subNames(rec);
+      const hd = row.name ? classHitDie(row.name) : "";
+      return `<tr>
+        <td>${creatorRowPicker("cr-cls", i, row.name, classes, "choose a class")}</td>
+        <td>${creatorRowPicker("cr-sub", i, row.sub, subs, "no subclass")}</td>
+        <td><input type="number" class="tiny cr-lvl" data-crrow="${i}" min="1" max="20" value="${row.lvl}"></td>
+        <td class="hint">${hd || ""}</td>
+        <td>${c.classes.length > 1 ? `<button type="button" class="cr-cls-del" data-crrow="${i}" title="remove this class">&times;</button>` : ""}</td>
+      </tr>`;
+    }).join("");
     return `<div class="cr-step"><b>Step 2 &middot; Choose a Class</b> <span class="hint">PHB p11</span>
-      <div class="hint">Your class sets your hit die, proficiencies, and the features you gain. <b>Level</b> starts at 1 &mdash; raise it if you're joining an existing campaign above 1st level (PHB p11).</div>
-      <label>Class <input type="text" id="cr-class" list="cr-class-list" value="${escapeHtml(c.className)}" style="width:12rem" autocomplete="off"></label>
-      <datalist id="cr-class-list">${classes.map(r => `<option value="${escapeHtml(r)}">`).join("")}</datalist>
-      <label style="margin-left:.6rem">Subclass <input type="text" id="cr-subclass" list="cr-subclass-list" value="${escapeHtml(c.subclass)}" style="width:12rem" autocomplete="off"></label>
-      <datalist id="cr-subclass-list">${subs.map(r => `<option value="${escapeHtml(r)}">`).join("")}</datalist>
-      <label style="margin-left:.6rem">Level <input type="number" id="cr-level" class="tiny" min="1" max="20" value="${c.level}"></label>
-      <div class="hint" style="margin-top:.4rem">${hd ? `Hit Die: <b>${hd}</b> &mdash; at 1st level you start with the die's maximum + your CON modifier.` : "Pick a class to see its hit die."}
-        ${c.level > 1 ? ` You're starting above 1st level, so you'll also want to set XP (Character module) and pick anything your class grants on the way up &mdash; the Features panel lists it all once you're in.` : ""}</div>
+      <div class="hint">Your class sets your hit die, proficiencies, and the features you gain. <b>Level</b> starts at 1 &mdash; raise it if you're joining an existing campaign above 1st level (PHB p11). Add a second class to start multiclassed (PHB p163); the ability prerequisites for that aren't checked for you.</div>
+      <table class="cr-classes"><tr class="hint"><td>Class</td><td>Subclass</td><td>Level</td><td>Hit Die</td><td></td></tr>${rows}</table>
+      <div style="margin-top:.3rem"><button type="button" id="cr-add-class">+ add a class</button>
+        <span class="hint" style="margin-left:.6rem">Total level <b id="cr-total-level" class="${total > 20 ? "cr-over" : ""}">${total}</b> / 20</span></div>
+      <div class="hint" id="cr-step2-hint" style="margin-top:.4rem">${creatorStep2Hint()}</div>
     </div>`;
   }
 
@@ -164,10 +237,9 @@ function creatorStepHtml() {
         control = `<input type="number" class="tiny cr-manual" data-ab="${ab}" min="1" max="30" value="${c.scores[ab]}">`;
       }
       const inc = (bonus.fixed[ab] || 0) + (bonus.choose && c.racialChoice.includes(ab) ? 1 : 0);
-      const final = creatorFinalScore(ab);
       return `<tr><td>${ab.toUpperCase()}</td><td>${control}</td>
         <td class="hint">${inc ? `+${inc} racial` : ""}</td>
-        <td>= <b>${final}</b> <span class="hint">(${sign(mod(final))})</span></td></tr>`;
+        <td id="cr-final-${ab}">${creatorFinalCell(ab)}</td></tr>`;
     }).join("");
     const chooseHtml = bonus.choose ? `<div class="hint" style="margin-top:.4rem">Your race also increases
       <b>${bonus.choose.count}</b> other ability score${bonus.choose.count === 1 ? "" : "s"} by 1 &mdash; pick ${bonus.choose.count}:
@@ -196,53 +268,84 @@ function creatorStepHtml() {
 
   // Step 5
   const c5 = CREATOR;
-  const hd = c5.className ? classHitDie(c5.className) : "";
+  const first5 = c5.classes[0] || { name: "", sub: "", lvl: 1 };
+  const hd = first5.name ? classHitDie(first5.name) : "";
   const conMod = mod(creatorFinalScore("con"));
   const hp = hd ? (HIT_DIE_MAX[hd] || 8) + conMod : null;
+  const classTxt = c5.classes.filter(r => r.name || r.lvl > 1)
+    .map(r => `${escapeHtml(r.name || "no class")}${r.sub ? ` (${escapeHtml(r.sub)})` : ""} ${r.lvl}`).join(" / ") || "no class";
   return `<div class="cr-step"><b>Step 5 &middot; Choose Equipment</b> <span class="hint">PHB p14</span>
     <div class="hint">Your class and background give you starting equipment, or you can buy your own with your class's starting gold. Either way, add the items from the <b>Equipment Library</b> ("+ Add Item" in Inventory) once you're in &mdash; the sheet looks up weight, value and armour class from the library entry, and your AC is computed from whatever you mark equipped.</div>
     <div style="margin-top:.5rem">Ready to create:
       <b>${escapeHtml(c5.name || "unnamed")}</b>, ${escapeHtml(c5.race || "no race")}${c5.subrace ? ` (${escapeHtml(c5.subrace)})` : ""},
-      ${escapeHtml(c5.className || "no class")}${c5.subclass ? ` (${escapeHtml(c5.subclass)})` : ""} ${c5.level}</div>
+      ${classTxt}</div>
     <div class="hint">${CREATOR_ABILITIES.map(ab => `${ab.toUpperCase()} ${creatorFinalScore(ab)}`).join(" &middot; ")}</div>
     ${hp != null ? `<div class="hint">Starting HP at 1st level would be ${HIT_DIE_MAX[hd]} (${hd} max) ${sign(conMod)} CON = <b>${Math.max(1, hp)}</b>; the sheet computes Max HP for your actual level automatically.</div>` : ""}
   </div>`;
 }
 
-function creatorStepValid() {
+/* Validity is asked about a *named* step rather than the current one, because the steps are freely
+   navigable tabs — Create has to know whether step 3 is finished while you're standing on step 5. */
+function creatorStepBlockerFor(step) {
   const c = CREATOR;
-  if (c.step === 2) return c.level >= 1 && c.level <= 20;
-  if (c.step === 3) {
-    if (c.method === "pointbuy") return pointsSpent() <= POINT_BUY_BUDGET;
+  if (step === 2) {
+    const total = creatorTotalLevel();
+    if (c.classes.some(r => (Number(r.lvl) || 0) < 1)) return "Every class needs at least 1 level.";
+    if (total > 20) return `Total level is ${total} — the cap is 20.`;
+  }
+  if (step === 3) {
+    if (c.method === "pointbuy" && pointsSpent() > POINT_BUY_BUDGET) return `Over budget by ${pointsSpent() - POINT_BUY_BUDGET} point(s).`;
     if (c.method === "standard" || c.method === "roll") {
-      const pool = c.method === "standard" ? STANDARD_ARRAY : c.rolled;
-      return pool.length > 0 && CREATOR_ABILITIES.every(ab => c.assign[ab] != null);
+      if (c.method === "roll" && !c.rolled.length) return "Roll a set of scores first.";
+      if (!CREATOR_ABILITIES.every(ab => c.assign[ab] != null)) return "Assign every number to an ability.";
     }
   }
-  return true;
-}
-function creatorStepBlocker() {
-  const c = CREATOR;
-  if (c.step === 2 && (c.level < 1 || c.level > 20)) return "Level must be between 1 and 20.";
-  if (c.step === 3 && c.method === "pointbuy" && pointsSpent() > POINT_BUY_BUDGET) return `Over budget by ${pointsSpent() - POINT_BUY_BUDGET} point(s).`;
-  if (c.step === 3 && (c.method === "standard" || c.method === "roll")) {
-    if (c.method === "roll" && !c.rolled.length) return "Roll a set of scores first.";
-    if (!CREATOR_ABILITIES.every(ab => c.assign[ab] != null)) return "Assign every number to an ability.";
-  }
   return "";
+}
+function creatorStepValid(step) { return !creatorStepBlockerFor(step == null ? CREATOR.step : step); }
+function creatorStepBlocker() { return creatorStepBlockerFor(CREATOR.step); }
+
+/* The first problem anywhere in the wizard, so Create can explain itself from whichever step you
+   happen to be standing on. */
+function creatorFirstBlocker() {
+  for (let s = 1; s <= 5; s++) { const b = creatorStepBlockerFor(s); if (b) return { step: s, msg: b }; }
+  return null;
+}
+
+function creatorStepperHtml() {
+  return CREATOR_STEPS.map((label, i) => {
+    const n = i + 1, bad = !!creatorStepBlockerFor(n);
+    return `<button type="button" class="cr-tab${CREATOR.step === n ? " active" : ""}${bad ? " cr-tab-bad" : ""}" data-crstep="${n}"
+      title="${bad ? escapeHtml(creatorStepBlockerFor(n)) : `go to step ${n}`}"><span class="hint">${n}</span> ${escapeHtml(label)}</button>`;
+  }).join("");
+}
+
+/* Chrome only — the stepper, blocker line and button states. Split out from renderCreator so an edit
+   that changes nothing about the step's own controls (typing a level, a name) can refresh what's
+   derived from it WITHOUT replacing cr-body and yanking the field out from under the cursor. */
+function renderCreatorChrome() {
+  $("cr-stepper").innerHTML = creatorStepperHtml();
+  $("cr-back").disabled = CREATOR.step === 1;
+  const last = CREATOR.step === 5;
+  $("cr-next").style.display = last ? "none" : "";
+  $("cr-create").style.display = last ? "" : "none";
+  const here = creatorStepBlocker();
+  const anywhere = creatorFirstBlocker();
+  $("cr-blocker").textContent = here || (last && anywhere ? `Step ${anywhere.step}: ${anywhere.msg}` : "");
+  $("cr-next").disabled = !!here;
+  $("cr-create").disabled = !!anywhere;
 }
 
 function renderCreator() {
   const modal = $("creator-modal"); if (!modal || modal.style.display === "none") return;
   $("cr-body").innerHTML = creatorStepHtml();
-  $("cr-stepper").textContent = `Step ${CREATOR.step} of 5`;
-  $("cr-back").disabled = CREATOR.step === 1;
-  const last = CREATOR.step === 5;
-  $("cr-next").style.display = last ? "none" : "";
-  $("cr-create").style.display = last ? "" : "none";
-  const blocker = creatorStepBlocker();
-  $("cr-blocker").textContent = blocker;
-  $("cr-next").disabled = !!blocker;
+  renderCreatorChrome();
+}
+
+function goToCreatorStep(n) {
+  if (!CREATOR || n < 1 || n > 5 || n === CREATOR.step) return;
+  CREATOR.step = n;
+  renderCreator();
 }
 
 function openCreator() {
@@ -276,9 +379,12 @@ function creatorBuildState() {
     "char-race": c.race, "char-subrace": c.subrace, "char-bg": c.background,
   };
   CREATOR_ABILITIES.forEach(ab => { fields["score-" + ab] = String(creatorFinalScore(ab)); });
+  // An all-blank extra row is a row the user added and never filled in; it would show up as an
+  // "(unnamed class)" line on the Classes table, so drop it rather than carrying it across.
+  const rows = c.classes.filter((r, i) => i === 0 || r.name.trim() || r.lvl > 1);
   return {
     v: 1, effectsSv: 1, fields,
-    classes: [{ name: c.className, sub: c.subclass, lvl: c.level, hitDie: "auto", casting: "auto" }],
+    classes: rows.map(r => ({ name: r.name, sub: r.sub, lvl: r.lvl, hitDie: "auto", casting: "auto" })),
     spells: [], items: [], attacks: [], routines: [],
     featChoices: {}, usesState: {}, hdState: {},
     effectChoices: {}, effectToggles: {},
@@ -297,15 +403,22 @@ function creatorFinish() {
   // the state is live (it depends on the class table and CON that were just applied).
   $("hp-cur").value = String(maxHP()); commitMath($("hp-cur"));
   recompute(); saveState();
-  logEvent("info", `<b>${escapeHtml(name)}</b> created &mdash; ${escapeHtml(c.race || "no race")} ${escapeHtml(c.className || "no class")} ${c.level}`);
+  const classTxt = c.classes.filter(r => r.name.trim()).map(r => `${escapeHtml(r.name)} ${r.lvl}`).join(" / ") || "no class";
+  logEvent("info", `<b>${escapeHtml(name)}</b> created &mdash; ${escapeHtml(c.race || "no race")} ${classTxt}`);
 }
 
 /* ----- dialog wiring ----- */
 document.addEventListener("DOMContentLoaded", () => {
   const modal = $("creator-modal"); if (!modal) return;
 
-  $("cr-back").addEventListener("click", () => { if (CREATOR.step > 1) { CREATOR.step--; renderCreator(); } });
-  $("cr-next").addEventListener("click", () => { if (creatorStepValid() && CREATOR.step < 5) { CREATOR.step++; renderCreator(); } });
+  $("cr-back").addEventListener("click", () => goToCreatorStep(CREATOR.step - 1));
+  $("cr-next").addEventListener("click", () => { if (creatorStepValid()) goToCreatorStep(CREATOR.step + 1); });
+  // The stepper is a tab strip, not just a label: any step can be jumped to at any time, so you can
+  // go back and change your race after seeing the ability scores it feeds without walking the whole
+  // wizard again. Create stays disabled until every step validates, wherever you're standing.
+  $("cr-stepper").addEventListener("click", e => {
+    const t = e.target.closest("[data-crstep]"); if (t && CREATOR) goToCreatorStep(Number(t.dataset.crstep));
+  });
   $("cr-create").addEventListener("click", creatorFinish);
   $("cr-cancel").addEventListener("click", closeCreator);
   modal.addEventListener("click", e => { if (e.target === modal) closeCreator(); });
@@ -315,19 +428,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Field edits. Text inputs re-render only when the change alters what other fields offer (race ->
   // subrace list, class -> subclass list), so typing a name doesn't rebuild the step under the cursor.
+  /* `input` fires on every keystroke, so NOTHING in here may rebuild cr-body — that is what tore the
+     race and class text boxes out from under the cursor after one character. Everything typed either
+     needs no redraw at all, or redraws only the small derived readout it affects. Controls that DO
+     need a rebuild (the pickers) are <select>s, handled on `change` below. */
   $("cr-body").addEventListener("input", e => {
     const t = e.target; if (!CREATOR) return;
-    if (t.id === "cr-race") { CREATOR.race = t.value; CREATOR.racialChoice = []; renderCreator(); return; }
-    if (t.id === "cr-subrace") { CREATOR.subrace = t.value; renderCreator(); return; }
-    if (t.id === "cr-class") { CREATOR.className = t.value; renderCreator(); return; }
-    if (t.id === "cr-subclass") { CREATOR.subclass = t.value; return; }
-    if (t.id === "cr-level") { CREATOR.level = Math.max(1, Math.min(20, Number(t.value) || 1)); renderCreator(); return; }
+    if (t.id === "cr-race") { CREATOR.race = t.value; CREATOR.racialChoice = []; return; }   // free-text fallback (no race data)
+    if (t.id === "cr-subrace") { CREATOR.subrace = t.value; return; }
+    if (t.classList.contains("cr-cls")) { CREATOR.classes[Number(t.dataset.crrow)].name = t.value; return; }
+    if (t.classList.contains("cr-sub")) { CREATOR.classes[Number(t.dataset.crrow)].sub = t.value; return; }
+    if (t.classList.contains("cr-lvl")) {
+      CREATOR.classes[Number(t.dataset.crrow)].lvl = Math.max(1, Math.min(20, Number(t.value) || 1));
+      const total = creatorTotalLevel(), tot = $("cr-total-level");
+      if (tot) { tot.textContent = total; tot.className = total > 20 ? "cr-over" : ""; }
+      if ($("cr-step2-hint")) $("cr-step2-hint").innerHTML = creatorStep2Hint();
+      renderCreatorChrome(); return;
+    }
     if (t.id === "cr-name") { CREATOR.name = t.value; return; }
     if (t.id === "cr-background") { CREATOR.background = t.value; return; }
-    if (t.classList.contains("cr-manual")) { CREATOR.scores[t.dataset.ab] = Math.max(1, Math.min(30, Number(t.value) || 10)); renderCreator(); return; }
+    if (t.classList.contains("cr-manual")) {
+      const ab = t.dataset.ab;
+      CREATOR.scores[ab] = Math.max(1, Math.min(30, Number(t.value) || 10));
+      if ($("cr-final-" + ab)) $("cr-final-" + ab).innerHTML = creatorFinalCell(ab);
+      renderCreatorChrome(); return;
+    }
   });
+  /* `change` rebuilds, so ONLY <select>s are handled here. A number box also fires `change`, but on
+     blur — i.e. as you click the next control — which would tear that control out of the document
+     before its own click resolved. Number boxes are fully handled by `input` above. */
   $("cr-body").addEventListener("change", e => {
     const t = e.target; if (!CREATOR) return;
+    if (t.id === "cr-race") { CREATOR.race = t.value; CREATOR.subrace = ""; CREATOR.racialChoice = []; renderCreator(); return; }
+    if (t.id === "cr-subrace") { CREATOR.subrace = t.value; CREATOR.racialChoice = []; renderCreator(); return; }
+    if (t.classList.contains("cr-cls")) {
+      const row = CREATOR.classes[Number(t.dataset.crrow)];
+      row.name = t.value; row.sub = "";   // subclasses belong to a class; keeping the old one would be nonsense
+      renderCreator(); return;
+    }
+    if (t.classList.contains("cr-sub")) { CREATOR.classes[Number(t.dataset.crrow)].sub = t.value; return; }
     if (t.classList.contains("cr-assign")) {
       const i = t.value === "" ? null : Number(t.value);
       CREATOR.assign[t.dataset.ab] = i;
@@ -342,6 +481,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   $("cr-body").addEventListener("click", e => {
     if (!CREATOR) return;
+    if (e.target.id === "cr-add-class") { CREATOR.classes.push({ name: "", sub: "", lvl: 1 }); renderCreator(); return; }
+    const del = e.target.closest(".cr-cls-del");
+    if (del) { CREATOR.classes.splice(Number(del.dataset.crrow), 1); renderCreator(); return; }
     const m = e.target.closest("[data-crmethod]");
     if (m) {
       CREATOR.method = m.dataset.crmethod;
@@ -398,10 +540,8 @@ function levelUpClasses() {
 function featuresAtLevel(className, subName, level) {
   const rec = ciFindClass(className); if (!rec) return [];
   const out = rec.feats.filter(f => f.level === level).map(f => f.name);
-  if (subName) {
-    const sub = Object.values(rec.subs).find(s => s.name.toLowerCase() === (subName || "").trim().toLowerCase());
-    if (sub) out.push(...sub.feats.filter(f => f.level === level).map(f => f.name));
-  }
+  const sub = findSubByName(rec, subName);
+  if (sub) out.push(...(sub.feats || []).filter(f => f.level === level).map(f => f.name));
   return out;
 }
 
@@ -418,10 +558,11 @@ function renderLevelUp() {
   const opts = rows.map(r => `<option value="${r.i}"${LEVELUP.target === r.i ? " selected" : ""}>${escapeHtml(r.name || "(unnamed class)")} ${r.lvl} &rarr; ${r.lvl + 1}</option>`).join("")
     + `<option value="new"${isNew ? " selected" : ""}>+ multiclass into a new class (level 1)</option>`;
 
+  // A dropdown, for the same two reasons as the creator's pickers: the sheet knows the valid answers,
+  // and a text box here re-rendered the dialog on every keystroke and lost focus after one character.
   const classes = Object.keys(CLASS_LIB).sort();
   const newClassHtml = isNew ? `<div style="margin-top:.4rem">
-      <label>New class <input type="text" id="lu-newclass" list="lu-class-list" value="${escapeHtml(LEVELUP.newClass)}" style="width:12rem" autocomplete="off"></label>
-      <datalist id="lu-class-list">${classes.map(r => `<option value="${escapeHtml(r)}">`).join("")}</datalist>
+      <label>New class ${creatorPicker("lu-newclass", LEVELUP.newClass, classes, "choose a class")}</label>
       <div class="hint">Multiclassing has ability-score prerequisites (PHB p163) that this sheet doesn't check for you.</div>
     </div>` : "";
 
@@ -445,7 +586,14 @@ function renderLevelUp() {
     ${gained.length ? `<div style="margin-top:.5rem"><b>Gained at level ${newLevel}:</b> <span class="hint">${gained.map(escapeHtml).join(", ")}</span></div>`
       : `<div class="hint" style="margin-top:.5rem">No class features listed at that level in your loaded data.</div>`}`;
 
-  const blocked = isNew && !LEVELUP.newClass.trim();
+  renderLevelUpChrome();
+}
+
+/* Confirm's enabled state, without redrawing the body — so the free-text class fallback can update it
+   on every keystroke without destroying the field being typed into. */
+function renderLevelUpChrome() {
+  if (!LEVELUP) return;
+  const blocked = LEVELUP.target === "new" && !LEVELUP.newClass.trim();
   $("lu-confirm").disabled = blocked || (LEVELUP.hpMode === "roll" && LEVELUP.rolled == null);
 }
 
@@ -534,11 +682,12 @@ document.addEventListener("DOMContentLoaded", () => {
       LEVELUP.target = e.target.value === "new" ? "new" : Number(e.target.value);
       LEVELUP.rolled = null; renderLevelUp(); return;
     }
+    if (e.target.id === "lu-newclass") { LEVELUP.newClass = e.target.value; LEVELUP.rolled = null; renderLevelUp(); return; }
     if (e.target.name === "lu-hp") { LEVELUP.hpMode = e.target.value; LEVELUP.rolled = null; renderLevelUp(); return; }
   });
+  // input: record the free-text fallback without redrawing (see the creator's handlers for why).
   $("lu-body").addEventListener("input", e => {
-    if (!LEVELUP) return;
-    if (e.target.id === "lu-newclass") { LEVELUP.newClass = e.target.value; renderLevelUp(); }
+    if (LEVELUP && e.target.id === "lu-newclass") { LEVELUP.newClass = e.target.value; renderLevelUpChrome(); }
   });
   $("lu-body").addEventListener("click", e => {
     if (!LEVELUP || e.target.id !== "lu-roll") return;

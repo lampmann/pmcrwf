@@ -14,7 +14,7 @@ const CLASS_SCHEMA = 1;
 // { className: { name, source, hd, caster, feats:[{name,level,source,text}],
 //                subs:{ shortName:{name,shortName,source,feats:[...]} } } }
 let CLASS_LIB = {};
-const RACE_SCHEMA = 2;   // bumped when `ability` (racial ASI) was added to the parsed shape
+const RACE_SCHEMA = 3;   // 2: `ability` (racial ASI) added to the parsed shape; 3: nameless subraces named BASE_SUBRACE
 // { raceName: { name, source, entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
@@ -61,6 +61,10 @@ function parseClassFile(j) {
   });
   Object.values(CLASS_LIB).forEach(r => Object.values(r.subs).forEach(s => s.feats.sort((a, b) => a.level - b.level)));
 }
+/* Display name for a race's unnamed default subrace (see parseRaceFile). Parenthesised so it can't
+   collide with a real subrace name and sorts to the top of a picker. */
+const BASE_SUBRACE = "(base)";
+
 function parseRaceEntries(entries) {
   // Only named trait blocks are features; skip any plain-string flavor text.
   return (entries || []).filter(e => e && e.name && e.entries)
@@ -75,7 +79,14 @@ function parseRaceFile(j) {
     if (s._copy) return; // reprinted/variant subraces using 5e.tools' copy-inheritance system aren't resolved
     const raceName = s.raceName || (s._copy && s._copy.raceName);
     const rec = RACE_LIB[raceName]; if (!rec) return;
-    rec.subs[s.name] = { name: s.name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [] };
+    // A subrace with no `name` is 5e.tools' way of storing a race's *default* variant, used by races
+    // whose base version competes with named ones (Human, Half-Elf, Half-Orc, Dragonborn, Tiefling).
+    // It is not empty filler: the nameless PHB Human subrace is where that race's +1-to-everything
+    // lives, since the race record itself carries no `ability` at all. So it needs a name to be
+    // selectable and to key state off — without one it landed under the literal key "undefined" and
+    // anything reading `sub.name` threw.
+    const name = s.name || BASE_SUBRACE;
+    rec.subs[name] = { name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [] };
   });
 }
 /* ----- granted spells (Cleric domain spells, Mark of X subraces, Eldritch Knight/Divine Soul/

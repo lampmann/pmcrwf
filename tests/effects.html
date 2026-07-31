@@ -720,22 +720,52 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- level: the user's requirement is that a new character defaults to 1 but can be changed ---
     CREATOR = blankCreator();
-    assertEqual("a new character starts at level 1", CREATOR.level, 1);
-    CREATOR.step = 2; CREATOR.level = 20;
+    assertEqual("a new character starts with one class at level 1", CREATOR.classes.length + "/" + CREATOR.classes[0].lvl, "1/1");
+    CREATOR.step = 2; CREATOR.classes[0].lvl = 20;
     assert("level 20 is allowed", creatorStepValid());
-    CREATOR.level = 21;
+    CREATOR.classes[0].lvl = 21;
     assert("level 21 is not", !creatorStepValid());
+
+    // --- multiclassing at creation: several class rows, capped at total level 20 ---
+    CREATOR = blankCreator(); CREATOR.step = 2;
+    CREATOR.classes = [{ name: "Fighter", sub: "Champion", lvl: 5 }, { name: "Wizard", sub: "", lvl: 3 }];
+    assertEqual("total level sums every class row", creatorTotalLevel(), 8);
+    assert("a legal multiclass passes", creatorStepValid());
+    CREATOR.classes[1].lvl = 16;
+    assertEqual("...but the 20-level cap is on the total, not the row", creatorStepBlocker(), "Total level is 21 — the cap is 20.");
+    CREATOR.classes[1].lvl = 3;
+
+    // Step validity is asked about a named step, so Create can check a step you aren't standing on.
+    CREATOR.step = 1; CREATOR.method = "standard"; CREATOR.assign = {};
+    assertEqual("the first blocker anywhere is found from any step", creatorFirstBlocker().step, 3);
+    CREATOR_ABILITIES.forEach((ab, i) => { CREATOR.assign[ab] = i; });
+    assertEqual("...and is null once every step validates", creatorFirstBlocker(), null);
 
     // --- the state the wizard hands to the roster is an ordinary character state ---
     CREATOR = blankCreator();
-    Object.assign(CREATOR, { race: "Dwarf", subrace: "Mountain", className: "Fighter", subclass: "Champion",
-      level: 3, name: "Bruenor", background: "Folk Hero",
+    Object.assign(CREATOR, { race: "Dwarf", subrace: "Mountain", name: "Bruenor", background: "Folk Hero",
+      classes: [{ name: "Fighter", sub: "Champion", lvl: 3 }],
       scores: { str: 15, dex: 13, con: 14, int: 10, wis: 12, cha: 8 } });
     const built = creatorBuildState();
     assertEqual("built state carries the name", built.fields["char-name"], "Bruenor");
     assertEqual("...the race and subrace", built.fields["char-race"] + "/" + built.fields["char-subrace"], "Dwarf/Mountain");
     assertEqual("...scores with racial increases already applied", built.fields["score-str"], "17");
     assertEqual("...and one class row at the chosen level", built.classes.map(c => c.name + " " + c.sub + " " + c.lvl).join(), "Fighter Champion 3");
+
+    CREATOR.classes.push({ name: "Rogue", sub: "", lvl: 2 });
+    assertEqual("a multiclass build carries every row through", creatorBuildState().classes.map(c => c.name + " " + c.lvl).join(", "), "Fighter 3, Rogue 2");
+    CREATOR.classes.push({ name: "", sub: "", lvl: 1 });
+    assertEqual("...but an added-and-never-filled row is dropped", creatorBuildState().classes.length, 2);
+
+    // --- malformed library records must not throw out of the render (they used to) ---
+    {
+      const saved = RACE_LIB;
+      RACE_LIB = { Broken: { name: "Broken", ability: [{ con: 2 }], entries: [], subs: { undefined: { source: "X", ability: [{ str: 2 }] } } } };
+      assertEqual("a subrace with no name at all is skipped, not thrown over",
+        JSON.stringify(racialAbilityBonus("Broken", "Mountain").fixed), '{"con":2}');
+      assertEqual("...and doesn't appear in the subrace picker", subNames(ciFindRace("Broken")).length, 0);
+      RACE_LIB = saved;
+    }
 
     // --- the roster itself ---
     const firstId = ROSTER.activeId;

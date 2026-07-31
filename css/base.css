@@ -154,3 +154,13 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cr-pool.used { opacity: .35; text-decoration: line-through; }
 .cr-over, .cr-blocker { color: var(--danger); }
 .cr-blocker:not(:empty) { margin-top: .4rem; }
+
+/* Step strip. The steps are navigable tabs, not a progress readout — any of them can be clicked at
+   any time, so they have to look clickable and show which ones still have something wrong. */
+#cr-stepper { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .5rem; }
+.cr-tab { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .5rem; }
+.cr-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--link-border); }
+.cr-tab-bad { color: var(--danger); }
+.cr-classes { border-collapse: collapse; margin-top: .3rem; }
+.cr-classes td { padding: .1rem .3rem .1rem 0; vertical-align: middle; }
+.cr-cls-del { color: var(--danger); }
