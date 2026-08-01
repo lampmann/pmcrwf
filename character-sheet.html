@@ -22,6 +22,9 @@
   </span>
 </div>
 
+<!-- Character tabs: one per character in the roster (src/characters.js). -->
+<div id="char-tabs"></div>
+
 <div id="effects-strip"></div>
 
 <div class="modules">
@@ -42,6 +45,7 @@
       </table>
       <button id="btn-add-class">+ add class</button>
       <div class="hint">Hit Die &amp; Casting default to "auto" — looked up from the SRD class (and subclass, for Eldritch Knight/Arcane Trickster) name you type. Pick an explicit value to override.</div>
+      <button id="btn-level-up" title="gain a level in one of your classes, or multiclass into a new one (PHB p15)">Level Up</button>
       <span class="hint">Total level: <span class="derived" id="total-level">0</span>
         &nbsp;|&nbsp; Proficiency bonus: <span class="derived" id="pb">+2</span>
         (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
@@ -139,7 +143,7 @@
     </div>
     <button class="roll" id="btn-death-roll">Roll Death Save</button>
     <button id="btn-death-reset">reset</button>
-    <div class="hint">Rolls 1d20 to the dice log and marks a box (10+ success, &lt;10 failure, nat 20 = regain 1 HP, nat 1 = two failures).</div>
+    <div class="hint">Rolls 1d20 to the Event Log and marks a box (10+ success, &lt;10 failure, nat 20 = regain 1 HP, nat 1 = two failures).</div>
   </section>
 
   <!-- ===== PROFICIENCIES ===== -->
@@ -277,9 +281,11 @@
     </fieldset>
   </section>
 
-  <!-- ===== DICE ROLLER (command mode) ===== -->
+  <!-- ===== EVENT LOG (also the dice roller's command line) =====
+       data-module stays "dice": layout.js keys saved module positions off it, so renaming
+       the key would orphan every saved arrangement. See src/event-log.js. -->
   <section class="module wide" data-module="dice">
-    <h2>Dice Roller <span class="hint">(command mode)</span></h2>
+    <h2>Event Log <span class="hint">(rolls, rests, and other notable events &mdash; the box below doubles as a dice-roller command line)</span></h2>
     <input type="text" id="cmd-input" style="width:100%" autocomplete="off"
       placeholder="/r 1d20+5 adv Attack   ·   4d6kh3   ·   /rr 6 4d6kh3   ·   /rrr 5 10 2d20kh1   ·   clear">
     <div class="hint">
@@ -289,7 +295,7 @@
       selectors <code>&gt;X</code>/<code>&lt;X</code>/<code>hX</code>/<code>lX</code>.
       On roll-buttons: <b>Shift</b> = advantage, <b>Ctrl</b> = disadvantage.
     </div>
-    <div id="dicelog"><div>— roll log —</div></div>
+    <div id="dicelog"><div>— event log —</div></div>
   </section>
 
   <!-- ===== FEATURES (5e.tools import: race + class + feats) ===== -->
@@ -307,7 +313,7 @@
     <div>
       <button id="btn-short-rest">Short Rest</button>
       <button id="btn-long-rest">Long Rest</button>
-      <span class="hint">Full PHB'14 p186 automation (see DOCS) — clears Temp HP on either; Long Rest also restores current HP, regains Hit Dice, and clears used spell slots, on top of recovering limited-use features detected in feature text below (Short Rest covers anything that also recovers on a Long Rest).</span>
+      <span class="hint">Full PHB'14 p186 automation (see DOCS) &mdash; <b>Short Rest</b> opens a dialog to spend Hit Dice one at a time, then clears Temp HP and recovers short-rest features on finish. <b>Long Rest</b> applies at once: Temp HP, full HP, Hit Dice back up to half your total, used spell slots, and every recovering feature (Short Rest also covers anything that recovers on a Long Rest). Both are recorded in the Event Log.</span>
     </div>
     <div id="class-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
   </section>
@@ -374,6 +380,54 @@
 
 <!-- ===== "prepare from which class?" modal (spell-list-expansion grants — Dragonmarks, Eldritch
      Knight, Divine Soul, Warlock patrons, Wizard subschools, etc. — see spellcasting.js) ===== -->
+<!-- Character creation wizard (PHB'14 p11-15 order). See src/creator.js. -->
+<div id="creator-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:42rem">
+    <div class="modal-title">New character</div>
+    <div id="cr-stepper"></div>
+    <div id="cr-body"></div>
+    <div class="hint cr-blocker" id="cr-blocker"></div>
+    <!-- Cancel sits alone on the left, away from Back/Next/Create: it is the one button here that
+         throws the whole character away, and it should not be adjacent to the one you press most. -->
+    <div class="modal-actions cr-actions">
+      <button id="cr-cancel">Cancel</button>
+      <span class="cr-actions-gap"></span>
+      <button id="cr-back">Back</button>
+      <button id="cr-next">Next</button>
+      <button id="cr-create">Create character</button>
+    </div>
+  </div>
+</div>
+
+<!-- Level Up dialog (PHB'14 p15, "Beyond 1st Level"). See src/creator.js. -->
+<div id="levelup-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:38rem">
+    <div class="modal-title">Level Up</div>
+    <div id="lu-body"></div>
+    <div class="modal-actions">
+      <button id="lu-cancel">Cancel</button>
+      <button id="lu-confirm">Level up</button>
+    </div>
+  </div>
+</div>
+
+<!-- Short Rest dialog: spend Hit Dice at the end of the rest (PHB'14 p186). Opened by the
+     Short Rest button; see openShortRestModal() in src/rest.js. -->
+<div id="short-rest-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:34rem">
+    <div class="modal-title">Short Rest</div>
+    <div class="hint">Spend Hit Dice to heal &mdash; roll one at a time and decide after each, per PHB p186.
+      Each roll takes effect <b>immediately</b> (it heals you and spends the die), so closing without
+      finishing still leaves any dice you already rolled spent.</div>
+    <div id="sr-modal-hp" style="margin:.5rem 0"></div>
+    <div id="sr-modal-pools"></div>
+    <div class="modal-actions">
+      <button id="sr-modal-cancel">Cancel</button>
+      <button id="sr-modal-finish">Finish Short Rest</button>
+    </div>
+  </div>
+</div>
+
 <div id="prep-class-modal" class="modal-overlay" style="display:none">
   <div class="modal-box">
     <div class="modal-title">Prepare <b id="prep-modal-spell"></b> from which class?</div>
@@ -393,6 +447,7 @@
 <script src="src/math-fields.js"></script>
 <script src="src/rows.js"></script>
 <script src="src/derived.js"></script>
+<script src="src/event-log.js"></script>
 <script src="src/dice.js"></script>
 <script src="src/filters.js"></script>
 <script src="src/spell-library.js"></script>
@@ -439,6 +494,8 @@
 <script src="src/attacks.js"></script>
 <script src="src/routines.js"></script>
 <script src="src/persistence.js"></script>
+<script src="src/characters.js"></script>
+<script src="src/creator.js"></script>
 <script src="src/theme.js"></script>
 <script src="src/app.js"></script>
 <script src="src/status.js"></script>

@@ -45,6 +45,13 @@ button.roll { font: inherit; cursor: pointer; }
 button { font: inherit; background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-border); border-radius: var(--radius); }
 #dicelog { height: 12rem; overflow-y: auto; border: 1px solid var(--border); padding: .25rem; font-family: var(--font-mono); font-size: .8rem; white-space: pre-wrap; }
 #dicelog > div:first-child { font-weight: bold; }
+/* Event Log entry kinds (see src/event-log.js). Rolls are the unmarked default so they look exactly
+   as they always did; anything else gets a left rule so non-roll events are scannable in the stream. */
+#dicelog .ev-rest, #dicelog .ev-hp, #dicelog .ev-resource, #dicelog .ev-condition, #dicelog .ev-info {
+  border-left: 2px solid var(--border-soft); padding-left: .35rem; margin: .1rem 0;
+}
+#dicelog .ev-rest { border-left-color: var(--link-border); }
+#dicelog .ev-hp { border-left-color: var(--danger-border); }
 .rowbtn { cursor: pointer; }
 fieldset { border: 1px dashed var(--border-soft); border-radius: var(--radius); margin: .25rem 0; padding: .25rem .5rem; }
 legend { font-size: .8rem; }
@@ -141,3 +148,37 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cmp-checks button.roll, .cmp-act button.roll { font-size: .78rem; padding: 0 .3rem; }
 .cmp-act { margin: .15rem 0; font-size: .85rem; }
 .cmp-act-text { font-size: .8rem; color: var(--muted-fg); }
+
+/* ----- character tabs (src/characters.js) ----- */
+#char-tabs { display: flex; flex-wrap: wrap; gap: .25rem; padding: .25rem .5rem 0; }
+#char-tabs button { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .5rem; }
+.char-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--link-border); }
+.char-tab-x { margin-left: .4rem; opacity: .55; }
+.char-tab-x:hover { opacity: 1; color: var(--danger); }
+
+/* ----- character creator / level-up dialogs (src/creator.js) ----- */
+.cr-step label { display: inline-block; margin: .2rem 0; }
+.cr-method.active, .cr-racial.active { background: var(--link); color: var(--tooltip-fg); border-color: var(--link-border); }
+.cr-scores td { padding: .1rem .4rem .1rem 0; }
+.cr-pool { display: inline-block; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 .3rem; margin-right: .15rem; }
+.cr-pool.used { opacity: .35; text-decoration: line-through; }
+.cr-over, .cr-blocker { color: var(--danger); }
+.cr-blocker:not(:empty) { margin-top: .4rem; }
+
+/* Step strip. The steps are navigable tabs, not a progress readout — any of them can be clicked at
+   any time, so they have to look clickable and show which ones still have something wrong. */
+#cr-stepper { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .5rem; }
+.cr-tab { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .5rem; }
+.cr-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--link-border); }
+.cr-tab-bad { color: var(--danger); }
+.cr-classes { border-collapse: collapse; margin-top: .3rem; }
+.cr-classes td { padding: .1rem .3rem .1rem 0; vertical-align: middle; }
+.cr-cls-del { color: var(--danger); }
+.cr-ok { color: var(--link); }
+.cr-choice-trait { border-bottom: 1px dotted currentColor; cursor: help; }
+.cr-racial-slot { margin-right: .5rem; }
+.cr-custom-bg { border-left: 2px solid var(--border); padding-left: .5rem; }
+/* Cancel is pushed away from Back/Next/Create — it discards the character, and sitting next to the
+   button you press five times in a row makes a misclick expensive. */
+.cr-actions { display: flex; align-items: center; }
+.cr-actions-gap { flex: 1; }
