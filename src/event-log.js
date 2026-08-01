@@ -59,10 +59,21 @@ function logEvent(kind, html) {
   d.className = "ev ev-" + kind;
   d.innerHTML = html;
   el.insertBefore(d, el.children[1] || null);   // newest first, under the sticky header row
+  // Persist it against the active character's log (or its group's — see characters.js). The DOM
+  // above stays the source of truth for what you're looking at; this is only what survives a switch.
+  if (typeof recordLogEntry === "function") recordLogEntry(kind, html);
 }
 
 /* Back-compat shorthand for the overwhelmingly common case. Every pre-existing caller logs a die
    roll, so log() keeps meaning exactly that and their output is byte-identical to before. */
 function log(html) { logEvent("roll", html); }
 
-function clearLog() { $("dicelog").innerHTML = "<div>— event log —</div>"; }
+/* Clearing empties the stored log too, not just the panel — otherwise the entries would come
+   straight back on the next character switch. */
+function clearLog() {
+  $("dicelog").innerHTML = "<div>— event log —</div>";
+  if (typeof ROSTER === "object" && ROSTER.logs && typeof activeLogKey === "function") {
+    delete ROSTER.logs[activeLogKey()];
+    persistRoster();
+  }
+}

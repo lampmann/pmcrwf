@@ -39,6 +39,7 @@ function applyState(state) {
   recompute();
   renderClassFeatures();
   if (typeof renderHitDice === "function") renderHitDice();
+  if (typeof renderItemList === "function") renderItemList();   // not driven by recompute() — see derived.js
   if (typeof renderAllProficiencyLists === "function") renderAllProficiencyLists();
 }
 /* Saving writes into the active roster entry (src/characters.js) rather than a single fixed key, so

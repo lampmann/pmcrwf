@@ -11,14 +11,49 @@ const SOURCE_NAMES = {
   SatO:"Sigil and the Outlands", AAG:"Astral Adventurer's Guide", SCC:"Strixhaven: A Curriculum of Chaos",
   BMT:"The Book of Many Things", LLK:"Lost Laboratory of Kwalish", FRHoF:"Forgotten Realms: Heroes of Faerûn",
   EFA:"Eberron: Forge of the Artificer", "AitFR-AVT":"Adventures in the Forgotten Realms: A Verdant Tomb",
-  XPHB:"Player's Handbook (2024)"
+  XPHB:"Player's Handbook (2024)",
+  /* The rest of 2014-era D&D. This list started spell-shaped, which is why the Equipment Library's
+     book filter used to show bare abbreviations for most of its chips — items come from far more
+     books than spells do (65 sources against about 30). Same rule as everywhere else in this file:
+     short, fixed, prose-free lookup, no sourcebook text. */
+  DMG:"Dungeon Master's Guide (2014)", MM:"Monster Manual (2014)", MTF:"Mordenkainen's Tome of Foes",
+  VGM:"Volo's Guide to Monsters", MPMM:"Monsters of the Multiverse", MOT:"Mythic Odysseys of Theros",
+  ERLW:"Eberron: Rising from the Last War", VRGR:"Van Richten's Guide to Ravenloft",
+  BGG:"Bigby Presents: Glory of the Giants", DSotDQ:"Dragonlance: Shadow of the Dragon Queen",
+  SDW:"Sleeping Dragon's Wake", AWM:"Adventure with Muk", OGA:"One Grung Above",
+  BGDIA:"Baldur's Gate: Descent into Avernus", CM:"Candlekeep Mysteries", CoS:"Curse of Strahd",
+  CRCotN:"Critical Role: Call of the Netherdeep", CoA:"Chains of Asmodeus", DC:"Divine Contention",
+  DitLCoT:"Descent into the Lost Caverns of Tsojcanth", EET:"Elemental Evil: Trinkets",
+  GoS:"Ghosts of Saltmarsh", "HAT-LMI":"Honor Among Thieves: Legendary Magic Items",
+  HftT:"Hunt for the Thessalhydra", HotDQ:"Hoard of the Dragon Queen", IMR:"Infernal Machine Rebuild",
+  JttRC:"Journeys through the Radiant Citadel", KftGV:"Keys from the Golden Vault",
+  LMoP:"Lost Mine of Phandelver", LR:"Locathah Rising", LoX:"Light of Xaryxis",
+  "MCV2DC":"Monstrous Compendium Volume 2: Dragonlance Creatures",
+  "NRH-AT":"NERDS Restoring Harmony: Adventure Together", "NRH-TLT":"NERDS Restoring Harmony: The Lost Tomb",
+  OotA:"Out of the Abyss", PaBTSO:"Phandelver and Below: The Shattered Obelisk", PotA:"Princes of the Apocalypse",
+  PSA:"Plane Shift: Amonkhet", PSD:"Plane Shift: Dominaria", PSI:"Plane Shift: Innistrad",
+  PSK:"Plane Shift: Kaladesh", PSX:"Plane Shift: Ixalan", PSZ:"Plane Shift: Zendikar",
+  QftIS:"Quests from the Infinite Staircase", RMBRE:"The Lost Dungeon of Rickedness: Big Rick Energy",
+  RoT:"The Rise of Tiamat", RoTOS:"The Rise of Tiamat Online Supplement", SKT:"Storm King's Thunder",
+  TTP:"The Tortle Package", TftYP:"Tales from the Yawning Portal", ToA:"Tomb of Annihilation",
+  VEoR:"Vecna: Eve of Ruin", WBtW:"The Wild Beyond the Witchlight", WDH:"Waterdeep: Dragon Heist",
+  WDMM:"Waterdeep: Dungeon of the Mad Mage", XMtS:"X Marks the Spot", BAM:"Boo's Astral Menagerie",
+  AZfyT:"A Zib for your Thoughts", "AitFR-THP":"Adventures in the Forgotten Realms: The Hidden Page",
+  UATheMysticClass:"Unearthed Arcana: The Mystic Class",
 };
 // 5e.tools' own Core/Supplement/Adventure split (Parser.SOURCES_ADVENTURES vs. everything else in
 // Parser.SOURCE_JSON_TO_FULL, with the 3 actual core rulebooks carved out of "everything else"):
 // a short, fixed, prose-free lookup, same footing as SOURCE_NAMES above.
 const SOURCE_GROUP = {
-  PHB:"core", XPHB:"core",
+  PHB:"core", XPHB:"core", DMG:"core", MM:"core",
   ToR:"adventure", DD:"adventure", FS:"adventure", US:"adventure", IDRotF:"adventure", LLK:"adventure", "AitFR-AVT":"adventure",
+  "AitFR-THP":"adventure", AWM:"adventure", AZfyT:"adventure", BGDIA:"adventure", CM:"adventure", CoA:"adventure",
+  CoS:"adventure", CRCotN:"adventure", DC:"adventure", DitLCoT:"adventure", DSotDQ:"adventure", EET:"adventure",
+  GoS:"adventure", "HAT-LMI":"adventure", HftT:"adventure", HotDQ:"adventure", IMR:"adventure", JttRC:"adventure",
+  KftGV:"adventure", LMoP:"adventure", LR:"adventure", LoX:"adventure", "NRH-AT":"adventure", "NRH-TLT":"adventure",
+  OGA:"adventure", OotA:"adventure", PaBTSO:"adventure", PotA:"adventure", QftIS:"adventure", RMBRE:"adventure",
+  RoT:"adventure", RoTOS:"adventure", SDW:"adventure", SKT:"adventure", TTP:"adventure", TftYP:"adventure",
+  ToA:"adventure", VEoR:"adventure", WBtW:"adventure", WDH:"adventure", WDMM:"adventure", XMtS:"adventure",
 };
 function sourceGroupOf(src) { return SOURCE_GROUP[src] || "supplement"; }
 const LIB_SCHEMA = 6;  // bump when the parsed-spell shape changes (forces a one-time re-import)

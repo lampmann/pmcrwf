@@ -36,7 +36,12 @@
     <label>Race <input type="text" data-persist id="char-race" style="width:9rem"></label>
     <label>Subrace <input type="text" data-persist id="char-subrace" style="width:9rem"></label>
     <label>Background <input type="text" data-persist id="char-bg" style="width:9rem"></label>
+    <!-- XP and Level are two views of the same number (PHB p15's Character Advancement table);
+         xp.js keeps them in step. See DOCS' "Levelling up". -->
     <label>XP <input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="char-xp" style="width:6rem"></label>
+    <label title="your total character level — type a level to jump to its XP threshold, or type XP to find the level">Level
+      <input type="text" inputmode="numeric" class="tiny" id="char-level" style="width:3rem"></label>
+    <span class="hint" id="xp-next"></span>
     <fieldset>
       <legend>Classes (multiclass supported)</legend>
       <table id="class-table">
@@ -45,7 +50,6 @@
       </table>
       <button id="btn-add-class">+ add class</button>
       <div class="hint">Hit Die &amp; Casting default to "auto" — looked up from the SRD class (and subclass, for Eldritch Knight/Arcane Trickster) name you type. Pick an explicit value to override.</div>
-      <button id="btn-level-up" title="gain a level in one of your classes, or multiclass into a new one (PHB p15)">Level Up</button>
       <span class="hint">Total level: <span class="derived" id="total-level">0</span>
         &nbsp;|&nbsp; Proficiency bonus: <span class="derived" id="pb">+2</span>
         (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
@@ -458,8 +462,10 @@
 <script src="src/attacks.js"></script>
 <script src="src/routines.js"></script>
 <script src="src/persistence.js"></script>
+<script src="src/combobox.js"></script>
 <script src="src/characters.js"></script>
 <script src="src/creator.js"></script>
+<script src="src/xp.js"></script>
 <script src="src/theme.js"></script>
 <script src="src/app.js"></script>
 <script src="src/status.js"></script>

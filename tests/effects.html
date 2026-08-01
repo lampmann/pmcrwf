@@ -157,8 +157,10 @@
 <script src="../src/proficiencies.js"></script>
 <script src="../src/attacks.js"></script>
 <script src="../src/persistence.js"></script>
+<script src="../src/combobox.js"></script>
 <script src="../src/characters.js"></script>
 <script src="../src/creator.js"></script>
+<script src="../src/xp.js"></script>
 <script src="../src/app.js"></script>
 
 <style>
@@ -809,6 +811,71 @@ document.addEventListener("DOMContentLoaded", () => {
       CLASS_LIB = savedLib;
     }
 
+    // --- Customizing Your Origin (TCE p8): the race's fixed increases become free picks ---
+    {
+      CREATOR = blankCreator();
+      CREATOR.race = "Dwarf"; CREATOR.subrace = "Mountain";
+      assertEqual("off by default, a Mountain Dwarf's increases sit where the book puts them",
+        ["str", "con", "int"].map(a => racialIncrease(a)).join(","), "2,2,0");
+      assertEqual("...and open no choices", racialChoiceSlots().length, 0);
+
+      CREATOR.customOrigin = true;
+      assertEqual("on, both increases become slots", racialChoiceSlots().length, 2);
+      assertEqual("...keeping their sizes rather than becoming +1s",
+        racialChoiceSlots().map(s => s.amount).join(","), "2,2");
+      assertEqual("...and nothing is applied until they're assigned",
+        CREATOR_ABILITIES.map(racialIncrease).join(","), "0,0,0,0,0,0");
+      assert("...so step 1 blocks", !creatorStepValid(1));
+
+      CREATOR.originChoice = { "fixed:0": "int", "fixed:1": "cha" };
+      assertEqual("assigned, the increases land where you put them",
+        ["str", "con", "int", "cha"].map(a => racialIncrease(a)).join(","), "0,0,2,2");
+      assert("...and step 1 clears", creatorStepValid(1));
+      assertEqual("the total is unchanged — reassigning isn't a buff",
+        CREATOR_ABILITIES.reduce((s, a) => s + racialIncrease(a), 0), 4);
+
+      // A race that already had a choose block keeps it, and the two stores don't collide.
+      CREATOR = blankCreator(); CREATOR.race = "Half-Elf"; CREATOR.customOrigin = true;
+      assertEqual("a race with both fixed and choose increases offers slots for all of them",
+        racialChoiceSlots().length, 3);   // CHA +2 reassignable, plus its own two +1 picks
+      assertEqual("...stored separately by kind",
+        racialChoiceSlots().map(s => s.store).join(","), "racialChoice,racialChoice,originChoice");
+      CREATOR.racialChoice = { "0:0": "str", "0:1": "dex" };
+      CREATOR.originChoice = { "fixed:0": "con" };
+      assertEqual("...and all three apply", ["str", "dex", "con", "cha"].map(a => racialIncrease(a)).join(","), "1,1,2,0");
+    }
+
+    // --- starting gold: rolled or averaged ---
+    {
+      const savedLib = CLASS_LIB;
+      CLASS_LIB = { Fighter: { name: "Fighter", hd: "d10", feats: [], subs: {},
+        startEq: { goldAlternative: "{@dice 5d4 × 10|5d4 × 10|Starting Gold}", defaultData: [] } } };
+      CREATOR = blankCreator(); CREATOR.classes = [{ name: "Fighter", sub: "", lvl: 1 }];
+      assertEqual("the gold dice are read out of the class data", startingGoldDice(), "5d4 × 10");
+      assertEqual("the average of 5d4 × 10 is 125", averageGold(), 125);
+      CREATOR.equipMode = "gold";
+      assert("taking gold blocks step 5 until you pick a number", !creatorStepValid(5));
+      creatorAverageGold();
+      assertEqual("taking the average fills it in", CREATOR.startGold, 125);
+      assert("...and is marked as an average rather than a roll", CREATOR.goldAveraged);
+      assert("...unblocking the step", creatorStepValid(5));
+      assertEqual("...and landing in the coin purse", creatorBuildState().fields["coin-gp"], "125");
+      CLASS_LIB = { Fighter: { name: "Fighter", hd: "d10", feats: [], subs: {}, startEq: null } };
+      assertEqual("a class with no gold data has no average to offer", averageGold(), null);
+      CLASS_LIB = savedLib;
+    }
+
+    // --- XP and level (PHB p15 Character Advancement) ---
+    assertEqual("level 1 starts at 0 XP", xpForLevel(1), 0);
+    assertEqual("level 2 starts at 300", xpForLevel(2), 300);
+    assertEqual("level 20 starts at 355,000", xpForLevel(20), 355000);
+    assertEqual("0 XP is level 1", levelForXp(0), 1);
+    assertEqual("299 XP is still level 1", levelForXp(299), 1);
+    assertEqual("300 XP is level 2", levelForXp(300), 2);
+    assertEqual("a million XP caps at 20", levelForXp(1000000), 20);
+    assertEqual("XP and level round-trip at every threshold",
+      XP_THRESHOLDS.map((xp, i) => levelForXp(xp) === i + 1).filter(Boolean).length, 20);
+
     // --- DMG p38, Starting at Higher Level ---
     assertEqual("levels 1-4 get no extra gold", higherLevelBand(3).gp, 0);
     assertEqual("level 5 lands in the 5-10 band", higherLevelBand(5).gp + "+1d10×" + higherLevelBand(5).mult, "500+1d10×25");
@@ -940,6 +1007,52 @@ document.addEventListener("DOMContentLoaded", () => {
 
     localStorage.setItem("charsheet-roster", savedRoster);
     loadRoster();
+
+    // --- groups and the shared Event Log ---
+    {
+      ROSTER = { v: 1, activeId: "a", logs: {}, chars: [
+        { id: "a", name: "Wizard", state: null }, { id: "b", name: "Familiar", state: null },
+        { id: "c", name: "Other", state: null },
+      ] };
+      assertEqual("an ungrouped character logs under its own id", logKeyFor(ROSTER.chars[0]), "a");
+      ROSTER.logs = { a: [{ t: 2, kind: "roll", html: "A2" }, { t: 1, kind: "roll", html: "A1" }],
+                      b: [{ t: 3, kind: "roll", html: "B3" }] };
+
+      groupCharacters("b", "a");
+      const gid = ROSTER.chars[0].group;
+      assert("grouping gives both characters the same group id", !!gid && ROSTER.chars[1].group === gid);
+      assertEqual("...and the third is untouched", ROSTER.chars[2].group, undefined);
+      assertEqual("both now log under the group", logKeyFor(ROSTER.chars[1]), gid);
+      // 4, not 3: grouping announces itself into the log it just created, which is the point —
+      // "these now share a log" is itself an event in that shared history.
+      assertEqual("their logs merge into one stream", (ROSTER.logs[gid] || []).length, 4);
+      assertEqual("...in timestamp order, not concatenated",
+        ROSTER.logs[gid].slice(1).map(e => e.html).join(","), "B3,A2,A1");
+      assert("...with the grouping itself on top", /share an Event Log/.test(ROSTER.logs[gid][0].html));
+      assert("...and the per-character logs are gone", !ROSTER.logs.a && !ROSTER.logs.b);
+
+      // Grouping the same pair again is a no-op rather than a second merge.
+      groupCharacters("b", "a");
+      assertEqual("re-grouping an existing pair changes nothing", (ROSTER.logs[gid] || []).length, 4);
+
+      ungroupCharacter("b");
+      assertEqual("leaving a group clears the character's group", ROSTER.chars[1].group, null);
+      assertEqual("...and it takes a copy of the shared history rather than losing it",
+        (ROSTER.logs.b || []).length, 4);
+      assertEqual("...and a group of one is dissolved too", ROSTER.chars[0].group, null);
+
+      // Reordering moves a whole group as a unit, so a group can't be split by a drag.
+      ROSTER = { v: 1, activeId: "a", logs: {}, chars: [
+        { id: "a", name: "A", group: "g1" }, { id: "b", name: "B", group: "g1" }, { id: "c", name: "C" },
+      ] };
+      reorderCharacter("a", null);
+      assertEqual("dragging a grouped tab to the end takes its whole group",
+        ROSTER.chars.map(c => c.id).join(""), "cab");
+      reorderCharacter("c", "a");
+      assertEqual("...and an ungrouped tab moves on its own", ROSTER.chars.map(c => c.id).join(""), "cab");
+      reorderCharacter("b", "c");
+      assertEqual("...still as a unit when dragged the other way", ROSTER.chars.map(c => c.id).join(""), "abc");
+    }
   }
 
   lines.push("", `${pass} passed, ${fail} failed`);

@@ -121,7 +121,8 @@ function init() {
   $("item-filter-area").addEventListener("click", e => ITEM_FILTERS.handleClick(e));
   $("item-filter-area").addEventListener("input", e => ITEM_FILTERS.handleInput(e));
   $("item-results").addEventListener("click", e => {
-    const b = e.target.closest(".itm-lib-add"); if (b) { addItemFromLib(b.dataset.key); return; }
+    const b = e.target.closest(".itm-lib-add"); if (b) { addItemFromLib(b.dataset.key, b); return; }
+    const pick = e.target.closest(".itm-group-pick"); if (pick) { addCharacterItem(pick.dataset.name); return; }
     const link = e.target.closest(".itm-name-link"); if (link) { e.preventDefault(); toggleItemDetail(link); }
   });
   $("item-lib-clear").addEventListener("click", () => {
@@ -155,8 +156,10 @@ function init() {
     addClassRow({ name: "", lvl: 1 }); initMathFields();
   }
 
-  // The roster is populated by loadState() above, so the tab bar can only be drawn once that has run.
+  // The roster is populated by loadState() above, so the tab bar and the stored Event Log can only
+  // be drawn once that has run.
   if (typeof renderCharacterTabs === "function") renderCharacterTabs();
+  if (typeof repaintEventLog === "function") repaintEventLog();
 
   recompute();
 }

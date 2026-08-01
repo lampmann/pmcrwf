@@ -141,14 +141,20 @@ function recompute() {
   if (typeof updateAttackRows === "function") updateAttackRows();
   if (typeof renderEffectsStrip === "function") renderEffectsStrip();
   if (typeof paintEffectAudit === "function") paintEffectAudit();
+  if (typeof renderXp === "function") renderXp();
 }
 
 /* ---------- Inventory (coin purse + item list, all summed in gp) ---------- */
 /* itemsTotalValue()/itemsTotalWeight() are defined in inventory.js, next to CHARACTER_ITEMS. */
 function fmtGP(n) { return String(Math.round(n * 100) / 100); }
 function coinTotalGP() { return Object.keys(COIN_GP).reduce((s, k) => s + num($("coin-" + k)) * COIN_GP[k], 0); }
+/* NB: renderItemList() is deliberately NOT called from here. recompute() runs on every keystroke
+   anywhere on the sheet, and the item list contains its own editable quantity box — rebuilding the
+   list mid-edit tore that box out from under the cursor, which read as "you can't change the number
+   of items". The list is re-rendered when its *composition* changes (add/remove/applyState) and the
+   quantity box updates its own row's totals in place; see inventory.js. Same rule as the Hit Dice
+   pools in rest.js and the character-creator's number boxes. */
 function recomputeInventory() {
-  renderItemList();
   $("items-value-total").textContent = fmtGP(itemsTotalValue());
   $("items-weight-total").textContent = fmtGP(itemsTotalWeight());
   $("coin-total-gp").textContent = fmtGP(coinTotalGP());

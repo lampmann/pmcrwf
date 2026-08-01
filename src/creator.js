@@ -60,6 +60,9 @@ function blankCreator() {
     step: 1,
     race: "", subrace: "", size: "",
     racialChoice: {},                                    // "<blockIndex>:<slot>" -> ability, for a race's `choose` increases
+    customOrigin: false,                                 // TCE p8: reassign the race's fixed increases freely
+    originChoice: {},                                    // "fixed:<n>" -> ability, when customOrigin is on
+    srcOff: { race: {}, class: {}, background: {} },     // books switched off in the pickers
     classes: [{ name: "", sub: "", lvl: 1 }],            // multiclass from the start, same shape as the Classes table
     method: "standard",                                  // standard | pointbuy | roll | manual
     scores: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
@@ -69,7 +72,7 @@ function blankCreator() {
     bgSkills: ["", ""], bgTools: ["", ""], bgFeature: "",   // custom background (PHB p125)
     equipMode: "package",                                // package | gold
     equipPick: {},                                       // startingEquipment line index -> "a" | "b"
-    startGold: null,                                     // rolled goldAlternative, when equipMode === "gold"
+    startGold: null, goldAveraged: false,                // starting gold, rolled or averaged, when equipMode === "gold"
     higherLevel: false, campaignMagic: "standard",       // DMG p38, characters starting above 1st level
     higherGold: null, higherRoll: null,
   };
@@ -139,23 +142,44 @@ function racialAbilityBonus(raceName, subraceName) {
   return out;
 }
 
-/* Every "choose" slot the current race/subrace opens, as a flat list — one entry per pick, so a
-   "+1 to two of your choice" race yields two slots and each gets its own dropdown. The key is what
-   CREATOR.racialChoice is keyed by, and is stable as long as the race is. */
+/* ----- Customizing Your Origin (TCE p8) -----
+   "Take any ability score increase you gain in your race or subrace and apply it to an ability score
+   of your choice. If you gain more than one increase, you can't apply those increases to the same
+   ability score."
+
+   So with the option on, a race's FIXED increases become free picks that keep their sizes: a Mountain
+   Dwarf's CON +2 / STR +2 turns into two +2s you assign, and a Tiefling's CHA +2 / INT +1 into a +2
+   and a +1. Blocks the race already leaves to choice are unaffected — they were already free.
+
+   The rule is per-increase, not per-point: a +2 stays a +2 and can't be split into two +1s. And no
+   two increases may land on the same ability, which is what makes the pickers disable a taken score. */
+function fixedIncreaseSlots() {
+  const bonus = racialAbilityBonus(CREATOR.race, CREATOR.subrace);
+  return Object.entries(bonus.fixed).map(([ab, amount], i) => ({ key: "fixed:" + i, from: CREATOR_ABILITIES, amount, was: ab }));
+}
+
+/* Every increase you have to choose an ability for, as a flat list — one entry per pick, so a
+   "+1 to two of your choice" race yields two slots and each gets its own dropdown. Keys are what
+   CREATOR.racialChoice / CREATOR.originChoice are keyed by, and are stable as long as the race is. */
 function racialChoiceSlots() {
   const bonus = racialAbilityBonus(CREATOR.race, CREATOR.subrace);
   const slots = [];
   bonus.choose.forEach((c, bi) => {
-    for (let i = 0; i < c.count; i++) slots.push({ key: bi + ":" + i, from: c.from, amount: c.amount });
+    for (let i = 0; i < c.count; i++) slots.push({ key: bi + ":" + i, from: c.from, amount: c.amount, store: "racialChoice" });
   });
+  if (CREATOR.customOrigin) fixedIncreaseSlots().forEach(s => slots.push({ ...s, store: "originChoice" }));
   return slots;
 }
+function slotValue(s) { return CREATOR[s.store][s.key] || ""; }
+function setSlotValue(s, v) { CREATOR[s.store][s.key] = v; }
 
-/* The increase a single ability actually gets: the fixed part plus any chosen slots pointed at it. */
+/* The increase a single ability actually gets. With custom origin off that's the race's fixed part
+   plus any chosen slots; with it on, the fixed part is no longer attached to its original ability at
+   all and comes entirely from the reassignment pickers. */
 function racialIncrease(ab) {
   const bonus = racialAbilityBonus(CREATOR.race, CREATOR.subrace);
-  let inc = bonus.fixed[ab] || 0;
-  racialChoiceSlots().forEach(s => { if (CREATOR.racialChoice[s.key] === ab) inc += s.amount; });
+  let inc = CREATOR.customOrigin ? 0 : (bonus.fixed[ab] || 0);
+  racialChoiceSlots().forEach(s => { if (slotValue(s) === ab) inc += s.amount; });
   return inc;
 }
 
@@ -178,18 +202,51 @@ function pointsSpent() {
    data comes from") and may be absent entirely, so a race the sheet has never heard of has to remain
    typeable — the datalist is a convenience, never a gate. */
 function creatorCombo(id, value, options, placeholder, extraClass, width) {
-  const listId = id + "-list";
-  return `<input type="text" id="${id}" class="cr-combo ${extraClass || ""}" list="${listId}" value="${escapeHtml(value)}"
-      placeholder="${escapeHtml(placeholder)}" style="width:${width || "12rem"}" autocomplete="off">` +
-    `<datalist id="${listId}">${options.map(o => `<option value="${escapeHtml(o)}">`).join("")}</datalist>`;
+  return comboboxHtml({ id, value, options, placeholder, extraClass, width: width || "12rem" });
 }
 /* Same control for one row of the class table — ids have to be per-row, so these carry a data-crrow
    index and a class instead of an id. */
 function creatorRowCombo(cls, row, value, options, placeholder) {
-  const listId = "cr-list-" + cls + "-" + row;
-  return `<input type="text" class="cr-combo ${cls}" data-crrow="${row}" list="${listId}" value="${escapeHtml(value)}"
-      placeholder="${escapeHtml(placeholder)}" style="width:11rem" autocomplete="off">` +
-    `<datalist id="${listId}">${options.map(o => `<option value="${escapeHtml(o)}">`).join("")}</datalist>`;
+  return comboboxHtml({ value, options, placeholder, extraClass: cls, width: "11rem",
+    dataAttr: `data-crrow="${row}"` });
+}
+
+/* ----- source filters -----
+   Race, class and background lists run to ninety-odd entries drawn from sixty-odd books, most of
+   which a given table isn't using. These narrow the combobox lists the same way the Spell and
+   Equipment libraries' own Source filters narrow their results: pick the books you play with and
+   everything else disappears from the pickers.
+
+   Deliberately simpler than filters.js' tri-state engine: there is nothing here to exclude *and*
+   include *and* combine — one flat list of books, all on by default, click to toggle. A tri-state
+   chip row would be more machinery than the question needs. Selections are per-wizard-session, not
+   persisted, since they're a browsing aid rather than part of the character. */
+function creatorSources(lib) { return [...new Set(Object.values(lib).map(r => r.source).filter(Boolean))].sort(); }
+
+function sourceFilterHtml(kind, lib) {
+  const srcs = creatorSources(lib);
+  if (srcs.length < 2) return "";                 // one book (or none): nothing to choose between
+  const off = CREATOR.srcOff[kind] || {};
+  const chips = srcs.map(s => {
+    const on = !off[s];
+    const full = (typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[s]) || s;
+    return `<button type="button" class="fbtn cr-src${on ? " inc" : ""}" data-crsrc="${kind}" data-src="${escapeHtml(s)}"
+      title="${escapeHtml(full)}">${escapeHtml(s)}</button>`;
+  }).join("");
+  const anyOff = Object.values(off).some(Boolean);
+  return `<details class="cr-sources"${anyOff ? " open" : ""}><summary class="hint">Books (${srcs.length - Object.values(off).filter(Boolean).length}/${srcs.length})</summary>
+    <div>${chips}</div>
+    <div><button type="button" class="cr-src-all" data-crsrc="${kind}">all</button>
+      <button type="button" class="cr-src-none" data-crsrc="${kind}">none</button>
+      <span class="hint">click a book to hide its entries from the list below</span></div></details>`;
+}
+/* Names from `lib`, minus anything from a book that's been switched off. The currently-selected
+   value always survives the filter — hiding a book shouldn't silently blank a choice already made. */
+function filteredNames(kind, lib, keep) {
+  const off = CREATOR.srcOff[kind] || {};
+  return Object.values(lib)
+    .filter(r => !off[r.source] || (keep && r.name.toLowerCase() === keep.toLowerCase()))
+    .map(r => r.name).sort();
 }
 
 /* Subrace / subclass names, defensively. 5e.tools data has entries this sheet can't assume are
@@ -211,23 +268,31 @@ function findSubByName(rec, name) {
 function racialAsiHtml() {
   const bonus = racialAbilityBonus(CREATOR.race, CREATOR.subrace);
   const slots = racialChoiceSlots();
+  const hasFixed = Object.keys(bonus.fixed).length > 0;
   const fixedTxt = Object.entries(bonus.fixed).map(([k, v]) => `${k.toUpperCase()} ${sign(v)}`).join(", ");
-  if (!fixedTxt && !slots.length) {
+
+  const customToggle = hasFixed ? `<label class="hint" style="margin-left:.6rem" title="Tasha's Cauldron of Everything p8: apply each of your race's ability score increases to an ability of your choice instead.">
+      <input type="checkbox" id="cr-custom-origin"${CREATOR.customOrigin ? " checked" : ""}> customise (TCE p8)</label>` : "";
+
+  if (!hasFixed && !slots.length) {
     return CREATOR.race
       ? `<div class="hint">No ability increase in your data for this race. Several races (mostly Monsters of the Multiverse reprints) use the floating "+2 and +1 to any" rule instead, which isn't stored as a fixed increase &mdash; set the scores yourself in step 3.</div>`
       : `<div class="hint">Pick a race to see its ability increases.</div>`;
   }
-  const taken = new Set(Object.entries(CREATOR.racialChoice).map(([, v]) => v).filter(Boolean));
+
+  const taken = new Set(slots.map(slotValue).filter(Boolean));
   const slotHtml = slots.map(s => {
-    const chosen = CREATOR.racialChoice[s.key] || "";
+    const chosen = slotValue(s);
     const opts = s.from.map(ab => {
-      const disabled = taken.has(ab) && chosen !== ab;   // one slot per ability; two +1s on one score isn't a thing
+      const disabled = taken.has(ab) && chosen !== ab;   // TCE p8 and 5e generally: no two increases on one score
       return `<option value="${ab}"${chosen === ab ? " selected" : ""}${disabled ? " disabled" : ""}>${ab.toUpperCase()}</option>`;
     }).join("");
     return `<label class="cr-racial-slot">${sign(s.amount)} to
-      <select class="cr-racial" data-crslot="${s.key}"><option value="">— choose —</option>${opts}</select></label>`;
+      <select class="cr-racial" data-crslot="${s.key}" data-crstore="${s.store}"><option value="">— choose —</option>${opts}</select>${s.was && CREATOR.customOrigin ? ` <span class="hint">(was ${s.was.toUpperCase()})</span>` : ""}</label>`;
   }).join(" ");
-  return `<div style="margin-top:.3rem">${fixedTxt ? `<b>${fixedTxt}</b>` : ""}${fixedTxt && slotHtml ? " &middot; " : ""}${slotHtml}</div>`;
+
+  const fixedPart = (hasFixed && !CREATOR.customOrigin) ? `<b>${fixedTxt}</b>` : "";
+  return `<div style="margin-top:.3rem">${fixedPart}${fixedPart && slotHtml ? " &middot; " : ""}${slotHtml}${customToggle}</div>`;
 }
 
 /* Traits the race and subrace grant. Shown in step 1 so the choices a race makes you responsible for
@@ -369,11 +434,12 @@ function creatorStepHtml() {
   const c = CREATOR;
 
   if (c.step === 1) {
-    const races = Object.keys(RACE_LIB).sort();
+    const races = filteredNames("race", RACE_LIB, c.race);
     const rec = ciFindRace(c.race);
     const subs = subNames(rec);
     return `<div class="cr-step"><b>Step 1 &middot; Choose a Race</b> <span class="hint">PHB p11</span>
       <div class="hint">Your race sets your general appearance, natural talents, and one or more ability score increases.</div>
+      ${sourceFilterHtml("race", RACE_LIB)}
       <label>Race ${creatorCombo("cr-race", c.race, races, races.length ? "type to search" : "no race data — type freely")}</label>
       ${subs.length || c.subrace ? `<label style="margin-left:.6rem">Subrace ${creatorCombo("cr-subrace", c.subrace, subs, "none")}</label>` : ""}
       ${subs.includes(BASE_SUBRACE) ? `<div class="hint"><b>(base)</b> is this race's default version, the one with no subrace of its own &mdash; for a PHB Human that's the +1-to-everything build, as opposed to Variant.</div>` : ""}
@@ -385,13 +451,12 @@ function creatorStepHtml() {
   }
 
   if (c.step === 2) {
-    const classes = Object.keys(CLASS_LIB).sort();
     const total = creatorTotalLevel();
     const rows = c.classes.map((row, i) => {
       const rec = ciFindClass(row.name);
       const hd = row.name ? classHitDie(row.name) : "";
       return `<tr>
-        <td>${creatorRowCombo("cr-cls", i, row.name, classes, "type to search")}</td>
+        <td>${creatorRowCombo("cr-cls", i, row.name, filteredNames("class", CLASS_LIB, row.name), "type to search")}</td>
         <td>${creatorRowCombo("cr-sub", i, row.sub, subNames(rec), "no subclass")}</td>
         <td><input type="number" class="tiny cr-lvl" data-crrow="${i}" min="1" max="20" value="${row.lvl}"></td>
         <td class="hint">${hd || ""}</td>
@@ -401,6 +466,7 @@ function creatorStepHtml() {
     const fails = mcFailures(c.classes, creatorFinalScore);
     return `<div class="cr-step"><b>Step 2 &middot; Choose a Class</b> <span class="hint">PHB p11</span>
       <div class="hint">Your class sets your hit die, proficiencies, and the features you gain. <b>Level</b> starts at 1 &mdash; raise it if you're joining an existing campaign above 1st level (PHB p11). Add a second class to start multiclassed.</div>
+      ${sourceFilterHtml("class", CLASS_LIB)}
       <table class="cr-classes"><tr class="hint"><td>Class</td><td>Subclass</td><td>Level</td><td>Hit Die</td><td></td></tr>${rows}</table>
       <div style="margin-top:.3rem"><button type="button" id="cr-add-class">+ add a class</button>
         <span class="hint" style="margin-left:.6rem">Total level <b id="cr-total-level" class="${total > 20 ? "cr-over" : ""}">${total}</b> / 20</span></div>
@@ -466,10 +532,11 @@ function creatorStepHtml() {
   }
 
   if (c.step === 4) {
-    const bgs = Object.keys(BACKGROUND_LIB).sort();
+    const bgs = filteredNames("background", BACKGROUND_LIB, c.background);
     const rec = !c.customBg ? ciFindBackground(c.background) : null;
     return `<div class="cr-step"><b>Step 4 &middot; Describe Your Character</b> <span class="hint">PHB p13, p125</span>
       <div class="hint">A background grants two skill proficiencies, often tools or languages, a feature, and its own equipment.</div>
+      ${sourceFilterHtml("background", BACKGROUND_LIB)}
       <label>Name <input type="text" id="cr-name" value="${escapeHtml(c.name)}" style="width:14rem"></label>
       <label style="margin-left:.6rem">Background ${creatorCombo("cr-background", c.background, bgs, bgs.length ? "type to search" : "no background data — type freely")}</label>
       <label style="margin-left:.6rem"><input type="checkbox" id="cr-custom-bg"${c.customBg ? " checked" : ""}> custom background</label>
@@ -570,7 +637,8 @@ function creatorStep5Html() {
     </div>
     ${c.equipMode === "package" ? pkgHtml : `<div>
       <button type="button" id="cr-roll-gold">${c.startGold == null ? "roll" : "re-roll"} ${escapeHtml(goldDice || "")}</button>
-      ${c.startGold != null ? ` &rarr; <b>${c.startGold} gp</b>` : ` <span class="hint">roll for your starting gold</span>`}
+      <button type="button" id="cr-avg-gold" title="the average of ${escapeHtml(goldDice || "")}, rounded down — the same 'take the fixed value' option the rules give for hit points">take the average${averageGold() != null ? ` (${averageGold()} gp)` : ""}</button>
+      ${c.startGold != null ? ` &rarr; <b>${c.startGold} gp</b>${c.goldAveraged ? ` <span class="hint">(average)</span>` : ""}` : ` <span class="hint">roll, or take the average</span>`}
       <div class="hint">Taking gold instead of the package means you also skip your background's equipment (PHB p125).</div>
     </div>`}
 
@@ -604,7 +672,9 @@ function creatorStep5Html() {
 function creatorStepBlockerFor(step) {
   const c = CREATOR;
   if (step === 1) {
-    const unset = racialChoiceSlots().filter(s => !c.racialChoice[s.key]).length;
+    // slotValue, not racialChoice directly — a TCE custom-origin slot stores in originChoice, and
+    // reading only one of the two stores left the step permanently blocked.
+    const unset = racialChoiceSlots().filter(s => !slotValue(s)).length;
     if (unset) return `Choose ${unset} more racial ability increase${unset === 1 ? "" : "s"}.`;
   }
   if (step === 2) {
@@ -662,6 +732,9 @@ function renderCreator() {
   const modal = $("creator-modal"); if (!modal || modal.style.display === "none") return;
   $("cr-body").innerHTML = creatorStepHtml();
   renderCreatorChrome();
+  // The comboboxes are fresh elements after every redraw, and their dropdown panel lives outside
+  // cr-body — so it has to be re-attached to whichever field still has focus. See combobox.js.
+  if (typeof initComboboxes === "function") initComboboxes($("cr-body"));
 }
 
 /* Redraw, then put the cursor back where it was. Typing in a combobox has to redraw — the subrace
@@ -674,6 +747,8 @@ function renderCreatorKeepingFocus(el) {
   if (!again) return;
   again.focus();
   try { again.setSelectionRange(pos, pos); } catch (e) { /* not a text input; focus alone is enough */ }
+  // The dropdown is reopened by combobox.js's own deferred input handler, which resolves against
+  // whatever ends up focused — this function's job is only to make sure that's the right field.
 }
 
 function goToCreatorStep(n) {
@@ -706,15 +781,30 @@ function creatorRollScores() {
 }
 
 /* Starting gold, e.g. "5d4 × 10". Parsed rather than hardcoded per class, and logged like any roll. */
+function parseGoldSpec(spec) {
+  const m = (spec || "").match(/(\d+)d(\d+)\s*(?:[×x*]\s*(\d+))?/i);
+  return m ? { n: Number(m[1]), faces: Number(m[2]), mult: Number(m[3] || 1) } : null;
+}
+/* The average of the class's starting-gold dice, rounded down — the same "take the fixed value
+   instead of rolling" choice the rules offer for hit points, applied to the one other roll character
+   creation asks for. A Fighter's 5d4 × 10 averages 125 gp. */
+function averageGold() {
+  const g = parseGoldSpec(startingGoldDice()); if (!g) return null;
+  return Math.floor(g.n * (g.faces + 1) / 2 * g.mult);
+}
 function creatorRollGold() {
-  const spec = startingGoldDice(); if (!spec) return;
-  const m = spec.match(/(\d+)d(\d+)\s*(?:[×x*]\s*(\d+))?/i);
-  if (!m) return;
-  const n = Number(m[1]), faces = Number(m[2]), mult = Number(m[3] || 1);
+  const spec = startingGoldDice(); const g = parseGoldSpec(spec); if (!g) return;
   let sum = 0; const rolls = [];
-  for (let i = 0; i < n; i++) { const d = rollDie(faces); rolls.push(d); sum += d; }
-  CREATOR.startGold = sum * mult;
+  for (let i = 0; i < g.n; i++) { const d = rollDie(g.faces); rolls.push(d); sum += d; }
+  CREATOR.startGold = sum * g.mult;
+  CREATOR.goldAveraged = false;
   logEvent("roll", `<b>${CREATOR.startGold} gp</b> &larr; starting gold (${escapeHtml(spec)}: ${rolls.join(",")})`);
+}
+function creatorAverageGold() {
+  const avg = averageGold(); if (avg == null) return;
+  CREATOR.startGold = avg;
+  CREATOR.goldAveraged = true;
+  logEvent("info", `Starting gold: <b>${avg} gp</b> &mdash; average of ${escapeHtml(startingGoldDice() || "")}, taken instead of rolling`);
 }
 function creatorRollHigherGold() {
   const band = higherLevelBand(creatorTotalLevel());
@@ -878,7 +968,12 @@ document.addEventListener("DOMContentLoaded", () => {
      of the document before its own click resolved. Those are handled entirely by `input` above. */
   $("cr-body").addEventListener("change", e => {
     const t = e.target; if (!CREATOR) return;
-    if (t.classList.contains("cr-racial")) { CREATOR.racialChoice[t.dataset.crslot] = t.value; renderCreator(); return; }
+    if (t.classList.contains("cr-racial")) { CREATOR[t.dataset.crstore][t.dataset.crslot] = t.value; renderCreator(); return; }
+    if (t.id === "cr-custom-origin") {
+      CREATOR.customOrigin = t.checked;
+      CREATOR.originChoice = {};                        // reassignments don't survive turning it off and on
+      renderCreator(); return;
+    }
     if (t.id === "cr-size") { CREATOR.size = t.value; return; }
     if (t.id === "cr-custom-bg") { CREATOR.customBg = t.checked; renderCreator(); return; }
     if (t.id === "cr-higher") { CREATOR.higherLevel = t.checked; CREATOR.higherGold = null; renderCreator(); return; }
@@ -899,6 +994,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("cr-body").addEventListener("click", e => {
     if (!CREATOR) return;
+    // Source filters. Toggling a book off hides its entries from the picker below it.
+    const src = e.target.closest("[data-crsrc]");
+    if (src) {
+      const kind = src.dataset.crsrc, off = CREATOR.srcOff[kind];
+      if (src.classList.contains("cr-src-all")) { CREATOR.srcOff[kind] = {}; }
+      else if (src.classList.contains("cr-src-none")) {
+        const lib = kind === "race" ? RACE_LIB : kind === "class" ? CLASS_LIB : BACKGROUND_LIB;
+        CREATOR.srcOff[kind] = {}; creatorSources(lib).forEach(s => { CREATOR.srcOff[kind][s] = true; });
+      } else { const s = src.dataset.src; if (off[s]) delete off[s]; else off[s] = true; }
+      renderCreator(); return;
+    }
     if (e.target.id === "cr-add-class") { CREATOR.classes.push({ name: "", sub: "", lvl: 1 }); renderCreator(); return; }
     const del = e.target.closest(".cr-cls-del");
     if (del) { CREATOR.classes.splice(Number(del.dataset.crrow), 1); renderCreator(); return; }
@@ -916,6 +1022,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (eq) { CREATOR.equipMode = eq.dataset.creqmode; renderCreator(); return; }
     if (e.target.id === "cr-reroll") { creatorRollScores(); renderCreator(); return; }
     if (e.target.id === "cr-roll-gold") { creatorRollGold(); renderCreator(); return; }
+    if (e.target.id === "cr-avg-gold") { creatorAverageGold(); renderCreator(); return; }
     if (e.target.id === "cr-roll-higher") { creatorRollHigherGold(); renderCreator(); return; }
   });
 });
@@ -1020,6 +1127,7 @@ function renderLevelUp() {
       : `<div class="hint" style="margin-top:.5rem">No class features listed at that level in your loaded data.</div>`}`;
 
   renderLevelUpChrome();
+  if (typeof initComboboxes === "function") initComboboxes($("lu-body"));
 }
 
 /* Confirm's enabled state, without redrawing the body — so the free-text class fallback can update it
@@ -1126,7 +1234,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const pos = e.target.selectionStart;
     renderLevelUp();
     const again = $("lu-newclass");
-    if (again) { again.focus(); try { again.setSelectionRange(pos, pos); } catch (err) {} }
+    if (again) {
+      again.focus(); try { again.setSelectionRange(pos, pos); } catch (err) {}
+    }
   });
   $("lu-body").addEventListener("click", e => {
     if (!LEVELUP || e.target.id !== "lu-roll") return;
