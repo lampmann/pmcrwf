@@ -34,7 +34,8 @@ const SCF_CLASSES = {
   druid: ["Druid", "Ranger"],
   holy: ["Cleric", "Paladin"],
 };
-const ITEM_LIB_SCHEMA = 4;  // bump when the parsed-item shape changes (forces a one-time re-import)
+const ITEM_LIB_SCHEMA = 5;  // bump when the parsed-item shape changes (forces a one-time re-import)
+                            // 5: groupItems added (generic variants expand into their members)
 let ITEM_LIB = [];
 
 // Individual magic items in 5e.tools rarely carry an explicit "value" — these are the average gp
@@ -310,7 +311,7 @@ function renderItemResults() {
   if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
   const body = rows.map(it => {
     const key = (it.name + "|" + it.source).replace(/"/g, "&quot;");
-    const isGroup = it.groupItems.length > 0;
+    const isGroup = groupMembersOf(it).length > 0;
     return `<tr>
       <td><button class="itm-lib-add" data-key="${key}" title="${isGroup ? `${it.name} is a category — pick which one you actually have` : "add to inventory"}">${isGroup ? "&hellip;" : "+"}</button></td>
       <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a></td>
@@ -332,6 +333,15 @@ function toggleItemDetail(link) {
   det.innerHTML = `<td></td><td colspan="6"><div class="hint">${meta}</div><div>${escapeHtml(it.text).replace(/\n/g, "<br>")}</div></td>`;
   tr.after(det);
 }
+/* A parsed item's group members, defensively.
+
+   ITEM_LIB_SCHEMA guards the cache against exactly this — a library parsed by an older build won't
+   have `groupItems` at all — but a version bump only takes effect once the page reloads and
+   re-imports, and reading the field directly meant a stale cache didn't degrade, it threw out of
+   renderItemResults() and took the whole Equipment Library UI with it. A missing field should cost
+   you the category-expansion button, not the panel. */
+function groupMembersOf(it) { return (it && it.groupItems) || []; }
+
 /* Adding from the library. A generic variant ("Armor of Resistance", "Cast-Off Armor") is a category
    rather than a thing you can own — adding its name would put a line in your inventory with no
    weight, value, AC or description, since nothing in the data describes the category itself. So the
@@ -339,13 +349,13 @@ function toggleItemDetail(link) {
    click-to-expand idiom the rest of the sheet uses. */
 function addItemFromLib(key, btn) {
   const it = ITEM_LIB.find(x => (x.name + "|" + x.source) === key); if (!it) return;
-  if (!it.groupItems.length) { addCharacterItem(it.name); return; }
+  if (!groupMembersOf(it).length) { addCharacterItem(it.name); return; }
   const tr = btn && btn.closest("tr"); if (!tr) { addCharacterItem(it.name); return; }
   const next = tr.nextElementSibling;
   if (next && next.classList.contains("itm-group-row")) { next.remove(); return; }
   // Members that exist in the loaded library get their real entry (and so their real stats); one
   // that doesn't is still offered, because the character may own it even if the book isn't loaded.
-  const members = it.groupItems.map(n => {
+  const members = groupMembersOf(it).map(n => {
     const rec = findLibItemByName(n);
     return { name: n, key: rec ? (rec.name + "|" + rec.source) : "", known: !!rec };
   });
