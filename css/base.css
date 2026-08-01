@@ -205,6 +205,16 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 /* ----- rules-reference buttons (src/rules-ref.js) ----- */
 .rules-ref-btn { border: none; background: none; color: var(--link); cursor: pointer; font-size: .85rem; padding: 0; margin-left: .25rem; line-height: 1; }
 .rules-ref-detail { margin: .15rem 0 .3rem 1.2rem; max-width: 32rem; }
+/* ----- companions & summons (src/companions.js) ----- */
+.cmp-hp-row, .cmp-checks { margin: .2rem 0; display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
+.cmp-token { display: inline-flex; align-items: center; gap: 1px; padding: 0 .2rem; border: 1px solid var(--border-hair); border-radius: var(--radius); }
+/* a token at 0 HP is out of the fight but still on the sheet — dimmed, never removed, since
+   "how many are left" is the number that matters when a stack of summons is taking hits */
+.cmp-token.dead { opacity: .5; text-decoration: line-through; }
+.cmp-token input.cmp-hp { width: 2.6rem; text-align: right; }
+.cmp-checks button.roll, .cmp-act button.roll { font-size: .78rem; padding: 0 .3rem; }
+.cmp-act { margin: .15rem 0; font-size: .85rem; }
+.cmp-act-text { font-size: .8rem; color: var(--muted-fg); }
 
 /* ----- character tabs (src/characters.js) ----- */
 #char-tabs { display: flex; flex-wrap: wrap; gap: .25rem; padding: .25rem .5rem 0; }

@@ -239,5 +239,9 @@
 
   // exposed for persistence.js and for the Attacks module (so renames/deletions refresh the pickers)
   window.renderRoutines = renderRoutines;
+  // the damage-by-AC summary is shared with the Companions module, which needs the same table for a
+  // stack of summons all making the same attack (see rollMass in companions.js)
+  window.acRangeRows = acRangeRows;
+  window.fmtAcRow = fmtAcRow;
   window.setRoutines = list => { window.ROUTINES = Array.isArray(list) ? list : []; renderRoutines(); };
 })();

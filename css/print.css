@@ -13,6 +13,7 @@
   #btn-add-class, #btn-add-attack, #btn-add-routine, .prof-add-btn,
   #item-lib-toggle, #spell-lib-toggle, #item-lib-reload, #item-lib-clear,
   #spell-lib-reload, #spell-lib-clear, #class-lib-reload, #class-lib-clear,
+  #mon-lib-toggle, #mon-lib-reload, #mon-lib-clear, .cmp-heal,
   .inv-del, .prof-del, button.roll, #cmd-input, #dicelog,
   input[type="file"], .lay-h, #lay-grid-overlay, #lay-marquee, #lay-selbox {
     display: none !important;
