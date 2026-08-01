@@ -24,6 +24,11 @@
   --menu-hover-bg: #def;
   --menu-shadow: rgba(0,0,0,.3);
   --radius: 0px;
+  /* Interaction feedback. Kept as variables so the eight themes in css/themes.css can retune them
+     without redefining every :hover rule — a dark theme needs a lighter hover than a light one. */
+  --hover-bg: #ececec;
+  --active-bg: #d6d6d6;
+  --focus-ring: #1a56c4;
 }
 * { box-sizing: border-box; }
 body { font-family: var(--font-body); margin: 1rem; line-height: 1.35; background: var(--bg); color: var(--fg); }
@@ -43,6 +48,68 @@ input.txt { width: 100%; }
 .derived { font-weight: bold; }
 button.roll { font: inherit; cursor: pointer; }
 button { font: inherit; background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-border); border-radius: var(--radius); }
+
+/* ============================================================
+   INTERACTION FEEDBACK — hover, press, focus, disabled.
+
+   Applied once, here, to every button and clickable link rather than
+   per-component: the sheet has a dozen kinds of button (filter chips, roll
+   buttons, pips, tabs, row buttons) and they should all answer the same two
+   questions — "is this clickable?" and "did my click land?".
+
+   Hover tints the background. Pressing nudges the control down one pixel and
+   darkens it further, so a click is visibly distinct from a hover rather than
+   just a flash. :focus-visible draws a ring for keyboard users only, so mouse
+   clicks don't leave a ring behind. Disabled controls opt out of all of it and
+   take a not-allowed cursor, so a greyed-out Next button reads as refusing the
+   click rather than as a dead one.
+
+   Every rule is a tint over whatever the component already sets, so a chip that
+   is currently blue-for-include stays blue and merely darkens.
+   ============================================================ */
+button, .fbtn, .fctrl-btn, .char-tab, .cr-tab, .eff-toggle, .eff-strip-toggle, .sp2-conc, .rowbtn {
+  cursor: pointer;
+  transition: background-color .08s ease, transform .04s ease, box-shadow .08s ease;
+}
+button:hover:not(:disabled), .fbtn:hover, .fctrl-btn:hover, .char-tab:hover, .cr-tab:hover,
+.eff-toggle:hover:not(:disabled), .eff-strip-toggle:hover, .sp2-conc:hover, .rowbtn:hover {
+  background-color: var(--hover-bg);
+}
+button:active:not(:disabled), .fbtn:active, .fctrl-btn:active, .char-tab:active, .cr-tab:active,
+.eff-toggle:active:not(:disabled), .eff-strip-toggle:active, .sp2-conc:active, .rowbtn:active {
+  background-color: var(--active-bg);
+  transform: translateY(1px);
+}
+/* An "on" chip already carries a strong background; tinting it grey would wash it out, so those
+   darken via a shadow overlay instead of a background swap. */
+.fbtn.inc:hover, .fbtn.exc:hover, .cr-method.active:hover, .cr-racial.active:hover {
+  background-color: currentColor;
+  box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .12);
+}
+.fbtn.inc:active, .fbtn.exc:active, .cr-method.active:active, .cr-racial.active:active {
+  box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .25);
+}
+button:disabled, .eff-toggle:disabled { cursor: not-allowed; opacity: .5; }
+button:focus-visible, .fbtn:focus-visible, .fctrl-btn:focus-visible, .char-tab:focus-visible,
+.cr-tab:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+/* Clickable text — spell/item/feature names, roll links, character-tab close crosses. These are
+   anchors and spans rather than buttons, so they need their own hover; underlining on hover is the
+   convention they already half-follow (they're dotted-underlined when they carry a tooltip). */
+.sp-name-link:hover, .itm-name-link:hover, .feat-link:hover, .inv-link:hover, .gsp-link:hover,
+.dice-roll:hover, .atk-roll:hover, .use-pip:hover, .rules-ref:hover {
+  text-decoration: underline;
+  filter: brightness(1.25);
+}
+.dice-roll:active, .atk-roll:active, .use-pip:active, .sp-name-link:active,
+.itm-name-link:active, .feat-link:active, .inv-link:active {
+  filter: brightness(.8);
+}
+/* Rows that expand on click get a whole-row hover, so the target reads as the row and not just the
+   four characters of its name. */
+.spell-table tbody tr:not(.sp-detail):not(.itm-group-row):hover { background-color: var(--hover-bg); }
 #dicelog { height: 12rem; overflow-y: auto; border: 1px solid var(--border); padding: .25rem; font-family: var(--font-mono); font-size: .8rem; white-space: pre-wrap; }
 #dicelog > div:first-child { font-weight: bold; }
 /* Event Log entry kinds (see src/event-log.js). Rolls are the unmarked default so they look exactly
@@ -145,6 +212,22 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .char-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--link-border); }
 .char-tab-x { margin-left: .4rem; opacity: .55; }
 .char-tab-x:hover { opacity: 1; color: var(--danger); }
+/* Groups (src/characters.js): a boxed run of tabs that share one Event Log. */
+.char-group { display: inline-flex; align-items: stretch; gap: .25rem; padding: .1rem .2rem;
+  border: 1px dashed var(--link-border); border-radius: var(--radius); }
+.char-group-x { font-size: .75rem; padding: 0 .25rem; opacity: .7; }
+.char-group-x:hover { opacity: 1; }
+/* Drag feedback: a ring means "these will be grouped", a bar means "it will land here". */
+.char-tab.dragging { opacity: .4; }
+.char-tab.drop-group { outline: 2px solid var(--link-border); outline-offset: 1px; }
+.char-tab.drop-before { box-shadow: inset 3px 0 0 var(--link-border); }
+.char-tab.drop-after { box-shadow: inset -3px 0 0 var(--link-border); }
+/* The Level box highlights when your XP has already earned the next level. */
+#char-level.xp-ready { outline: 2px solid var(--link-border); }
+/* Creator source filters. */
+.cr-sources { margin: .2rem 0; }
+.cr-sources summary { cursor: pointer; }
+.cr-src { font-size: .72rem; }
 
 /* ----- character creator / level-up dialogs (src/creator.js) ----- */
 .cr-step label { display: inline-block; margin: .2rem 0; }
@@ -164,6 +247,20 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cr-classes { border-collapse: collapse; margin-top: .3rem; }
 .cr-classes td { padding: .1rem .3rem .1rem 0; vertical-align: middle; }
 .cr-cls-del { color: var(--danger); }
+/* ----- combobox (src/combobox.js) ----- */
+.combo { display: inline-flex; align-items: stretch; }
+.combo .combo-input { flex: 1; min-width: 0; }
+.combo-arrow { padding: 0 .35rem; margin-left: -1px; font-size: .7rem; line-height: 1; }
+.combo-panel {
+  position: fixed; z-index: 400; max-height: 15rem; overflow-y: auto;
+  background: var(--menu-bg); color: var(--fg);
+  border: 1px solid var(--border-soft); border-radius: var(--radius);
+  box-shadow: 0 2px 8px var(--menu-shadow); font-size: .9rem;
+}
+.combo-opt { padding: .1rem .45rem; cursor: pointer; white-space: nowrap; }
+.combo-opt:hover, .combo-opt.hl { background: var(--menu-hover-bg); }
+.combo-empty { padding: .2rem .45rem; }
+
 .cr-ok { color: var(--link); }
 .cr-choice-trait { border-bottom: 1px dotted currentColor; cursor: help; }
 .cr-racial-slot { margin-right: .5rem; }

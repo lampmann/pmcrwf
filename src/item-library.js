@@ -148,6 +148,11 @@ function parseItem(raw, sourceArray) {
     immune: raw.immune || [],
     conditionImmune: raw.conditionImmune || [],
     misc: itemMisc(raw),
+    /* A "generic variant" (5e.tools' itemGroup) is a CATEGORY, not something you own — "Armor of
+       Resistance" lists the ten concrete items it stands for. Keeping those names is what lets the
+       library offer them when you try to add the group, instead of putting an un-resolvable line
+       with no weight, value or AC into your inventory. */
+    groupItems: Array.isArray(raw.items) ? raw.items.map(n => String(n).split("|")[0]) : [],
     recharge: raw.recharge || "",
     poisonTypes: raw.poisonTypes || [],
     lootTables: raw.lootTables || [],
@@ -282,7 +287,10 @@ function findLibItemByName(name) {
   return ITEM_LIB.find(i => i.name.toLowerCase() === q) || null;
 }
 
+/* The character's own item list resolves weight/value/description out of ITEM_LIB by name, so it has
+   to be repainted whenever the library itself changes — it is no longer redrawn by recompute(). */
 function renderItemLibrary() {
+  if (typeof renderItemList === "function") renderItemList();
   $("item-lib-count").textContent = ITEM_LIB.length ? (ITEM_LIB.length + " items · " + itemSources().length + " source(s)") : "no equipment loaded";
   ITEM_FILTERS.renderArea();
   renderItemResults();
@@ -302,8 +310,9 @@ function renderItemResults() {
   if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
   const body = rows.map(it => {
     const key = (it.name + "|" + it.source).replace(/"/g, "&quot;");
+    const isGroup = it.groupItems.length > 0;
     return `<tr>
-      <td><button class="itm-lib-add" data-key="${key}" title="add to inventory">+</button></td>
+      <td><button class="itm-lib-add" data-key="${key}" title="${isGroup ? `${it.name} is a category — pick which one you actually have` : "add to inventory"}">${isGroup ? "&hellip;" : "+"}</button></td>
       <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a></td>
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
@@ -323,7 +332,25 @@ function toggleItemDetail(link) {
   det.innerHTML = `<td></td><td colspan="6"><div class="hint">${meta}</div><div>${escapeHtml(it.text).replace(/\n/g, "<br>")}</div></td>`;
   tr.after(det);
 }
-function addItemFromLib(key) {
+/* Adding from the library. A generic variant ("Armor of Resistance", "Cast-Off Armor") is a category
+   rather than a thing you can own — adding its name would put a line in your inventory with no
+   weight, value, AC or description, since nothing in the data describes the category itself. So the
+   "…" button expands the category's members inline and each of those is addable, the same
+   click-to-expand idiom the rest of the sheet uses. */
+function addItemFromLib(key, btn) {
   const it = ITEM_LIB.find(x => (x.name + "|" + x.source) === key); if (!it) return;
-  addCharacterItem(it.name);
+  if (!it.groupItems.length) { addCharacterItem(it.name); return; }
+  const tr = btn && btn.closest("tr"); if (!tr) { addCharacterItem(it.name); return; }
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains("itm-group-row")) { next.remove(); return; }
+  // Members that exist in the loaded library get their real entry (and so their real stats); one
+  // that doesn't is still offered, because the character may own it even if the book isn't loaded.
+  const members = it.groupItems.map(n => {
+    const rec = findLibItemByName(n);
+    return { name: n, key: rec ? (rec.name + "|" + rec.source) : "", known: !!rec };
+  });
+  const row = document.createElement("tr"); row.className = "itm-group-row";
+  row.innerHTML = `<td></td><td colspan="6"><div class="hint">${escapeHtml(it.name)} is a category — add the specific item you have:</div>
+    <div>${members.map(m => `<button class="itm-group-pick" data-name="${escapeHtml(m.name)}"${m.known ? "" : ` title="not in the loaded library — added by name only"`}>${escapeHtml(m.name)}${m.known ? "" : " *"}</button>`).join(" ")}</div></td>`;
+  tr.after(row);
 }

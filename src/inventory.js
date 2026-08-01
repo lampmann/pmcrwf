@@ -18,10 +18,15 @@ function removeCharacterItem(idx) {
   CHARACTER_ITEMS.splice(idx, 1);
   renderItemList(); recompute(); scheduleSave();
 }
+/* Quantity is typed, so this must NOT re-render the list — that would replace the input mid-edit
+   (see recomputeInventory's comment in derived.js). Only the row's own derived totals change, and
+   they're patched in place. */
 function setItemQty(idx, qty) {
   const it = CHARACTER_ITEMS[idx]; if (!it) return;
   it.qty = Math.max(0, Number(qty) || 0);
-  renderItemList(); recompute(); scheduleSave();
+  const row = document.querySelector(`.inv-totals[data-idx="${idx}"]`);
+  if (row) row.innerHTML = itemRowTotalsHtml(it);
+  recompute(); scheduleSave();
 }
 function setItemFlag(idx, key, val) {
   const it = CHARACTER_ITEMS[idx]; if (!it) return;
@@ -52,10 +57,16 @@ function renderItemList() {
       <input type="text" inputmode="numeric" class="tiny inv-qty" data-idx="${i}" value="${it.qty}">
       <a class="feat-link inv-link" data-idx="${i}"><b>${escapeHtml(it.name)}</b></a> <span class="hint">${src}</span>${missing}
       <label class="hint" style="margin-left:.4rem"><input type="checkbox" class="inv-eq" data-idx="${i}" ${it.eq ? "checked" : ""}> equipped</label>${attuneBox}
-      <span class="hint">&mdash; ${fmtGP(r.wt)} lb ea &middot; ${fmtGP(r.val)} gp ea &middot; ${fmtGP(it.qty * r.wt)} lb / ${fmtGP(it.qty * r.val)} gp total</span>
+      <span class="hint inv-totals" data-idx="${i}">${itemRowTotalsHtml(it)}</span>
       <button class="rowbtn inv-del" data-idx="${i}" title="remove">x</button>
     </div>`;
   }).join("");
+}
+/* The per-row "x lb ea · y gp ea · totals" readout. Its own function so setItemQty can repaint just
+   this span instead of the whole list. */
+function itemRowTotalsHtml(it) {
+  const r = resolvedItem(it);
+  return `&mdash; ${fmtGP(r.wt)} lb ea &middot; ${fmtGP(r.val)} gp ea &middot; ${fmtGP(it.qty * r.wt)} lb / ${fmtGP(it.qty * r.val)} gp total`;
 }
 function toggleInvDetail(link) {
   const div = link.closest("div");
@@ -81,7 +92,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const attuned = e.target.closest(".inv-attuned"); if (attuned) { setItemFlag(Number(attuned.dataset.idx), "attuned", attuned.checked); return; }
     const link = e.target.closest(".inv-link"); if (link) { e.preventDefault(); toggleInvDetail(link); }
   });
-  results.addEventListener("change", e => {
+  // `input`, not `change`: the totals should follow what you're typing, and nothing here re-renders
+  // the list, so there's no field to lose.
+  results.addEventListener("input", e => {
     const qty = e.target.closest(".inv-qty"); if (qty) setItemQty(Number(qty.dataset.idx), qty.value);
   });
 });

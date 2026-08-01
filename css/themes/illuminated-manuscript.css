@@ -20,6 +20,11 @@
   --tooltip-fg: #f4e8d8;
   --menu-bg: #f4e8d8;
   --menu-hover-bg: #e8dcc8;
+  /* Interaction feedback (see the block in base.css). Tuned per theme because a hover
+     has to move away from this theme's own button colour to read as a hover at all. */
+  --hover-bg: #dccdb2;
+  --active-bg: #cbb894;
+  --focus-ring: #a67c52;
   --menu-shadow: rgba(42, 24, 16, 0.4);
   --radius: 2px;
 }
