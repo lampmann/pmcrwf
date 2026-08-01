@@ -148,7 +148,7 @@ function runCommand(input) {
   }
   runRoll(s);
 }
-const D20SEL = "[data-roll-check], .atk-roll, .wpn-roll";   // buttons that roll a d20 check (adv/dis applies)
+const D20SEL = "[data-roll-check], .atk-roll, .wpn-roll, .mon-roll";   // buttons that roll a d20 check (adv/dis applies)
 function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlKey || ev.metaKey || ev.altKey)) ? "dis" : "normal"; }
 function rollInfo(btn) {
   if (btn.dataset.rollCheck) {
@@ -163,6 +163,12 @@ function rollInfo(btn) {
   // attacks.js, which is what already folds that row's feature effects (attack-hit) into them
   if (btn.classList.contains("wpn-roll")) {
     return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack", mode: btn.dataset.mode || null };
+  }
+  // a companion/summon's own d20 roll — attack, save, skill or initiative (companions.js). Same
+  // button contract as .wpn-roll above, but the numbers come from a monster statblock rather than
+  // from your sheet, so no feature effects apply and there's never a forced mode.
+  if (btn.classList.contains("mon-roll")) {
+    return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "roll", mode: null };
   }
   return null;
 }

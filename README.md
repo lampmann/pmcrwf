@@ -7,6 +7,7 @@ pmcrwf is an offline, single-page HTML character sheet for **D&D 5e (2014 rules)
 - **Dice roller** — a 5eCrawler/Avrae-compatible command roller, roll buttons on every stat (Shift = advantage, Ctrl = disadvantage, right-click for a menu), and clickable inline dice inside feature/spell text.
 - **Import from 5e.tools** — spells, features (race/class/feat), and equipment load from your own copy of the 5e.tools data (see setup below). Nothing from 5e.tools is bundled with this repo.
 - **Automatic feature effects** — recognized feats/features apply their mechanics for you (Alert's +5 initiative, Tough's HP, etc.), with a hover audit trail showing what contributed to each number.
+- **Companions & summons** — add any statblock from the bestiary to your own sheet: familiars, steeds, wild shapes, and summons. Tracked as a stack (one entry, eight wolves, each with its own HP) with an **×N all** button that rolls the whole stack's attacks into one damage-by-AC table, and Tasha's-style summons that scale off *your* spell attack bonus and cast level.
 - **Trackers** — conditions, exhaustion, death saves, and limited-use features with short/long-rest recovery.
 - **Free-form layout** — drag, resize, and snap modules wherever you want them; save the arrangement to a file.
 - **Themes** — swappable CSS themes; add your own by dropping a file in `css/themes/`.

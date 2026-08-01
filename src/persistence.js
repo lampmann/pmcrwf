@@ -8,6 +8,7 @@ function collectState() {
     proficiencies: PROFICIENCIES,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
     routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
+    companions: (typeof COMPANIONS !== "undefined" ? COMPANIONS : []),
     featChoices: FEAT_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
@@ -34,6 +35,7 @@ function applyState(state) {
   initMathFields();
   if (typeof addAttackRow === "function") { $("attack-rows").innerHTML = ""; (state.attacks || []).forEach(addAttackRow); }
   if (typeof setRoutines === "function") setRoutines(state.routines || []);   // after attacks, so step pickers resolve names
+  if (typeof setCompanions === "function") setCompanions(state.companions || []);   // triggers the bestiary's lazy load if there are any
   refreshSpellAddClassSelect();
   invalidateEffects();
   recompute();
