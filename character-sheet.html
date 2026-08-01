@@ -243,6 +243,40 @@
     </fieldset>
   </section>
 
+  <!-- ===== COMPANIONS & SUMMONS ===== -->
+  <section class="module wide" data-module="companions">
+    <h2>Companions &amp; Summons</h2>
+    <fieldset>
+      <legend>Bestiary Library <span class="hint">(loads from <code>data/bestiary/</code> the first time you open it)</span></legend>
+      <div class="hint" id="mon-lib-collapsed-hint">Hidden until you click "+ Add Creature" below.</div>
+      <div id="mon-library-body" style="display:none">
+        <div>
+          <button id="mon-lib-reload">load / reload from data/ folder</button>
+          <button id="mon-lib-clear">clear library</button>
+          <span class="hint" id="mon-lib-count">no bestiary loaded</span>
+          <span class="hint" id="mon-lib-autostatus"></span>
+        </div>
+        <div class="hint">Unlike the spell and equipment libraries this one is <b>not</b> loaded on every page load &mdash; the bestiary is ~9&nbsp;MB across ~96 files, so it loads the first time you open this panel (or automatically, if your character already has companions), and isn't cached between sessions.
+          No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
+          <label style="display:inline">import files manually <input type="file" id="mon-import" accept="application/json" multiple></label>.
+        </div>
+        <div id="mon-filter-area"></div>
+        <div style="margin:.35rem 0">
+          <input type="text" id="mon-search" placeholder="search name / type / source…" style="width:18rem" autocomplete="off">
+        </div>
+        <div id="mon-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Your creatures</legend>
+      <button id="mon-lib-toggle">+ Add Creature</button>
+      <div class="hint">Familiars, steeds, wild shapes, animal companions, and summons &mdash; anything with a statblock, tracked as a <b>stack</b>: set the count and each one keeps its own HP.
+        Type <code>-7</code> in an HP box to take 7 damage, <code>+3</code> to heal. A stack of more than one gets an <b>&times;N all</b> button per attack that rolls every creature's swing and reports the total as a damage-by-AC table.
+        Tasha's-style summons scale off <i>your</i> sheet &mdash; set the level you cast at and their to-hit, damage and save DC follow your spell attack bonus and proficiency.</div>
+      <div id="companions-list" style="margin-top:.35rem"></div>
+    </fieldset>
+  </section>
+
   <!-- ===== DICE ROLLER (command mode) ===== -->
   <section class="module wide" data-module="dice">
     <h2>Dice Roller <span class="hint">(command mode)</span></h2>
@@ -398,6 +432,8 @@
 <script src="src/spellcasting.js"></script>
 <script src="src/item-library.js"></script>
 <script src="src/inventory.js"></script>
+<script src="src/monster-library.js"></script>
+<script src="src/companions.js"></script>
 <script src="src/proficiencies.js"></script>
 <script src="src/rules-ref.js"></script>
 <script src="src/attacks.js"></script>
