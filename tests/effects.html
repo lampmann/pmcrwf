@@ -19,10 +19,13 @@
     <span id="save-status"></span>
   </span>
 </div>
+<div id="char-tabs"></div>
 <div id="effects-strip"></div>
 <div class="modules">
   <section class="module wide" data-module="header">
-    <input type="text" id="char-name"><input type="text" id="char-race"><input type="text" id="char-subrace"><input type="text" id="char-bg">
+    <!-- data-persist matters: collectState() only captures fields carrying it, so a stub without it
+         is silently absent from every saved character. -->
+    <input type="text" data-persist id="char-name"><input type="text" data-persist id="char-race"><input type="text" data-persist id="char-subrace"><input type="text" data-persist id="char-bg">
     <table><tbody id="class-rows"></tbody></table>
     <button id="btn-add-class">+</button>
     <span id="total-level">0</span> <span id="pb">+0</span> <input type="number" id="pb-override">
@@ -84,11 +87,24 @@
     <div id="spell-feat-results"></div>
   </section>
 </div>
+<div id="short-rest-modal" style="display:none">
+  <div id="sr-modal-hp"></div><div id="sr-modal-pools"></div>
+  <button id="sr-modal-cancel"></button><button id="sr-modal-finish"></button>
+</div>
 <div id="prep-class-modal" style="display:none">
   <div><b id="prep-modal-spell"></b><div id="prep-modal-hint"></div>
   <select id="prep-modal-select"></select>
   <button id="prep-modal-cancel"></button><button id="prep-modal-confirm"></button></div>
 </div>
+<div id="creator-modal" style="display:none">
+  <div id="cr-stepper"></div><div id="cr-body"></div><div id="cr-blocker"></div>
+  <button id="cr-cancel"></button><button id="cr-back"></button><button id="cr-next"></button><button id="cr-create"></button>
+</div>
+<div id="levelup-modal" style="display:none">
+  <div id="lu-body"></div>
+  <button id="lu-cancel"></button><button id="lu-confirm"></button>
+</div>
+<button id="btn-level-up"></button>
 
 <script>try { localStorage.clear(); } catch (e) {}</script>
 <script src="../src/errors.js"></script>
@@ -98,6 +114,7 @@
 <script src="../src/math-fields.js"></script>
 <script src="../src/rows.js"></script>
 <script src="../src/derived.js"></script>
+<script src="../src/event-log.js"></script>
 <script src="../src/dice.js"></script>
 <script src="../src/filters.js"></script>
 <script src="../src/spell-library.js"></script>
@@ -140,6 +157,8 @@
 <script src="../src/proficiencies.js"></script>
 <script src="../src/attacks.js"></script>
 <script src="../src/persistence.js"></script>
+<script src="../src/characters.js"></script>
+<script src="../src/creator.js"></script>
 <script src="../src/app.js"></script>
 
 <style>
@@ -456,15 +475,21 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("spending an exhausted pool is a no-op (no phantom healing)", num($("hp-cur")), hpAtMax);
   }
 
-  // manual correction — the "always give an override" box, mirrors USES_STATE's own pip semantics
+  // manual correction — the "always give an override" box. The box shows REMAINING, so its value is
+  // stored back as max - remaining; clamping is in remaining-space at both ends.
   {
     const inp = document.createElement("input");
-    inp.className = "hd-spent"; inp.dataset.hdkey = wizardPool.key; inp.value = "7";   // way over max (3)
-    correctHitDiceSpent(inp);
-    assertEqual("manual correction clamps to the pool's max", hitDicePools().find(p => p.className === "Wizard").spent, 3);
+    inp.className = "hd-remaining"; inp.dataset.hdkey = wizardPool.key; inp.value = "7";   // way over max (3)
+    correctHitDiceRemaining(inp);
+    assertEqual("manual correction clamps remaining to the pool's max (nothing spent)", hitDicePools().find(p => p.className === "Wizard").spent, 0);
     inp.value = "-2";
-    correctHitDiceSpent(inp);
-    assertEqual("manual correction clamps to 0", hitDicePools().find(p => p.className === "Wizard").spent, 0);
+    correctHitDiceRemaining(inp);
+    assertEqual("manual correction clamps remaining to 0 (everything spent)", hitDicePools().find(p => p.className === "Wizard").spent, 3);
+    inp.value = "1";
+    correctHitDiceRemaining(inp);
+    assertEqual("remaining 1 of 3 stores as 2 spent", hitDicePools().find(p => p.className === "Wizard").spent, 2);
+    inp.value = "3";
+    correctHitDiceRemaining(inp);   // back to full for the assertions below
   }
 
   // Short Rest: clears Temp HP (PHB p197 — lasts until depleted or "you finish a rest", not just a
@@ -532,6 +557,99 @@ document.addEventListener("DOMContentLoaded", () => {
     window.confirm = origConfirm;
   }
 
+  // ----- Hit Dice count DOWN from the maximum: 17 dice reads 17/17, then 16/17 after one roll -----
+  {
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    addClassRow({ name: "Fighter", sub: "", lvl: 17, hitDie: "auto" });
+    HD_STATE = {}; recompute(); renderHitDice();
+    const pool = hitDicePools()[0];
+    assertEqual("a fresh 17-level pool starts with all 17 remaining", pool.remaining + "/" + pool.max, "17/17");
+    assertEqual("the rendered box shows remaining, not spent",
+      $("hit-dice-pools").querySelector("input.hd-remaining").value, "17");
+    spendHitDie(pool.key);
+    assertEqual("one roll counts remaining down, max unchanged",
+      hitDicePools()[0].remaining + "/" + hitDicePools()[0].max, "16/17");
+    assertEqual("the rendered box follows it down",
+      $("hit-dice-pools").querySelector("input.hd-remaining").value, "16");
+    assertEqual("remaining and spent stay complementary", hitDicePools()[0].spent, 1);
+  }
+
+  // ----- Short Rest dialog: opens instead of resting, rolls dice, finishes the rest -----
+  {
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    addClassRow({ name: "Fighter", sub: "", lvl: 5, hitDie: "auto" });
+    HD_STATE = {}; recompute(); renderHitDice();
+    $("hp-cur").value = "10"; commitMath($("hp-cur"));
+    $("hp-temp").value = "7"; commitMath($("hp-temp"));
+
+    openShortRestModal();
+    assert("Short Rest opens the dialog", $("short-rest-modal").style.display !== "none");
+    assertEqual("opening the dialog does NOT apply the rest yet (Temp HP still set)", $("hp-temp").value, "7");
+    assert("the dialog renders a pool row per Hit Dice pool",
+      $("sr-modal-pools").querySelectorAll("input.hd-remaining").length === 1);
+    assert("the dialog shows current HP", /10/.test($("sr-modal-hp").textContent));
+
+    // spending from inside the dialog updates the dialog AND the HP module's inline row
+    const key = hitDicePools()[0].key;
+    spendHitDie(key);
+    assertEqual("rolling in the dialog counts the dialog's box down",
+      $("sr-modal-pools").querySelector("input.hd-remaining").value, "4");
+    assertEqual("...and the inline HP-module box stays in sync",
+      $("hit-dice-pools").querySelector("input.hd-remaining").value, "4");
+
+    // finishing applies the rest proper
+    closeShortRestModal(); performRest("sr");
+    assert("finishing closes the dialog", $("short-rest-modal").style.display === "none");
+    assertEqual("finishing applies the rest (Temp HP cleared)", $("hp-temp").value, "");
+    assertEqual("finishing does not refund the die that was spent", hitDicePools()[0].remaining, 4);
+
+    // cancelling leaves the rest unapplied, but keeps dice already rolled spent (they were real rolls)
+    $("hp-temp").value = "5"; commitMath($("hp-temp"));
+    openShortRestModal();
+    spendHitDie(key);
+    closeShortRestModal();
+    assertEqual("cancelling leaves the rest unapplied (Temp HP untouched)", $("hp-temp").value, "5");
+    assertEqual("cancelling still leaves a rolled die spent", hitDicePools()[0].remaining, 3);
+    $("hp-temp").value = ""; commitMath($("hp-temp"));
+  }
+
+  // ----- Event Log: rests and other non-roll events are recorded, tagged by kind -----
+  {
+    clearLog();
+    const entries = () => [...$("dicelog").querySelectorAll(".ev")];
+    assertEqual("a cleared log holds only its header", entries().length, 0);
+
+    logEvent("info", "hello");
+    assertEqual("logEvent adds an entry", entries().length, 1);
+    assert("the entry carries its kind as a class", entries()[0].classList.contains("ev-info"));
+
+    log("a roll");
+    assert("log() is still the roll shorthand", entries()[0].classList.contains("ev-roll"));
+    assertEqual("newest entry goes on top", entries()[0].textContent, "a roll");
+    assertEqual("the header row is never displaced", $("dicelog").children[0].textContent, "— event log —");
+
+    // an unregistered kind must still log rather than losing the event
+    logEvent("not-a-real-kind", "still recorded");
+    assertEqual("an unregistered kind still logs", entries()[0].textContent, "still recorded");
+    assert("...falling back to the info kind", entries()[0].classList.contains("ev-info"));
+
+    // a rest records itself even though nothing was rolled
+    clearLog();
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    addClassRow({ name: "Fighter", sub: "", lvl: 5, hitDie: "auto" });
+    HD_STATE = {}; recompute();
+    $("hp-temp").value = "4"; commitMath($("hp-temp"));
+    performRest("sr");
+    const restEntries = $("dicelog").querySelectorAll(".ev-rest");
+    assertEqual("a rest logs one event even with no dice rolled", restEntries.length, 1);
+    assert("the rest event names the rest", /Short Rest/.test(restEntries[0].textContent));
+    assert("the rest event says what it changed", /Temp HP cleared/.test(restEntries[0].textContent));
+
+    clearLog();
+    performRest("lr");
+    assert("a long rest logs too", /Long Rest/.test($("dicelog").querySelector(".ev-rest").textContent));
+  }
+
   // A character with no classes yet (fresh sheet) gets a plain hint, not an empty/broken render.
   // renderHitDice() isn't hooked into recompute() (see derived.js's comment on why — it would blow
   // away an in-progress edit in a pool's own spent-count box on every unrelated keystroke), so the
@@ -543,6 +661,285 @@ document.addEventListener("DOMContentLoaded", () => {
     HD_STATE = {}; recompute(); renderHitDice();
     assertEqual("hitDicePools is empty with no classes", hitDicePools().length, 0);
     assert("the empty state renders a hint instead of nothing", $("hit-dice-pools").textContent.length > 0);
+  }
+
+  // ===== character roster (characters.js) and creation wizard (creator.js) =====
+  // These run last because they replace the whole sheet: addCharacter/switchCharacter call
+  // applyState(), which overwrites every field the fixtures above set up.
+  {
+    // --- racial ability increases, read off RACE_LIB the same way the wizard does ---
+    RACE_LIB = {
+      Dwarf: { name: "Dwarf", source: "PHB", ability: [{ con: 2 }], entries: [], subs: {
+        Mountain: { name: "Mountain", source: "PHB", ability: [{ str: 2 }], entries: [] },
+        Hill: { name: "Hill", source: "PHB", ability: [{ wis: 1 }], entries: [] },
+      } },
+      "Half-Elf": { name: "Half-Elf", source: "PHB", entries: [], subs: {},
+        ability: [{ cha: 2, choose: { from: ["str", "dex", "con", "int", "wis"], count: 2 } }] },
+      Human: { name: "Human", source: "PHB", entries: [], subs: {
+        // 5e.tools' real shape: the PHB Human's +1-to-everything lives on its NAMELESS subrace, and
+        // Variant replaces that wholesale rather than adding to it.
+        "(base)": { name: "(base)", source: "PHB", entries: [], ability: [{ str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }] },
+        Variant: { name: "Variant", source: "PHB", entries: [], ability: [{ choose: { from: ["str", "dex", "con", "int", "wis", "cha"], count: 2 } }] },
+      } },
+      Dragonborn: { name: "Dragonborn", source: "PHB", ability: [{ str: 2, cha: 1 }], entries: [], subs: {
+        // An EGW subrace whose increase is its OWN whole package, not an extra +3 on the race's.
+        Draconblood: { name: "Draconblood", source: "EGW", entries: [], ability: [{ int: 2, cha: 1 }] },
+      } },
+      "Custom Lineage": { name: "Custom Lineage", source: "TCE", entries: [], subs: {},
+        ability: [{ choose: { from: ["str", "dex", "con", "int", "wis", "cha"], amount: 2 } }] },
+    };
+
+    CREATOR = blankCreator();
+    CREATOR.race = "Dwarf";
+    assertEqual("race-only bonus: Dwarf gives CON +2", JSON.stringify(racialAbilityBonus("Dwarf", "").fixed), '{"con":2}');
+    assertEqual("a small subrace block ADDS to the race's: Mountain Dwarf is CON +2, STR +2",
+      JSON.stringify(racialAbilityBonus("Dwarf", "Mountain").fixed), '{"con":2,"str":2}');
+    assertEqual("a race with no ability block at all yields nothing, not a crash",
+      JSON.stringify(racialAbilityBonus("Nonexistent", "").fixed), "{}");
+    assertEqual("Half-Elf's 'two others of your choice' is reported as a choose block",
+      racialAbilityBonus("Half-Elf", "").choose[0].count, 2);
+    assertEqual("Human's nameless base subrace is where its +1-to-everything lives",
+      Object.values(racialAbilityBonus("Human", "(base)").fixed).join(","), "1,1,1,1,1,1");
+
+    // A subrace block that is already a complete racial increase REPLACES the race's rather than
+    // stacking with it — otherwise a Draconblood Dragonborn would get six points of increases.
+    assertEqual("a complete subrace block replaces the race's",
+      JSON.stringify(racialAbilityBonus("Dragonborn", "Draconblood").fixed), '{"int":2,"cha":1}');
+    assertEqual("...and the race's own block still applies with no subrace",
+      JSON.stringify(racialAbilityBonus("Dragonborn", "").fixed), '{"str":2,"cha":1}');
+    assertEqual("a choose-only subrace replaces too (Variant Human isn't +1-all AND two picks)",
+      JSON.stringify(racialAbilityBonus("Human", "Variant").fixed), "{}");
+
+    // `amount` on a choose block is the size of each increase, not always 1.
+    assertEqual("Custom Lineage's choose carries amount 2, not 1",
+      racialAbilityBonus("Custom Lineage", "").choose[0].amount, 2);
+    CREATOR.race = "Custom Lineage"; CREATOR.subrace = ""; CREATOR.racialChoice = { "0:0": "int" };
+    assertEqual("...so the chosen ability gets +2", racialIncrease("int"), 2);
+    assertEqual("...and only one slot is offered", racialChoiceSlots().length, 1);
+
+    // --- final scores: base + racial, and the wizard's own defaults ---
+    CREATOR = blankCreator();
+    CREATOR.race = "Dwarf"; CREATOR.subrace = "Mountain";
+    CREATOR.scores = { str: 15, dex: 13, con: 14, int: 10, wis: 12, cha: 8 };
+    assertEqual("final STR = 15 base + 2 subrace", creatorFinalScore("str"), 17);
+    assertEqual("final CON = 14 base + 2 race", creatorFinalScore("con"), 16);
+    assertEqual("an ability with no racial increase is left alone", creatorFinalScore("cha"), 8);
+    CREATOR.race = "Half-Elf"; CREATOR.subrace = "";
+    assertEqual("a 'choose 2' race opens exactly two slots", racialChoiceSlots().length, 2);
+    assert("...and step 1 is blocked until both are picked", !creatorStepValid(1));
+    CREATOR.racialChoice = { "0:0": "str", "0:1": "dex" };
+    assert("...then unblocked", creatorStepValid(1));
+    assertEqual("a chosen 'choose' ability gets +1", creatorFinalScore("str"), 16);
+    assertEqual("...and so does the second", creatorFinalScore("dex"), 14);
+    assertEqual("an unchosen one does not", creatorFinalScore("con"), 14);
+    assertEqual("the race's fixed part still applies alongside the picks", creatorFinalScore("cha"), 10);
+
+    // --- point buy: the PHB p13 cost table and its 27-point budget ---
+    CREATOR = blankCreator(); CREATOR.method = "pointbuy"; CREATOR.step = 3;
+    CREATOR.scores = { str: 15, dex: 15, con: 15, int: 8, wis: 8, cha: 8 };
+    assertEqual("15/15/15/8/8/8 costs exactly the 27-point budget", pointsSpent(), 27);
+    assert("...and is therefore allowed", creatorStepValid());
+    CREATOR.scores.int = 9;
+    assertEqual("one point over budget is reported as such", creatorStepBlocker(), "Over budget by 1 point(s).");
+    assert("...and blocks the step", !creatorStepValid());
+
+    // --- standard array: every number must be assigned before the step can advance ---
+    CREATOR = blankCreator(); CREATOR.step = 3;
+    assertEqual("standard array is the PHB's six numbers", STANDARD_ARRAY.join(","), "15,14,13,12,10,8");
+    assert("nothing assigned yet blocks the step", !creatorStepValid());
+    assertEqual("...with a blocker that says why", creatorStepBlocker(), "Assign every number to an ability.");
+    CREATOR_ABILITIES.forEach((ab, i) => { CREATOR.assign[ab] = i; });
+    assert("all six assigned unblocks it", creatorStepValid());
+
+    // --- level: the user's requirement is that a new character defaults to 1 but can be changed ---
+    CREATOR = blankCreator();
+    assertEqual("a new character starts with one class at level 1", CREATOR.classes.length + "/" + CREATOR.classes[0].lvl, "1/1");
+    CREATOR.step = 2; CREATOR.classes[0].lvl = 20;
+    assert("level 20 is allowed", creatorStepValid());
+    CREATOR.classes[0].lvl = 21;
+    assert("level 21 is not", !creatorStepValid());
+
+    // --- multiclassing at creation: several class rows, capped at total level 20 ---
+    CREATOR = blankCreator(); CREATOR.step = 2;
+    CREATOR.classes = [{ name: "Fighter", sub: "Champion", lvl: 5 }, { name: "Wizard", sub: "", lvl: 3 }];
+    assertEqual("total level sums every class row", creatorTotalLevel(), 8);
+    assert("a legal multiclass passes", creatorStepValid());
+    CREATOR.classes[1].lvl = 16;
+    assertEqual("...but the 20-level cap is on the total, not the row", creatorStepBlocker(), "Total level is 21 — the cap is 20.");
+    CREATOR.classes[1].lvl = 3;
+
+    // --- multiclassing prerequisites, PHB p163 ---
+    {
+      const savedLib = CLASS_LIB;
+      CLASS_LIB = {
+        Fighter: { name: "Fighter", hd: "d10", feats: [], subs: {}, mcReq: { or: [{ str: 13 }, { dex: 13 }] } },
+        Wizard: { name: "Wizard", hd: "d6", feats: [], subs: {}, mcReq: { int: 13 } },
+        Paladin: { name: "Paladin", hd: "d10", feats: [], subs: {}, mcReq: { str: 13, cha: 13 } },
+        Homebrew: { name: "Homebrew", hd: "d8", feats: [], subs: {}, mcReq: null },
+      };
+      const scores = { str: 10, dex: 14, con: 12, int: 12, wis: 10, cha: 10 };
+      const scoreOf = ab => scores[ab];
+
+      assertEqual("an 'or' requirement reads as either option", mcRequirementText(CLASS_LIB.Fighter.mcReq), "STR 13 or DEX 13");
+      assertEqual("an 'and' requirement lists both", mcRequirementText(CLASS_LIB.Paladin.mcReq), "STR 13 and CHA 13");
+      assert("DEX 14 satisfies STR 13 or DEX 13", meetsMcRequirement(CLASS_LIB.Fighter.mcReq, scoreOf));
+      assert("...but STR 10 alone does not satisfy STR 13 and CHA 13", !meetsMcRequirement(CLASS_LIB.Paladin.mcReq, scoreOf));
+
+      const rows = n => n.map(name => ({ name, sub: "", lvl: 1 }));
+      assertEqual("a single class has no prerequisite to meet", mcFailures(rows(["Wizard"]), scoreOf).length, 0);
+      assertEqual("INT 12 fails Wizard's INT 13 when multiclassing",
+        mcFailures(rows(["Fighter", "Wizard"]), scoreOf).map(f => f.name).join(), "Wizard");
+      scores.int = 13;
+      assertEqual("...and passes at INT 13", mcFailures(rows(["Fighter", "Wizard"]), scoreOf).length, 0);
+      assertEqual("every class in the mix is checked, not just the new one",
+        mcFailures(rows(["Fighter", "Wizard", "Paladin"]), scoreOf).map(f => f.name).join(), "Paladin");
+      assertEqual("a class with no requirement data is not failed for it",
+        mcFailures(rows(["Fighter", "Homebrew"]), scoreOf).length, 0);
+      assertEqual("a class not in the library at all is skipped too",
+        mcFailures(rows(["Fighter", "Nonexistent"]), scoreOf).length, 0);
+
+      // ...and the creator's step 2 blocks on it.
+      CREATOR = blankCreator(); CREATOR.step = 2; CREATOR.method = "manual";
+      CREATOR.scores = { str: 10, dex: 14, con: 12, int: 10, wis: 10, cha: 10 };
+      CREATOR.classes = rows(["Fighter", "Wizard"]);
+      assert("step 2 is blocked while a prerequisite is unmet", !creatorStepValid(2));
+      assert("...naming the class and what it needs", /INT 13 for Wizard/.test(creatorStepBlockerFor(2)));
+      CREATOR.scores.int = 13;
+      assert("...and clears once the score is high enough", creatorStepValid(2));
+      CLASS_LIB = savedLib;
+    }
+
+    // --- DMG p38, Starting at Higher Level ---
+    assertEqual("levels 1-4 get no extra gold", higherLevelBand(3).gp, 0);
+    assertEqual("level 5 lands in the 5-10 band", higherLevelBand(5).gp + "+1d10×" + higherLevelBand(5).mult, "500+1d10×25");
+    assertEqual("level 10 is still that band", higherLevelBand(10).min, 5);
+    assertEqual("level 11 moves up", higherLevelBand(11).gp, 5000);
+    assertEqual("level 20 is the top band", higherLevelBand(20).gp, 20000);
+    assertEqual("a low-magic campaign at 5-10 gets no magic item", higherLevelBand(7).items.low, "");
+    assertEqual("a high-magic campaign at 5-10 gets one uncommon", higherLevelBand(7).items.high, "one uncommon magic item");
+    assertEqual("standard at 17-20 is the book's wording",
+      higherLevelBand(18).items.standard, "two uncommon magic items and one rare item");
+
+    // Step validity is asked about a named step, so Create can check a step you aren't standing on.
+    CREATOR = blankCreator(); CREATOR.step = 2;
+    CREATOR.classes = [{ name: "Fighter", sub: "Champion", lvl: 5 }, { name: "Wizard", sub: "", lvl: 3 }];
+    CREATOR.step = 1; CREATOR.method = "standard"; CREATOR.assign = {};
+    assertEqual("the first blocker anywhere is found from any step", creatorFirstBlocker().step, 3);
+    CREATOR_ABILITIES.forEach((ab, i) => { CREATOR.assign[ab] = i; });
+    assertEqual("...and is null once every step validates", creatorFirstBlocker(), null);
+
+    // --- the state the wizard hands to the roster is an ordinary character state ---
+    CREATOR = blankCreator();
+    Object.assign(CREATOR, { race: "Dwarf", subrace: "Mountain", name: "Bruenor", background: "Folk Hero",
+      classes: [{ name: "Fighter", sub: "Champion", lvl: 3 }],
+      scores: { str: 15, dex: 13, con: 14, int: 10, wis: 12, cha: 8 } });
+    const built = creatorBuildState();
+    assertEqual("built state carries the name", built.fields["char-name"], "Bruenor");
+    assertEqual("...the race and subrace", built.fields["char-race"] + "/" + built.fields["char-subrace"], "Dwarf/Mountain");
+    assertEqual("...scores with racial increases already applied", built.fields["score-str"], "17");
+    assertEqual("...and one class row at the chosen level", built.classes.map(c => c.name + " " + c.sub + " " + c.lvl).join(), "Fighter Champion 3");
+
+    CREATOR.classes.push({ name: "Rogue", sub: "", lvl: 2 });
+    assertEqual("a multiclass build carries every row through", creatorBuildState().classes.map(c => c.name + " " + c.lvl).join(", "), "Fighter 3, Rogue 2");
+    CREATOR.classes.push({ name: "", sub: "", lvl: 1 });
+    assertEqual("...but an added-and-never-filled row is dropped", creatorBuildState().classes.length, 2);
+
+    // --- background: what gets applied, and what is deliberately left as an open choice ---
+    {
+      const savedBg = BACKGROUND_LIB;
+      BACKGROUND_LIB = {
+        "Folk Hero": { name: "Folk Hero", source: "PHB",
+          skills: [{ "animal handling": true, survival: true }],
+          tools: [{ "vehicles (land)": true }, { choose: { from: ["artisan's tools"], count: 1 } }],
+          languages: [], feature: { name: "Rustic Hospitality", text: "..." } },
+        Sage: { name: "Sage", source: "PHB",
+          skills: [{ arcana: true, history: true }], tools: [], languages: [{ anyStandard: 2 }],
+          feature: { name: "Researcher", text: "..." } },
+      };
+      CREATOR = blankCreator();
+      CREATOR.background = "Folk Hero";
+      const bg = creatorBuildState();
+      assert("a background's stated skills become proficiencies", bg.fields["skillprof-animalhandling"] === true && bg.fields["skillprof-survival"] === true);
+      assertEqual("...its stated tools go to Proficiencies", bg.proficiencies.tools.join(), "vehicles (land)");
+      assert("...but a 'choose' tool is NOT picked for you", !bg.proficiencies.tools.some(t => /artisan/.test(t)));
+      CREATOR.background = "Sage";
+      const sage = creatorBuildState();
+      assert("a different background applies its own skills", sage.fields["skillprof-arcana"] === true);
+      assertEqual("...and an 'anyStandard' language count is left open, not invented", sage.proficiencies.languages.length, 0);
+
+      // Custom background, PHB p125 — every pick is explicit, so all of it applies.
+      CREATOR = blankCreator();
+      CREATOR.customBg = true; CREATOR.bgSkills = ["Athletics", "Perception"]; CREATOR.bgTools = ["Smith's tools", "Dwarvish"];
+      const custom = creatorBuildState();
+      assert("a custom background's two skills apply", custom.fields["skillprof-athletics"] === true && custom.fields["skillprof-perception"] === true);
+      assertEqual("...and its two tool/language picks land in Proficiencies", custom.proficiencies.tools.join(", "), "Smith's tools, Dwarvish");
+      assertEqual("...and it is labelled as custom on the sheet", custom.fields["char-bg"], "Custom");
+      CREATOR.bgSkills = ["Athletics", "Not A Skill"];
+      assertEqual("a skill name that isn't one is ignored rather than written to a bogus field",
+        Object.keys(creatorBuildState().fields).filter(k => k.startsWith("skillprof-")).length, 1);
+      BACKGROUND_LIB = savedBg;
+    }
+
+    // --- malformed library records must not throw out of the render (they used to) ---
+    {
+      const saved = RACE_LIB;
+      RACE_LIB = { Broken: { name: "Broken", ability: [{ con: 2 }], entries: [], subs: { undefined: { source: "X", ability: [{ str: 2 }] } } } };
+      assertEqual("a subrace with no name at all is skipped, not thrown over",
+        JSON.stringify(racialAbilityBonus("Broken", "Mountain").fixed), '{"con":2}');
+      assertEqual("...and doesn't appear in the subrace picker", subNames(ciFindRace("Broken")).length, 0);
+      RACE_LIB = saved;
+    }
+
+    // --- the roster itself ---
+    const firstId = ROSTER.activeId;
+    assertEqual("a fresh install has exactly one character", ROSTER.chars.length, 1);
+    assert("...which is the active one", !!activeChar());
+
+    $("char-name").value = "First"; saveState();
+    const secondId = addCharacter(built, "Bruenor");
+    assertEqual("adding a character grows the roster", ROSTER.chars.length, 2);
+    assertEqual("...and switches to it", ROSTER.activeId, secondId);
+    assertEqual("...applying its state to the sheet", $("char-name").value, "Bruenor");
+    assertEqual("...including its scores", $("score-str").value, "17");
+
+    switchCharacter(firstId);
+    assertEqual("switching back restores the other character", $("char-name").value, "First");
+    assert("...and does not leak the second one's scores", $("score-str").value !== "17");
+    switchCharacter(secondId);
+    assertEqual("switching forward again restores the second", $("char-name").value, "Bruenor");
+
+    assert("the tab bar draws one tab per character plus the add button",
+      document.querySelectorAll("#char-tabs .char-tab").length === 2 && !!$("char-tab-add"));
+    assertEqual("the active character's tab is marked active",
+      document.querySelector("#char-tabs .char-tab.active").dataset.charid, secondId);
+    assert("a tab shows its character's total level", /lv 3/.test(document.querySelector(".char-tab.active").textContent));
+
+    // Round-trip through storage: what persistRoster wrote must reload as the same roster.
+    persistRoster();
+    const reloaded = JSON.parse(localStorage.getItem("charsheet-roster"));
+    assertEqual("the persisted roster holds both characters", reloaded.chars.length, 2);
+    assertEqual("...and remembers which was active", reloaded.activeId, secondId);
+    assert("...with each character's own state alongside it", reloaded.chars.every(c => c.state && c.state.fields));
+
+    // Migration. loadRoster() adopts a pre-roster charsheet-v0 only when no roster exists, and must
+    // never delete it — it is the user's only copy if anything about the migration is wrong.
+    const savedRoster = localStorage.getItem("charsheet-roster");
+    localStorage.removeItem("charsheet-roster");
+    localStorage.setItem("charsheet-v0", JSON.stringify({ v: 1, fields: { "char-name": "Legacy Hero" }, classes: [] }));
+    const migrated = loadRoster();
+    assertEqual("a pre-roster character is adopted as the first roster entry", ROSTER.chars.length, 1);
+    assertEqual("...under its own name", ROSTER.chars[0].name, "Legacy Hero");
+    assertEqual("...and its state is returned for the sheet to apply", migrated.fields["char-name"], "Legacy Hero");
+    assert("...leaving the old key on disk as a fallback copy", !!localStorage.getItem("charsheet-v0"));
+    loadRoster();
+    assertEqual("migration is idempotent — a second load finds the roster, not the legacy key", ROSTER.chars.length, 1);
+
+    localStorage.removeItem("charsheet-v0"); localStorage.removeItem("charsheet-roster");
+    assertEqual("a genuinely fresh install seeds one empty entry and applies no state", loadRoster(), null);
+    assertEqual("...so the first save has somewhere to go", ROSTER.chars.length, 1);
+
+    localStorage.setItem("charsheet-roster", savedRoster);
+    loadRoster();
   }
 
   lines.push("", `${pass} passed, ${fail} failed`);
