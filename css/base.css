@@ -293,6 +293,14 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cbt-item.disabled { opacity: .45; cursor: not-allowed; }
 .cbt-item.disabled:hover { background: none; }
 .cbt-back { font-style: italic; }
+/* Movement's custom-feet + difficult-terrain controls (see moveFormHtml in combat.js) — real form
+   controls sitting above the .cbt-item list, not one themselves, so they don't inherit the pointer
+   cursor or the "clicking me closes the menu" behaviour every plain entry has. */
+.cbt-move-form { padding: .3rem .5rem; border-bottom: 1px solid var(--border-hair); display: flex; flex-direction: column; gap: .3rem; }
+.cbt-move-form label { display: flex; align-items: center; gap: .3rem; cursor: pointer; }
+.cbt-move-custom { display: flex; gap: .3rem; }
+.cbt-move-ft { width: 4rem; font: inherit; }
+#cbt-undo:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ----- combobox (src/combobox.js) ----- */
 .combo { display: inline-flex; align-items: stretch; }
