@@ -28,7 +28,7 @@ function commitMath(el) {
 }
 function commitMathField(el) {
   commitMath(el);
-  if (el.classList.contains("cls-lvl")) enforceTotalLevelCap(el);  // total across all classes <= 30
+  if (el.classList.contains("cls-lvl")) enforceTotalLevelCap(el);  // total across all classes <= 20
   recompute(); scheduleSave();
 }
 function enforceTotalLevelCap(changed) {

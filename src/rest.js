@@ -147,6 +147,17 @@ function performRest(kind) {
     for (let i = 1; i <= 9; i++) if (($("slot-used-" + i).value || "").trim() !== "") usedSlots.push(i);
     for (let i = 1; i <= 9; i++) clearHpField("slot-used-" + i);
     if (usedSlots.length) notes.push(`spell slots restored (level${usedSlots.length === 1 ? " " + usedSlots[0] : "s " + usedSlots.join(", ")})`);
+
+    // "Finishing a long rest reduces your exhaustion level by 1" (PHB p186). One level per long rest,
+    // never below 0.
+    if (typeof exhaustionLevel === "function" && typeof setExhaustion === "function") {
+      const exh = exhaustionLevel();
+      if (exh > 0) { setExhaustion(exh - 1); notes.push(`exhaustion ${exh} &rarr; ${exh - 1}`); }
+    }
+
+    // Death saves are wiped by regaining any hit points (PHB p197); a long rest takes you to full, so
+    // any marks still on the tracker are stale by the time it finishes.
+    if (typeof clearDeathSaves === "function" && clearDeathSaves()) notes.push("death saves cleared");
   }
   const recovered = applyRest(kind);   // feature-effect uses trackers (class-library.js) — also renders the Features panel
   if (recovered) notes.push(`${recovered} feature${recovered === 1 ? "" : "s"} recovered`);
