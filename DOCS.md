@@ -25,6 +25,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Layout (move / resize / snap)](#layout-move--resize--snap)
 - [Saving & loading](#saving--loading)
 - [Keyboard](#keyboard)
+- [Tests](#tests)
 - [Roadmap / known limits](#roadmap--known-limits)
 - [Eventual goal: self-hosted multiplayer VTT + AI table companion](#eventual-goal-self-hosted-multiplayer-vtt--ai-table-companion)
 
@@ -154,6 +155,8 @@ The Event Log is the sheet's running history: dice rolls land here, and so do ac
 - Explode: `e` (on max) or `e6`. Min/max each die: `mi2`, `ma5`.
 - `adv` / `dis` — rolls the d20 with advantage/disadvantage (ignored if there's no d20).
 - Label: any text after the roll (`/r 1d20+7 Stealth`). Annotations: `4d6mi2[fire]`.
+- A single term is capped at **500 dice**, so a mistyped `1000d6` can't lock the tab up. Hitting the cap is stated in the roll's own log line (`[capped at 500 of 1000 dice]`) rather than silently returning a smaller number — a truncated roll presented as a correct one is exactly the kind of quiet wrongness the rest of the sheet avoids.
+- Labels and `[annotations]` are escaped before they reach the log. They can carry a weapon or spell name typed by you or read from an import, and the log stores its markup and replays it on every load, so text that happens to look like HTML is shown as text.
 
 **Crits:** only the kept **d20** triggers *Critical Success* (nat 20) / *Critical Failure* (nat 1) — other dice never do. (This deliberately fixes a 5eCrawler bug.)
 
@@ -191,7 +194,7 @@ Full PHB'14 p186 automation, split across two places: **Hit Dice** live in the H
 
 Each roll takes effect **immediately** — it's a real roll, already in the Event Log, so it heals you and spends the die there and then. **Finish Short Rest** is what applies the *rest itself*: clearing Temp HP (PHB p197: temporary hit points last only until they're depleted or you finish *a* rest, short or long — not just a long one) and recovering any [feature effect](#feature-effects-automatic-mechanics) whose `uses` spec recharges on a short rest (also covering anything that recharges on a long rest). Closing with **Cancel**, Esc, or a click outside leaves the rest unapplied, but any dice you already rolled stay spent — the dialog says so up front, since un-rolling a die isn't something the sheet will pretend to do.
 
-**Long Rest** — applies straight away with no dialog (there's no per-die choice to make). Clears Temp HP, restores current HP to max, regains spent Hit Dice up to half your total (minimum 1 if you have any), clears every used spell slot, and recovers every feature effect that recharges on a long or short rest (including counting down a delayed recharge). If your character is at 0 HP or below when you click it, a confirmation explains that PHB p186 grants no benefit from a long rest without at least 1 HP at the start of it — declining leaves everything untouched, exactly as if the rest had given nothing.
+**Long Rest** — applies straight away with no dialog (there's no per-die choice to make). Clears Temp HP, restores current HP to max, regains spent Hit Dice up to half your total (minimum 1 if you have any), clears every used spell slot, **reduces Exhaustion by one level** (PHB p186) and **clears the Death Saves tracker** (p197 — regaining hit points wipes it, and a long rest takes you to full), and recovers every feature effect that recharges on a long or short rest (including counting down a delayed recharge). If your character is at 0 HP or below when you click it, a confirmation explains that PHB p186 grants no benefit from a long rest without at least 1 HP at the start of it — declining leaves everything untouched, exactly as if the rest had given nothing.
 
 *Two documented simplifications:* regaining Hit Dice for a multiclass character with more than one die size fills pools in Classes-table order (RAW doesn't say which pool you choose when dice of different sizes are mixed) — same "approximate for multiclass, documented" tradeoff the rest of the sheet already makes for total-level-driven values. And Pact Magic (Warlock) isn't modeled as a separate slot pool at all (see [Spellcasting](#modules) above), so there's nothing Warlock-specific for either rest button to do — ordinary spell slots reset on a long rest as normal.
 
@@ -320,14 +323,23 @@ Your arrangement is also saved locally (separate from the character; per browser
 *(Known rough edge: a module's text can reflow oddly mid-resize — to be smoothed once the modules are finalized.)*
 
 ## Saving & loading
-- **Autosave** to the browser (localStorage) on every change, into the **active character's** slot in the roster (see [Characters](#characters-tabs-creation-levelling-up)).
-- **Export JSON** downloads the character you're looking at. **Import** loads one back into it. **Reset** clears the sheet. All three work on a single character, not the whole roster.
+- **Autosave** to the browser (localStorage) on every change, into the **active character's** slot in the roster (see [Characters](#characters-tabs-creation-levelling-up)). The save indicator reports what actually happened: if the write fails — localStorage quota, which a large roster with long Event Logs can reach — it says **NOT SAVED** in red rather than claiming success, because at that point the character exists only in memory and closing the tab loses it. Export it to a file, then free space by deleting characters you no longer need or clearing old logs.
+- **Export JSON** downloads the character you're looking at. **Import** loads one back into it. **Reset** blanks it — the character you're looking at, back to an empty sheet; your other tabs and the pre-roster backup (`charsheet-v0`) are untouched. All three work on a single character, not the whole roster.
 - The spell library and equipment library are stored separately from your character (and are shared by all of them).
 
 ## Keyboard
 - **Enter** in a number box commits the math and moves on.
 - **Enter** on a focused checkbox toggles it.
 - **Enter** in the dice box runs the command.
+
+## Tests
+Browser harnesses under `tests/` — open one through the local server (e.g. `http://localhost:8931/tests/derived.html`) and it prints `N passed, M failed`. No build step and no test framework: each file is a minimal copy of `character-sheet.html`'s DOM with the real `src/*.js` loaded on top, so what runs is the app's own code rather than a reimplementation of it.
+
+- **[tests/derived.html](tests/derived.html)** — the pure math: proficiency bonus, max HP (including the first-class-only maximum at level 1 and negative CON), the multiclass caster-level and slot table (Pact Magic excluded), known/prepared/cantrip allowances, unarmored AC, save/skill totals with proficiency and expertise, `parseBonus`'s flat/dice split, and the number boxes' arithmetic and clamping.
+- **[tests/effects.html](tests/effects.html)** — the feature-effects engine and the roster/grouping logic.
+- **[tests/filters.html](tests/filters.html)** — the shared filter engine behind the Spell and Equipment libraries.
+
+The effects file loads the real effects database; the other two are self-contained and need no `data/` folder.
 
 ## Roadmap / known limits
 - Icon variants for modules/toolbar — not built yet. (The free-form layout engine itself — drag/resize/snap-to-grid/multi-select — is done; see [Layout](#layout-move--resize--snap).)

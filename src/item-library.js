@@ -283,9 +283,33 @@ const ITEM_FILTERS = createFilterSet({
   onChange: () => renderItemResults(),
 });
 
+/* Name -> item index, rebuilt lazily whenever the library changes.
+   This is on the hot path in a way that is not obvious from the call site: the inventory resolves
+   every line's weight/value through here, and it does so from itemsTotalValue(), itemsTotalWeight()
+   AND armorClassAuto() — three passes — inside recompute(), which runs on every keystroke. As a
+   linear .find() over a full 5e.tools equipment import (thousands of entries) that was three
+   library scans per item per character typed anywhere on the sheet.
+
+   The cache key is the array's identity plus its length, because ITEM_LIB is both reassigned
+   wholesale (load / clear / stale-schema reset) and appended to in place (addItems' dedupe loop).
+   The in-place sort that follows those appends reorders entries but changes neither the identity
+   nor the set of names, so it cannot invalidate a correctly-built index.
+   First name wins on a duplicate, matching the .find() this replaces (imports of the same item from
+   two sources keep whichever the existing dedupe/sort put first). */
+let _itemIndex = null, _itemIndexOf = null, _itemIndexLen = -1;
+function itemIndex() {
+  if (_itemIndex && _itemIndexOf === ITEM_LIB && _itemIndexLen === ITEM_LIB.length) return _itemIndex;
+  const m = new Map();
+  for (const i of ITEM_LIB) {
+    const k = (i && i.name || "").trim().toLowerCase();
+    if (k && !m.has(k)) m.set(k, i);
+  }
+  _itemIndex = m; _itemIndexOf = ITEM_LIB; _itemIndexLen = ITEM_LIB.length;
+  return m;
+}
 function findLibItemByName(name) {
   const q = (name || "").trim().toLowerCase(); if (!q) return null;
-  return ITEM_LIB.find(i => i.name.toLowerCase() === q) || null;
+  return itemIndex().get(q) || null;
 }
 
 /* The character's own item list resolves weight/value/description out of ITEM_LIB by name, so it has

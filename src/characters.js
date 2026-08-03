@@ -36,9 +36,12 @@ function charDisplayName(c) {
 
 function activeChar() { return ROSTER.chars.find(c => c.id === ROSTER.activeId) || null; }
 
+/* Returns whether the write actually landed. Callers must not report "saved" on a false — the save
+   status used to say "saved <time>" unconditionally while a quota failure was being swallowed here,
+   which told the user their work was safe at exactly the moment it stopped being. */
 function persistRoster() {
-  try { localStorage.setItem(ROSTER_KEY, JSON.stringify(ROSTER)); }
-  catch (e) { console.warn("Roster too large for localStorage; kept in memory for this session only.", e); }
+  try { localStorage.setItem(ROSTER_KEY, JSON.stringify(ROSTER)); return true; }
+  catch (e) { console.warn("Roster too large for localStorage; kept in memory for this session only.", e); return false; }
 }
 
 /* Load the roster, migrating a pre-roster character in on first run. Returns the state to apply, or
@@ -125,6 +128,11 @@ function deleteCharacter(id) {
   const wasActive = id === ROSTER.activeId;
   const idx = ROSTER.chars.indexOf(c);
   ROSTER.chars.splice(idx, 1);
+  /* Drop the log with the character, or it sits in localStorage forever with no tab to reach it —
+     up to LOG_CAP entries per deleted character, which is exactly the growth that pushes a roster
+     into a quota failure. Only its OWN log: a grouped character's log key belongs to the group and
+     the remaining members are still using it. */
+  if (ROSTER.logs && !c.group) delete ROSTER.logs[c.id];
   if (wasActive) {
     ROSTER.activeId = ROSTER.chars[Math.max(0, idx - 1)].id;
     applyState(activeChar().state);
