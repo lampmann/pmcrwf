@@ -47,13 +47,20 @@ function applyOp(dice, op, selRaw, sides) {
 function evalDice(tok) {
   const mm = tok.match(/^(\d*)d(\d+)(.*)$/i);
   const count = mm[1] === "" ? 1 : +mm[1], sides = +mm[2], rest = mm[3] || "";
+  // Hard cap on dice per term, so a typo ("1000d6") can't lock the tab up. It is reported in the
+  // roll's own render rather than applied quietly — a silently truncated roll is a wrong number
+  // presented as a right one, which is the one thing this sheet never does (see DOCS: degrade to
+  // manual, never guess).
+  const MAX_DICE = 500, rolledCount = Math.min(count, MAX_DICE);
+  const capped = count > MAX_DICE;
   const dice = [];
-  for (let i = 0; i < Math.min(count, 500); i++) dice.push({ v: rollDie(sides), dropped: false });
+  for (let i = 0; i < rolledCount; i++) dice.push({ v: rollDie(sides), dropped: false });
   const opRe = /(rr|ro|ra|mi|ma|kh|kl|ph|pl|k|p|e)([<>]?\d+|h\d+|l\d+)?/gi;
   let om; while ((om = opRe.exec(rest))) applyOp(dice, om[1].toLowerCase(), om[2], sides);
   const total = dice.filter(d => !d.dropped).reduce((s, d) => s + d.v, 0);
   if (sides === 20) dice.forEach(d => { if (!d.dropped) _d20kept.push(d.v); });
-  const render = tok + " (" + dice.map(d => d.dropped ? "<s>" + d.v + "</s>" : (d.rer || d.exp ? "<b>" + d.v + "</b>" : String(d.v))).join(", ") + ")";
+  const render = escapeHtml(tok) + " (" + dice.map(d => d.dropped ? "<s>" + d.v + "</s>" : (d.rer || d.exp ? "<b>" + d.v + "</b>" : String(d.v))).join(", ") + ")"
+    + (capped ? ` <b>[capped at ${MAX_DICE} of ${count} dice]</b>` : "");
   return { value: total, render, dice };
 }
 function evalExpr(expr) {
@@ -106,7 +113,12 @@ function applyMode(expr, mode) {
     return full;
   });
 }
-function fmtAnns(anns) { return anns.length ? " <i>[" + anns.join("][") + "]</i>" : ""; }
+/* Labels and [bracket annotations] are free text — typed into the command line, or carried on a
+   button from a weapon/spell/companion name. The log stores its HTML and re-injects it with
+   innerHTML on every load (see event-log.js / repaintEventLog), so anything user- or data-supplied
+   is escaped on the way in; only engine-built markup (a roll's own `display`) goes through raw. */
+function fmtAnns(anns) { return anns.length ? " <i>[" + anns.map(escapeHtml).join("][") + "]</i>" : ""; }
+function fmtLabel(label, fallback) { return escapeHtml(label || fallback); }
 
 function runRoll(s, forceMode) {
   let { expr, mode, label } = splitRoll(s);
@@ -115,20 +127,20 @@ function runRoll(s, forceMode) {
   const modeTag = mode === "normal" ? "" : ` <i>(${mode})</i>`;
   let crit = "";  // only the kept d20 can crit (deviates from 5eCrawler, which crits off any die's max/min)
   if (_d20kept.length === 1) { if (_d20kept[0] === 20) crit = "  <b>Critical Success!</b>"; else if (_d20kept[0] === 1) crit = "  <b>Critical Failure!</b>"; }
-  log(`<b>${rolled.value}</b> &larr; ${label || "roll"}${modeTag}: ${rolled.display}${fmtAnns(rolled.annotations)}${crit}`);
+  log(`<b>${rolled.value}</b> &larr; ${fmtLabel(label, "roll")}${modeTag}: ${rolled.display}${fmtAnns(rolled.annotations)}${crit}`);
   return rolled.value;
 }
 function runMultiroll(n, s) {
   const { expr, mode, label } = splitRoll(s);
   const lines = []; let sum = 0;
   for (let i = 0; i < n; i++) { const r = evalExpr(applyMode(expr, mode)); sum += r.value; lines.push(`  ${r.value}  ⇐ ${r.display}`); }
-  log(`<b>${label || "multiroll"} ×${n}</b> (sum ${sum})\n${lines.join("\n")}`);
+  log(`<b>${fmtLabel(label, "multiroll")} ×${n}</b> (sum ${sum})\n${lines.join("\n")}`);
 }
 function runIterroll(n, dc, s) {
   const { expr, mode, label } = splitRoll(s);
   const lines = []; let succ = 0;
   for (let i = 0; i < n; i++) { const r = evalExpr(applyMode(expr, mode)); const ok = r.value >= dc; if (ok) succ++; lines.push((ok ? "✓" : "✗") + " " + r.value); }
-  log(`<b>${label || "iterroll"}: ${succ}/${n} ≥ DC ${dc}</b>\n  ${lines.join(",  ")}`);
+  log(`<b>${fmtLabel(label, "iterroll")}: ${succ}/${n} ≥ DC ${dc}</b>\n  ${lines.join(",  ")}`);
 }
 function runCommand(input) {
   let s = (input || "").trim(); if (!s) return;

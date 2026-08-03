@@ -4,14 +4,28 @@ function autoStatusText(res, what) {
   if (!res.found) return `no data/ found for ${what} — see DOCS, or import manually below`;
   return `auto-loaded ${res.filesLoaded}/${res.filesTotal} file(s) from data/`;
 }
+/* Both loaders report failure into their own status line. Without a .catch, a throw anywhere in the
+   load or the render that follows it leaves "loading from data/ …" on screen for good, with nothing
+   in the error bar either (errors.js listens for `error`, and a rejected promise is not one) — the
+   silent failure the visible-error-surface rule exists to prevent. */
 function runSpellAutoLoad() {
   $("spell-lib-autostatus").textContent = "loading from data/ …";
-  autoLoadSpells().then(res => { renderSpellLibrary(); $("spell-lib-autostatus").textContent = autoStatusText(res, "spells"); });
+  autoLoadSpells()
+    .then(res => { renderSpellLibrary(); $("spell-lib-autostatus").textContent = autoStatusText(res, "spells"); })
+    .catch(err => { console.error("Spell auto-load failed", err); $("spell-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " — import manually below"; });
 }
 function runItemAutoLoad() {
   $("item-lib-autostatus").textContent = "loading from data/ …";
-  autoLoadItems().then(res => { renderItemLibrary(); $("item-lib-autostatus").textContent = autoStatusText(res, "equipment"); });
+  autoLoadItems()
+    .then(res => { renderItemLibrary(); $("item-lib-autostatus").textContent = autoStatusText(res, "equipment"); })
+    .catch(err => { console.error("Equipment auto-load failed", err); $("item-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " — import manually below"; });
 }
+
+/* Containers whose inputs are not character data: the three import libraries (search boxes, filter
+   controls, file pickers), the modal dialogs (which own their own draft state and commit it
+   explicitly), and the dice command line. Anything typed inside these neither feeds a derived number
+   nor belongs in a save, so it skips the sheet-wide recompute+autosave — see the listener below. */
+const NON_SHEET_INPUTS = "#spell-library-body, #item-library-body, #mon-library-body, .modal-overlay, #cmd-input";
 
 /* ---------- Init / wiring ---------- */
 function init() {
@@ -28,7 +42,17 @@ function init() {
   // Attach all listeners FIRST, so that even if loading a saved state fails,
   // the sheet stays fully interactive (this is the "nothing auto-calcs" failsafe).
   // live recompute + autosave on any input (math parsing happens on commit below)
-  document.addEventListener("input", () => { recompute(); scheduleSave(); });
+  //
+  // Scoped to fields that actually belong to the character. It used to fire on every keystroke
+  // anywhere on the page, which meant typing one letter into the spell search box ran a full
+  // recompute() (rebuilding the effects snapshot, repainting the spell list, re-totalling the
+  // inventory) and then serialised the whole character to localStorage. Search boxes, filter
+  // controls and the creator's own dialogs own their state and re-render themselves; none of them
+  // feeds a derived number on the sheet.
+  document.addEventListener("input", e => {
+    if (e.target && e.target.closest && e.target.closest(NON_SHEET_INPUTS)) return;
+    recompute(); scheduleSave();
+  });
 
   // commit math fields on blur (change) or Enter
   document.addEventListener("change", e => { const el = e.target.closest("[data-math]"); if (el) commitMathField(el); });
@@ -77,10 +101,20 @@ function init() {
     const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = () => { try { applyState(JSON.parse(reader.result)); saveState(); } catch (err) { alert("Bad JSON: " + err); } };
+    reader.onerror = () => alert("Could not read that file: " + (reader.error && reader.error.message || "unknown error"));
     reader.readAsText(file);
+    e.target.value = "";   // so re-picking the SAME file fires `change` again (mirrors spell/item import)
   });
+  /* Resets the character you're looking at, not the browser's storage. The old implementation removed
+     the "charsheet-v0" key, which stopped being where characters live when the roster landed — so it
+     reset nothing, and the one thing it did delete was the deliberately-preserved pre-roster backup
+     (see the header comment in characters.js). Other characters on the tab bar are untouched. */
   $("btn-reset").addEventListener("click", () => {
-    if (confirm("Reset the whole sheet? This clears saved data.")) { localStorage.removeItem("charsheet-v0"); location.reload(); }
+    const who = ($("char-name").value || "").trim() || "this character";
+    if (!confirm(`Reset ${who} to a blank sheet? This can't be undone. Your other characters are not affected.`)) return;
+    if (typeof resetSheetToBlank === "function") resetSheetToBlank(); else location.reload();
+    saveState();
+    logEvent("info", `<b>${escapeHtml(who)}</b> was reset to a blank sheet`);
   });
 
   // ----- Spell library wiring -----

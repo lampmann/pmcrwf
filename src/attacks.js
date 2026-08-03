@@ -41,7 +41,10 @@
 (function () {
   "use strict";
   const $ = id => document.getElementById(id);
-  const esc = v => (v || "").replace(/"/g, "&quot;");
+  // The shared escaper (text-utils.js), not a local quotes-only one: these values are written into
+  // both HTML attributes and, via the roll log, into element bodies — a `"`-only escape is safe for
+  // the former and not for the latter, and one attack name feeds both.
+  const esc = v => escapeHtml(v || "");
   const signed = n => (n >= 0 ? "+" + n : "" + n);
   const ABILS = [["str", "Str"], ["dex", "Dex"], ["con", "Con"], ["int", "Int"], ["wis", "Wis"], ["cha", "Cha"], ["fin", "Finesse"], ["", "—"]];
   let idSeq = 0;
@@ -154,7 +157,9 @@
   }
   function rollBoth(tr, mode) {
     const d = rowData(tr), res = rollAttackOnce(d, mode);
-    log(`<b>${res.name}</b> — ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
+    // res.name is a user-typed field; the log stores its HTML and re-injects it on every load, so it
+    // has to be escaped here (hitText/dmgText are engine-built markup and are already safe).
+    log(`<b>${esc(res.name)}</b> — ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
   }
 
   // doubles each dice term in a damage expression (e.g. "1d8+3" -> "(1d8+1d8)+3") for crit damage,
