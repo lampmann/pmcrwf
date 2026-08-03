@@ -1,11 +1,16 @@
 {
   "Default (unstyled)": "",
+  "Dark Mode": "dark-mode.css",
   "Illuminated Manuscript": "illuminated-manuscript.css",
+  "Gilded Folio": "gilded-folio.css",
   "Cyber Grimoire": "cyber-grimoire.css",
+  "Neon Codex": "neon-codex.css",
   "Blood Moon Gothic": "blood-moon-gothic.css",
+  "Crimson Eclipse": "crimson-eclipse.css",
   "Verdant Feywild": "verdant-feywild.css",
+  "Wildwood Court": "wildwood-court.css",
   "Infernal Bronze": "infernal-bronze.css",
+  "Molten Covenant": "molten-covenant.css",
   "Celestial Aurora": "celestial-aurora.css",
-  "Deep Sea Leviathan": "deep-sea-leviathan.css",
-  "Crimson Eclipse": "crimson-eclipse.css"
+  "Deep Sea Leviathan": "deep-sea-leviathan.css"
 }

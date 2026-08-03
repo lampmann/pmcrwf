@@ -12,8 +12,9 @@
 (function () {
   "use strict";
   const LKEY = "charsheet-layout";
-  const state = { free: false, activated: false, grid: 8, snapGrid: true, snapEdge: true, zTop: 0, map: {} };
+  const state = { free: false, activated: false, grid: 8, snapGrid: true, snapEdge: true, zTop: 0, map: {}, collapsed: {} };
   try { const d = JSON.parse(localStorage.getItem(LKEY)); if (d) Object.assign(state, d); } catch (e) {}
+  if (!state.collapsed) state.collapsed = {};   // a layout saved before collapsing existed
 
   const DIRS = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
   const byId = id => document.getElementById(id);
@@ -42,6 +43,79 @@
       if (m.querySelector(":scope > .lay-h")) return;
       DIRS.forEach(d => { const h = document.createElement("div"); h.className = "lay-h " + d; h.dataset.dir = d; m.appendChild(h); });
     });
+  }
+
+  /* ---- collapse ----
+     Every module's markup is `<h2>title</h2>` followed by its actual content, with nothing else —
+     that's consistent across all of them, so rather than touch character-sheet.html once per module
+     this wraps the "everything after the h2" part into one `.lay-body` div at runtime and toggles
+     that div's display. Must run BEFORE addHandles(): the 8 resize handles are appended as direct
+     children of `.module` (position: absolute against the module's own box), and if this ran after
+     them it would sweep the handles into the body wrapper too. */
+  function wrapBodies() {
+    modules().forEach(m => {
+      if (m.querySelector(":scope > .lay-body")) return;
+      const h2 = m.querySelector(":scope > h2"); if (!h2) return;
+      const body = document.createElement("div"); body.className = "lay-body";
+      let n = h2.nextSibling;
+      while (n) { const next = n.nextSibling; body.appendChild(n); n = next; }
+      m.appendChild(body);   // h2 is the only sibling left, so this lands right after it
+    });
+  }
+  /* One toggle button, prepended into each module's own <h2> — the same place Exhaustion's rules-ref
+     button and Combat's status span already live, so a button inside a module title isn't a new
+     pattern here. */
+  function addCollapseToggles() {
+    modules().forEach(m => {
+      const h2 = m.querySelector(":scope > h2"); if (!h2 || h2.querySelector(":scope > .lay-collapse-btn")) return;
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "lay-collapse-btn"; btn.setAttribute("aria-expanded", "true");
+      h2.insertBefore(btn, h2.firstChild);
+    });
+  }
+  function applyCollapse(m) {
+    const on = !!state.collapsed[key(m)];
+    m.classList.toggle("lay-collapsed", on);
+    const btn = m.querySelector(":scope > h2 > .lay-collapse-btn");
+    if (btn) { btn.textContent = on ? "▸" : "▾"; btn.title = on ? "expand" : "collapse"; btn.setAttribute("aria-expanded", String(!on)); }
+    // A collapsed module's height comes from its (now-hidden) content normally; if it was ever
+    // manually resized in Free mode it also carries an explicit inline height that content-hiding
+    // alone can't shrink. Collapsing clears it so the module shrinks to just its title bar; expanding
+    // restores whatever height was stored (or back to auto, for a module never resized).
+    const p = state.map[key(m)];
+    if (p) m.style.height = (!on && p.h) ? p.h + "px" : "";
+  }
+  function toggleCollapse(m) {
+    const k = key(m); state.collapsed[k] = !state.collapsed[k];
+    applyCollapse(m);
+    if (state.activated) compactLayout(); else sizeContainer();
+    save();
+  }
+
+  /* ---- compact: close vertical gaps between absolutely-positioned modules without touching x/width.
+     Only meaningful once the layout is "activated" (modules absolutely positioned) — the ordinary
+     flex flow already reflows around a collapsed/shrunk module with no help needed. A skyline-style
+     pack: walk modules top-to-bottom (ties broken left-to-right), and drop each one to the lowest
+     point directly beneath anything already placed that it horizontally overlaps. x and width are
+     never touched, so a deliberately-built column layout stays exactly as wide/aligned as it was —
+     only the empty space between rows disappears. Run automatically after a collapse/expand, and
+     also offered as its own "Compact" button for closing gaps left by anything else (an attack row
+     deleted, a companion removed, ...). */
+  function compactLayout() {
+    if (!state.activated) return;
+    const items = modules().map(m => {
+      const p = state.map[key(m)]; if (!p) return null;
+      return { m, x: p.x, w: p.w || m.offsetWidth, h: m.offsetHeight, y: p.y };
+    }).filter(Boolean).sort((a, b) => a.y - b.y || a.x - b.x);
+    const placed = [];
+    items.forEach(it => {
+      let newY = 0;
+      placed.forEach(o => { if (it.x < o.x + o.w && it.x + it.w > o.x) newY = Math.max(newY, o.newY + o.h); });
+      it.newY = newY;
+      placed.push(it);
+    });
+    items.forEach(it => { const p = state.map[key(it.m)]; p.y = it.newY; it.m.style.top = p.y + "px"; });
+    sizeContainer(); save();
   }
 
   /* ---- positions ---- */
@@ -76,6 +150,7 @@
     if (state.free) state.activated = true;
     if (state.activated) { ensurePositions(); c.classList.add("lay-active"); modules().forEach(applyPos); sizeContainer(); }
     else { c.classList.remove("lay-active"); modules().forEach(clearPos); c.style.minHeight = ""; clearSelection(); }
+    modules().forEach(applyCollapse);
     c.classList.toggle("lay-free", state.free);
     if (!state.free) clearSelection();
     updateGrid(); updateSelbox();
@@ -260,6 +335,14 @@
     const cont = e.target.closest(".modules"); if (cont) startMarquee(e, cont);
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.free) clearSelection(); });
+  /* Plain click delegation, not routed through the pointerdown handler above: that one only acts
+     while state.free (dragging/resizing), and CSS already sets pointer-events:none on every button
+     inside a module while Free is on — including this one — so there's nothing to guard against
+     the two handlers fighting over the same click. */
+  document.addEventListener("click", e => {
+    const btn = e.target.closest(".lay-collapse-btn"); if (!btn) return;
+    const m = btn.closest(".module"); if (m) toggleCollapse(m);
+  });
 
   /* ---- save / load layout file ---- */
   function exportLayout() {
@@ -295,21 +378,25 @@
       <label>grid <input type="number" id="lay-gridsize" min="1" max="64" style="width:3rem"></label>
       <label><input type="checkbox" id="lay-edge"> snap to modules</label>
       <button id="lay-reset">reset</button>
+      <button id="lay-compact" title="close vertical gaps between modules without moving them left/right">compact</button>
       <button id="lay-save">save file</button>
       <label>load <input type="file" id="lay-load" accept="application/json" style="width:8.5rem"></label>
-      <span class="hint" id="lay-hint"></span>`;
+      <span class="hint" id="lay-hint"></span>
+      <span class="hint">Click the &#9662; next to a module's title to collapse it &mdash; the gap closes up automatically.</span>`;
     const c = container(); c.parentNode.insertBefore(bar, c);
     syncControls();
     byId("lay-free").addEventListener("change", e => { state.free = e.target.checked; apply(); save(); updateHint(); });
     byId("lay-grid").addEventListener("change", e => { state.snapGrid = e.target.checked; updateGrid(); save(); });
     byId("lay-edge").addEventListener("change", e => { state.snapEdge = e.target.checked; save(); });
     byId("lay-gridsize").addEventListener("change", e => { state.grid = Math.max(1, Math.min(64, Number(e.target.value) || 8)); e.target.value = state.grid; updateGrid(); save(); });
-    byId("lay-reset").addEventListener("click", () => { if (confirm("Reset module layout back to the default flow?")) { state.map = {}; state.free = false; state.activated = false; state.zTop = 0; clearSelection(); syncControls(); apply(); save(); updateHint(); } });
+    byId("lay-reset").addEventListener("click", () => { if (confirm("Reset module layout back to the default flow? This also expands any collapsed modules.")) { state.map = {}; state.collapsed = {}; state.free = false; state.activated = false; state.zTop = 0; clearSelection(); syncControls(); apply(); save(); updateHint(); } });
+    byId("lay-compact").addEventListener("click", () => { if (!state.activated) { alert("Nothing to compact — modules are only absolutely positioned once you've used Free mode at least once."); return; } compactLayout(); });
     byId("lay-save").addEventListener("click", exportLayout);
     byId("lay-load").addEventListener("change", e => { if (e.target.files[0]) importLayout(e.target.files[0]); e.target.value = ""; });
     updateHint();
   }
 
-  document.addEventListener("DOMContentLoaded", () => { buildBar(); addHandles(); apply(); });
-  window.__layout = { state, apply, snapMove, modules, ensurePositions, save, selected, selectAdd, updateSelectionUI, selectionRect };
+  document.addEventListener("DOMContentLoaded", () => { buildBar(); wrapBodies(); addCollapseToggles(); addHandles(); apply(); });
+  window.__layout = { state, apply, snapMove, modules, ensurePositions, save, selected, selectAdd, updateSelectionUI, selectionRect,
+    toggleCollapse, compactLayout, wrapBodies, addCollapseToggles };
 })();
