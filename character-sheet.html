@@ -103,6 +103,12 @@
     <div class="hint">Max HP assumes the fixed/"consistent" hit point value per level (4/5/6/7 for d6/d8/d10/d12) rather than rolling, using each class's Hit Die and level from the Classes table above.</div>
   </section>
 
+  <!-- ===== COMBAT ROUND TRACKER (src/combat.js) ===== -->
+  <section class="module" data-module="combat">
+    <h2>Combat <span class="hint" id="combat-status"></span></h2>
+    <div id="combat-body"></div>
+  </section>
+
   <!-- ===== CONDITIONS ===== -->
   <section class="module" data-module="conditions">
     <h2>Conditions</h2>
@@ -208,6 +214,11 @@
   <!-- ===== INVENTORY & EQUIPMENT ===== -->
   <section class="module wide" data-module="inventory">
     <h2>Inventory &amp; Equipment</h2>
+    <!-- Equipped body slots, PHB p141 (src/equip-slots.js). -->
+    <fieldset>
+      <legend>Equipped</legend>
+      <div id="equip-slots"></div>
+    </fieldset>
     <div>
       Coins:
       <label>cp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-cp"></label>
@@ -502,6 +513,8 @@
 <script src="src/characters.js"></script>
 <script src="src/creator.js"></script>
 <script src="src/xp.js"></script>
+<script src="src/combat.js"></script>
+<script src="src/equip-slots.js"></script>
 <script src="src/theme.js"></script>
 <script src="src/app.js"></script>
 <script src="src/status.js"></script>

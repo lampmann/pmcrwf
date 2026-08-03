@@ -54,7 +54,7 @@
     </div>
     <button id="item-lib-toggle"></button>
     <span id="attuned-count">0</span>
-    <div id="char-item-list"></div>
+    <div id="equip-slots"></div><div id="char-item-list"></div>
     <span id="items-weight-total">0</span><span id="items-value-total">0</span><span id="wealth-total-gp">0</span>
   </section>
   <section class="module wide" data-module="dice">
@@ -161,6 +161,8 @@
 <script src="../src/characters.js"></script>
 <script src="../src/creator.js"></script>
 <script src="../src/xp.js"></script>
+<script src="../src/combat.js"></script>
+<script src="../src/equip-slots.js"></script>
 <script src="../src/app.js"></script>
 
 <style>
@@ -1053,6 +1055,132 @@ document.addEventListener("DOMContentLoaded", () => {
       reorderCharacter("b", "c");
       assertEqual("...still as a unit when dragged the other way", ROSTER.chars.map(c => c.id).join(""), "abc");
     }
+  }
+
+  // ===== combat round tracker (combat.js) and equipment slots (equip-slots.js) =====
+  {
+    // --- attacks per Attack action, off the Extra Attack features ---
+    const savedLib = CLASS_LIB, savedRows = $("class-rows").innerHTML;
+    CLASS_LIB = {
+      Fighter: { name: "Fighter", hd: "d10", subs: {}, feats: [
+        { name: "Extra Attack", level: 5 }, { name: "Extra Attack (2)", level: 11 }, { name: "Extra Attack (3)", level: 20 }] },
+      Wizard: { name: "Wizard", hd: "d6", subs: {}, feats: [] },
+      Ranger: { name: "Ranger", hd: "d10", subs: {}, feats: [{ name: "Extra Attack", level: 5 }] },
+    };
+    const setClasses = rows => { $("class-rows").innerHTML = ""; rows.forEach(addClassRow); };
+
+    setClasses([{ name: "Wizard", lvl: 20 }]);
+    assertEqual("no Extra Attack means one attack per action", attacksPerAction(), 1);
+    setClasses([{ name: "Fighter", lvl: 4 }]);
+    assertEqual("...and still one below level 5", attacksPerAction(), 1);
+    setClasses([{ name: "Fighter", lvl: 5 }]);
+    assertEqual("Extra Attack makes it two", attacksPerAction(), 2);
+    setClasses([{ name: "Fighter", lvl: 11 }]);
+    assertEqual("Extra Attack (2) makes it three", attacksPerAction(), 3);
+    setClasses([{ name: "Fighter", lvl: 20 }]);
+    assertEqual("Extra Attack (3) makes it four", attacksPerAction(), 4);
+    setClasses([{ name: "Ranger", lvl: 11 }]);
+    assertEqual("a class whose Extra Attack doesn't escalate stays at two", attacksPerAction(), 2);
+
+    // --- spending, and the fact that it never refuses ---
+    COMBAT = blankCombat(); COMBAT.active = true; COMBAT.round = 1;
+    assertEqual("a fresh round has everything", COMBAT_KINDS.map(leftOf).join(","), "1,1,1,1");
+    spendResource("action", "Dodge");
+    assertEqual("spending takes one", leftOf("action"), 0);
+    spendResource("action", "Dodge again");
+    assertEqual("...and spending past zero is allowed, not blocked", COMBAT.used.action, 2);
+    assertEqual("...though `left` never goes negative", leftOf("action"), 0);
+
+    // --- an attack takes the action once, then spends banked swings ---
+    setClasses([{ name: "Fighter", lvl: 5 }]);
+    COMBAT = blankCombat(); COMBAT.active = true;
+    useAttackSwing("Longsword");
+    assertEqual("the first attack of the turn takes the Attack action", COMBAT.used.action, 1);
+    assertEqual("...and banks the rest of its swings", COMBAT.swings, 1);
+    assert("...and records that you've attacked (Two-Weapon Fighting depends on it)", COMBAT.attacked);
+    useAttackSwing("Longsword");
+    assertEqual("the second attack spends a swing, not another action", COMBAT.used.action, 1);
+    assertEqual("...leaving none", COMBAT.swings, 0);
+    useAttackSwing("Longsword");
+    assertEqual("a third attack has to take another action", COMBAT.used.action, 2);
+
+    // --- End Round gives it all back ---
+    COMBAT.moveUsed = 20; COMBAT.moveBonus = 30;
+    const before = COMBAT.round;
+    endRound();
+    assertEqual("End Round advances the round", COMBAT.round, before + 1);
+    assertEqual("...refreshes every resource", COMBAT_KINDS.map(k => COMBAT.used[k]).join(","), "0,0,0,0");
+    assertEqual("...clears spent movement and any Dash bonus", COMBAT.moveUsed + "/" + COMBAT.moveBonus, "0/0");
+    assertEqual("...and clears banked swings", COMBAT.swings, 0);
+    assert("...and the attacked-this-turn flag", !COMBAT.attacked);
+
+    CLASS_LIB = savedLib; $("class-rows").innerHTML = savedRows;
+
+    // --- equipment slots ---
+    {
+      const savedItems = CHARACTER_ITEMS, savedItemLib = ITEM_LIB;
+      ITEM_LIB = [
+        { name: "Longsword", source: "PHB", type: "Melee Weapon", weapon: true, weaponProps: ["V"], armorCat: "", misc: [], groupItems: [] },
+        { name: "Greatsword", source: "PHB", type: "Melee Weapon", weapon: true, weaponProps: ["2H", "H"], armorCat: "", misc: [], groupItems: [] },
+        { name: "Dagger", source: "PHB", type: "Melee Weapon", weapon: true, weaponProps: ["F", "L", "T"], range: "20/60", armorCat: "", misc: [], groupItems: [] },
+        { name: "Longbow", source: "PHB", type: "Ranged Weapon", weapon: true, weaponProps: ["A", "2H"], range: "150/600", armorCat: "", misc: [], groupItems: [] },
+        // The real shape of 5e.tools' shield: no `armor` flag at all, only the type code.
+        { name: "Shield", source: "PHB", type: "Shield", armorCat: "shield", ac: 2, misc: [], groupItems: [] },
+        { name: "Chain Mail", source: "PHB", type: "Heavy Armor", armor: true, armorCat: "heavy", ac: 16, misc: [], groupItems: [] },
+        { name: "Winged Boots", source: "DMG", type: "Wondrous Item", misc: [], groupItems: [] },
+      ];
+
+      assertEqual("a weapon guesses the main hand", guessSlot("Longsword"), "mainHand");
+      assertEqual("a shield guesses the off hand — it has no `armor` flag, only a category", guessSlot("Shield"), "offHand");
+      assertEqual("body armour guesses the armour slot", guessSlot("Chain Mail"), "armor");
+      assertEqual("footwear is recognised by name, wherever the word sits", guessSlot("Winged Boots"), "boots");
+      assertEqual("...as is headwear", guessSlot("Helm of Brilliance"), "head");
+      assertEqual("...and a cloak", guessSlot("Cloak of Displacement"), "cloak");
+      assertEqual("an item with no signal at all guesses nothing", guessSlot("Bag of Holding"), "");
+
+      assert("a hand takes anything", fitsSlot("Bag of Holding", "mainHand"));
+      assert("a thri-kreen's lesser hand refuses a weapon", !fitsSlot("Longsword", "hand3"));
+      assert("...and a shield", !fitsSlot("Shield", "hand3"));
+      assert("...but holds an object", fitsSlot("Bag of Holding", "hand3"));
+      assert("the armour slot refuses a shield", !fitsSlot("Shield", "armor"));
+      assert("...and takes armour", fitsSlot("Chain Mail", "armor"));
+      assert("two-handed is read off the weapon's properties", isTwoHanded("Greatsword") && !isTwoHanded("Longsword"));
+      // A thrown melee weapon is still melee — it just also has a range.
+      assert("a dagger is a melee weapon despite having a thrown range", isMeleeWeapon(findLibItemByName("Dagger")));
+      assert("...and a longbow is not", !isMeleeWeapon(findLibItemByName("Longbow")));
+
+      CHARACTER_ITEMS = [
+        { name: "Longsword", qty: 1, eq: false, attuned: false, slot: "" },
+        { name: "Shield", qty: 1, eq: false, attuned: false, slot: "" },
+        { name: "Greatsword", qty: 1, eq: false, attuned: false, slot: "" },
+      ];
+      equipToSlot(0, "mainHand"); equipToSlot(1, "offHand");
+      assertEqual("equipping fills the slot", (itemInSlot("mainHand") || {}).name, "Longsword");
+      assert("...and marks the item equipped, which is what AC reads", CHARACTER_ITEMS[0].eq);
+
+      equipToSlot(2, "mainHand");
+      assertEqual("a two-handed weapon displaces the main hand", (itemInSlot("mainHand") || {}).name, "Greatsword");
+      assertEqual("...and empties the off hand too", itemInSlot("offHand"), undefined);
+      assert("...leaving the displaced items unequipped", !CHARACTER_ITEMS[0].eq && !CHARACTER_ITEMS[1].eq);
+
+      equipToSlot(1, "offHand");
+      assertEqual("...and putting something back in the off hand displaces the two-hander", itemInSlot("mainHand"), undefined);
+
+      unequipSlot("offHand");
+      assert("unequipping clears both the slot and the flag", !CHARACTER_ITEMS[1].slot && !CHARACTER_ITEMS[1].eq);
+
+      // Legacy characters: equipped, but from before slots existed.
+      CHARACTER_ITEMS = [{ name: "Chain Mail", qty: 1, eq: true, attuned: false },
+                         { name: "Winged Boots", qty: 1, eq: true, attuned: false },
+                         { name: "Bag of Holding", qty: 1, eq: true, attuned: false }];
+      placeLegacyEquipped();
+      assertEqual("a pre-slots equipped item is placed by its guess", CHARACTER_ITEMS[0].slot, "armor");
+      assertEqual("...and so is the next", CHARACTER_ITEMS[1].slot, "boots");
+      assert("...while one with no guess is left alone and still equipped", !CHARACTER_ITEMS[2].slot && CHARACTER_ITEMS[2].eq);
+
+      CHARACTER_ITEMS = savedItems; ITEM_LIB = savedItemLib;
+    }
+    COMBAT = blankCombat();
   }
 
   lines.push("", `${pass} passed, ${fail} failed`);

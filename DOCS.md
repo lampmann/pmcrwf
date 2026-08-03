@@ -13,6 +13,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Modules](#modules)
 - [Event Log (and the dice roller)](#event-log-and-the-dice-roller)
 - [Roll buttons](#roll-buttons)
+- [Combat rounds](#combat-rounds)
 - [Resting](#resting)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
 - [Features (5e.tools import: race + class + feats)](#features-5etools-import-race--class--feats)
@@ -111,7 +112,14 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - **Exhaustion** — a clickable 0–6 effect table: click a level to set it (click your current level to step down), with rows up to your level highlighted since the 2014 effects are cumulative.
 - **Death Saves** — 3 success / 3 failure boxes, plus a **Roll Death Save** button that rolls 1d20 to the Event Log and auto-marks a box (10+ success, &lt;10 failure, nat 20 clears saves and sets HP to 1, nat 1 marks two failures).
 - *(Conditions, Exhaustion, and Death Saves are separate modules and, for now, display-only trackers — they don't yet auto-apply their mechanics (disadvantage, halved HP, etc.) to the sheet's math.)*
+- **Combat** — the round tracker: what's left of your action, bonus action, reaction, object interaction and movement this turn, with a menu per resource of what you can spend it on. See [Combat rounds](#combat-rounds).
 - **Inventory & Equipment** — coin purse (cp/sp/ep/gp/pp, auto-summed to a gp total via SRD exchange rates), plus a Features-styled item list: each line shows qty, name (click to show/hide its description, looked up from the Equipment Library by name), equipped toggle, and — for items that require it — an attuned toggle, with an **Attuned X/3** counter above the list. Items are added only from the Equipment Library (click "+ Add Item" to open it), same as Spells below; weight/value are looked up live from the library entry, not hand-edited. The **quantity box is editable** — type into it and the row's per-item and total weight/value follow as you go. The footer totals weight and item value, and shows **total wealth = coins + items** in gp.
+
+  *Equipped slots (PHB p141).* Above the list is a paper doll — main hand, off hand, armour, headwear, cloak, gloves, bracers, footwear — one item each, because that's what the rule says: you can't normally wear more than one pair of footwear, one pair of gloves, one pair of bracers, one suit of armour, one item of headwear, or one cloak. Click a slot to see what fits, or **drag** an item from the list onto it (and drag it back off to unequip). A **two-handed weapon takes both hands**, and putting something in the off hand displaces it.
+
+  The same page says to use common sense and allow exceptions — a circlet under a helmet — so every picker has a **show everything** toggle and will take whatever you insist on. Slot suggestions come from the item's type where the data types it (armour, shields, weapons) and from its name where it doesn't, since 5e.tools has no body-slot field: *Winged Boots* and *Boots of Speed* are both footwear. Ticking **equipped** in the list still works and drops the item into its guessed slot; unticking empties the slot. A character from before slots existed keeps everything it had equipped, placed into the slots it fits.
+
+  A **thri-kreen**'s two secondary arms appear as extra slots that hold objects but refuse weapons and shields, per that race's own wording; there's a toggle to turn extra arms on for anything else that has them.
 
   *Adding a generic variant.* 5e.tools stores some entries as *categories* rather than items — "Armor of Resistance" is really the ten concrete items it stands for, and "Cast-Off Armor" likewise. Those have nothing to say about weight, value or AC, so adding one by name would put a dead line in your inventory. Their button is a **…** instead of a **+**: it expands the category's members inline and each of those is addable. A member whose own book isn't loaded is still offered (marked `*`) and added by name.
 - **Proficiencies** — armor (Light/Medium/Heavy/Shields) and broad weapon (Simple/Martial) category checkboxes, plus freeform add/remove lists for specific weapons, tools, and languages.
@@ -155,6 +163,24 @@ Every save / skill / initiative / spell-attack has a `roll` button that uses its
 - Hold **Shift / Ctrl** while hovering a roll button to see the active mode as a tooltip.
 - **Right-click** a roll button for a *Normal / Advantage / Disadvantage* menu.
 - A stat's **Misc** field may contain **dice** (e.g. `10+1d4`): the flat part folds into the shown total, and the dice are appended to the roll — handy for always-on effects like Pass Without Trace + Guidance on Stealth.
+
+## Combat rounds
+Rolling initiative puts you in combat, and the **Combat** module starts tracking your turn: action, bonus action, reaction, free object interaction, and movement in feet. **End Round** gives it all back. It's the round tracker from LANCER's COMP/CON, applied to 5e's action economy.
+
+Each resource is a button. **Click** it for a menu of what you can spend it on — built from *your* sheet, not a generic list: your attacks, your spells filtered by casting time, your class features that mention a bonus action, plus the standard PHB actions (Dash, Disengage, Dodge, Help, Hide, Ready, Search, Use an Object). Picking something spends the resource and, where the sheet can, makes the roll — Hide rolls Stealth through your real skill button, an attack rolls that attack. **Double-click** a resource to just spend it with no menu, for when you know what you did and only want the pip gone.
+
+**The Attack action grants swings, not one attack.** Taking it banks 1 + Extra Attack attacks, and each attack roll spends one — so a Fighter 5 rolling twice has used *one* action, which is the whole point. Rolling an attack with nothing banked takes the action first and then a swing, so the common case (click **atk+dmg**, never touch this module) books itself correctly. Extra Attack is read from your class features, including Fighter's escalating "Extra Attack (2)" and "(3)".
+
+The menus know a few things worth knowing:
+- **Two-Weapon Fighting** (PHB p195) is offered only when you have two *light melee* weapons equipped and have already attacked this turn — and says which condition is missing when it isn't. A dagger counts: it's a melee weapon that happens to be thrown.
+- **Cast a Spell** appears under whichever resource matches the spell's casting time, with the matching spells in a submenu. A spell your Spell Library doesn't know is left out rather than guessed at.
+- **Dash** adds your speed to the movement pool rather than doubling it — same result, and it survives a speed change mid-turn.
+
+**Nothing is enforced.** A resource at zero goes red and says you're over, and the roll still happens. Readied actions, Action Surge, and effects this sheet doesn't model are all real, and a tracker that refused to let you roll would be wrong often enough that you'd turn it off. Every spend is logged to the [Event Log](#event-log-and-the-dice-roller), so the record is auditable.
+
+*Two documented simplifications.* Your reaction actually refreshes at the **start** of your turn (PHB p190), not the end; with no initiative order on a single-character sheet, one End Round button standing for "end my turn / start my next" is the honest version, and the button says what it refreshes. And the free object interaction is one per turn — a second one costs your action, which is the separate **Use an Object** entry.
+
+The tracker is per character, so switching to your familiar's tab shows that character's own turn, and a fight survives a reload.
 
 ## Resting
 Full PHB'14 p186 automation, split across two places: **Hit Dice** live in the HP & Defenses module (spending one is always your own choice, in the moment); the **Short Rest** / **Long Rest** buttons (Features module) handle everything that isn't a choice.
@@ -323,6 +349,7 @@ Your arrangement is also saved locally (separate from the character; per browser
 - **Missing vs. big-name sheets (D&D Beyond, Roll20, Fight Club 5e), still worth doing:**
   - Weapons/attacks table with to-hit and damage roll buttons — **done** (the Attacks module, feature effects folded into each row via **Fx**, plus Offensive Routines' damage-by-AC-range tables with auto-doubled crit dice). Still missing: melee/ranged/thrown/weapon-property niceties, and a crit model beyond doubling the dice you typed.
   - Proficiencies — **done** (a new Proficiencies module): armor (light/medium/heavy/shields) and broad weapon (simple/martial) category checkboxes, plus freeform add/remove lists for specific weapons, tools, and languages.
+  - An action-economy / round tracker — **done** (the Combat module; see [Combat rounds](#combat-rounds)). Still missing: legendary/lair actions, an initiative order for the whole table, and any link between the tracker and limited-use features (spending a Bonus Action on Second Wind doesn't yet tick its pip).
   - Death saves, exhaustion, and a conditions tracker — **done** (three separate modules; mechanically applying their effects, e.g. Poisoned's disadvantage, is the next step).
   - A concentration indicator tied to the currently-active concentration spell — **done** (see [Spellcasting](#modules) above): a per-spell toggle plus an always-visible banner, one spell at a time, auto-dropping the previous one.
   - Short/Long Rest buttons that auto-restore HP, Hit Dice, and spell slots — **done** (see [Resting](#resting)).
