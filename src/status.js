@@ -19,8 +19,11 @@
     return false;
   }
   function clearDeath() {
-    deathBoxes("succ").concat(deathBoxes("fail")).forEach(b => (b.checked = false));
+    const boxes = deathBoxes("succ").concat(deathBoxes("fail"));
+    const had = boxes.some(b => b.checked);
+    boxes.forEach(b => (b.checked = false));
     if (typeof scheduleSave === "function") scheduleSave();
+    return had;
   }
   function rollDeathSave() {
     if (typeof rollDie !== "function") return;
@@ -89,4 +92,14 @@
     wireIncapacitators();
     updateExhaustion();  // runs after app.js has applied any saved state (this script loads after app.js)
   });
+
+  /* Exposed for the rest of the sheet. Two callers need in particular:
+       - applyState() (persistence.js) repaints the exhaustion table after a character switch. It
+         writes exhaustion-level.value directly, which fires no `change`, so without this the new
+         character showed the PREVIOUS one's highlighted rows.
+       - performRest() (rest.js) steps exhaustion down and clears death saves on a long rest. */
+  window.updateExhaustion = updateExhaustion;
+  window.exhaustionLevel = () => Math.max(0, Math.min(6, Number((byId("exhaustion-level") || {}).value) || 0));
+  window.setExhaustion = setExhaustion;
+  window.clearDeathSaves = clearDeath;
 })();

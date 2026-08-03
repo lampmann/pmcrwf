@@ -121,10 +121,13 @@ function recompute() {
     $("spell-atk").textContent = sign(spellAttackBonus()) + (ad ? " " + ad : "");
   } else { $("spell-dc").textContent = "—"; $("spell-atk").textContent = "—"; }
 
-  const hpMax = maxHP();
-  $("hp-max").textContent = String(hpMax);
-  const hpCur = $("hp-cur");
-  if (hpCur.value !== "" && Number(hpCur.value) > hpMax) hpCur.value = String(hpMax);
+  $("hp-max").textContent = String(maxHP());
+  /* Current HP is deliberately NOT clamped here. recompute() runs on every keystroke, so a max that
+     is momentarily low mid-edit — CON cleared to be retyped, a class level blanked, a class row
+     deleted before being re-added — used to overwrite current HP with that temporary max, and
+     finishing the edit did not bring it back. hp-cur carries data-max-from="hp-max" in the markup,
+     so commitMath() clamps it on commit (blur/Enter), which is the point at which the max is a
+     settled number rather than a half-typed one. */
   // renderHitDice() (src/rest.js) is deliberately NOT called from here — recompute() runs on every
   // keystroke anywhere on the page (see app.js's document-level "input" listener), and its own pool
   // markup contains editable inputs; rebuilding them on every unrelated keystroke would blow away

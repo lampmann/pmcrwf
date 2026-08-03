@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>derived math tests</title>
+<style>body{font-family:monospace;white-space:pre-wrap}.pass{color:#070}.fail{color:#c00;font-weight:bold}</style>
+</head>
+<body>
+<!-- Covers the pure-math core: derived.js (proficiency bonus, max HP, AC, the multiclass slot
+     table, parseBonus), data.js (known/prepared/cantrip allowances) and math-fields.js (the number
+     boxes' arithmetic and clamping). These are the functions where a silent off-by-one is most
+     expensive — every number on the sheet is downstream of them — and they were the untested half
+     of the codebase.
+
+     Same approach as effects.html: a minimal copy of character-sheet.html's structure, just enough
+     DOM for the real src/*.js to run unmodified. No data/ folder here, so the auto-loaders fail
+     open exactly as they do in the app, and no library is needed — every function under test reads
+     the DOM and the hardcoded SRD tables, not an import. -->
+<div class="toolbar"><span id="save-status"></span>
+  <button id="btn-export"></button><input type="file" id="file-import"><button id="btn-reset"></button>
+  <select id="theme-select"></select>
+</div>
+<div id="char-tabs"></div>
+<div id="effects-strip"></div>
+<div class="modules">
+  <section class="module wide" data-module="header">
+    <input type="text" data-persist id="char-name"><input type="text" data-persist id="char-race">
+    <input type="text" data-persist id="char-subrace"><input type="text" data-persist id="char-bg">
+    <table><tbody id="class-rows"></tbody></table>
+    <button id="btn-add-class">+</button>
+    <span id="total-level">0</span> <span id="pb">+0</span> <input type="number" id="pb-override">
+  </section>
+  <section class="module" data-module="abilities"><table><tbody id="ability-rows"></tbody></table></section>
+  <section class="module" data-module="saves"><table><tbody id="save-rows"></tbody></table></section>
+  <section class="module" data-module="skills"><table><tbody id="skill-rows"></tbody></table><span id="passive-perc">10</span></section>
+  <section class="module" data-module="hp">
+    <input type="text" id="hp-cur" data-math data-min="0" data-max-from="hp-max" data-allow-empty><span id="hp-max">0</span>
+    <input type="number" id="hp-max-override">
+    <input type="text" id="hp-temp" data-math data-min="0" data-allow-empty><div id="hit-dice-pools"></div>
+    <span id="ac">10</span><input type="text" id="ac-misc"><input type="number" id="ac-override">
+    <input type="text" id="speed"><span id="init">+0</span><input type="text" id="init-misc">
+  </section>
+  <section class="module wide" data-module="inventory">
+    <input id="coin-cp"><input id="coin-sp"><input id="coin-ep"><input id="coin-gp"><input id="coin-pp">
+    <span id="coin-total-gp">0</span>
+    <div id="item-lib-collapsed-hint"></div>
+    <div id="item-library-body" style="display:none">
+      <button id="item-lib-reload"></button><button id="item-lib-clear"></button>
+      <span id="item-lib-count"></span><span id="item-lib-autostatus"></span>
+      <input type="file" id="item-import"><div id="item-filter-area"></div><input id="item-search"><div id="item-results"></div>
+    </div>
+    <button id="item-lib-toggle"></button><span id="attuned-count">0</span><div id="char-item-list"></div>
+    <span id="items-weight-total">0</span><span id="items-value-total">0</span><span id="wealth-total-gp">0</span>
+  </section>
+  <section class="module wide" data-module="dice"><input id="cmd-input"><div id="dicelog"><div>—</div></div></section>
+  <section class="module wide" data-module="attacks"><table><tbody id="attack-rows"></tbody></table><button id="btn-add-attack">+</button></section>
+  <section class="module wide" data-module="spellcasting">
+    <select id="spell-ability"><option value=""></option><option value="str"></option><option value="dex"></option><option value="con"></option><option value="int"></option><option value="wis"></option><option value="cha"></option></select>
+    <span id="spell-dc">—</span><input type="number" id="spell-dc-misc"><span id="spell-atk">—</span><input id="spell-atk-misc">
+    <table><thead><tr id="slot-head"></tr></thead><tbody><tr id="slot-total"></tr><tr id="slot-override"></tr><tr id="slot-used"></tr></tbody></table>
+    <div id="spell-lib-collapsed-hint"></div>
+    <div id="spell-library-body" style="display:none">
+      <button id="spell-lib-reload"></button><button id="spell-lib-clear"></button>
+      <span id="spell-lib-count"></span><span id="spell-lib-autostatus"></span>
+      <input type="file" id="spell-import"><select id="spell-add-class"></select>
+      <div id="spell-filter-area"></div><input id="spell-search"><div id="spell-results"></div>
+    </div>
+    <button id="spell-lib-toggle"></button><div id="spell-feat-results"></div>
+  </section>
+</div>
+<!-- spellcasting.js wires this unconditionally at DOMContentLoaded, so it has to exist even though
+     nothing here opens it. -->
+<div id="prep-class-modal" style="display:none">
+  <b id="prep-modal-spell"></b><div id="prep-modal-hint"></div><select id="prep-modal-select"></select>
+  <button id="prep-modal-cancel"></button><button id="prep-modal-confirm"></button>
+</div>
+
+<h3>results</h3>
+<div id="results">running…</div>
+
+<script>try { localStorage.clear(); } catch (e) {}</script>
+<script src="../src/errors.js"></script>
+<script src="../src/data.js"></script>
+<script src="../src/text-utils.js"></script>
+<script src="../src/typeahead.js"></script>
+<script src="../src/math-fields.js"></script>
+<script src="../src/rows.js"></script>
+<script src="../src/derived.js"></script>
+<script src="../src/event-log.js"></script>
+<script src="../src/dice.js"></script>
+<script src="../src/filters.js"></script>
+<script src="../src/spell-library.js"></script>
+<script src="../src/item-library.js"></script>
+<script src="../src/inventory.js"></script>
+<script src="../src/spellcasting.js"></script>
+<script>
+/* The effects engine is not loaded here, so effFlat/effDice/effMode/effContribs — which derived.js
+   adds into every total — have to exist as no-ops. That is deliberate: this file tests the base
+   math in isolation, and effects.html already tests the overlay on top of it. */
+function effFlat() { return 0; }
+function effDice() { return ""; }
+function effMode() { return null; }
+function effContribs() { return []; }
+function effAnnotations() { return ""; }
+function effectsSnapshot() { return { flat: {}, dice: {}, profMult: {}, mode: {}, notes: {}, contribs: {}, unapplied: [] }; }
+function invalidateEffects() {}
+function scheduleSave() {}
+function renderSpellList() {}
+function renderClassFeatures() {}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const lines = []; let pass = 0, fail = 0;
+  function assertEqual(what, got, want) {
+    const ok = String(got) === String(want);
+    ok ? pass++ : fail++;
+    lines.push(`${ok ? "ok  " : "FAIL"} ${what}${ok ? "" : `  (got ${got}, want ${want})`}`);
+  }
+  function assert(what, cond) { assertEqual(what, !!cond, true); }
+
+  buildAbilities(); buildSaves(); buildSkills(); buildSlots();
+
+  /* Helpers to put the sheet into a known state. setClasses replaces the whole Classes table, which
+     is what totalLevel/casterLevel/maxHPAuto all read. */
+  function setClasses(rows) {
+    $("class-rows").innerHTML = "";
+    rows.forEach(r => addClassRow({ name: r.name, sub: r.sub || "", lvl: r.lvl, hitDie: r.hitDie || "auto", casting: r.casting || "auto" }));
+  }
+  function setScore(k, v) { $("score-" + k).value = String(v); }
+  const clearOverrides = () => { $("pb-override").value = ""; $("hp-max-override").value = ""; $("ac-override").value = ""; $("ac-misc").value = ""; };
+
+  // ---------- parseBonus: the "misc bonus" mini-language behind every Misc field ----------
+  {
+    assertEqual("a plain number is flat", parseBonus("3").flat, 3);
+    assertEqual("...and contributes no dice", parseBonus("3").dice, "");
+    assertEqual("a bare die gets an implicit count", parseBonus("d4").dice, "+1d4");
+    assertEqual("mixed terms split (Pass Without Trace + Guidance)", parseBonus("10+d4").flat, 10);
+    assertEqual("...with the dice part kept signed", parseBonus("10+d4").dice, "+1d4");
+    assertEqual("negatives subtract", parseBonus("-2").flat, -2);
+    assertEqual("...and mix with positives", parseBonus("5-2").flat, 3);
+    assertEqual("a subtracted die keeps its sign (Bane)", parseBonus("-1d4").dice, "-1d4");
+    assertEqual("whitespace is ignored", parseBonus(" 2 + 1d6 ").flat, 2);
+    assertEqual("empty is zero", parseBonus("").flat, 0);
+    assertEqual("garbage contributes nothing rather than NaN", parseBonus("abc").flat, 0);
+  }
+
+  // ---------- proficiency bonus ----------
+  {
+    clearOverrides();
+    setClasses([{ name: "Fighter", lvl: 1 }]);
+    assertEqual("PB at level 1", profBonus(), 2);
+    setClasses([{ name: "Fighter", lvl: 4 }]); assertEqual("PB at level 4 (still +2)", profBonus(), 2);
+    setClasses([{ name: "Fighter", lvl: 5 }]); assertEqual("PB at level 5 steps to +3", profBonus(), 3);
+    setClasses([{ name: "Fighter", lvl: 20 }]); assertEqual("PB at level 20", profBonus(), 6);
+    setClasses([{ name: "Fighter", lvl: 3 }, { name: "Rogue", lvl: 2 }]);
+    assertEqual("PB follows TOTAL level when multiclassed, not the highest class", profBonus(), 3);
+    $("pb-override").value = "9";
+    assertEqual("an override wins", profBonus(), 9);
+    clearOverrides();
+  }
+
+  // ---------- max HP ----------
+  {
+    clearOverrides();
+    setScore("con", 10);
+    setClasses([{ name: "Fighter", lvl: 1 }]);
+    assertEqual("level 1 Fighter (d10 max) with CON 10", maxHPAuto(), 10);
+    setScore("con", 14);
+    assertEqual("...+2 CON per level", maxHPAuto(), 12);
+    setClasses([{ name: "Fighter", lvl: 3 }]);
+    assertEqual("levels 2-3 take the fixed value, not the max", maxHPAuto(), 12 + 8 + 8);
+    // First class in the table gets the max-at-first-level; the second class does not.
+    setScore("con", 10);
+    setClasses([{ name: "Fighter", lvl: 1 }, { name: "Wizard", lvl: 1 }]);
+    assertEqual("a multiclass' second class gets the fixed value at its own level 1", maxHPAuto(), 10 + 4);
+    setClasses([{ name: "Barbarian", lvl: 1 }]); assertEqual("d12 class", maxHPAuto(), 12);
+    setClasses([{ name: "Wizard", lvl: 1 }]); assertEqual("d6 class", maxHPAuto(), 6);
+    setClasses([{ name: "Notaclass", lvl: 1 }]); assertEqual("an unknown class falls back to d8", maxHPAuto(), 8);
+    setScore("con", 6);
+    setClasses([{ name: "Wizard", lvl: 2 }]);
+    assertEqual("a negative CON mod subtracts per level", maxHPAuto(), (6 - 2) + (4 - 2));
+    setScore("con", 10);
+    $("hp-max-override").value = "99";
+    assertEqual("an override replaces the calculation", maxHP(), 99);
+    clearOverrides();
+  }
+
+  // ---------- the multiclass spell-slot table ----------
+  {
+    assertEqual("the slot table covers caster levels 0-20", MULTICLASS_SLOTS.length, 21);
+    assert("every row lists all 9 spell levels", MULTICLASS_SLOTS.every(r => r.length === 9));
+    setClasses([{ name: "Wizard", lvl: 1 }]);
+    assertEqual("a level 1 full caster", casterLevel(), 1);
+    assertEqual("...gets two 1st-level slots", slotTotal(1), 2);
+    setClasses([{ name: "Paladin", lvl: 2 }]);
+    assertEqual("a half caster counts half its level, rounded down", casterLevel(), 1);
+    setClasses([{ name: "Paladin", lvl: 1 }]);
+    assertEqual("...so a level 1 Paladin is not yet a caster", casterLevel(), 0);
+    assertEqual("...and has no slots", slotTotal(1), 0);
+    setClasses([{ name: "Fighter", sub: "Eldritch Knight", lvl: 3 }]);
+    assertEqual("a third caster counts a third of its level", casterLevel(), 1);
+    setClasses([{ name: "Warlock", lvl: 5 }]);
+    assertEqual("Pact Magic is NOT part of the multiclass table", casterLevel(), 0);
+    setClasses([{ name: "Wizard", lvl: 5 }, { name: "Paladin", lvl: 4 }, { name: "Warlock", lvl: 3 }]);
+    assertEqual("mixed casters sum (5 + 2 + 0 for pact)", casterLevel(), 7);
+    setClasses([{ name: "Wizard", lvl: 20 }]);
+    assertEqual("a level 20 caster gets one 9th-level slot", slotTotal(9), 1);
+    $("slot-override-9").value = "4";
+    assertEqual("a per-level override wins", slotTotal(9), 4);
+    $("slot-override-9").value = "";
+  }
+
+  // ---------- known / prepared / cantrip allowances ----------
+  {
+    setScore("int", 16); setScore("wis", 16); setScore("cha", 16);
+    assertEqual("a Wizard prepares level + INT mod", classSpellAllowance({ name: "Wizard", lvl: 5 }).max, 5 + 3);
+    assertEqual("...and its spellbook is the separate, larger pool", classSpellAllowance({ name: "Wizard", lvl: 5 }).spellbookMax, 14);
+    assertEqual("a Paladin is half-prepared", classSpellAllowance({ name: "Paladin", lvl: 5 }).max, 2 + 3);
+    // The floor only bites when level/2 + the ability mod would otherwise be 0 or less, so CHA has
+    // to come down for this one — at CHA 16 a level 1 Paladin legitimately prepares 3.
+    setScore("cha", 10);
+    assertEqual("a prepared caster can always prepare at least one", classSpellAllowance({ name: "Paladin", lvl: 1 }).max, 1);
+    setScore("cha", 16);
+    assertEqual("a Bard reads its known table", classSpellAllowance({ name: "Bard", lvl: 5 }).max, 8);
+    assertEqual("...and does not add its ability mod", classSpellAllowance({ name: "Bard", lvl: 5 }).style, "known");
+    assertEqual("a level 1 Ranger knows no spells", classSpellAllowance({ name: "Ranger", lvl: 1 }).max, 0);
+    assertEqual("a third caster uses its own table", classSpellAllowance({ name: "Fighter", sub: "Eldritch Knight", lvl: 3 }).max, 3);
+    assertEqual("a non-caster has no allowance", classSpellAllowance({ name: "Barbarian", lvl: 5 }), null);
+    assertEqual("a level 0 class has none either", classSpellAllowance({ name: "Wizard", lvl: 0 }), null);
+    assertEqual("cantrips are a fixed count, not ability-dependent", classCantripsKnown({ name: "Wizard", lvl: 1 }), 3);
+    assertEqual("...stepping at level 4", classCantripsKnown({ name: "Wizard", lvl: 4 }), 4);
+    assertEqual("a Paladin gets no cantrips", classCantripsKnown({ name: "Paladin", lvl: 5 }), 0);
+    assertEqual("an Eldritch Knight gets none before level 3", classCantripsKnown({ name: "Fighter", sub: "Eldritch Knight", lvl: 2 }), 0);
+  }
+
+  // ---------- armor class (no items loaded: the unarmored branch) ----------
+  {
+    clearOverrides();
+    CHARACTER_ITEMS = [];
+    setScore("dex", 14);
+    assertEqual("unarmored is 10 + DEX", armorClassAuto(), 12);
+    setScore("dex", 8);
+    assertEqual("...including a negative DEX mod", armorClassAuto(), 9);
+    setScore("dex", 10);
+    $("ac-override").value = "18";
+    assertEqual("an override replaces the formula", baseOf("ac"), 18);
+    $("ac-override").value = "";
+    $("ac-misc").value = "2";
+    assertEqual("misc adds on top", checkBonus("ac"), 12);
+    clearOverrides();
+  }
+
+  // ---------- saves & skills ----------
+  {
+    clearOverrides();
+    setClasses([{ name: "Fighter", lvl: 5 }]);   // PB +3
+    setScore("dex", 14); setScore("wis", 10);
+    assertEqual("an unproficient save is just the ability mod", checkBonus("save-dex"), 2);
+    $("saveprof-dex").checked = true;
+    assertEqual("proficiency adds PB", checkBonus("save-dex"), 5);
+    $("saveprof-dex").checked = false;
+    assertEqual("an unproficient skill is just the ability mod", checkBonus("skill-perception"), 0);
+    $("skillprof-perception").checked = true;
+    assertEqual("a proficient skill adds PB", checkBonus("skill-perception"), 3);
+    $("skillexp-perception").checked = true;
+    assertEqual("expertise doubles PB", checkBonus("skill-perception"), 6);
+    $("skillmisc-perception").value = "1d4";
+    assertEqual("a dice misc stays out of the flat total", checkBonus("skill-perception"), 6);
+    assertEqual("...and comes back as dice", checkDice("skill-perception"), "+1d4");
+    $("skillmisc-perception").value = ""; $("skillprof-perception").checked = false; $("skillexp-perception").checked = false;
+  }
+
+  // ---------- math-aware number boxes ----------
+  {
+    const el = $("hp-temp");
+    el.value = "10"; commitMath(el);
+    assertEqual("a plain number commits as itself", el.value, "10");
+    el.value = "+5"; commitMath(el);
+    assertEqual("a signed value adjusts the previous one", el.value, "15");
+    el.value = "-20"; commitMath(el);
+    assertEqual("...and clamps at data-min rather than going negative", el.value, "0");
+    el.value = "3*4"; commitMath(el);
+    assertEqual("arithmetic is evaluated", el.value, "12");
+    el.value = "rm -rf /"; commitMath(el);
+    assertEqual("a non-arithmetic string is rejected, keeping the last good value", el.value, "12");
+    el.value = ""; commitMath(el);
+    assertEqual("data-allow-empty keeps an empty box empty", el.value, "");
+
+    // hp-cur carries data-max-from="hp-max", which is what now clamps current HP to max — it is
+    // deliberately no longer done on every recompute() (that overwrote HP mid-edit).
+    $("hp-max").textContent = "20";
+    const cur = $("hp-cur");
+    cur.value = "50"; commitMath(cur);
+    assertEqual("current HP clamps to max on commit", cur.value, "20");
+    cur.value = "12"; commitMath(cur);
+    assertEqual("...and is left alone below it", cur.value, "12");
+    $("hp-max").textContent = "5";
+    assertEqual("...but a max that changes does NOT retroactively rewrite it", cur.value, "12");
+  }
+
+  // ---------- level cap ----------
+  {
+    setClasses([{ name: "Fighter", lvl: 18 }, { name: "Rogue", lvl: 1 }]);
+    const rows = [...document.querySelectorAll(".cls-lvl")];
+    rows[1].value = "10"; enforceTotalLevelCap(rows[1]);
+    assertEqual("a class level is capped by what's left of the 20-level total", rows[1].value, "2");
+    assertEqual("...leaving the total at 20", totalLevel(), 20);
+  }
+
+  // ---------- coin purse ----------
+  {
+    $("coin-gp").value = "10"; $("coin-sp").value = "5"; $("coin-cp").value = "5"; $("coin-pp").value = "1"; $("coin-ep").value = "2";
+    assertEqual("coins convert to a gp total at SRD rates", coinTotalGP(), 10 + 0.5 + 0.05 + 10 + 1);
+  }
+
+  lines.push("", `${pass} passed, ${fail} failed`);
+  const el = document.getElementById("results");
+  el.textContent = lines.join("\n");
+  el.className = fail ? "fail" : "pass";
+});
+</script>
+</body>
+</html>
