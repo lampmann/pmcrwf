@@ -53,8 +53,12 @@ function blankCombat() {
     moveUsed: 0, moveBonus: 0,     // feet spent; feet added by Dash and the like
     swings: 0,                     // attacks banked by taking the Attack action
     attacked: false,               // has an attack been rolled this turn (gates Two-Weapon Fighting)
+    difficultTerrain: false,       // ×2 ft cost on movement (PHB p190) — a terrain property, so it
+                                    // survives End Round but not a fresh fight (blankCombat resets it)
+    history: [],                   // undo stack — see pushHistory/undoLast below
   };
 }
+const HISTORY_MAX = 20;
 
 /* ----- derived numbers ----- */
 
@@ -141,6 +145,7 @@ function endRound() {
   COMBAT.round++;
   COMBAT.used = { action: 0, bonus: 0, reaction: 0, object: 0 };
   COMBAT.moveUsed = 0; COMBAT.moveBonus = 0; COMBAT.swings = 0; COMBAT.attacked = false;
+  COMBAT.history = [];   // last round's spends don't apply to this round's freshly-refreshed pools
   renderCombat(); scheduleSave();
   combatLog(`<b>Round ${COMBAT.round}</b> — everything refreshed` +
     (spent.length || moved ? ` <span class="hint">(last round: ${[...spent, moved ? moved + " ft moved" : ""].filter(Boolean).join(", ")})</span>` : ""));
@@ -162,6 +167,37 @@ function spendMovement(ft, what) {
   renderCombat(); scheduleSave();
   combatLog(`${escapeHtml(what || "Move")} ${ft} ft — <b>Movement</b> ` +
     (over ? `<span class="cr-over">${COMBAT.moveUsed}/${moveMax()} ft (over)</span>` : `<span class="hint">${moveLeft()}/${moveMax()} ft left</span>`));
+}
+
+/* ----- undo -----
+   One entry per user-initiated spend, captured as a snapshot of every field a spend can touch —
+   not a per-field diff — because several spends are compound (Dash adds to moveBonus AND spends the
+   action; taking Attack with no swings banked spends the action AND sets swings AND attacked). A
+   snapshot restores the whole thing in one step regardless of how many fields the spend actually
+   changed, so the caller only has to know "before" and "after", never the shape of what happened
+   between them.
+
+   The three call sites that begin a real spend (the menu's entry.run(), a chip double-click, and an
+   attack roll auto-booking itself) call pushHistory() first; the mutators themselves (spendResource,
+   spendMovement, useAttackSwing) don't, so a compound spend that calls two of them only ever pushes
+   once. Undoing does NOT remove the Event Log entry the spend made — the tracker's whole premise is
+   an auditable log (see this file's header), and erasing history would fight that. Instead Undo adds
+   its own log line, so both "this was spent" and "then undone" stay on the record. */
+function pushHistory(label) {
+  // spendResource/spendMovement also auto-enter combat on a first spend — but enterCombat() replaces
+  // COMBAT wholesale with a fresh blankCombat(), which would discard an entry pushed onto the OLD
+  // object a moment earlier. Doing it here first means every push lands on the object that survives.
+  if (!COMBAT.active) enterCombat();
+  COMBAT.history.push({ label, used: { ...COMBAT.used }, moveUsed: COMBAT.moveUsed, moveBonus: COMBAT.moveBonus, swings: COMBAT.swings, attacked: COMBAT.attacked });
+  if (COMBAT.history.length > HISTORY_MAX) COMBAT.history.shift();
+}
+function lastHistoryLabel() { return COMBAT.history.length ? COMBAT.history[COMBAT.history.length - 1].label : null; }
+function undoLast() {
+  const entry = COMBAT.history.pop(); if (!entry) return;
+  COMBAT.used = entry.used; COMBAT.moveUsed = entry.moveUsed; COMBAT.moveBonus = entry.moveBonus;
+  COMBAT.swings = entry.swings; COMBAT.attacked = entry.attacked;
+  renderCombat(); scheduleSave();
+  combatLog(`<span class="hint">Undo</span> — ${escapeHtml(entry.label)}`);
 }
 
 /* An attack roll landed. Spends a banked swing, or takes the Attack action first if there are none —
@@ -294,11 +330,23 @@ function objectMenu() {
   return out;
 }
 
+/* Difficult terrain (PHB p190): every foot actually covered costs 2 ft of your speed. It's a
+   property of the ground, not of your turn, so it's a standing toggle (COMBAT.difficultTerrain) that
+   the quick-move buttons and the custom feet input both read — rather than something you'd re-enter
+   on every single move — and it survives End Round but resets with a fresh fight (blankCombat). */
+function moveCostFt(actualFt) { return actualFt * (COMBAT.difficultTerrain ? 2 : 1); }
+function moveLabel(actualFt, note) {
+  const cost = moveCostFt(actualFt);
+  return COMBAT.difficultTerrain ? `${note || "Move"} ${actualFt} ft (difficult terrain, ${cost} ft spent)` : `${note || "Move"} ${actualFt} ft`;
+}
+function moveQuickHint(actualFt) { return COMBAT.difficultTerrain ? `costs ${moveCostFt(actualFt)} ft in difficult terrain` : undefined; }
 function moveMenu() {
   const sp = speedTotal();
-  const out = [5, 10, 15, 30].map(ft => ({ label: `Move ${ft} ft`, run: () => spendMovement(ft, "Move") }));
-  out.push({ label: `Move your full speed (${sp} ft)`, run: () => spendMovement(sp, "Move") });
+  const out = [5, 10, 15, 30].map(ft => ({ label: `Move ${ft} ft`, hint: moveQuickHint(ft), run: () => spendMovement(moveCostFt(ft), moveLabel(ft)) }));
+  out.push({ label: `Move your full speed (${sp} ft)`, hint: moveQuickHint(sp), run: () => spendMovement(moveCostFt(sp), moveLabel(sp)) });
   out.push({ label: "Dash", hint: `costs your action, +${sp} ft`, run: () => { COMBAT.moveBonus += sp; spendResource("action", "Dash"); } });
+  // Standing up is a fixed fraction of your speed stat (PHB p190), not distance covered along the
+  // ground, so difficult terrain doesn't multiply it.
   out.push({ label: "Stand up from prone", hint: `costs half your speed (${Math.floor(sp / 2)} ft)`, run: () => spendMovement(Math.floor(sp / 2), "Stand up") });
   out.push({ label: "Reset movement", hint: "put the feet back", run: () => { COMBAT.moveUsed = 0; renderCombat(); scheduleSave(); } });
   return out;
@@ -346,14 +394,16 @@ function renderCombat() {
 
   if (status) status.textContent = `Round ${COMBAT.round}`;
   const mv = moveLeft(), mvMax = moveMax();
+  const undoLabel = lastHistoryLabel();
   el.innerHTML =
     `<div class="cbt-chips">${COMBAT_KINDS.map(combatChipHtml).join("")}
-       <button type="button" class="cbt-chip${mv ? "" : " spent"}" data-cbt="move" title="Movement — click for ways to spend it">Movement <b>${mv}</b>/${mvMax} ft</button>
+       <button type="button" class="cbt-chip${mv ? "" : " spent"}" data-cbt="move" title="Movement — click for ways to spend it${COMBAT.difficultTerrain ? " (difficult terrain: ×2 cost)" : ""}">Movement <b>${mv}</b>/${mvMax} ft${COMBAT.difficultTerrain ? ` <span class="hint">(difficult terrain)</span>` : ""}</button>
      </div>
      ${COMBAT.swings > 0 ? `<div class="hint">${COMBAT.swings} attack${COMBAT.swings === 1 ? "" : "s"} left in this Attack action.</div>` : ""}
      <div style="margin-top:.4rem">
        <button type="button" id="cbt-end">End Round</button>
        <button type="button" id="cbt-leave" title="leave combat and clear the tracker">End combat</button>
+       <button type="button" id="cbt-undo"${undoLabel ? "" : " disabled"} title="${undoLabel ? "undo: " + escapeHtml(undoLabel) : "nothing to undo"}">Undo${undoLabel ? ` (${escapeHtml(undoLabel)})` : ""}</button>
        <span class="hint">End Round refreshes your action, bonus action, reaction, object interaction and movement.</span>
      </div>
      <div id="cbt-menu-anchor"></div>`;
@@ -375,17 +425,34 @@ function openCombatMenu(kind, anchor) {
   paintCombatMenu(anchor);
 }
 
+/* The custom-feet + difficult-terrain controls, shown only on the Movement menu's top level (not
+   inside a submenu, though Movement has none today — the check is here so this doesn't reappear if
+   one's ever added). A real form control set, not `.cbt-item` entries: they need to stay open after
+   a click/change (typing a number, ticking a checkbox), where every ordinary entry closes the menu
+   the moment it's activated. See the dedicated listeners below for how they're wired. */
+function moveFormHtml() {
+  return `<div class="cbt-move-form">
+    <label><input type="checkbox" class="cbt-difficult"${COMBAT.difficultTerrain ? " checked" : ""}> Difficult terrain (&times;2 cost)</label>
+    <div class="cbt-move-custom">
+      <input type="number" class="cbt-move-ft" min="1" step="1" inputmode="numeric" placeholder="ft" title="move this many feet (before any difficult-terrain multiplier)">
+      <button type="button" class="cbt-move-go">Move</button>
+    </div>
+  </div>`;
+}
 function paintCombatMenu(anchor) {
   if (!CBT_MENU) return;
   let m = document.querySelector(".cbt-menu");
   if (!m) { m = document.createElement("div"); m.className = "cbt-menu"; document.body.appendChild(m); }
   const top = CBT_MENU.stack[CBT_MENU.stack.length - 1];
+  const isMoveRoot = CBT_MENU.kind === "move" && CBT_MENU.stack.length === 1;
   const back = CBT_MENU.stack.length > 1 ? `<div class="cbt-item cbt-back" data-cbtback="1">← back</div>` : "";
-  m.innerHTML = `<div class="cbt-menu-title">${escapeHtml(top.title)}</div>${back}` +
+  // Every entry's `hint` — what it actually does — is a title (hover) tooltip, not visible text, so
+  // the menu itself reads as a plain list of action names. Consistent with how the rest of the sheet
+  // explains a number without cluttering the row for it (Attacks' Fx tooltips, roll-button tooltips).
+  m.innerHTML = `<div class="cbt-menu-title">${escapeHtml(top.title)}</div>${back}${isMoveRoot ? moveFormHtml() : ""}` +
     top.entries.map((e, i) =>
-      `<div class="cbt-item${e.disabled ? " disabled" : ""}" data-cbtidx="${i}">
+      `<div class="cbt-item${e.disabled ? " disabled" : ""}" data-cbtidx="${i}"${e.hint ? ` title="${escapeHtml(e.hint)}"` : ""}>
          <span>${escapeHtml(e.label)}${e.submenu ? " ›" : ""}</span>
-         ${e.hint ? `<span class="hint">${escapeHtml(e.hint)}</span>` : ""}
        </div>`).join("");
   if (anchor) {
     const r = anchor.getBoundingClientRect();
@@ -404,6 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "cbt-start") { enterCombat(); return; }
     if (e.target.id === "cbt-end") { endRound(); return; }
     if (e.target.id === "cbt-leave") { leaveCombat(); return; }
+    if (e.target.id === "cbt-undo") { undoLast(); return; }
     const chip = e.target.closest("[data-cbt]");
     if (chip) {
       if (CBT_MENU && CBT_MENU.kind === chip.dataset.cbt) { closeCombatMenu(); return; }
@@ -418,13 +486,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const chip = e.target.closest("[data-cbt]"); if (!chip) return;
     closeCombatMenu();
     const kind = chip.dataset.cbt;
-    if (kind === "move") { spendMovement(5, "Move"); return; }   // a 5-ft step is the smallest useful unit
-    spendResource(kind);
+    // a 5-ft step is the smallest useful unit; goes through the same difficult-terrain multiplier as
+    // every other move so a double-click is never the one path that forgets the terrain toggle
+    if (kind === "move") { pushHistory(moveLabel(5)); spendMovement(moveCostFt(5), moveLabel(5)); return; }
+    pushHistory(COMBAT_LABEL[kind]); spendResource(kind);
   });
 
   document.addEventListener("click", e => {
     const item = e.target.closest(".cbt-item");
-    if (!item) { if (!e.target.closest("[data-cbt]")) closeCombatMenu(); return; }
+    if (!item) {
+      // Anything else inside the popup — its title, or the movement form's own controls — has its
+      // own handling (or none) below; it must not fall through to closing the menu on every click.
+      if (!e.target.closest("[data-cbt]") && !e.target.closest(".cbt-menu")) closeCombatMenu();
+      return;
+    }
     if (!CBT_MENU) return;
     if (item.dataset.cbtback) { CBT_MENU.stack.pop(); paintCombatMenu(document.querySelector(`[data-cbt="${CBT_MENU.kind}"]`)); return; }
     const top = CBT_MENU.stack[CBT_MENU.stack.length - 1];
@@ -435,9 +510,32 @@ document.addEventListener("DOMContentLoaded", () => {
       paintCombatMenu(document.querySelector(`[data-cbt="${CBT_MENU.kind}"]`));
       return;
     }
-    if (entry.run) entry.run();
+    if (entry.run) { pushHistory(entry.label); entry.run(); }
     closeCombatMenu();
   });
+
+  /* The Movement menu's custom-feet input and difficult-terrain checkbox (see moveFormHtml) — kept
+     open across both, unlike every ordinary .cbt-item above, since ticking a checkbox or typing a
+     number is a step on the way to a move, not the move itself. */
+  document.addEventListener("change", e => {
+    const cb = e.target.closest(".cbt-difficult"); if (!cb || !CBT_MENU) return;
+    COMBAT.difficultTerrain = cb.checked; scheduleSave(); renderCombat();
+    // Re-open rather than just repaint: the preset entries' hints/costs (5/10/15/30/full speed) were
+    // computed by moveMenu() once, at the moment the menu opened, off the difficultTerrain value THEN
+    // — a plain repaint would redraw the same stale numbers. renderCombat() just replaced the chip
+    // element too, so the anchor has to be looked up fresh.
+    openCombatMenu("move", document.querySelector(`[data-cbt="move"]`));
+  });
+  function runCustomMove() {
+    if (!CBT_MENU) return;
+    const inp = document.querySelector(".cbt-move-ft"); if (!inp) return;
+    const ft = Math.floor(Number(inp.value));
+    if (!ft || ft <= 0) return;   // no value typed, or not a usable positive number — do nothing rather than guess
+    pushHistory(moveLabel(ft)); spendMovement(moveCostFt(ft), moveLabel(ft));
+    closeCombatMenu();
+  }
+  document.addEventListener("click", e => { if (e.target.closest(".cbt-move-go")) runCustomMove(); });
+  document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest(".cbt-move-ft")) runCustomMove(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeCombatMenu(); });
 
   /* Rolling initiative is what puts you in combat — the whole point of the tracker is that you
@@ -448,12 +546,15 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* Attack rolls book themselves. Deferred so the roll's own log entry lands first and the tracker's
-     note reads as a consequence of it rather than a prediction. */
+     note reads as a consequence of it rather than a prediction. The history snapshot is taken NOW,
+     synchronously, before that deferred booking runs — Undo needs "the state right before this
+     spend", and by the time the timeout fires that state is already gone. */
   document.addEventListener("click", e => {
     const btn = e.target.closest(".wpn-both, .wpn-roll");
     if (!btn || !COMBAT.active) return;
     const tr = btn.closest("tr");
     const name = tr ? (tr.querySelector(".atk-name") || {}).value : "";
+    pushHistory(name || "Attack");
     setTimeout(() => useAttackSwing(name), 0);
   });
 });
