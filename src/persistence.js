@@ -9,6 +9,7 @@ function collectState() {
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
     routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
     companions: (typeof COMPANIONS !== "undefined" ? COMPANIONS : []),
+    combat: (typeof COMBAT !== "undefined" ? COMBAT : null),   // the round tracker, so a fight survives a reload
     featChoices: FEAT_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
@@ -36,12 +37,15 @@ function applyState(state) {
   if (typeof addAttackRow === "function") { $("attack-rows").innerHTML = ""; (state.attacks || []).forEach(addAttackRow); }
   if (typeof setRoutines === "function") setRoutines(state.routines || []);   // after attacks, so step pickers resolve names
   if (typeof setCompanions === "function") setCompanions(state.companions || []);   // triggers the bestiary's lazy load if there are any
+  // The round tracker is per character: switching tabs mid-fight shows that character's own turn.
+  if (typeof blankCombat === "function") { COMBAT = state.combat || blankCombat(); if (typeof renderCombat === "function") renderCombat(); }
   refreshSpellAddClassSelect();
   invalidateEffects();
   recompute();
   renderClassFeatures();
   if (typeof renderHitDice === "function") renderHitDice();
   if (typeof renderItemList === "function") renderItemList();   // not driven by recompute() — see derived.js
+  if (typeof renderEquipSlots === "function") renderEquipSlots();   // the paper doll reads CHARACTER_ITEMS, which has only just been set
   if (typeof renderAllProficiencyLists === "function") renderAllProficiencyLists();
 }
 /* Saving writes into the active roster entry (src/characters.js) rather than a single fixed key, so
