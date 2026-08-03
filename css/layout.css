@@ -46,6 +46,18 @@
 }
 .modules.lay-grid-on #lay-grid-overlay { display: block; }
 
+/* --- collapse: hide a module down to just its title bar --- */
+.lay-collapse-btn {
+  font: inherit; line-height: 1; padding: 0 .3rem; margin-right: .35rem; vertical-align: middle;
+  background: transparent; border: 1px solid var(--btn-border); border-radius: var(--radius);
+  cursor: pointer;
+}
+.module.lay-collapsed { overflow: hidden; }
+.module.lay-collapsed > .lay-body { display: none; }
+/* Only relevant in the free-form (absolutely positioned) layout: a collapsed module's own resize
+   handles for the edges its now-hidden content used to fill would otherwise float in empty space. */
+.module.lay-collapsed > .lay-h.s, .module.lay-collapsed > .lay-h.se, .module.lay-collapsed > .lay-h.sw { display: none; }
+
 /* --- marquee selection band --- */
 #lay-marquee { position: absolute; z-index: 9995; pointer-events: none; border: 1px dashed var(--link); background: rgba(26,86,196,.12); }
 

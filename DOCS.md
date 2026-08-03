@@ -305,7 +305,18 @@ Every button, filter chip, tab and clickable name answers the same two questions
 It's one block in [css/base.css](css/base.css) covering every kind of button at once rather than per-component rules, and the colours are theme variables (`--hover-bg`, `--active-bg`, `--focus-ring`) that each of the eight themes retunes — a dark theme needs a lighter hover than a light one.
 
 ## Theme
-The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.css` (each just redefines the CSS custom properties set on `:root` in `css/base.css` — colors, borders, fonts). Ships with 7 alternates (Illuminated Manuscript, Cyber Grimoire, Blood Moon Gothic, Verdant Feywild, Infernal Bronze, Celestial Aurora, Deep Sea Leviathan) alongside the plain **Default (unstyled)** look; your choice is remembered (localStorage) across reloads. Drop your own `css/themes/your-theme.css` and add it to `css/themes/index.json` to add more.
+The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.css` (each just redefines the CSS custom properties set on `:root` in `css/base.css` — colors, borders, fonts). Ships with 12 alternates alongside the plain **Default (unstyled)** look; your choice is remembered (localStorage) across reloads. Drop your own `css/themes/your-theme.css` and add it to `css/themes/index.json` to add more.
+
+- **Dark Mode** — the default look, inverted for low light. Same serif body font and sharp corners as Default, no gradients or glow; for anyone who just wants the lights off rather than a full re-skin.
+- Five pairs, each an original plus a more ornate pass over the same palette — gradient-bordered module cards, gradient-text headers, a themed dice-log scrollbar, filter pills, tooltips/menus — the same "original, then polished" relationship Blood Moon Gothic has to Crimson Eclipse:
+  - **Illuminated Manuscript** / **Gilded Folio** — aged vellum and gold leaf.
+  - **Cyber Grimoire** / **Neon Codex** — black-and-neon cyberpunk, the polished pass adding scanlines and a glitch-flicker header.
+  - **Blood Moon Gothic** / **Crimson Eclipse** — crimson horror.
+  - **Verdant Feywild** / **Wildwood Court** — a soft fey forest, the polished pass adding dappled light and firefly accents.
+  - **Infernal Bronze** / **Molten Covenant** — forged demonic metal, the polished pass adding a forge-glow backdrop and a pulsing ember header.
+- **Celestial Aurora**, **Deep Sea Leviathan** — ornate from the start; no separate polished pass.
+
+All the ornate themes are CSS-only (gradients, shadows, `background-clip: text`) — no external images or fonts, so they still work fully offline.
 
 ## Layout (move / resize / snap)
 By default modules flow down the page. The **Layout** bar (above the modules) turns on free-form arranging:
@@ -314,11 +325,21 @@ By default modules flow down the page. The **Layout** bar (above the modules) tu
 - **Snap to modules** — while dragging or resizing, edges snap to align with (or sit flush against) other modules' edges.
 - **Multi-select** — drag a box across empty space to marquee-select modules (Shift-click to add/remove one; Esc clears). Then **drag any selected module to move them all together**, or drag the selection box's handles to **resize them all at once**. A module you move jumps to the **front and stays there**.
 - While dragging, the page **auto-scrolls** when you near an edge (faster the closer you get), and modules track the scroll so they never lag behind.
-- **reset** returns to the default flow; **save file** / **load** export and import the arrangement as a JSON file.
+- **reset** returns to the default flow (and expands anything collapsed); **save file** / **load** export and import the arrangement as a JSON file.
+- **compact** closes vertical gaps between modules without touching left/right position or width — see Collapsing below. Only does anything once Free has been turned on at least once (before that, modules flow in plain CSS and there's never a gap to close).
 
 When a module is smaller than its content (after resizing), it **scrolls** — mouse wheel, scrollbars on both axes, and native middle-click autoscroll — as long as you're **not** in Free mode. (While Free is on, overflow is clipped instead, so the resize handles stay pinned to the module's edges rather than scrolling away.)
 
 Your arrangement is also saved locally (separate from the character; per browser). Styles live in [css/layout.css](css/layout.css) (theme-aware) and the logic in [layout.js](src/layout.js) — a self-contained module that works on any `.module`, so new modules are automatically arrangeable.
+
+### Collapsing modules
+Click the **▾** next to any module's title to collapse it down to just that title bar; click the **▸** to bring it back. Collapsed state is remembered the same way the arrangement is (localStorage, part of the same layout file), so it survives a reload and travels with **save file** / **load**.
+
+What "collapse" does about the space it frees up depends on whether you've ever turned Free on:
+- **You haven't** (the common case — modules just flowing down the page): nothing extra is needed. Collapsing a module removes its height like any other CSS change, and the plain page flow closes the gap by itself.
+- **You have** (modules are freely positioned): collapsing one leaves a hole where it was — nothing else is set up to know it should move. Rather than silently rearrange your arrangement to fill it (which is exactly the kind of "helpful" surprise this sheet avoids elsewhere too), collapsing **automatically runs a compaction pass**: everything below the collapsed module, in the same horizontal band, slides up to sit flush beneath it. Expanding it again pushes them back down by exactly as much. Nothing to its left or right — a different column — ever moves; only vertical gaps in line with the module you touched are closed.
+
+The same compaction is available on demand as the **compact** button in the Layout bar, for gaps that show up for any other reason — deleting the last attack row, removing a companion, anything that shrinks a module without you touching its collapse toggle.
 
 *(Known rough edge: a module's text can reflow oddly mid-resize — to be smoothed once the modules are finalized.)*
 
