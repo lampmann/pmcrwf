@@ -673,13 +673,14 @@ document.addEventListener("DOMContentLoaded", () => {
   {
     // --- racial ability increases, read off RACE_LIB the same way the wizard does ---
     RACE_LIB = {
-      Dwarf: { name: "Dwarf", source: "PHB", ability: [{ con: 2 }], entries: [], subs: {
+      Dwarf: { name: "Dwarf", source: "PHB", ability: [{ con: 2 }], entries: [], speed: 25, subs: {
         Mountain: { name: "Mountain", source: "PHB", ability: [{ str: 2 }], entries: [] },
         Hill: { name: "Hill", source: "PHB", ability: [{ wis: 1 }], entries: [] },
       } },
       "Half-Elf": { name: "Half-Elf", source: "PHB", entries: [], subs: {},
         ability: [{ cha: 2, choose: { from: ["str", "dex", "con", "int", "wis"], count: 2 } }] },
-      Human: { name: "Human", source: "PHB", entries: [], subs: {
+      Aarakocra: { name: "Aarakocra", source: "EEPC", entries: [], subs: {}, speed: { walk: 20, fly: 50 } },
+      Human: { name: "Human", source: "PHB", entries: [], speed: 30, subs: {
         // 5e.tools' real shape: the PHB Human's +1-to-everything lives on its NAMELESS subrace, and
         // Variant replaces that wholesale rather than adding to it.
         "(base)": { name: "(base)", source: "PHB", entries: [], ability: [{ str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1 }] },
@@ -737,6 +738,21 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...and so does the second", creatorFinalScore("dex"), 14);
     assertEqual("an unchosen one does not", creatorFinalScore("con"), 14);
     assertEqual("the race's fixed part still applies alongside the picks", creatorFinalScore("cha"), 10);
+
+    // --- Speed: read off RACE_LIB and filled into the wizard's built state, so a new character's
+    // Movement pool isn't 0/0 until the player thinks to set Speed by hand ---
+    assertEqual("a flat race speed is used as-is", raceWalkSpeed(30), 30);
+    assertEqual("a multi-movement-type race yields its walking speed", raceWalkSpeed({ walk: 20, fly: 50 }), 20);
+    assertEqual("a shape with no numeric walk speed yields null, not a guess", raceWalkSpeed({ fly: true }), null);
+    assertEqual("an unrecognized shape yields null", raceWalkSpeed(undefined), null);
+    CREATOR = blankCreator(); CREATOR.race = "Dwarf"; CREATOR.subrace = "";
+    assertEqual("creatorRaceSpeed reads the race's flat speed", creatorRaceSpeed(), 25);
+    CREATOR.race = "Aarakocra"; CREATOR.subrace = "";
+    assertEqual("...or the walk figure out of a multi-type speed object", creatorRaceSpeed(), 20);
+    CREATOR.race = "Nonexistent"; CREATOR.subrace = "";
+    assertEqual("...and null for a race the library doesn't know, left for the player to fill in", creatorRaceSpeed(), null);
+    CREATOR = blankCreator(); CREATOR.race = "Human"; CREATOR.subrace = "";
+    assertEqual("creatorBuildState carries Speed into the character's fields", creatorBuildState().fields["speed"], "30");
 
     // --- point buy: the PHB p13 cost table and its 27-point budget ---
     CREATOR = blankCreator(); CREATOR.method = "pointbuy"; CREATOR.step = 3;
@@ -1176,6 +1192,22 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("a move's label says what it really cost", /difficult terrain, 20 ft spent/.test(moveLabel(10)));
     COMBAT.terrain = 1;
     assertEqual("...and says nothing extra on normal ground", moveLabel(10), "Move 10 ft");
+
+    // --- the movement box and terrain box: direct correction, same shape as Hit Dice's remaining box ---
+    COMBAT = blankCombat(); COMBAT.active = true;
+    $("speed").value = "30";
+    correctMoveBox({ value: "10" });   // 10 ft LEFT of 30 means 20 spent
+    assertEqual("the movement box is read as feet remaining, stored back as spent", COMBAT.moveUsed, 20);
+    correctMoveBox({ value: "9999" });
+    assertEqual("...clamped to the pool's max", COMBAT.moveUsed, 0);
+    correctMoveBox({ value: "-5" });
+    assertEqual("...and clamped at zero remaining (never negative spend)", COMBAT.moveUsed, 30);
+    correctMoveBox({ value: "abc" });
+    assertEqual("...garbage input is treated as zero remaining, not NaN", COMBAT.moveUsed, 30);
+    correctTerrainInput({ value: "3" });
+    assertEqual("the terrain box sets the multiplier directly", COMBAT.terrain, 3);
+    correctTerrainInput({ value: "0" });
+    assertEqual("...zero or blank falls back to ×1, not ×0", COMBAT.terrain, 1);
 
     // --- menu entries are labels; the explanation is a tooltip ---
     COMBAT = blankCombat(); COMBAT.active = true;

@@ -14,8 +14,8 @@ const CLASS_SCHEMA = 2;   // 2: multiclassing requirements + startingEquipment r
 // { className: { name, source, hd, caster, feats:[{name,level,source,text}],
 //                mcReq, startEq, subs:{ shortName:{name,shortName,source,feats:[...]} } } }
 let CLASS_LIB = {};
-const RACE_SCHEMA = 4;   // 2: `ability` (racial ASI); 3: nameless subraces named BASE_SUBRACE; 4: `size` retained
-// { raceName: { name, source, size:["S","M"], entries:[{name,text,source}],
+const RACE_SCHEMA = 5;   // 2: `ability` (racial ASI); 3: nameless subraces named BASE_SUBRACE; 4: `size` retained; 5: `speed` retained
+// { raceName: { name, source, size:["S","M"], speed:30|{walk,fly,...}, entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
 const FEAT_SCHEMA = 1;
@@ -84,7 +84,7 @@ function parseRaceEntries(entries) {
 function parseRaceFile(j) {
   (j.race || []).forEach(r => {
     const existing = RACE_LIB[r.name];
-    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], size: r.size || [], subs: (existing && existing.subs) || {} };
+    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], size: r.size || [], speed: r.speed, subs: (existing && existing.subs) || {} };
   });
   (j.subrace || []).forEach(s => {
     if (s._copy) return; // reprinted/variant subraces using 5e.tools' copy-inheritance system aren't resolved
@@ -97,8 +97,20 @@ function parseRaceFile(j) {
     // selectable and to key state off — without one it landed under the literal key "undefined" and
     // anything reading `sub.name` threw.
     const name = s.name || BASE_SUBRACE;
-    rec.subs[name] = { name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [] };
+    // Speed is usually only set at the race level; a subrace carries its own `speed` only when it
+    // genuinely differs (data has none of these among the common PHB/XGE/MPMM subraces today, but
+    // 5e.tools' shape allows it), so it's kept undefined here rather than defaulted to the race's.
+    rec.subs[name] = { name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [], speed: s.speed };
   });
+}
+/* 5e.tools stores speed as a flat walking-speed number for most races (`30`), or as an object with
+   several movement types for the handful that fly/swim/etc natively (Aarakocra: {walk:20,fly:50}).
+   The character sheet only has one Speed field (walking), so this reduces either shape to that one
+   number; a race whose data doesn't say (or a custom/homebrew entry) yields null rather than a guess. */
+function raceWalkSpeed(speed) {
+  if (typeof speed === "number") return speed;
+  if (speed && typeof speed === "object" && typeof speed.walk === "number") return speed.walk;
+  return null;
 }
 /* ----- granted spells (Cleric domain spells, Mark of X subraces, Eldritch Knight/Divine Soul/
    Warlock-patron/Wizard-subschool spell-list expansions, etc.) -----
