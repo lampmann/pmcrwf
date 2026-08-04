@@ -34,8 +34,9 @@
    - The free object interaction is one per turn (PHB p190); a second one
      costs your action (Use an Object), which is a separate menu entry.
    - Movement is a pool of feet, spendable a foot at a time (± steps on the
-     module, or any number through the menu's custom-feet box). What a foot
-     of DISTANCE costs is the terrain multiplier (TERRAIN_COSTS), so "I moved
+     module) or by editing the current/max box directly, same as Hit Dice's
+     remaining-count box. What a foot of DISTANCE costs is the terrain
+     multiplier (TERRAIN_COSTS, edited via its own inline box), so "I moved
      15 feet through difficult terrain" is one number to enter rather than a
      sum to do in your head. Dash adds your speed to the pool rather than
      doubling it — same result, and it survives a speed change mid-turn.
@@ -364,6 +365,22 @@ const TERRAIN_COSTS = [
   { mult: 3, label: "Difficult + crawling", hint: "two 1-extra-foot effects stacked" },
   { mult: 4, label: "Plant Growth", hint: "each foot of movement costs 4 feet" },
 ];
+/* Direct correction of the movement pool and terrain multiplier, mirroring Hit Dice's remaining-count
+   box (rest.js, correctHitDiceRemaining) — each box shows the number a player thinks in (feet LEFT,
+   the multiplier itself), so it's translated back to what COMBAT actually stores. Neither function
+   touches the DOM beyond re-rendering; they take the input element (or anything with a `.value`) so
+   they're callable straight from a test without a real `change` event. */
+function correctMoveBox(input) {
+  const max = moveMax();
+  const remaining = Math.max(0, Math.min(max, Math.round(Number(input.value)) || 0));
+  COMBAT.moveUsed = max - remaining;
+  renderCombat(); scheduleSave();
+}
+function correctTerrainInput(input) {
+  const mult = Number(input.value);
+  COMBAT.terrain = mult > 0 ? mult : 1;
+  renderCombat(); scheduleSave();
+}
 function terrainMult() { return COMBAT.terrain || 1; }
 function terrainLabel() { const t = TERRAIN_COSTS.find(x => x.mult === terrainMult()); return t ? t.label : "×" + terrainMult(); }
 function moveCostFt(actualFt) { return actualFt * terrainMult(); }
@@ -430,16 +447,18 @@ function renderCombat() {
   const mv = moveLeft(), mvMax = moveMax();
   const undoLabel = lastHistoryLabel();
   el.innerHTML =
-    `<div class="cbt-chips">${COMBAT_KINDS.map(combatChipHtml).join("")}
-       <button type="button" class="cbt-chip${mv ? "" : " spent"}" data-cbt="move" title="Movement — click for ways to spend it${terrainMult() > 1 ? ` (${terrainLabel()}: ×${terrainMult()} cost)` : ""}">Movement <b>${mv}</b>/${mvMax} ft${terrainMult() > 1 ? ` <span class="hint">(×${terrainMult()})</span>` : ""}</button>
-     </div>
+    `<div class="cbt-chips">${COMBAT_KINDS.map(combatChipHtml).join("")}</div>
      <div class="cbt-move-row">
        <span class="hint">move</span>
        <button type="button" class="cbt-mv" data-mv="-5" title="give back 5 ft of distance">&minus;5</button>
        <button type="button" class="cbt-mv" data-mv="-1" title="give back 1 ft of distance">&minus;1</button>
+       <span class="cbt-move-box-wrap" title="feet of movement left this turn — edit to correct">
+         <input type="text" inputmode="numeric" class="tiny cbt-move-box" value="${mv}">/${mvMax} ft
+       </span>
        <button type="button" class="cbt-mv" data-mv="1" title="move 1 ft of distance">+1</button>
        <button type="button" class="cbt-mv" data-mv="5" title="move 5 ft of distance">+5</button>
-       ${terrainMult() > 1 ? `<span class="hint">each foot of distance costs <b>${terrainMult()}</b> ft (${escapeHtml(terrainLabel().toLowerCase())})</span>` : ""}
+       <label class="hint" title="${escapeHtml(terrainLabel())} — feet of movement each foot of distance costs">&times;<input type="text" inputmode="numeric" class="tiny cbt-terrain-input" value="${terrainMult()}"></label>
+       <button type="button" class="cbt-move-more" data-cbt="move" title="more movement options — presets, Dash, stand up from prone">&hellip;</button>
      </div>
      ${COMBAT.swings > 0 ? `<div class="hint">${COMBAT.swings} attack${COMBAT.swings === 1 ? "" : "s"} left in this Attack action.</div>` : ""}
      <div style="margin-top:.4rem">
@@ -467,33 +486,16 @@ function openCombatMenu(kind, anchor) {
   paintCombatMenu(anchor);
 }
 
-/* The custom-feet + difficult-terrain controls, shown only on the Movement menu's top level (not
-   inside a submenu, though Movement has none today — the check is here so this doesn't reappear if
-   one's ever added). A real form control set, not `.cbt-item` entries: they need to stay open after
-   a click/change (typing a number, ticking a checkbox), where every ordinary entry closes the menu
-   the moment it's activated. See the dedicated listeners below for how they're wired. */
-function moveFormHtml() {
-  return `<div class="cbt-move-form">
-    <label>terrain <select class="cbt-terrain" title="what a foot of distance costs you in movement">
-      ${TERRAIN_COSTS.map(t => `<option value="${t.mult}"${terrainMult() === t.mult ? " selected" : ""} title="${escapeHtml(t.hint)}">&times;${t.mult} ${escapeHtml(t.label)}</option>`).join("")}
-    </select></label>
-    <div class="cbt-move-custom">
-      <input type="number" class="cbt-move-ft" min="1" step="1" inputmode="numeric" placeholder="ft" title="move this many feet of distance (before the terrain multiplier)">
-      <button type="button" class="cbt-move-go">Move</button>
-    </div>
-  </div>`;
-}
 function paintCombatMenu(anchor) {
   if (!CBT_MENU) return;
   let m = document.querySelector(".cbt-menu");
   if (!m) { m = document.createElement("div"); m.className = "cbt-menu"; document.body.appendChild(m); }
   const top = CBT_MENU.stack[CBT_MENU.stack.length - 1];
-  const isMoveRoot = CBT_MENU.kind === "move" && CBT_MENU.stack.length === 1;
   const back = CBT_MENU.stack.length > 1 ? `<div class="cbt-item cbt-back" data-cbtback="1">← back</div>` : "";
   // Every entry's `hint` — what it actually does — is a title (hover) tooltip, not visible text, so
   // the menu itself reads as a plain list of action names. Consistent with how the rest of the sheet
   // explains a number without cluttering the row for it (Attacks' Fx tooltips, roll-button tooltips).
-  m.innerHTML = `<div class="cbt-menu-title">${escapeHtml(top.title)}</div>${back}${isMoveRoot ? moveFormHtml() : ""}` +
+  m.innerHTML = `<div class="cbt-menu-title">${escapeHtml(top.title)}</div>${back}` +
     top.entries.map((e, i) =>
       `<div class="cbt-item${e.disabled ? " disabled" : ""}" data-cbtidx="${i}"${e.hint ? ` title="${escapeHtml(e.hint)}"` : ""}>
          <span>${escapeHtml(e.label)}${e.submenu ? " ›" : ""}</span>
@@ -550,8 +552,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", e => {
     const item = e.target.closest(".cbt-item");
     if (!item) {
-      // Anything else inside the popup — its title, or the movement form's own controls — has its
-      // own handling (or none) below; it must not fall through to closing the menu on every click.
+      // Anything else — a chip/button, the popup's own title bar, or the always-visible movement
+      // box/terrain input outside any menu — has its own handling (or none) below; it must not fall
+      // through to closing the menu on every click.
       if (!e.target.closest("[data-cbt]") && !e.target.closest(".cbt-menu")) closeCombatMenu();
       return;
     }
@@ -569,30 +572,13 @@ document.addEventListener("DOMContentLoaded", () => {
     closeCombatMenu();
   });
 
-  /* The Movement menu's custom-feet input and difficult-terrain checkbox (see moveFormHtml) — kept
-     open across both, unlike every ordinary .cbt-item above, since ticking a checkbox or typing a
-     number is a step on the way to a move, not the move itself. */
+  /* The movement box and terrain multiplier, always visible in .cbt-move-row (not the popup menu) —
+     commits on `change` (blur/Enter), never on every keystroke, or typing "30" toward a corrected
+     value would fight the cursor mid-type. See correctMoveBox/correctTerrainInput above. */
   document.addEventListener("change", e => {
-    const sel = e.target.closest(".cbt-terrain"); if (!sel || !CBT_MENU) return;
-    COMBAT.terrain = Number(sel.value) || 1; scheduleSave(); renderCombat();
-    combatLog(`Terrain: <b>${escapeHtml(terrainLabel())}</b>` +
-      (terrainMult() > 1 ? ` <span class="hint">— each foot of distance costs ${terrainMult()} ft</span>` : ""));
-    // Re-open rather than just repaint: the preset entries' hints/costs (5/10/15/30/full speed) were
-    // computed by moveMenu() once, at the moment the menu opened, off the terrain value THEN
-    // — a plain repaint would redraw the same stale numbers. renderCombat() just replaced the chip
-    // element too, so the anchor has to be looked up fresh.
-    openCombatMenu("move", document.querySelector(`[data-cbt="move"]`));
+    const box = e.target.closest(".cbt-move-box"); if (box) { correctMoveBox(box); return; }
+    const terrain = e.target.closest(".cbt-terrain-input"); if (terrain) correctTerrainInput(terrain);
   });
-  function runCustomMove() {
-    if (!CBT_MENU) return;
-    const inp = document.querySelector(".cbt-move-ft"); if (!inp) return;
-    const ft = Math.floor(Number(inp.value));
-    if (!ft || ft <= 0) return;   // no value typed, or not a usable positive number — do nothing rather than guess
-    pushHistory(moveLabel(ft)); spendMovement(moveCostFt(ft), moveLabel(ft));
-    closeCombatMenu();
-  }
-  document.addEventListener("click", e => { if (e.target.closest(".cbt-move-go")) runCustomMove(); });
-  document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest(".cbt-move-ft")) runCustomMove(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeCombatMenu(); });
 
   /* Rolling initiative is what puts you in combat — the whole point of the tracker is that you

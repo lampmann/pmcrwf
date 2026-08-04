@@ -815,6 +815,16 @@ function creatorRollHigherGold() {
   logEvent("roll", `<b>${CREATOR.higherGold} gp</b> &larr; starting at higher level (DMG p38: ${band.gp} + 1d10 (${d}) × ${band.mult})`);
 }
 
+/* The chosen race/subrace's walking speed, in feet — or null if the race isn't recognized or its
+   data doesn't say. Left for the player to fill in by hand in that case, same as everything else
+   the wizard can't resolve; see raceWalkSpeed in class-library.js for the two shapes 5e.tools uses. */
+function creatorRaceSpeed() {
+  const rec = ciFindRace(CREATOR.race);
+  if (!rec) return null;
+  const sub = findSubByName(rec, CREATOR.subrace);
+  return raceWalkSpeed((sub && sub.speed != null) ? sub.speed : rec.speed);
+}
+
 /* ----- building the character -----
    Everything the wizard collected, turned into the state shape collectState() produces. */
 function creatorBuildState() {
@@ -824,6 +834,8 @@ function creatorBuildState() {
     "char-race": c.race, "char-subrace": c.subrace,
     "char-bg": c.background + (c.customBg && c.background ? " (custom)" : (c.customBg ? "Custom" : "")),
   };
+  const speed = creatorRaceSpeed();
+  if (speed != null) fields["speed"] = String(speed);
   CREATOR_ABILITIES.forEach(ab => { fields["score-" + ab] = String(creatorFinalScore(ab)); });
 
   // Coins. Starting gold and DMG p38's higher-level allowance are both plain gp.
