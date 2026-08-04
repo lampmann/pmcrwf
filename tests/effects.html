@@ -1059,6 +1059,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ===== combat round tracker (combat.js) and equipment slots (equip-slots.js) =====
   {
+    // --- normalizeCombat: a persisted `combat` from before a field existed must not crash ---
+    {
+      const preHistory = { active: true, round: 3, used: { action: 1, bonus: 0, reaction: 0, object: 0 },
+        moveUsed: 10, moveBonus: 0, swings: 0, attacked: true };   // no `history`, no `terrain` at all
+      const norm = normalizeCombat(preHistory);
+      assert("a save from before `history` existed gets a real array, not undefined", Array.isArray(norm.history));
+      assertEqual("...specifically an empty one, not a guess at prior undo state", norm.history.length, 0);
+      assertEqual("a save from before `terrain` existed gets the default multiplier", norm.terrain, 1);
+      assertEqual("fields the old save DID have are preserved, not overwritten by the blank",
+        norm.round + "/" + norm.used.action + "/" + norm.moveUsed, "3/1/10");
+      assertEqual("a totally missing combat (no save at all) is just a blank", normalizeCombat(undefined).round, 0);
+      assertEqual("a malformed combat (wrong type) is also just a blank", normalizeCombat("not an object").round, 0);
+
+      // The actual crash was one call away: pushHistory() did `COMBAT.history.push(...)` on the
+      // undefined array. Confirm the normalized object survives exactly that call.
+      const savedCombat = COMBAT;
+      COMBAT = normalizeCombat(preHistory);
+      let threw = false;
+      try { pushHistory("Dodge"); } catch (e) { threw = true; }
+      assert("pushHistory no longer throws on a migrated pre-history combat object", !threw);
+      assertEqual("...and actually recorded the push", COMBAT.history.length, 1);
+      COMBAT = savedCombat;
+    }
+
     // --- attacks per Attack action, off the Extra Attack features ---
     const savedLib = CLASS_LIB, savedRows = $("class-rows").innerHTML;
     CLASS_LIB = {
