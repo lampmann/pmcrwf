@@ -63,6 +63,20 @@ function blankCombat() {
 }
 const HISTORY_MAX = 20;
 
+/* A character's `combat` is persisted as part of its state (see applyState in persistence.js), which
+   means a save made before some field existed here — `history` when Undo was added, `terrain` when
+   the multiplier replaced the old difficult-terrain flag — comes back missing that field entirely.
+   Assigning a stored object straight into COMBAT trusted whatever shape it happened to have, so an
+   old save crashed the first time something touched the field it lacked (pushHistory().push() on an
+   undefined array). Loading always goes through here instead, layering the saved values over a fresh
+   blankCombat() so any field the save predates gets today's default rather than `undefined`. */
+function normalizeCombat(saved) {
+  const blank = blankCombat();
+  if (!saved || typeof saved !== "object") return blank;
+  return { ...blank, ...saved, used: { ...blank.used, ...(saved.used || {}) },
+    history: Array.isArray(saved.history) ? saved.history : blank.history };
+}
+
 /* ----- derived numbers ----- */
 
 /* Attacks per Attack action. 5e.tools names the escalating ones "Extra Attack (2)" and

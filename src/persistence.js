@@ -38,7 +38,8 @@ function applyState(state) {
   if (typeof setRoutines === "function") setRoutines(state.routines || []);   // after attacks, so step pickers resolve names
   if (typeof setCompanions === "function") setCompanions(state.companions || []);   // triggers the bestiary's lazy load if there are any
   // The round tracker is per character: switching tabs mid-fight shows that character's own turn.
-  if (typeof blankCombat === "function") { COMBAT = state.combat || blankCombat(); if (typeof renderCombat === "function") renderCombat(); }
+  // normalizeCombat fills in any field a save made before it existed is missing (see its own comment).
+  if (typeof normalizeCombat === "function") { COMBAT = normalizeCombat(state.combat); if (typeof renderCombat === "function") renderCombat(); }
   refreshSpellAddClassSelect();
   invalidateEffects();
   recompute();
