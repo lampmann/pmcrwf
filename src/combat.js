@@ -33,20 +33,12 @@
      initiative order; the button says what it refreshes.
    - The free object interaction is one per turn (PHB p190); a second one
      costs your action (Use an Object), which is a separate menu entry.
-   - Movement is a pool of feet, spent a foot at a time. What a foot of
-     DISTANCE costs is set by the terrain multiplier (TERRAIN_COSTS), so
-     "I moved 15 feet through difficult terrain" is one number to enter
-     rather than a sum to do in your head. Dash adds your speed to the pool
-     rather than doubling it — same result, and it survives a speed change
-     mid-turn. The terrain setting deliberately outlives End Round: a swamp
-     is still a swamp next turn.
-
-   EVERY SPEND CAN BE TAKEN BACK. Right-click a resource to give one back
-   (the mirror of double-clicking to spend it), or use the undo entry at the
-   top of its own menu. One-click-to-spend invites the misclick, so undo is
-   a first-class operation rather than a reason to reset the round — and
-   refunds are logged too, so the Event Log stays an honest record instead
-   of quietly losing the correction.
+   - Movement is a pool of feet, spendable a foot at a time (± steps on the
+     module, or any number through the menu's custom-feet box). What a foot
+     of DISTANCE costs is the terrain multiplier (TERRAIN_COSTS), so "I moved
+     15 feet through difficult terrain" is one number to enter rather than a
+     sum to do in your head. Dash adds your speed to the pool rather than
+     doubling it — same result, and it survives a speed change mid-turn.
    ============================================================ */
 
 const COMBAT_MAX = { action: 1, bonus: 1, reaction: 1, object: 1 };
@@ -62,22 +54,14 @@ function blankCombat() {
     active: false, round: 0,
     used: { action: 0, bonus: 0, reaction: 0, object: 0 },
     moveUsed: 0, moveBonus: 0,     // feet spent; feet added by Dash and the like
-    terrain: 1,                    // feet of movement each foot of distance costs (see TERRAIN_COSTS)
     swings: 0,                     // attacks banked by taking the Attack action
     attacked: false,               // has an attack been rolled this turn (gates Two-Weapon Fighting)
+    terrain: 1,                    // ft of movement each ft of distance costs (TERRAIN_COSTS) — a
+                                   // terrain property, so it survives End Round but not a fresh fight
+    history: [],                   // undo stack — see pushHistory/undoLast below
   };
 }
-
-/* What a foot of distance costs you in movement. 5e states these as "each foot of movement costs
-   1 extra foot" (difficult terrain, crawling, prone) or "4 feet" (Plant Growth), and they stack —
-   crawling through difficult terrain is 1 + 1 + 1 = 3. Offered as a multiplier because that is what
-   the arithmetic reduces to, and because a stacked case is easier to pick than to compute. */
-const TERRAIN_COSTS = [
-  { mult: 1, label: "Normal", hint: "each foot of movement costs 1 foot" },
-  { mult: 2, label: "Difficult terrain", hint: "PHB p182 — or crawling, or standing in a creature's space; each foot costs 1 extra" },
-  { mult: 3, label: "Difficult + crawling", hint: "two 1-extra-foot effects stacked" },
-  { mult: 4, label: "Plant Growth", hint: "each foot of movement costs 4 feet" },
-];
+const HISTORY_MAX = 20;
 
 /* ----- derived numbers ----- */
 
@@ -164,7 +148,7 @@ function endRound() {
   COMBAT.round++;
   COMBAT.used = { action: 0, bonus: 0, reaction: 0, object: 0 };
   COMBAT.moveUsed = 0; COMBAT.moveBonus = 0; COMBAT.swings = 0; COMBAT.attacked = false;
-  // Terrain deliberately survives the round — a swamp is still a swamp next turn.
+  COMBAT.history = [];   // last round's spends don't apply to this round's freshly-refreshed pools
   renderCombat(); scheduleSave();
   combatLog(`<b>Round ${COMBAT.round}</b> — everything refreshed` +
     (spent.length || moved ? ` <span class="hint">(last round: ${[...spent, moved ? moved + " ft moved" : ""].filter(Boolean).join(", ")})</span>` : ""));
@@ -179,32 +163,46 @@ function spendResource(kind, what) {
   combatLog(`${escapeHtml(what || COMBAT_LABEL[kind])} — <b>${COMBAT_LABEL[kind]}</b>` +
     (over ? ` <span class="cr-over">(none left — over your limit)</span>` : ` <span class="hint">(${leftOf(kind)}/${COMBAT_MAX[kind]} left)</span>`));
 }
-/* Give one back. Every spend is a click, so every spend is a misclick waiting to happen — and the
-   round tracker is bookkeeping, not a commitment. Refunds are logged too, so the Event Log stays an
-   honest record rather than quietly losing the correction. */
-function refundResource(kind, what) {
-  if (COMBAT.used[kind] <= 0) return;
-  COMBAT.used[kind]--;
-  // Giving back the action that started an Attack takes its unused swings with it, or you'd keep
-  // free attacks from an action you no longer spent.
-  if (kind === "action" && COMBAT.swings > 0) COMBAT.swings = 0;
-  renderCombat(); scheduleSave();
-  combatLog(`Gave back a <b>${COMBAT_LABEL[kind]}</b>${what ? ` <span class="hint">(${escapeHtml(what)})</span>` : ""} <span class="hint">(${leftOf(kind)}/${COMBAT_MAX[kind]} left)</span>`);
-}
-
-/* `ft` is DISTANCE; what it costs the pool is distance × the terrain multiplier. Keeping the two
-   apart is what makes "I moved 15 feet through difficult terrain" one number to enter rather than a
-   sum to do in your head. */
 function spendMovement(ft, what) {
   if (!COMBAT.active) enterCombat();
-  const cost = ft * (COMBAT.terrain || 1);
-  COMBAT.moveUsed = Math.max(0, COMBAT.moveUsed + cost);
+  // Clamped at zero: the ± steps pass a negative to give feet back, and a pool below empty would
+  // then hand out free movement later in the turn.
+  COMBAT.moveUsed = Math.max(0, COMBAT.moveUsed + ft);
   const over = COMBAT.moveUsed > moveMax();
   renderCombat(); scheduleSave();
-  const mult = (COMBAT.terrain || 1) > 1 ? ` <span class="hint">(${ft} ft × ${COMBAT.terrain})</span>` : "";
-  const verb = ft < 0 ? "Gave back" : (what || "Move");
-  combatLog(`${escapeHtml(verb)} ${Math.abs(cost)} ft — <b>Movement</b>${mult} ` +
+  combatLog(`${escapeHtml(what || "Move")} ${Math.abs(ft)} ft — <b>Movement</b> ` +
     (over ? `<span class="cr-over">${COMBAT.moveUsed}/${moveMax()} ft (over)</span>` : `<span class="hint">${moveLeft()}/${moveMax()} ft left</span>`));
+}
+
+/* ----- undo -----
+   One entry per user-initiated spend, captured as a snapshot of every field a spend can touch —
+   not a per-field diff — because several spends are compound (Dash adds to moveBonus AND spends the
+   action; taking Attack with no swings banked spends the action AND sets swings AND attacked). A
+   snapshot restores the whole thing in one step regardless of how many fields the spend actually
+   changed, so the caller only has to know "before" and "after", never the shape of what happened
+   between them.
+
+   The three call sites that begin a real spend (the menu's entry.run(), a chip double-click, and an
+   attack roll auto-booking itself) call pushHistory() first; the mutators themselves (spendResource,
+   spendMovement, useAttackSwing) don't, so a compound spend that calls two of them only ever pushes
+   once. Undoing does NOT remove the Event Log entry the spend made — the tracker's whole premise is
+   an auditable log (see this file's header), and erasing history would fight that. Instead Undo adds
+   its own log line, so both "this was spent" and "then undone" stay on the record. */
+function pushHistory(label) {
+  // spendResource/spendMovement also auto-enter combat on a first spend — but enterCombat() replaces
+  // COMBAT wholesale with a fresh blankCombat(), which would discard an entry pushed onto the OLD
+  // object a moment earlier. Doing it here first means every push lands on the object that survives.
+  if (!COMBAT.active) enterCombat();
+  COMBAT.history.push({ label, used: { ...COMBAT.used }, moveUsed: COMBAT.moveUsed, moveBonus: COMBAT.moveBonus, swings: COMBAT.swings, attacked: COMBAT.attacked });
+  if (COMBAT.history.length > HISTORY_MAX) COMBAT.history.shift();
+}
+function lastHistoryLabel() { return COMBAT.history.length ? COMBAT.history[COMBAT.history.length - 1].label : null; }
+function undoLast() {
+  const entry = COMBAT.history.pop(); if (!entry) return;
+  COMBAT.used = entry.used; COMBAT.moveUsed = entry.moveUsed; COMBAT.moveBonus = entry.moveBonus;
+  COMBAT.swings = entry.swings; COMBAT.attacked = entry.attacked;
+  renderCombat(); scheduleSave();
+  combatLog(`<span class="hint">Undo</span> — ${escapeHtml(entry.label)}`);
 }
 
 /* An attack roll landed. Spends a banked swing, or takes the Attack action first if there are none —
@@ -227,18 +225,12 @@ function useAttackSwing(name) {
    "spend the resource and log it", and sometimes also "make the roll". Entries are built from the
    live sheet, so an empty inventory or spell list simply produces fewer of them. */
 function menuFor(kind) {
-  const body = kind === "action" ? actionMenu()
-             : kind === "bonus" ? bonusMenu()
-             : kind === "reaction" ? reactionMenu()
-             : kind === "object" ? objectMenu()
-             : kind === "move" ? moveMenu() : [];
-  // Undo sits at the top of the menu it undoes, and only when there's something to give back.
-  const spent = kind === "move" ? COMBAT.moveUsed > 0 : COMBAT.used[kind] > 0;
-  if (!spent) return body;
-  const undo = kind === "move"
-    ? { label: "Give back 5 ft", hint: "put five feet of movement back in the pool", run: () => spendMovement(-5 / (COMBAT.terrain || 1), "Move") }
-    : { label: `Give back this ${COMBAT_LABEL[kind]}`, hint: "undo a spend — right-clicking the button does the same", run: () => refundResource(kind) };
-  return [undo, ...body];
+  if (kind === "action") return actionMenu();
+  if (kind === "bonus") return bonusMenu();
+  if (kind === "reaction") return reactionMenu();
+  if (kind === "object") return objectMenu();
+  if (kind === "move") return moveMenu();
+  return [];
 }
 
 function attackEntries(spend) {
@@ -343,17 +335,40 @@ function objectMenu() {
   return out;
 }
 
+/* What a foot of DISTANCE costs you in movement. 5e writes these as "each foot of movement costs 1
+   extra foot" (difficult terrain, crawling, standing in a creature's space) or "4 feet" (Plant
+   Growth), and they stack — crawling through difficult terrain is 1 + 1 + 1 = 3. A multiplier is
+   what that arithmetic reduces to, and a stacked case is easier to pick than to compute.
+
+   It's a property of the ground, not of your turn, so it's a standing setting that the quick-move
+   buttons, the ± steps and the custom-feet input all read rather than something you re-enter on
+   every move — and it survives End Round (a swamp is still a swamp next turn) but resets with a
+   fresh fight, since blankCombat() rebuilds the whole state. */
+const TERRAIN_COSTS = [
+  { mult: 1, label: "Normal", hint: "each foot of movement costs 1 foot" },
+  { mult: 2, label: "Difficult terrain", hint: "PHB p182 — also crawling, or standing in a creature's space; each foot costs 1 extra" },
+  { mult: 3, label: "Difficult + crawling", hint: "two 1-extra-foot effects stacked" },
+  { mult: 4, label: "Plant Growth", hint: "each foot of movement costs 4 feet" },
+];
+function terrainMult() { return COMBAT.terrain || 1; }
+function terrainLabel() { const t = TERRAIN_COSTS.find(x => x.mult === terrainMult()); return t ? t.label : "×" + terrainMult(); }
+function moveCostFt(actualFt) { return actualFt * terrainMult(); }
+function moveLabel(actualFt, note) {
+  const cost = moveCostFt(actualFt);
+  return terrainMult() > 1 ? `${note || "Move"} ${actualFt} ft (${terrainLabel().toLowerCase()}, ${cost} ft spent)` : `${note || "Move"} ${actualFt} ft`;
+}
+function moveQuickHint(actualFt) {
+  return terrainMult() > 1 ? `${actualFt} ft of distance — ${moveCostFt(actualFt)} ft of movement at ×${terrainMult()}` : undefined;
+}
 function moveMenu() {
-  const sp = speedTotal(), mult = COMBAT.terrain || 1;
-  const cost = ft => mult > 1 ? `${ft} ft of distance — ${ft * mult} ft of movement at ×${mult}` : `${ft} ft`;
-  const out = [5, 10, 15, 30].map(ft => ({ label: `Move ${ft} ft`, hint: cost(ft), run: () => spendMovement(ft, "Move") }));
-  out.push({ label: `Move your full speed`, hint: cost(sp), run: () => spendMovement(sp, "Move") });
-  out.push({ label: "Dash", hint: `costs your action and adds ${sp} ft to the pool`, run: () => { COMBAT.moveBonus += sp; spendResource("action", "Dash"); } });
-  // Standing up costs half your speed OUTRIGHT — it isn't distance, so the terrain multiplier
-  // doesn't apply to it (PHB p190: "standing up costs an amount of movement equal to half your speed").
-  out.push({ label: "Stand up from prone", hint: `half your speed (${Math.floor(sp / 2)} ft) — not affected by terrain`,
-    run: () => { COMBAT.moveUsed += Math.floor(sp / 2); renderCombat(); scheduleSave(); combatLog(`Stand up — <b>Movement</b> <span class="hint">${moveLeft()}/${moveMax()} ft left</span>`); } });
-  out.push({ label: "Reset movement", hint: "put every foot back", run: () => { COMBAT.moveUsed = 0; renderCombat(); scheduleSave(); } });
+  const sp = speedTotal();
+  const out = [5, 10, 15, 30].map(ft => ({ label: `Move ${ft} ft`, hint: moveQuickHint(ft), run: () => spendMovement(moveCostFt(ft), moveLabel(ft)) }));
+  out.push({ label: `Move your full speed (${sp} ft)`, hint: moveQuickHint(sp), run: () => spendMovement(moveCostFt(sp), moveLabel(sp)) });
+  out.push({ label: "Dash", hint: `costs your action, +${sp} ft`, run: () => { COMBAT.moveBonus += sp; spendResource("action", "Dash"); } });
+  // Standing up is a fixed fraction of your speed stat (PHB p190), not distance covered along the
+  // ground, so difficult terrain doesn't multiply it.
+  out.push({ label: "Stand up from prone", hint: `costs half your speed (${Math.floor(sp / 2)} ft)`, run: () => spendMovement(Math.floor(sp / 2), "Stand up") });
+  out.push({ label: "Reset movement", hint: "put the feet back", run: () => { COMBAT.moveUsed = 0; renderCombat(); scheduleSave(); } });
   return out;
 }
 
@@ -398,33 +413,26 @@ function renderCombat() {
   }
 
   if (status) status.textContent = `Round ${COMBAT.round}`;
-  const mv = moveLeft(), mvMax = moveMax(), mult = COMBAT.terrain || 1;
-  /* Movement gets its own row of controls rather than living only in a menu: it's the one resource
-     you spend in arbitrary amounts, several times a turn, and often need to take back by a few feet.
-     ± steps of 1 and 5 are DISTANCE, so the terrain multiplier applies to them the same way it
-     applies to the menu — the readout says what a foot is costing so the arithmetic is never hidden. */
+  const mv = moveLeft(), mvMax = moveMax();
+  const undoLabel = lastHistoryLabel();
   el.innerHTML =
     `<div class="cbt-chips">${COMBAT_KINDS.map(combatChipHtml).join("")}
-       <button type="button" class="cbt-chip${mv ? "" : " spent"}" data-cbt="move"
-         title="Movement — click for ways to spend it, right-click to give 5 ft back">Movement <b>${mv}</b>/${mvMax} ft</button>
+       <button type="button" class="cbt-chip${mv ? "" : " spent"}" data-cbt="move" title="Movement — click for ways to spend it${terrainMult() > 1 ? ` (${terrainLabel()}: ×${terrainMult()} cost)` : ""}">Movement <b>${mv}</b>/${mvMax} ft${terrainMult() > 1 ? ` <span class="hint">(×${terrainMult()})</span>` : ""}</button>
      </div>
      <div class="cbt-move-row">
        <span class="hint">move</span>
-       <button type="button" class="cbt-mv" data-mv="-5" title="give back 5 ft of distance">−5</button>
-       <button type="button" class="cbt-mv" data-mv="-1" title="give back 1 ft of distance">−1</button>
-       <button type="button" class="cbt-mv" data-mv="1" title="move 1 ft">+1</button>
-       <button type="button" class="cbt-mv" data-mv="5" title="move 5 ft">+5</button>
-       <label class="hint" style="margin-left:.4rem">terrain
-         <select id="cbt-terrain" title="what a foot of distance costs you in movement">
-           ${TERRAIN_COSTS.map(t => `<option value="${t.mult}"${mult === t.mult ? " selected" : ""} title="${escapeHtml(t.hint)}">×${t.mult} ${escapeHtml(t.label)}</option>`).join("")}
-         </select></label>
-       ${mult > 1 ? `<span class="hint">each foot of distance costs <b>${mult}</b> ft</span>` : ""}
+       <button type="button" class="cbt-mv" data-mv="-5" title="give back 5 ft of distance">&minus;5</button>
+       <button type="button" class="cbt-mv" data-mv="-1" title="give back 1 ft of distance">&minus;1</button>
+       <button type="button" class="cbt-mv" data-mv="1" title="move 1 ft of distance">+1</button>
+       <button type="button" class="cbt-mv" data-mv="5" title="move 5 ft of distance">+5</button>
+       ${terrainMult() > 1 ? `<span class="hint">each foot of distance costs <b>${terrainMult()}</b> ft (${escapeHtml(terrainLabel().toLowerCase())})</span>` : ""}
      </div>
      ${COMBAT.swings > 0 ? `<div class="hint">${COMBAT.swings} attack${COMBAT.swings === 1 ? "" : "s"} left in this Attack action.</div>` : ""}
      <div style="margin-top:.4rem">
        <button type="button" id="cbt-end">End Round</button>
        <button type="button" id="cbt-leave" title="leave combat and clear the tracker">End combat</button>
-       <span class="hint">End Round refreshes everything. Right-click a resource to give one back.</span>
+       <button type="button" id="cbt-undo"${undoLabel ? "" : " disabled"} title="${undoLabel ? "undo: " + escapeHtml(undoLabel) : "nothing to undo"}">Undo${undoLabel ? ` (${escapeHtml(undoLabel)})` : ""}</button>
+       <span class="hint">End Round refreshes your action, bonus action, reaction, object interaction and movement.</span>
      </div>
      <div id="cbt-menu-anchor"></div>`;
 }
@@ -445,17 +453,33 @@ function openCombatMenu(kind, anchor) {
   paintCombatMenu(anchor);
 }
 
+/* The custom-feet + difficult-terrain controls, shown only on the Movement menu's top level (not
+   inside a submenu, though Movement has none today — the check is here so this doesn't reappear if
+   one's ever added). A real form control set, not `.cbt-item` entries: they need to stay open after
+   a click/change (typing a number, ticking a checkbox), where every ordinary entry closes the menu
+   the moment it's activated. See the dedicated listeners below for how they're wired. */
+function moveFormHtml() {
+  return `<div class="cbt-move-form">
+    <label>terrain <select class="cbt-terrain" title="what a foot of distance costs you in movement">
+      ${TERRAIN_COSTS.map(t => `<option value="${t.mult}"${terrainMult() === t.mult ? " selected" : ""} title="${escapeHtml(t.hint)}">&times;${t.mult} ${escapeHtml(t.label)}</option>`).join("")}
+    </select></label>
+    <div class="cbt-move-custom">
+      <input type="number" class="cbt-move-ft" min="1" step="1" inputmode="numeric" placeholder="ft" title="move this many feet of distance (before the terrain multiplier)">
+      <button type="button" class="cbt-move-go">Move</button>
+    </div>
+  </div>`;
+}
 function paintCombatMenu(anchor) {
   if (!CBT_MENU) return;
   let m = document.querySelector(".cbt-menu");
   if (!m) { m = document.createElement("div"); m.className = "cbt-menu"; document.body.appendChild(m); }
   const top = CBT_MENU.stack[CBT_MENU.stack.length - 1];
+  const isMoveRoot = CBT_MENU.kind === "move" && CBT_MENU.stack.length === 1;
   const back = CBT_MENU.stack.length > 1 ? `<div class="cbt-item cbt-back" data-cbtback="1">← back</div>` : "";
-  /* Names only. The explanation is the entry's `title`, so the menu stays a list you can scan at a
-     glance and read at leisure — a two-column menu where half of every row is prose takes longer to
-     search than it saves. A disabled entry keeps its reason in the tooltip, which is the one place
-     it still needs to be legible. */
-  m.innerHTML = `<div class="cbt-menu-title">${escapeHtml(top.title)}</div>${back}` +
+  // Every entry's `hint` — what it actually does — is a title (hover) tooltip, not visible text, so
+  // the menu itself reads as a plain list of action names. Consistent with how the rest of the sheet
+  // explains a number without cluttering the row for it (Attacks' Fx tooltips, roll-button tooltips).
+  m.innerHTML = `<div class="cbt-menu-title">${escapeHtml(top.title)}</div>${back}${isMoveRoot ? moveFormHtml() : ""}` +
     top.entries.map((e, i) =>
       `<div class="cbt-item${e.disabled ? " disabled" : ""}" data-cbtidx="${i}"${e.hint ? ` title="${escapeHtml(e.hint)}"` : ""}>
          <span>${escapeHtml(e.label)}${e.submenu ? " ›" : ""}</span>
@@ -477,8 +501,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "cbt-start") { enterCombat(); return; }
     if (e.target.id === "cbt-end") { endRound(); return; }
     if (e.target.id === "cbt-leave") { leaveCombat(); return; }
+    if (e.target.id === "cbt-undo") { undoLast(); return; }
+    /* Foot-by-foot steps, right on the module rather than only inside the menu: movement is the one
+       resource you spend in arbitrary amounts several times a turn, and often need back by a few
+       feet. They take DISTANCE, so the terrain multiplier applies exactly as it does in the menu,
+       and they go through pushHistory so Undo covers them like everything else. */
     const mv = e.target.closest(".cbt-mv");
-    if (mv) { spendMovement(Number(mv.dataset.mv), "Move"); return; }
+    if (mv) {
+      const ft = Number(mv.dataset.mv);
+      pushHistory(moveLabel(Math.abs(ft), ft < 0 ? "Give back" : "Move"));
+      spendMovement(moveCostFt(ft), moveLabel(Math.abs(ft), ft < 0 ? "Give back" : "Move"));
+      return;
+    }
     const chip = e.target.closest("[data-cbt]");
     if (chip) {
       if (CBT_MENU && CBT_MENU.kind === chip.dataset.cbt) { closeCombatMenu(); return; }
@@ -493,34 +527,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const chip = e.target.closest("[data-cbt]"); if (!chip) return;
     closeCombatMenu();
     const kind = chip.dataset.cbt;
-    if (kind === "move") { spendMovement(5, "Move"); return; }   // a 5-ft step is the smallest useful unit
-    spendResource(kind);
-  });
-
-  /* Right-click gives one back — the mirror of double-click spending it, and the fastest fix for the
-     misclick that a one-click-to-spend tracker invites. The menu carries the same undo for anyone
-     who doesn't think to try it. */
-  el.addEventListener("contextmenu", e => {
-    const chip = e.target.closest("[data-cbt]"); if (!chip) return;
-    e.preventDefault();
-    closeCombatMenu();
-    const kind = chip.dataset.cbt;
-    if (kind === "move") { spendMovement(-5 / (COMBAT.terrain || 1), "Move"); return; }
-    refundResource(kind);
-  });
-
-  el.addEventListener("change", e => {
-    if (e.target.id !== "cbt-terrain") return;
-    COMBAT.terrain = Number(e.target.value) || 1;
-    renderCombat(); scheduleSave();
-    const t = TERRAIN_COSTS.find(x => x.mult === COMBAT.terrain);
-    combatLog(`Terrain: <b>${escapeHtml(t ? t.label : "×" + COMBAT.terrain)}</b>` +
-      (COMBAT.terrain > 1 ? ` <span class="hint">— each foot of distance costs ${COMBAT.terrain} ft</span>` : ""));
+    // a 5-ft step is the smallest useful unit; goes through the same difficult-terrain multiplier as
+    // every other move so a double-click is never the one path that forgets the terrain toggle
+    if (kind === "move") { pushHistory(moveLabel(5)); spendMovement(moveCostFt(5), moveLabel(5)); return; }
+    pushHistory(COMBAT_LABEL[kind]); spendResource(kind);
   });
 
   document.addEventListener("click", e => {
     const item = e.target.closest(".cbt-item");
-    if (!item) { if (!e.target.closest("[data-cbt]")) closeCombatMenu(); return; }
+    if (!item) {
+      // Anything else inside the popup — its title, or the movement form's own controls — has its
+      // own handling (or none) below; it must not fall through to closing the menu on every click.
+      if (!e.target.closest("[data-cbt]") && !e.target.closest(".cbt-menu")) closeCombatMenu();
+      return;
+    }
     if (!CBT_MENU) return;
     if (item.dataset.cbtback) { CBT_MENU.stack.pop(); paintCombatMenu(document.querySelector(`[data-cbt="${CBT_MENU.kind}"]`)); return; }
     const top = CBT_MENU.stack[CBT_MENU.stack.length - 1];
@@ -531,9 +551,34 @@ document.addEventListener("DOMContentLoaded", () => {
       paintCombatMenu(document.querySelector(`[data-cbt="${CBT_MENU.kind}"]`));
       return;
     }
-    if (entry.run) entry.run();
+    if (entry.run) { pushHistory(entry.label); entry.run(); }
     closeCombatMenu();
   });
+
+  /* The Movement menu's custom-feet input and difficult-terrain checkbox (see moveFormHtml) — kept
+     open across both, unlike every ordinary .cbt-item above, since ticking a checkbox or typing a
+     number is a step on the way to a move, not the move itself. */
+  document.addEventListener("change", e => {
+    const sel = e.target.closest(".cbt-terrain"); if (!sel || !CBT_MENU) return;
+    COMBAT.terrain = Number(sel.value) || 1; scheduleSave(); renderCombat();
+    combatLog(`Terrain: <b>${escapeHtml(terrainLabel())}</b>` +
+      (terrainMult() > 1 ? ` <span class="hint">— each foot of distance costs ${terrainMult()} ft</span>` : ""));
+    // Re-open rather than just repaint: the preset entries' hints/costs (5/10/15/30/full speed) were
+    // computed by moveMenu() once, at the moment the menu opened, off the terrain value THEN
+    // — a plain repaint would redraw the same stale numbers. renderCombat() just replaced the chip
+    // element too, so the anchor has to be looked up fresh.
+    openCombatMenu("move", document.querySelector(`[data-cbt="move"]`));
+  });
+  function runCustomMove() {
+    if (!CBT_MENU) return;
+    const inp = document.querySelector(".cbt-move-ft"); if (!inp) return;
+    const ft = Math.floor(Number(inp.value));
+    if (!ft || ft <= 0) return;   // no value typed, or not a usable positive number — do nothing rather than guess
+    pushHistory(moveLabel(ft)); spendMovement(moveCostFt(ft), moveLabel(ft));
+    closeCombatMenu();
+  }
+  document.addEventListener("click", e => { if (e.target.closest(".cbt-move-go")) runCustomMove(); });
+  document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest(".cbt-move-ft")) runCustomMove(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeCombatMenu(); });
 
   /* Rolling initiative is what puts you in combat — the whole point of the tracker is that you
@@ -544,12 +589,15 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* Attack rolls book themselves. Deferred so the roll's own log entry lands first and the tracker's
-     note reads as a consequence of it rather than a prediction. */
+     note reads as a consequence of it rather than a prediction. The history snapshot is taken NOW,
+     synchronously, before that deferred booking runs — Undo needs "the state right before this
+     spend", and by the time the timeout fires that state is already gone. */
   document.addEventListener("click", e => {
     const btn = e.target.closest(".wpn-both, .wpn-roll");
     if (!btn || !COMBAT.active) return;
     const tr = btn.closest("tr");
     const name = tr ? (tr.querySelector(".atk-name") || {}).value : "";
+    pushHistory(name || "Attack");
     setTimeout(() => useAttackSwing(name), 0);
   });
 });

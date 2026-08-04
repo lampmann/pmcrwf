@@ -1104,48 +1104,59 @@ document.addEventListener("DOMContentLoaded", () => {
     useAttackSwing("Longsword");
     assertEqual("a third attack has to take another action", COMBAT.used.action, 2);
 
-    // --- undo: every spend can be given back ---
+    // --- undo: the last spend can be taken back ---
     COMBAT = blankCombat(); COMBAT.active = true;
-    spendResource("reaction", "Shield");
+    assertEqual("nothing to undo on a fresh round", lastHistoryLabel(), null);
+    pushHistory("Shield"); spendResource("reaction", "Shield");
     assertEqual("a spend takes one", COMBAT.used.reaction, 1);
-    refundResource("reaction");
-    assertEqual("...and a refund gives it back", COMBAT.used.reaction, 0);
-    refundResource("reaction");
-    assertEqual("refunding what was never spent does nothing (no negative pips)", COMBAT.used.reaction, 0);
-    // Giving back the action that started an Attack must take its unused swings too.
+    assertEqual("...and is what Undo names", lastHistoryLabel(), "Shield");
+    undoLast();
+    assertEqual("...and Undo gives it back", COMBAT.used.reaction, 0);
+    assertEqual("...leaving nothing further to undo", lastHistoryLabel(), null);
+    undoLast();
+    assertEqual("undoing nothing is a no-op, not a negative pip", COMBAT.used.reaction, 0);
+
+    // A compound spend undoes as one step: taking Attack with no swings banked touches the action,
+    // the swing count and the attacked flag together.
     setClasses([{ name: "Fighter", lvl: 11 }]);
     COMBAT = blankCombat(); COMBAT.active = true;
-    useAttackSwing("Longsword");
+    pushHistory("Longsword"); useAttackSwing("Longsword");
     assertEqual("an Attack banks its remaining swings", COMBAT.swings, 2);
-    refundResource("action");
-    assertEqual("giving the action back drops the swings with it", COMBAT.swings, 0);
-    assertEqual("...and the action is unspent", COMBAT.used.action, 0);
+    assert("...and records that you attacked", COMBAT.attacked);
+    undoLast();
+    assertEqual("undo takes the action back", COMBAT.used.action, 0);
+    assertEqual("...and the swings with it", COMBAT.swings, 0);
+    assert("...and the attacked flag", !COMBAT.attacked);
 
-    // --- movement is distance × terrain, and refundable a foot at a time ---
+    // --- movement is distance × terrain, and adjustable a foot at a time ---
     COMBAT = blankCombat(); COMBAT.active = true;
     $("speed").value = "30"; COMBAT.terrain = 1;
-    spendMovement(1, "Move");
-    assertEqual("a foot of distance costs a foot at normal terrain", COMBAT.moveUsed, 1);
-    spendMovement(-1, "Move");
-    assertEqual("...and can be given straight back", COMBAT.moveUsed, 0);
+    assertEqual("normal ground charges a foot per foot", moveCostFt(1), 1);
+    spendMovement(moveCostFt(1), "Move");
+    assertEqual("...so one foot of distance spends one", COMBAT.moveUsed, 1);
+    spendMovement(-1, "Give back");
+    assertEqual("...and a negative gives it straight back", COMBAT.moveUsed, 0);
     COMBAT.terrain = 2;
-    spendMovement(5, "Move");
-    assertEqual("difficult terrain doubles what a distance costs", COMBAT.moveUsed, 10);
+    assertEqual("difficult terrain doubles the cost of a distance", moveCostFt(5), 10);
+    COMBAT.terrain = 3;
+    assertEqual("...stacked with crawling, triples it", moveCostFt(5), 15);
     COMBAT.terrain = 4;
-    spendMovement(5, "Move");
-    assertEqual("Plant Growth quadruples it", COMBAT.moveUsed, 30);
-    spendMovement(-100, "Move");
-    assertEqual("movement never goes negative however much you give back", COMBAT.moveUsed, 0);
-    assertEqual("the terrain options are the stacking cases, as multipliers",
+    assertEqual("Plant Growth quadruples it", moveCostFt(5), 20);
+    spendMovement(moveCostFt(5), "Move");
+    assertEqual("...and the pool is charged the multiplied amount", COMBAT.moveUsed, 20);
+    spendMovement(-100, "Give back");
+    assertEqual("movement never goes below zero however much is given back", COMBAT.moveUsed, 0);
+    assertEqual("the terrain options are the stacking cases as multipliers",
       TERRAIN_COSTS.map(t => t.mult).join(","), "1,2,3,4");
+    COMBAT.terrain = 2;
+    assert("a move's label says what it really cost", /difficult terrain, 20 ft spent/.test(moveLabel(10)));
+    COMBAT.terrain = 1;
+    assertEqual("...and says nothing extra on normal ground", moveLabel(10), "Move 10 ft");
 
     // --- menu entries are labels; the explanation is a tooltip ---
     COMBAT = blankCombat(); COMBAT.active = true;
-    assert("an unspent resource offers no undo entry", !menuFor("action").some(e => /Give back/.test(e.label)));
-    spendResource("action", "Dodge");
-    assertEqual("...a spent one puts undo first", menuFor("action")[0].label, "Give back this Action");
     assert("every menu entry has a label", menuFor("action").every(e => e.label && e.label.length));
-    assert("...and carries its explanation as a hint, not in the label",
+    assert("...and carries its explanation as a hint, not inside the label",
       menuFor("action").filter(e => e.hint).every(e => !e.label.includes(e.hint)));
 
     // --- End Round gives it all back ---
