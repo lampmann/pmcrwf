@@ -1,0 +1,39 @@
+/* Dark Mode: the default theme, inverted for low light. Deliberately not
+   "themed" in the way the others below are — same serif body font, same
+   sharp corners, no gradients or glow, just Prof. Dr.'s function-over-form
+   default re-tuned so a screen at night doesn't feel like staring into a
+   lamp. Anyone who wants ornamentation has seven other themes to pick from;
+   this one is for people who just want the lights off. */
+:root {
+  --bg: #121212;
+  --fg: #e8e8e8;
+  --muted-fg: #a3a3a3;
+  --border: #3a3a3a;
+  --border-soft: #545454;
+  --border-hair: #262626;
+  --code-bg: #1c1c1c;
+  --link: #6cb2ff;
+  --link-border: #4a90d9;
+  --danger: #ff7a7a;
+  --danger-border: #d94a4a;
+  --btn-bg: #1c1c1c;
+  --btn-fg: #e8e8e8;
+  --btn-border: #4a4a4a;
+  --tooltip-bg: #000;
+  --tooltip-fg: #fff;
+  --menu-bg: #1c1c1c;
+  --menu-hover-bg: #2a2a2a;
+  /* Interaction feedback (see the block in base.css). Tuned per theme because a hover
+     has to move away from this theme's own button colour to read as a hover at all. */
+  --hover-bg: #262626;
+  --active-bg: #333333;
+  --focus-ring: #6cb2ff;
+  --menu-shadow: rgba(0, 0, 0, 0.6);
+  --radius: 0px;
+}
+
+/* The one concession beyond re-pointing variables: pure black text on a
+   near-black background makes checkbox/number-input borders disappear on
+   some browsers' default control rendering, so native inputs get an
+   explicit dark scheme hint. Doesn't change layout or any other theme. */
+input, select, textarea { color-scheme: dark; }
