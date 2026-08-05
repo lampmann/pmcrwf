@@ -158,6 +158,7 @@
 <script src="../src/attacks.js"></script>
 <script src="../src/persistence.js"></script>
 <script src="../src/combobox.js"></script>
+<script src="../src/house-rules.js"></script>
 <script src="../src/characters.js"></script>
 <script src="../src/creator.js"></script>
 <script src="../src/xp.js"></script>
@@ -1298,6 +1299,93 @@ document.addEventListener("DOMContentLoaded", () => {
       CHARACTER_ITEMS = savedItems; ITEM_LIB = savedItemLib;
     }
     COMBAT = blankCombat();
+  }
+
+  // ===== house rules (house-rules.js) =====
+  {
+    const savedHR = HOUSE_RULES;
+    HOUSE_RULES = blankHouseRules();
+
+    // --- a blank ruleset bans nothing, so every consumer can call isBanned unconditionally ---
+    assertEqual("a blank ruleset has no bans", totalBanCount(), 0);
+    assert("...so nothing reads as banned", !isBanned("spell", "Fireball"));
+    assertEqual("...and banNote returns null rather than a string", banNote("spell", "Fireball"), null);
+
+    // --- banning by name, matched the way a DM writes it down ---
+    toggleBan("spell", "Fabricate");
+    assert("a banned spell is banned", isBanned("spell", "Fabricate"));
+    assert("...case-insensitively", isBanned("spell", "fABRICATE"));
+    assert("...and with surrounding whitespace trimmed", isBanned("spell", "  Fabricate  "));
+    assert("...but not under a different kind", !isBanned("item", "Fabricate"));
+    assertEqual("...and banNote says why", banNote("spell", "Fabricate"), "banned by house rule");
+    toggleBan("spell", "Fabricate");
+    assert("toggling the same name again lifts the ban", !isBanned("spell", "Fabricate"));
+    // The ban is stored as typed but matched loosely, so an unban typed in a different case works.
+    toggleBan("spell", "Fabricate");
+    toggleBan("spell", "fabricate");
+    assertEqual("...even when the case differs from how it was stored", HOUSE_RULES.bans.spell.length, 0);
+    toggleBan("spell", "   ");
+    assertEqual("an all-whitespace name is not a ban", HOUSE_RULES.bans.spell.length, 0);
+
+    // --- source denylist: banning a book bans everything printed in it ---
+    toggleSourceBan("XGE");
+    assert("a banned source bans an entry printed in it", isBanned("spell", "Anything At All", "XGE"));
+    assert("...while an entry from another book is fine", !isBanned("spell", "Anything At All", "PHB"));
+    assertEqual("...and the note names the book rather than claiming a name ban",
+      banNote("spell", "Anything At All", "XGE"), "XGE is not an allowed source");
+    assert("an entry checked without a source is unaffected by a source ban", !isBanned("spell", "Anything At All"));
+    toggleSourceBan("XGE");
+    assert("toggling the source again lifts it", !isBanned("spell", "Anything At All", "XGE"));
+
+    // --- settings fall back to their declared defaults ---
+    HOUSE_RULES = blankHouseRules();
+    assertEqual("multiclassing defaults to allowed", hrSetting("multiclass"), true);
+    assertEqual("feats default to allowed", hrSetting("feats"), true);
+    assertEqual("oversized weapons default to fully allowed", hrSetting("oversized"), "allow");
+    assertEqual("a bool setting with no declared default is false", hrSetting("averageHp"), false);
+    assertEqual("magic item pricing is off by default", hrSetting("magicItemPricing"), "");
+    hrSetSetting("feats", false);
+    assertEqual("...and a set value wins over the default", hrSetting("feats"), false);
+
+    // --- XGtE fixed pricing: the mean of the asking-price roll, halved for consumables ---
+    assertEqual("pricing returns null while the house rule is off", hrMagicItemPrice("rare", false), null);
+    hrSetSetting("magicItemPricing", "xge-mean");
+    assertEqual("common is (1d6+1)x10 averaged", hrMagicItemPrice("common", false), 45);
+    assertEqual("uncommon is 1d6x100 averaged", hrMagicItemPrice("uncommon", false), 350);
+    assertEqual("rare is 2d10x1000 averaged", hrMagicItemPrice("rare", false), 11000);
+    assertEqual("very rare is (1d4+1)x10000 averaged", hrMagicItemPrice("very rare", false), 35000);
+    assertEqual("legendary is 2d6x25000 averaged", hrMagicItemPrice("legendary", false), 175000);
+    assertEqual("a consumable is halved", hrMagicItemPrice("rare", true), 5500);
+    assertEqual("rarity is matched case-insensitively", hrMagicItemPrice("Very Rare", false), 35000);
+    assertEqual("a rarity with no asking price (artifact) has no fixed price", hrMagicItemPrice("artifact", false), null);
+    assertEqual("...and neither does mundane gear", hrMagicItemPrice("", false), null);
+
+    // --- a ruleset saved before a field existed gets today's default, not undefined ---
+    const old = { v: 1, bans: { spell: ["Fabricate"] } };   // no sourcesOff, no settings, most kinds missing
+    HOUSE_RULES = normalizeHouseRules(old);
+    assert("an old ruleset keeps the bans it had", isBanned("spell", "Fabricate"));
+    assert("...gains an empty list for a kind it predates", Array.isArray(HOUSE_RULES.bans.subclass));
+    assert("...and an empty source denylist", Array.isArray(HOUSE_RULES.sourcesOff));
+    assertEqual("...and settings fall back to defaults rather than throwing", hrSetting("multiclass"), true);
+    HOUSE_RULES = normalizeHouseRules("not an object");
+    assertEqual("garbage in place of a ruleset yields a blank one", totalBanCount(), 0);
+    HOUSE_RULES = normalizeHouseRules(null);
+    assertEqual("...and so does a missing one", totalBanCount(), 0);
+
+    // --- the preset is the ruleset this was built against ---
+    HOUSE_RULES = normalizeHouseRules(HR_PRESETS.lampmann.build());
+    assert("the preset bans Fabricate", isBanned("spell", "Fabricate"));
+    assert("...and Nystul's Magic Aura, apostrophe and all", isBanned("spell", "Nystul's Magic Aura"));
+    assert("...and Conjuration Wizard, qualified by its class", isBanned("subclass", "Wizard: School of Conjuration"));
+    assert("...and a mundane item alongside the magic ones", isBanned("item", "Blood of the Lycanthrope"));
+    assertEqual("...sets point buy as the campaign's ability method", hrSetting("abilityMethod"), "pointbuy");
+    assertEqual("...turns on XGtE fixed pricing", hrSetting("magicItemPricing"), "xge-mean");
+    assertEqual("...bans hirelings", hrSetting("hirelings"), false);
+    assert("...and leaves feats and multiclassing on", hrSetting("feats") && hrSetting("multiclass"));
+    assert("...while banning no sources, since it is a denylist that names no exceptions",
+      HOUSE_RULES.sourcesOff.length === 0);
+
+    HOUSE_RULES = savedHR;
   }
 
   lines.push("", `${pass} passed, ${fail} failed`);

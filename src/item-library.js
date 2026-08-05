@@ -277,6 +277,10 @@ const ITEM_FGROUPS = [
   { key:"weight", label:"Weight", kind:"range", unit:"lb", min:0, max:2000, getNum:i=>i.weight===""?null:i.weight },
   { key:"ac", label:"Armor Class", kind:"range", unit:"AC", min:0, max:25, getNum:i=>i.armor?i.ac:null },
   { key:"wrange", label:"Range", kind:"range", unit:"ft (normal)", min:0, max:600, getNum:i=>itemNormalRange(i) },
+  // House-rule bans — see the identical group in SPELL_FGROUPS for why this is a filter rather than
+  // a hard exclusion.
+  { key:"banned", label:"House Rules", get:i=>[(typeof isBanned === "function" && isBanned("item", i.name, i.source)) ? "banned" : "allowed"],
+    opts:[["allowed","Allowed"],["banned","Banned"]] },
 ];
 const ITEM_FILTERS = createFilterSet({
   ns: "item", groups: ITEM_FGROUPS, areaId: "item-filter-area", searchId: "item-search",
@@ -336,9 +340,10 @@ function renderItemResults() {
   const body = rows.map(it => {
     const key = (it.name + "|" + it.source).replace(/"/g, "&quot;");
     const isGroup = groupMembersOf(it).length > 0;
-    return `<tr>
-      <td><button class="itm-lib-add" data-key="${key}" title="${isGroup ? `${it.name} is a category — pick which one you actually have` : "add to inventory"}">${isGroup ? "&hellip;" : "+"}</button></td>
-      <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a></td>
+    const ban = (typeof banNote === "function") ? banNote("item", it.name, it.source) : null;
+    return `<tr${ban ? ' class="lib-banned"' : ""}>
+      <td><button class="itm-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` title="${isGroup ? `${it.name} is a category — pick which one you actually have` : "add to inventory"}"`}>${isGroup ? "&hellip;" : "+"}</button></td>
+      <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
       <td class="c hint">${it.weight === "" ? "" : it.weight}</td>

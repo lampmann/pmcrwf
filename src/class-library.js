@@ -533,7 +533,14 @@ function renderClassFeatures() {
         const usesSpec = usesSpecFor(e);
         if (usesSpec) tracker = renderUsesTracker(e, usesSpec);
       }
-      return `<div>${link} &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${e.fkey}" value="${escapeHtml(e.asiChosen)}" style="width:12rem"></label>${tracker}${renderEffectControls(e)}</div>`;
+      // A table can switch feats off entirely (ASI only) — see src/house-rules.js. The picker goes
+      // away, but an already-chosen feat still shows, because turning the rule on later must not
+      // silently strip a feat off a character who was built under the old ruleset.
+      const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
+      const picker = (featsOff && !e.asiChosen)
+        ? ` <span class="hint">ASI only &mdash; feats are off in this campaign's House Rules.</span>`
+        : ` &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${e.fkey}" value="${escapeHtml(e.asiChosen)}" style="width:12rem"></label>`;
+      return `<div>${link}${picker}${tracker}${renderEffectControls(e)}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
     const grantedHtml = (sub && sub.grantedSpells && sub.grantedSpells.length)
       ? grantedSpellsHtml(flattenGrantedSpells(sub.grantedSpells).filter(g => g.minLevel <= lvl), sub.name, rec.name) : "";
