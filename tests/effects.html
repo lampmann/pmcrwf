@@ -750,9 +750,15 @@ document.addEventListener("DOMContentLoaded", () => {
     CREATOR.race = "Aarakocra"; CREATOR.subrace = "";
     assertEqual("...or the walk figure out of a multi-type speed object", creatorRaceSpeed(), 20);
     CREATOR.race = "Nonexistent"; CREATOR.subrace = "";
-    assertEqual("...and null for a race the library doesn't know, left for the player to fill in", creatorRaceSpeed(), null);
+    assertEqual("...and null for a race the library doesn't know, left for creatorBuildState to default", creatorRaceSpeed(), null);
     CREATOR = blankCreator(); CREATOR.race = "Human"; CREATOR.subrace = "";
     assertEqual("creatorBuildState carries Speed into the character's fields", creatorBuildState().fields["speed"], "30");
+    // A race the library has no entry for at all — e.g. the sheet was opened via file:// and
+    // races.json never auto-loaded (see autoLoadRaces in class-library.js) — must NOT leave a fresh
+    // character's Movement pool reading 0/0; 30 ft is the fallback rather than an empty field.
+    CREATOR = blankCreator(); CREATOR.race = "Nonexistent"; CREATOR.subrace = "";
+    assertEqual("...and still defaults Speed to 30 ft when the race library has nothing for this race",
+      creatorBuildState().fields["speed"], "30");
 
     // --- point buy: the PHB p13 cost table and its 27-point budget ---
     CREATOR = blankCreator(); CREATOR.method = "pointbuy"; CREATOR.step = 3;
