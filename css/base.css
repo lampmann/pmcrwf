@@ -308,7 +308,11 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .combo .combo-input { flex: 1; min-width: 0; }
 .combo-arrow { padding: 0 .35rem; margin-left: -1px; font-size: .7rem; line-height: 1; }
 .combo-panel {
-  position: fixed; z-index: 400; max-height: 15rem; overflow-y: auto;
+  /* Above .modal-overlay (2000, character creator/others): a combobox opened from inside a modal
+     (e.g. the creator's race/subrace/background pickers) must draw on top of that modal, not behind
+     it — this is a fixed-position panel appended to document.body, so it isn't naturally stacked
+     above the modal just by being later in the DOM. */
+  position: fixed; z-index: 2100; max-height: 15rem; overflow-y: auto;
   background: var(--menu-bg); color: var(--fg);
   border: 1px solid var(--border-soft); border-radius: var(--radius);
   box-shadow: 0 2px 8px var(--menu-shadow); font-size: .9rem;

@@ -834,8 +834,14 @@ function creatorBuildState() {
     "char-race": c.race, "char-subrace": c.subrace,
     "char-bg": c.background + (c.customBg && c.background ? " (custom)" : (c.customBg ? "Custom" : "")),
   };
-  const speed = creatorRaceSpeed();
-  if (speed != null) fields["speed"] = String(speed);
+  // Falls back to 30 ft (the walking speed of most PHB races) rather than leaving Speed blank when
+  // the race library has no entry for the chosen race — most commonly because the sheet was opened
+  // straight from disk (file://), where a browser blocks the auto-load fetch that races.json needs
+  // (see autoLoadRaces in class-library.js) and nothing has been imported manually yet. A newly
+  // created character's Movement pool should never read 0/0; 30 is closer to right than 0 for nearly
+  // every race, and it's a plain editable field either way if it's wrong.
+  const raceSpeed = creatorRaceSpeed();
+  fields["speed"] = String(raceSpeed != null ? raceSpeed : 30);
   CREATOR_ABILITIES.forEach(ab => { fields["score-" + ab] = String(creatorFinalScore(ab)); });
 
   // Coins. Starting gold and DMG p38's higher-level allowance are both plain gp.
