@@ -14,6 +14,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Event Log (and the dice roller)](#event-log-and-the-dice-roller)
 - [Roll buttons](#roll-buttons)
 - [Combat rounds](#combat-rounds)
+- [House rules (bans, sources, campaign settings)](#house-rules-bans-sources-campaign-settings)
 - [Resting](#resting)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
 - [Features (5e.tools import: race + class + feats)](#features-5etools-import-race--class--feats)
@@ -114,6 +115,7 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - **Death Saves** — 3 success / 3 failure boxes, plus a **Roll Death Save** button that rolls 1d20 to the Event Log and auto-marks a box (10+ success, &lt;10 failure, nat 20 clears saves and sets HP to 1, nat 1 marks two failures).
 - *(Conditions, Exhaustion, and Death Saves are separate modules and, for now, display-only trackers — they don't yet auto-apply their mechanics (disadvantage, halved HP, etc.) to the sheet's math.)*
 - **Combat** — the round tracker: what's left of your action, bonus action, reaction, object interaction and movement this turn, with a menu per resource of what you can spend it on. See [Combat rounds](#combat-rounds).
+- **House Rules** — the table's ruleset: banned spells/items/subclasses, excluded sourcebooks, and campaign settings like point buy or feats-off. Shared by every character tab rather than owned by one. See [House rules](#house-rules-bans-sources-campaign-settings).
 - **Inventory & Equipment** — coin purse (cp/sp/ep/gp/pp, auto-summed to a gp total via SRD exchange rates), plus a Features-styled item list: each line shows qty, name (click to show/hide its description, looked up from the Equipment Library by name), equipped toggle, and — for items that require it — an attuned toggle, with an **Attuned X/3** counter above the list. Items are added only from the Equipment Library (click "+ Add Item" to open it), same as Spells below; weight/value are looked up live from the library entry, not hand-edited. The **quantity box is editable** — type into it and the row's per-item and total weight/value follow as you go. The footer totals weight and item value, and shows **total wealth = coins + items** in gp.
 
   *Equipped slots (PHB p141).* Above the list is a paper doll — main hand, off hand, armour, headwear, cloak, gloves, bracers, footwear — one item each, because that's what the rule says: you can't normally wear more than one pair of footwear, one pair of gloves, one pair of bracers, one suit of armour, one item of headwear, or one cloak. Click a slot to see what fits, or **drag** an item from the list onto it (and drag it back off to unequip). A **two-handed weapon takes both hands**, and putting something in the off hand displaces it.
@@ -192,6 +194,25 @@ The character creation wizard fills in **Speed** from the race you pick (walking
 *Two documented simplifications.* Your reaction actually refreshes at the **start** of your turn (PHB p190), not the end; with no initiative order on a single-character sheet, one End Round button standing for "end my turn / start my next" is the honest version, and the button says what it refreshes. And the free object interaction is one per turn — a second one costs your action, which is the separate **Use an Object** entry.
 
 The tracker is per character, so switching to your familiar's tab shows that character's own turn, and a fight survives a reload.
+
+## House rules (bans, sources, campaign settings)
+The **House Rules** module holds the *table's* ruleset rather than any one character's. It is shared by every character tab, persists to its own storage slot, and is deliberately **not** included when you export a character — a character handed to another table gets played under that table's rules, not the one it was built at.
+
+Nothing here blocks a roll. A ban greys out an Add button and marks a row; it never takes away a character you already have, and it never stops you playing one. Same reasoning as the [combat tracker](#combat-rounds): a sheet that refused would be wrong at exactly the moment the DM said "yes, fine."
+
+Three tabs.
+
+**Bans** — one list per kind (spells, items, subclasses, races, backgrounds, feats, and a free-text **Other** for rules with nothing behind them in any library, like a banned character-creation option or a whole strategy). Each list has a combobox that type-aheads over that library, so banning something is a couple of keystrokes rather than an exact-name recital; free text is still accepted for anything your data doesn't cover. Names match case-insensitively and ignore the source, because banning Fabricate means banning it in every printing. Subclasses are listed as `Class: Subclass` since two classes can print the same subclass name.
+
+Banned entries stay **visible** in the Spell and Equipment libraries — struck through, tagged `banned`, with their Add button disabled and a tooltip saying why. A missing option should read as "the DM banned this", not as the sheet having lost data. Both libraries also gain a **House Rules** filter group, so a player who would rather not see them can exclude banned entries with the same tri-state control they already use for everything else, instead of learning a separate hide-banned mode.
+
+**Sources** — a **denylist**, not an allowlist. Every book starts allowed and you name the exceptions, because "everything official except a few" is how most tables actually run, and a hand-maintained allowlist of a hundred-odd books goes stale with every release. A banned book bans everything printed in it, and the tooltip on an affected entry names the book rather than claiming a name ban. The grid lists whatever your loaded libraries actually contain, so it tracks your data rather than a hardcoded table.
+
+**Settings** — campaign defaults. Each says whether the sheet actually reads it or whether it is *recorded only*, so nothing pretends to be enforced when it isn't. Currently enforced: the **ability score method** (the creator opens on it), **multiclassing** (off hides the creator's add-a-class control), **feats** (off means ASI only — the feat picker disappears from ASI slots, though a feat already chosen is kept, since switching the rule on later must not silently strip a character built under the old ruleset), and **magic item prices**. Recorded only: average HP, optional class features, oversized weapons, hirelings.
+
+**Magic item prices** offers XGtE's asking-price table with the **mean** of each die expression taken, so prices are fixed rather than rolled per item — 45 / 350 / 11,000 / 35,000 / 175,000 gp by rarity, halved for consumables per XGtE's own footnote. Artifacts and mundane gear have no entry and are left alone.
+
+**Presets.** *Load Lampmann's House Rules* fills in a complete worked example — the ruleset this module was built against. The full document, including the ~50 rulings that are reference text rather than anything a sheet can enforce, is in `house-rules/lampmann.md`.
 
 ## Resting
 Full PHB'14 p186 automation, split across two places: **Hit Dice** live in the HP & Defenses module (spending one is always your own choice, in the moment); the **Short Rest** / **Long Rest** buttons (Features module) handle everything that isn't a choice.

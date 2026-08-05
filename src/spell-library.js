@@ -103,6 +103,11 @@ const SPELL_FGROUPS = [
   { key:"cast",   label:"Cast",   get:s=>[castCat(s.cast)], opts:[["action","Action"],["bonus","Bonus"],["reaction","Reaction"],["minute","Minute+"],["hour","Hour+"]] },
   { key:"comp",   label:"Components", get:s=>["v","s","m"].filter(k=>s.comp&&s.comp[k]), opts:[["v","Verbal"],["s","Somatic"],["m","Material"]] },
   { key:"misc",   label:"Misc",   get:s=>["conc","ritual","attack","srd"].filter(k=> k==="conc"?s.conc : k==="ritual"?s.ritual : k==="attack"?s.attack : s.srd), opts:[["conc","Concentration"],["ritual","Ritual"],["attack","Attack roll"],["srd","SRD"]] },
+  // House-rule bans (src/house-rules.js). A filter group rather than a hard exclusion, so the default
+  // is "show them, marked" and a player who wants them gone excludes with the same control they use
+  // for everything else — no separate hide-banned mode to learn.
+  { key:"banned", label:"House Rules", get:s=>[(typeof isBanned === "function" && isBanned("spell", s.name, s.source)) ? "banned" : "allowed"],
+    opts:[["allowed","Allowed"],["banned","Banned"]] },
 ];
 let SPELL_LIB = [];
 // The tri-state filter state machine lives in src/filters.js, shared with the Equipment Library.
@@ -252,10 +257,11 @@ function renderSpellResults() {
   const body = rows.map(s => {
     const key = (s.name + "|" + s.source).replace(/"/g, "&quot;");
     const sv = s.attack ? "atk" : s.save ? (s.save.slice(0, 3) + " sv") : "";
-    return `<tr>
-      <td><button class="sp-lib-add" data-key="${key}" title="add to sheet">+</button></td>
+    const ban = (typeof banNote === "function") ? banNote("spell", s.name, s.source) : null;
+    return `<tr${ban ? ' class="lib-banned"' : ""}>
+      <td><button class="sp-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ' title="add to sheet"'}>+</button></td>
       <td class="c"><b>${s.level}</b></td>
-      <td class="nm"><a class="sp-name-link" data-key="${key}">${s.name}</a></td>
+      <td class="nm"><a class="sp-name-link" data-key="${key}">${s.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${s.school}</td>
       <td class="hint">${sv}</td>
       <td class="hint">${s.dmg || ""}</td>

@@ -48,6 +48,20 @@ scrolls) are halved. Mundane item prices are unaffected — PHB rates apply as n
 | Very rare | (1d4 + 1) × 10,000 gp | **35,000 gp** | 17,500 gp |
 | Legendary | 2d6 × 25,000 gp | **175,000 gp** | 87,500 gp |
 
+### 1.2 Oversized weapons (R17)
+
+A three-way setting, because tables differ on this and the DMG offers the strictest
+option as a suggestion rather than a rule.
+
+| Option | Effect |
+| --- | --- |
+| **Fully allow** *(this ruleset's default)* | Any oversized weapon may be wielded. Disadvantage applies when the weapon is sized for a larger attacker. |
+| **Two-size limit** | The DMG's optional clause applies: a weapon sized for an attacker two or more sizes larger cannot be used at all. Disadvantage still applies within the limit. |
+| **Fully banned** | PCs cannot wield oversized weapons. |
+
+The extra damage dice are a property of the weapon, not the wielder — a greataxe sized
+for a Large creature deals 2d12 for anyone who can lift it.
+
 ## 2 · Allowed sources
 
 **Model: denylist, not allowlist.** Everything official and non-partnered is permitted;
@@ -171,7 +185,7 @@ clusters are real — seven of these are Echo Knight alone.
 | R10 | Trinkets do not have any mechanical properties. | `ref` |
 | R11 | Spellwrought Tattoos vanish when you cast the spell using the tattoo, instead of at the end of the spell's duration. | `ref` |
 | R8 | Genie's Vessels cannot function as anything other than a Genie's Vessel. | `ref` |
-| R17 | **Oversized weapons can be wielded by PCs** — permission only. The DMG's optional "a weapon sized for an attacker two or more sizes larger is too big for the creature to use at all" does not apply. The disadvantage on attack rolls with an oversized weapon still does, and the extra damage dice scale off the *wielder's* size, so a Medium PC gains none. | `ref` |
+| R17 | **Oversized weapons can be wielded by PCs.** The extra damage dice belong to the *weapon* — a greataxe sized for a Large creature deals 2d12 whoever swings it. The *wielder's* size determines only the penalty: disadvantage on attack rolls with a weapon sized for a larger attacker. The DMG's optional "two or more sizes larger is too big to use at all" clause does not apply by default. | `setup` — three-way setting, see §1.2 |
 | R35 | Unless explicitly stated, you must choose a mundane item when choosing an equipment. | `setup` — affects the creator's equipment step |
 | R36 | **Lifeberry works** — Goodberry cast by a Life Domain cleric gets Disciple of Life, so each berry heals 2 + spell level rather than 1. | `ref` |
 | R49 | You can't craft animals. | `ref` |
@@ -202,7 +216,7 @@ Seven rulings on one subclass — the argument for subject tagging rather than a
 | # | Ruling | Kind |
 | --- | --- | --- |
 | R6 | Contracts, Pacts, Blessings, and Charms can only be given by willing and unthreatened entities not controlled by the players. | `ref` |
-| R25 | **A Challenge Rating of "—" is not equal to itself**, so it never satisfies a CR comparison. Without this, a Druid could wild shape into a Nystul'd Mighty Servant of Leuk-o and similar. | `ref` |
+| R25 | **A Challenge Rating of "—" is not equal to itself**, so it never satisfies a CR comparison. Without this, a Druid could wild shape into a Nystul'd Mighty Servant of Leuk-o and similar. This overlaps the Nystul's Magic Aura ban deliberately — there are ways to summon CR 0 creatures without Nystul's, so both are load-bearing. | `ref` |
 | R12 | "Bears are fish" — a joke recording a real ruling: the Trident of Fish Command affects beasts with an innate swimming speed, which includes polar bears and cave bears. | `ref` |
 | R3 | Ability checks are only called for when success or failure is meaningfully uncertain; otherwise the DM determines the outcome narratively. | `ref` |
 

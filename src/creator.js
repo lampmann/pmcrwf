@@ -64,7 +64,10 @@ function blankCreator() {
     originChoice: {},                                    // "fixed:<n>" -> ability, when customOrigin is on
     srcOff: { race: {}, class: {}, background: {} },     // books switched off in the pickers
     classes: [{ name: "", sub: "", lvl: 1 }],            // multiclass from the start, same shape as the Classes table
-    method: "standard",                                  // standard | pointbuy | roll | manual
+    // standard | pointbuy | roll | manual. A campaign that has settled on a method (House Rules →
+    // Settings) opens the wizard on it, so the common case is zero clicks; still switchable per
+    // character, since the ruleset is a default rather than a lock.
+    method: (typeof hrSetting === "function" && hrSetting("abilityMethod")) || "standard",
     scores: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
     assign: {},                                          // ability -> index into STANDARD_ARRAY / rolled
     rolled: [],                                          // 4d6kh3 results, when method === "roll"
@@ -468,7 +471,13 @@ function creatorStepHtml() {
       <div class="hint">Your class sets your hit die, proficiencies, and the features you gain. <b>Level</b> starts at 1 &mdash; raise it if you're joining an existing campaign above 1st level (PHB p11). Add a second class to start multiclassed.</div>
       ${sourceFilterHtml("class", CLASS_LIB)}
       <table class="cr-classes"><tr class="hint"><td>Class</td><td>Subclass</td><td>Level</td><td>Hit Die</td><td></td></tr>${rows}</table>
-      <div style="margin-top:.3rem"><button type="button" id="cr-add-class">+ add a class</button>
+      <div style="margin-top:.3rem">${
+        // Multiclassing can be switched off as a house rule (see src/house-rules.js). The control
+        // disappears rather than erroring on click, and says why, so an absent button never reads
+        // as a broken sheet.
+        (typeof hrSetting === "function" && hrSetting("multiclass") === false)
+          ? `<span class="hint">Multiclassing is off in this campaign's House Rules.</span>`
+          : `<button type="button" id="cr-add-class">+ add a class</button>`}
         <span class="hint" style="margin-left:.6rem">Total level <b id="cr-total-level" class="${total > 20 ? "cr-over" : ""}">${total}</b> / 20</span></div>
       ${c.classes.filter(r => r.name.trim()).length > 1 ? `<div class="hint" style="margin-top:.4rem">
         <b>Multiclassing prerequisites (PHB p163)</b> &mdash; you need the listed scores in <i>every</i> class you're combining, checked against your step-3 scores:
