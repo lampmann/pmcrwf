@@ -160,8 +160,8 @@ clusters are real — seven of these are Echo Knight alone.
 | R38 | Stealth (to determine surprise) is rolled immediately before initiative. | `ref` |
 | R43 | Turns exist outside of combat. | `ref` |
 | R45 | An untriggered Ready action ends right before initiative is rolled. | `ref` |
-| R47 | **A bonus-action spell always costs a bonus action.** PHB reads "You must use a bonus action on your turn to cast the spell, *provided that you haven't already taken a bonus action this turn*." The rejected argument is that once you *have* taken a bonus action, the "must use a bonus action" requirement lapses and the spell becomes free. It does not: with your bonus action spent, a bonus-action spell is simply uncastable. | `track` |
-| H4 | Only one casting of Planar Binding per player character may be active at a time. | `track` |
+| R47 | **Implemented.** **A bonus-action spell always costs a bonus action.** PHB reads "You must use a bonus action on your turn to cast the spell, *provided that you haven't already taken a bonus action this turn*." The rejected argument is that once you *have* taken a bonus action, the "must use a bonus action" requirement lapses and the spell becomes free. It does not: with your bonus action spent, a bonus-action spell is simply uncastable. | `track` |
+| H4 | Only one casting of Planar Binding per player character may be active at a time. | `track` — **implemented** as a general concurrent-casting limit |
 
 ### 4.4 Spells
 | # | Ruling | Kind |
@@ -181,12 +181,12 @@ clusters are real — seven of these are Echo Knight alone.
 ### 4.5 Items & equipment
 | # | Ruling | Kind |
 | --- | --- | --- |
-| R9 | Trinkets have a value of 0 gp. | `track` — item library value override |
+| R9 | Trinkets have a value of 0 gp. | `track` — **implemented** (setting; library + inventory) |
 | R10 | Trinkets do not have any mechanical properties. | `ref` |
 | R11 | Spellwrought Tattoos vanish when you cast the spell using the tattoo, instead of at the end of the spell's duration. | `ref` |
 | R8 | Genie's Vessels cannot function as anything other than a Genie's Vessel. | `ref` |
 | R17 | **Oversized weapons can be wielded by PCs.** The extra damage dice belong to the *weapon* — a greataxe sized for a Large creature deals 2d12 whoever swings it. The *wielder's* size determines only the penalty: disadvantage on attack rolls with a weapon sized for a larger attacker. The DMG's optional "two or more sizes larger is too big to use at all" clause does not apply by default. | `setup` — three-way setting, see §1.2; **implemented** |
-| R35 | Unless explicitly stated, you must choose a mundane item when choosing an equipment. | `setup` — affects the creator's equipment step |
+| R35 | Unless explicitly stated, you must choose a mundane item when choosing an equipment. | `setup` — **implemented** as a statement on the creator's equipment step; unpoliceable beyond that |
 | R36 | **Lifeberry works** — Goodberry cast by a Life Domain cleric gets Disciple of Life, so each berry heals 2 + spell level rather than 1. | `ref` |
 | R49 | You can't craft animals. | `ref` |
 
@@ -262,7 +262,9 @@ What each part becomes in the app.
 | §3 bans | Bans tab | 9 named entities, 4 creation options, 1 content ban, 3 rule toggles |
 | §4 rulings | House rules reference | ~50 entries, subject-tagged, searchable |
 
-**Mechanizable rulings** (everything else is reference): R21/R22 stacking (**done** —
-`src/boons.js`), R17 oversized weapons (**done** — `src/house-rules.js` + an Attacks size column).
-Still open: R9 trinket value, R35 mundane starting equipment, R47 bonus-action spells, H4 Planar
-Binding limit.
+**Mechanizable rulings — all now implemented.** R21/R22 stacking (`src/boons.js`), R17 oversized
+weapons (`src/house-rules.js` + an Attacks size column), R9 trinket value and S8 pricing
+(`itemValueGp` in `src/item-library.js`), R47 bonus-action spells (`bonusMenu` in `src/combat.js`),
+H4 concurrent castings (`spellLimits` + a counter per capped spell). R35 is implemented as far as it
+can be: stated at the point of choice, since the sheet never learns which inventory line filled
+which starting-equipment slot. Everything else in §4 is reference text by nature.

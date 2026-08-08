@@ -34,8 +34,9 @@ const SCF_CLASSES = {
   druid: ["Druid", "Ranger"],
   holy: ["Cleric", "Paladin"],
 };
-const ITEM_LIB_SCHEMA = 5;  // bump when the parsed-item shape changes (forces a one-time re-import)
+const ITEM_LIB_SCHEMA = 6;  // bump when the parsed-item shape changes (forces a one-time re-import)
                             // 5: groupItems added (generic variants expand into their members)
+                            // 6: `consumable` retained (house-rule pricing halves consumables)
 let ITEM_LIB = [];
 
 // Individual magic items in 5e.tools rarely carry an explicit "value" — these are the average gp
@@ -51,6 +52,39 @@ function defaultRarityValueGp(raw) {
 function parseItemType(raw) {
   const code = (raw.type || "").split("|")[0];
   return ITEM_TYPES[code] || code || "";
+}
+
+/* ----- what an item is actually worth, once the table's house rules have had their say -----
+   Parsed values are cached in ITEM_LIB (and in localStorage), but house rules change under the sheet
+   at runtime, so the ruling is applied on read rather than baked in at parse time. Everything that
+   asks "what is this worth" goes through here: the library's Cost column and Cost filter, and the
+   inventory's per-line and total value.
+
+   Two rulings can move the number:
+   - Magic item pricing (S8) replaces a printed price with the fixed mean of XGtE's asking-price roll.
+     Distinct from RARITY_DEFAULT_GP above, which uses the same figures but only as a *fallback* when
+     the source data names no price at all — the house rule overrides a printed one too.
+   - Trinkets are worth 0 (R9). 5e.tools' trinkets already carry no value, so this changes nothing
+     for the official ones; it's here so a homebrew trinket with a price on it still lands at zero. */
+/* 5e.tools tags trinket-table entries with miscTag "TT", which itemMisc turns into "Trinket Table" —
+   a far better test than the name, since it catches the ones not called "… Trinket". The name check
+   stays as a fallback for data (or homebrew) carrying no tag. */
+function isTrinketItem(it) {
+  if (!it) return false;
+  if ((it.misc || []).includes("Trinket Table")) return true;
+  return /\btrinkets?\b/i.test(it.name || "");
+}
+function itemValueGp(it) {
+  if (!it) return "";
+  if (typeof hrSetting === "function" && hrSetting("trinketsWorthless") && isTrinketItem(it)) return 0;
+  const hr = (typeof hrMagicItemPrice === "function") ? hrMagicItemPrice(it.rarity, it.consumable) : null;
+  return hr != null ? hr : it.valueGp;
+}
+/* Whether the displayed value came from a ruling rather than the book, so the column can say so. */
+function itemValueRuled(it) {
+  if (!it) return false;
+  if (typeof hrSetting === "function" && hrSetting("trinketsWorthless") && isTrinketItem(it)) return true;
+  return (typeof hrMagicItemPrice === "function") && hrMagicItemPrice(it.rarity, it.consumable) != null;
 }
 // Armor category drives the AC formula (see armorClassAuto in derived.js): light armor adds the
 // full DEX mod, medium caps it at +2, heavy ignores it; a shield is a flat +2 rather than a base AC.
@@ -119,6 +153,7 @@ function parseItem(raw, sourceArray) {
     weight: raw.weight != null ? raw.weight : "",
     valueGp: explicitGp != null ? explicitGp : (rarityGp != null ? rarityGp : ""),
     valueDefaulted: rarityGp != null,  // true when the value came from RARITY_DEFAULT_GP, not the source data
+    consumable: !!raw.consumable,      // halves the price under the house rule (XGtE's own footnote)
     srd: !!raw.srd || !!raw.basicRules,
     reqAttune: raw.reqAttune === true ? "requires attunement" : raw.reqAttune ? ("requires attunement " + raw.reqAttune) : "",
     text: stripTags(flattenEntries(raw.entries)),
@@ -273,7 +308,7 @@ const ITEM_FGROUPS = [
     opts:[["contact","Contact"],["ingested","Ingested"],["inhaled","Inhaled"],["injury","Injury"]] },
   { key:"foundon", label:"Found On", dynamic:true, get:i=>i.lootTables||[], dynOpts:itemLootTables },
   // ----- numeric-range filters (src/filters.js's "range" control kind) -----
-  { key:"cost", label:"Cost", kind:"range", unit:"gp", min:0, max:1000000, getNum:i=>i.valueGp===""?null:i.valueGp },
+  { key:"cost", label:"Cost", kind:"range", unit:"gp", min:0, max:1000000, getNum:i=>{ const v=itemValueGp(i); return v===""?null:v; } },
   { key:"weight", label:"Weight", kind:"range", unit:"lb", min:0, max:2000, getNum:i=>i.weight===""?null:i.weight },
   { key:"ac", label:"Armor Class", kind:"range", unit:"AC", min:0, max:25, getNum:i=>i.armor?i.ac:null },
   { key:"wrange", label:"Range", kind:"range", unit:"ft (normal)", min:0, max:600, getNum:i=>itemNormalRange(i) },
@@ -341,13 +376,16 @@ function renderItemResults() {
     const key = (it.name + "|" + it.source).replace(/"/g, "&quot;");
     const isGroup = groupMembersOf(it).length > 0;
     const ban = (typeof banNote === "function") ? banNote("item", it.name, it.source) : null;
+    const val = itemValueGp(it), ruled = itemValueRuled(it);
+    const valTitle = ruled ? "priced by this campaign's House Rules"
+      : (it.valueDefaulted ? "estimated by rarity — no official price in the source data" : "");
     return `<tr${ban ? ' class="lib-banned"' : ""}>
       <td><button class="itm-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` title="${isGroup ? `${it.name} is a category — pick which one you actually have` : "add to inventory"}"`}>${isGroup ? "&hellip;" : "+"}</button></td>
       <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
       <td class="c hint">${it.weight === "" ? "" : it.weight}</td>
-      <td class="c hint"${it.valueDefaulted ? ` title="estimated by rarity — no official price in the source data"` : ""}>${it.valueGp === "" ? "" : (it.valueDefaulted ? "~" + it.valueGp : it.valueGp)}</td>
+      <td class="c hint"${valTitle ? ` title="${escapeHtml(valTitle)}"` : ""}>${val === "" ? "" : (ruled ? val : (it.valueDefaulted ? "~" + val : val))}</td>
       <td class="hint">${it.source}</td>
     </tr>`;
   }).join("");

@@ -246,7 +246,13 @@ Subclass bans are stored qualified (`Fighter: Champion`) and matched that way, s
 
 Disadvantage is real — the to-hit button rolls `2d20kl1` and labels the entry `(oversized)`. Advantage from a feature and disadvantage from an oversized weapon cancel to a straight roll (PHB p173) rather than one overriding the other. "Unusable" is stated in the Size cell's tooltip and colour; the button still rolls, because the DMG frames that limit as a suggestion ("you can rule that…") and the DM is at the table.
 
-**Magic item prices** offers XGtE's asking-price table with the **mean** of each die expression taken, so prices are fixed rather than rolled per item — 45 / 350 / 11,000 / 35,000 / 175,000 gp by rarity, halved for consumables per XGtE's own footnote. Artifacts and mundane gear have no entry and are left alone.
+**Magic item prices** offers XGtE's asking-price table with the **mean** of each die expression taken, so prices are fixed rather than rolled per item — 45 / 350 / 11,000 / 35,000 / 175,000 gp by rarity, halved for consumables per XGtE's own footnote. It overrides a *printed* price too, which is what separates it from the library's own rarity fallback (same figures, but only used when the source data names no price at all). Artifacts, "unknown (magic)" and mundane gear have no entry and are left alone. **Trinkets are worth 0 gp** is a separate toggle (R9), recognising trinket-table entries by 5e.tools' own tag and falling back to the name. Both reach the inventory's value total, not just the library's Cost column.
+
+**A bonus-action spell always costs a bonus action** (R47) makes the Combat tracker's *Cast a Spell* entry unavailable under Bonus Action once that action is spent, saying so rather than just greying out. The reading it rejects takes PHB's "you must use a bonus action… provided that you haven't already taken a bonus action this turn" as *lapsing* once you have — making the spell free rather than uncastable.
+
+**Concurrent castings** caps how many of a named spell may be running at once (H4 — "only one Planar Binding per character"). Stored as a table rather than special-cased, so any spell can be capped, and each one gets a counter beside your HP. Going over is shown in red and labelled *over*; it is never prevented.
+
+**Starting equipment must be mundane** (R35) is stated on the creator's equipment step, where the open-ended "any martial weapon" picks are actually made. The sheet can't police it — it never learns which inventory line filled which slot — so this is a statement at the point of choice rather than a check.
 
 **Presets.** *Load Lampmann's House Rules* fills in a complete worked example — the ruleset this module was built against. The full document, including the ~50 rulings that are reference text rather than anything a sheet can enforce, is in `house-rules/lampmann.md`.
 

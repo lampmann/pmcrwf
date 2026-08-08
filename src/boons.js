@@ -52,15 +52,35 @@ const BOON_DEFS = [
 ];
 
 let BOONS = blankBoons();
-function blankBoons() { return { guidance: 0, resistance: 0, deathward: 0 }; }
+function blankBoons() { return { guidance: 0, resistance: 0, deathward: 0, castings: {} }; }
 /* A character saved before boons existed has no `boons` key at all; layering over the blank keeps a
    missing field at 0 rather than undefined, which would poison the arithmetic in boonDice(). */
 function normalizeBoons(saved) {
   const blank = blankBoons();
   if (!saved || typeof saved !== "object") return blank;
-  const out = { ...blank };
-  Object.keys(blank).forEach(k => { const n = Math.floor(Number(saved[k])); if (n > 0) out[k] = n; });
+  const out = { ...blank, castings: {} };
+  ["guidance", "resistance", "deathward"].forEach(k => { const n = Math.floor(Number(saved[k])); if (n > 0) out[k] = n; });
+  if (saved.castings && typeof saved.castings === "object") {
+    Object.entries(saved.castings).forEach(([name, n]) => { const v = Math.floor(Number(n)); if (v > 0) out.castings[name] = v; });
+  }
   return out;
+}
+/* ----- concurrent castings (H4) -----
+   How many of a capped spell you currently have running. Which spells are capped, and at what, is a
+   property of the ruleset rather than of you (see spellLimits in house-rules.js); the counts are
+   yours. Going over is shown, not prevented — the DM is at the table, and a limit the sheet enforced
+   would be wrong the moment they said "this one's fine". */
+function castingCount(name) { return Math.max(0, Math.floor(Number((BOONS.castings || {})[name])) || 0); }
+function setCastingCount(name, n) {
+  if (!BOONS.castings) BOONS.castings = {};
+  const v = Math.max(0, Math.min(99, Math.floor(Number(n)) || 0));
+  if (v) BOONS.castings[name] = v; else delete BOONS.castings[name];
+  renderBoons();
+  if (typeof scheduleSave === "function") scheduleSave();
+}
+function castingOverLimit(name) {
+  const lim = (typeof spellLimitFor === "function") ? spellLimitFor(name) : null;
+  return lim != null && castingCount(name) > lim;
 }
 function boonCount(kind) { return Math.max(0, Math.floor(Number(BOONS[kind]) || 0)); }
 function setBoonCount(kind, n) {
@@ -158,9 +178,22 @@ function boonRowHtml(def) {
     <span class="boon-label${n ? " boon-on" : ""}">${escapeHtml(def.label)}${n && def.die ? ` <b>+${n}${def.die}</b>` : ""}</span>
   </span>`;
 }
+/* One counter per capped spell, appearing only when the ruleset caps something — a table with no
+   limits sees nothing here at all. */
+function castingRowHtml(name, limit) {
+  const n = castingCount(name), over = n > limit;
+  return `<span class="boon" title="${escapeHtml(name)} — this campaign allows ${limit} active at a time">
+    <button type="button" class="boon-step" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" data-delta="-1" title="one fewer">&minus;</button>
+    <input type="text" inputmode="numeric" class="tiny boon-count${n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" value="${n}">
+    <button type="button" class="boon-step" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" data-delta="1" title="one more">+</button>
+    <span class="boon-label${n ? " boon-on" : ""}${over ? " boon-over" : ""}">${escapeHtml(name)} <span class="hint">/${limit}</span>${over ? " <b>over</b>" : ""}</span>
+  </span>`;
+}
 function renderBoons() {
   const el = document.getElementById("boons-row"); if (!el) return;
-  el.innerHTML = BOON_DEFS.map(boonRowHtml).join("");
+  const limits = (typeof spellLimits === "function") ? spellLimits() : {};
+  el.innerHTML = BOON_DEFS.map(boonRowHtml).join("") +
+    Object.keys(limits).sort().map(name => castingRowHtml(name, spellLimitFor(name))).join("");
   syncHpWatch();
 }
 
@@ -170,12 +203,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   el.addEventListener("click", e => {
     const step = e.target.closest(".boon-step"); if (!step) return;
+    if (step.dataset.casting) { setCastingCount(step.dataset.casting, castingCount(step.dataset.casting) + Number(step.dataset.delta)); return; }
     setBoonCount(step.dataset.boon, boonCount(step.dataset.boon) + Number(step.dataset.delta));
   });
   // Commits on change (blur/Enter), never on input — the same rule as Hit Dice's remaining box and
   // the movement box: re-rendering mid-keystroke would take the caret with it.
   el.addEventListener("change", e => {
     const box = e.target.closest(".boon-count"); if (!box) return;
+    if (box.dataset.casting) { setCastingCount(box.dataset.casting, box.value); return; }
     setBoonCount(box.dataset.boon, box.value);
   });
 
