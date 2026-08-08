@@ -118,6 +118,7 @@ function blankHouseRules() {
     sourcesOff: [],                   // denylisted source codes
     settings: {},                     // sparse: only what's been set, defaults come from HR_SETTINGS
     spellLimits: {},                  // spell name -> max concurrent castings (H4)
+    rulingSet: "",                    // which RULING_SETS entry supplies the Rulings tab
   };
 }
 
@@ -134,6 +135,7 @@ function normalizeHouseRules(saved) {
     sourcesOff: Array.isArray(saved.sourcesOff) ? saved.sourcesOff.slice() : [],
     settings: (saved.settings && typeof saved.settings === "object") ? { ...saved.settings } : {},
     spellLimits: (saved.spellLimits && typeof saved.spellLimits === "object") ? { ...saved.spellLimits } : {},
+    rulingSet: typeof saved.rulingSet === "string" ? saved.rulingSet : "",
   };
 }
 
@@ -322,6 +324,7 @@ const HR_PRESETS = {
       },
       sourcesOff: [],
       spellLimits: { "Planar Binding": 1 },   // H4
+      rulingSet: "lampmann",                  // the ~50 adjudication rulings (src/rulings.js)
       settings: {
         abilityMethod: "pointbuy", averageHp: true, multiclass: true, feats: true,
         optionalFeatures: true, oversized: "allow", magicItemPricing: "xge-mean", hirelings: false,
@@ -341,6 +344,49 @@ function clearHouseRules() {
   HOUSE_RULES = blankHouseRules();
   saveHouseRules();
   refreshAfterHouseRules();
+}
+
+/* ----- exchanging a ruleset -----
+   A whole ruleset as one file, so a DM configures a table once and hands out the result rather than
+   everyone retyping a ban list from a chat message. Exported by value, not by reference to a preset:
+   the file carries the bans, sources, settings and limits as they stand, so a table that started
+   from a preset and then changed six things exports what it actually plays with.
+
+   The rulings themselves are NOT copied in — they're bulk prose that ships with the sheet
+   (src/rulings.js), so only the *name* of the set travels. A file naming a set the recipient doesn't
+   have still imports cleanly; their Rulings tab just says nothing is loaded. */
+function houseRulesExport() {
+  return { kind: "pmcrwf-house-rules", v: HOUSE_RULES_SCHEMA, exported: new Date().toISOString(),
+    ...normalizeHouseRules(HOUSE_RULES) };
+}
+function exportHouseRules() {
+  const blob = new Blob([JSON.stringify(houseRulesExport(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = ((HOUSE_RULES.preset || "house-rules").replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "house-rules") + ".json";
+  a.click();
+}
+/* Returns an error string, or null on success — the caller decides how loudly to complain. Anything
+   shaped like a ruleset is accepted; normalizeHouseRules fills in whatever the file predates, so a
+   file written by an older copy of the sheet still loads. */
+function importHouseRules(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { return "that isn't valid JSON (" + e.message + ")"; }
+  if (!data || typeof data !== "object") return "that file doesn't contain a ruleset";
+  if (data.kind && data.kind !== "pmcrwf-house-rules") {
+    // A character export is the likeliest wrong file to pick, and silently replacing the ruleset
+    // with an empty one would be a confusing way to find that out.
+    return "that looks like a " + String(data.kind) + " file, not a ruleset";
+  }
+  if (!data.bans && !data.settings && !data.sourcesOff) return "that file doesn't contain a ruleset";
+  HOUSE_RULES = normalizeHouseRules(data);
+  saveHouseRules();
+  if (typeof logEvent === "function") {
+    logEvent("info", `<b>House rules</b> — imported${HOUSE_RULES.preset ? ` ${escapeHtml(HOUSE_RULES.preset)}` : ""}` +
+      ` <span class="hint">(${totalBanCount()} ban(s), ${HOUSE_RULES.sourcesOff.length} source(s) excluded)</span>`);
+  }
+  refreshAfterHouseRules();
+  return null;
 }
 /* Repaint everything a ruleset change can affect. The libraries mark banned rows and grey their Add
    buttons, so they have to be told; each is optional because the tests load this module alone. */
@@ -363,7 +409,7 @@ function refreshAfterHouseRules() {
 /* ----- rendering ----- */
 
 let HR_TAB = "bans";
-const HR_TABS = [["bans", "Bans"], ["sources", "Sources"], ["settings", "Settings"]];
+const HR_TABS = [["bans", "Bans"], ["sources", "Sources"], ["settings", "Settings"], ["rulings", "Rulings"]];
 
 function hrTabsHtml() {
   return HR_TABS.map(([k, label]) =>
@@ -467,10 +513,15 @@ function renderHouseRules() {
     status.textContent = bits.join(" · ");
   }
   const presetBar = `<div class="hr-presets">
+    <button type="button" id="hr-export" title="save this whole ruleset — bans, sources, settings, limits and rulings — as one file">Export ruleset</button>
+    <label style="margin-right:.5rem">Import <input type="file" id="hr-import" accept="application/json" style="width:11rem"></label>
     ${Object.entries(HR_PRESETS).map(([k, p]) => `<button type="button" data-hrpreset="${k}" title="${escapeHtml(p.hint)}">Load ${escapeHtml(p.label)}</button>`).join("")}
     <button type="button" id="hr-clear" title="clear every ban, source exclusion and setting">Clear all</button>
   </div>`;
-  const body = HR_TAB === "sources" ? hrRenderSources() : HR_TAB === "settings" ? hrRenderSettings() : hrRenderBans();
+  const body = HR_TAB === "sources" ? hrRenderSources()
+    : HR_TAB === "settings" ? hrRenderSettings()
+    : HR_TAB === "rulings" ? (typeof hrRenderRulings === "function" ? hrRenderRulings() : "")
+    : hrRenderBans();
   el.innerHTML = presetBar + body;
   if (typeof initComboboxes === "function") initComboboxes(el);
 }
@@ -504,6 +555,7 @@ document.addEventListener("DOMContentLoaded", () => {
   mod.addEventListener("click", e => {
     const preset = e.target.closest("[data-hrpreset]");
     if (preset) { loadHousePreset(preset.dataset.hrpreset); return; }
+    if (e.target.id === "hr-export") { exportHouseRules(); return; }
     if (e.target.id === "hr-clear") {
       if (confirm("Clear every ban, source exclusion and setting?")) clearHouseRules();
       return;
@@ -536,7 +588,30 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => commitBan(inp.dataset.hrkind), 0);   // let the combobox's own Enter handler pick first
   });
 
+  /* The rulings search re-renders the tab on every keystroke, which destroys the box it was typed
+     into — so focus and caret are put back afterwards, the same problem (and fix) the character
+     creator's own comboboxes have. */
+  mod.addEventListener("input", e => {
+    const box = e.target.closest("#hr-ruling-search"); if (!box) return;
+    RULINGS_QUERY = box.value;
+    const at = box.selectionStart;
+    renderHouseRules();
+    const again = document.getElementById("hr-ruling-search");
+    if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (err) {} }
+  });
+
   mod.addEventListener("change", e => {
+    const imp = e.target.closest("#hr-import");
+    if (imp) {
+      const file = imp.files && imp.files[0];
+      imp.value = "";                                  // so re-picking the same file fires again
+      if (!file) return;
+      const rd = new FileReader();
+      rd.onload = () => { const err = importHouseRules(rd.result); if (err) alert("Could not import that ruleset — " + err); };
+      rd.onerror = () => alert("Could not read that file: " + ((rd.error && rd.error.message) || "unknown error"));
+      rd.readAsText(file);
+      return;
+    }
     const set = e.target.closest(".hr-set"); if (!set) return;
     const def = hrSettingDef(set.dataset.hrset); if (!def) return;
     hrSetSetting(def.key, def.kind === "bool" ? set.checked : set.value);
