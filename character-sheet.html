@@ -36,6 +36,12 @@
     <label>Race <input type="text" data-persist id="char-race" style="width:9rem"></label>
     <label>Subrace <input type="text" data-persist id="char-subrace" style="width:9rem"></label>
     <label>Background <input type="text" data-persist id="char-bg" style="width:9rem"></label>
+    <label title="your creature size — sets the penalty for wielding a weapon sized for something bigger (see House Rules)">Size
+      <select data-persist id="char-size">
+        <option value="T">Tiny</option><option value="S">Small</option>
+        <option value="M" selected>Medium</option><option value="L">Large</option>
+        <option value="H">Huge</option><option value="G">Gargantuan</option>
+      </select></label>
     <!-- XP and Level are two views of the same number (PHB p15's Character Advancement table);
          xp.js keeps them in step. See DOCS' "Levelling up". -->
     <label>XP <input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="char-xp" style="width:6rem"></label>
@@ -195,7 +201,7 @@
     <h2>Attacks <span class="hint">(draft)</span></h2>
     <table>
       <thead><tr>
-        <th>Name</th><th>Ability</th><th title="proficient">Pr</th><th title="apply feature effects (Sharpshooter, Rage, Divine Strike, …) to this attack">Fx</th><th title="extra to-hit (flat or dice, e.g. +1 or +1d4)">Hit+</th><th>To&nbsp;Hit</th>
+        <th>Name</th><th>Ability</th><th title="proficient">Pr</th><th title="apply feature effects (Sharpshooter, Rage, Divine Strike, …) to this attack">Fx</th><th title="the size this weapon is made for — leave blank unless it's an oversized weapon (see House Rules)">Size</th><th title="extra to-hit (flat or dice, e.g. +1 or +1d4)">Hit+</th><th>To&nbsp;Hit</th>
         <th>Damage</th><th title="add the ability modifier to damage">+mod</th><th title="extra damage (flat or dice, e.g. +2 or +1d6)">Dmg+</th><th>Roll</th><th></th>
       </tr></thead>
       <tbody id="attack-rows"></tbody>

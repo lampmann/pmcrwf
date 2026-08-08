@@ -8,7 +8,10 @@
    (e.g. the Features panel) without leaking DOM nodes as rows/panels
    get rebuilt.
    ============================================================ */
-function attachTypeahead(input, getOptions) {
+/* `banInfo` is optional and, when given, is a function returning { kind, prefix } for house-rule ban
+   marking (src/house-rules.js). A function rather than a static value because a subclass picker's
+   prefix depends on whatever class is currently typed in the same row, which changes under it. */
+function attachTypeahead(input, getOptions, banInfo) {
   const list = document.createElement("div");
   list.className = "typeahead-list";
   let items = [], activeIdx = -1, isOpen = false;
@@ -32,7 +35,14 @@ function attachTypeahead(input, getOptions) {
   function open(matches) {
     items = matches; activeIdx = -1;
     if (!matches.length) { close(); return; }
-    list.innerHTML = matches.map((m, i) => `<div class="typeahead-item" data-idx="${i}">${escapeHtml(m)}</div>`).join("");
+    // Banned options stay listed and stay pickable, coloured red — see house-rules.js for why
+    // marking beats removing.
+    const ban = banInfo ? banInfo() : null;
+    list.innerHTML = matches.map((m, i) => {
+      const bad = ban && typeof isBannedOption === "function" && isBannedOption(ban.kind, m, ban.prefix);
+      return `<div class="typeahead-item${bad ? " banned-opt" : ""}" data-idx="${i}"${bad ? ` title="banned by house rule"` : ""}>` +
+        `${escapeHtml(m)}${bad ? ` <span class="banned-flag">banned</span>` : ""}</div>`;
+    }).join("");
     document.body.appendChild(list);
     position();
     isOpen = true;

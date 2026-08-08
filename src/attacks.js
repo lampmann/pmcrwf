@@ -62,6 +62,7 @@
       abil: tr.querySelector(".atk-abil").value,
       prof: tr.querySelector(".atk-prof").checked,
       fx: tr.querySelector(".atk-fx").checked,
+      size: (tr.querySelector(".atk-size") || {}).value || "",   // only set for an oversized weapon
       atkMisc: tr.querySelector(".atk-misc").value,
       dmg: tr.querySelector(".atk-dmg").value,
       modDmg: tr.querySelector(".atk-moddmg").checked,
@@ -113,14 +114,32 @@
     const expr = parts.join("");
     return /^\+/.test(expr) ? expr.slice(1) : /^-/.test(expr) ? "0" + expr : expr;
   }
+  /* An oversized weapon gives disadvantage (DMG), which has to be reconciled with whatever a feature
+     effect already forced on this row. Advantage and disadvantage cancel to a straight roll (PHB
+     p173) rather than one winning, so that's what happens here. */
+  function hitMode(d) {
+    const fx = fxMode(d, "attack-hit") || "";
+    const over = (typeof oversizedVerdict === "function") ? oversizedVerdict(d.size) : null;
+    if (!over || !over.disadvantage) return fx;
+    if (fx === "adv") return "";        // advantage + disadvantage = neither
+    return "dis";
+  }
   function updateRowDerived(tr) {
     const d = rowData(tr);
     const th = toHit(d), hitBtn = tr.querySelector(".wpn-roll");
+    const over = (typeof oversizedVerdict === "function") ? oversizedVerdict(d.size) : null;
     hitBtn.dataset.bonus = th.bonus; hitBtn.dataset.dice = th.dice;
-    hitBtn.dataset.mode = fxMode(d, "attack-hit") || "";   // read back by rollInfo() in dice.js
-    hitBtn.dataset.rolllabel = (d.name || "Attack") + " to hit" + fxLabel(d, "attack-hit");
+    hitBtn.dataset.mode = hitMode(d);   // read back by rollInfo() in dice.js
+    hitBtn.dataset.rolllabel = (d.name || "Attack") + " to hit" + fxLabel(d, "attack-hit") +
+      (over && over.disadvantage ? " (oversized)" : "");
     hitBtn.textContent = "to hit " + signed(th.bonus) + (th.dice || "");
     paintFx(hitBtn, d, "attack-hit", "To hit");
+    /* Unusable is stated and styled, never blocked — the button still rolls. Same rule as the rest of
+       the sheet: the DM is at the table and this one is explicitly a "you can rule that…" suggestion. */
+    tr.classList.toggle("atk-oversized", !!(over && over.disadvantage));
+    tr.classList.toggle("atk-unusable", !!(over && over.unusable));
+    const sizeSel = tr.querySelector(".atk-size");
+    if (sizeSel) sizeSel.title = (over && over.note) || "the size this weapon is made for — only set it for an oversized weapon";
     const dmg = damageExpr(d), dmgBtn = tr.querySelector(".wpn-dmg");
     dmgBtn.dataset.expr = dmg;
     dmgBtn.textContent = dmg ? "dmg " + dmg : "dmg —";
@@ -192,6 +211,9 @@
        <td><select class="atk-abil">${opts}</select></td>
        <td style="text-align:center"><input type="checkbox" class="atk-prof"${data.prof ? " checked" : ""}></td>
        <td style="text-align:center"><input type="checkbox" class="atk-fx"${data.fx !== false ? " checked" : ""} title="apply feature effects (Sharpshooter, Rage, Divine Strike, …) to this attack"></td>
+       <td><select class="atk-size" title="the size this weapon is made for — only set it for an oversized weapon">${
+         [["", "—"], ["T", "T"], ["S", "S"], ["M", "M"], ["L", "L"], ["H", "H"], ["G", "G"]]
+           .map(([v, l]) => `<option value="${v}"${(data.size || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></td>
        <td><input type="text" class="atk-misc tiny" value="${esc(data.atkMisc)}" placeholder="+0"></td>
        <td><button class="roll wpn-roll">to hit</button></td>
        <td><input type="text" class="atk-dmg" value="${esc(data.dmg)}" style="width:4.5rem" placeholder="1d8"></td>

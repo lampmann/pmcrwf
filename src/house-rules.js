@@ -41,6 +41,7 @@ const HOUSE_RULES_SCHEMA = 1;
 const BAN_KINDS = [
   { key: "spell", label: "Spells", lib: () => (typeof SPELL_LIB !== "undefined" ? SPELL_LIB.map(s => s.name) : []) },
   { key: "item", label: "Items", lib: () => (typeof ITEM_LIB !== "undefined" ? ITEM_LIB.map(i => i.name) : []) },
+  { key: "class", label: "Classes", lib: () => Object.keys(typeof CLASS_LIB !== "undefined" ? CLASS_LIB : {}) },
   { key: "subclass", label: "Subclasses", lib: hrSubclassNames },
   { key: "race", label: "Races", lib: () => Object.keys(typeof RACE_LIB !== "undefined" ? RACE_LIB : {}) },
   { key: "background", label: "Backgrounds", lib: () => Object.keys(typeof BACKGROUND_LIB !== "undefined" ? BACKGROUND_LIB : {}) },
@@ -62,9 +63,9 @@ const HR_SETTINGS = [
   { key: "feats", label: "Feats allowed", kind: "bool", enforced: true, def: true,
     hint: "off means ASI only — the feat picker disappears from ASI slots" },
   { key: "optionalFeatures", label: "Optional class features (TCE)", kind: "bool", enforced: false, def: true },
-  { key: "oversized", label: "Oversized weapons", kind: "choice", enforced: false, def: "allow",
+  { key: "oversized", label: "Oversized weapons", kind: "choice", enforced: true, def: "allow",
     opts: [["allow", "Fully allowed"], ["twosize", "Not if sized for 2+ sizes larger"], ["banned", "Banned"]],
-    hint: "extra damage dice belong to the weapon; the wielder's size sets the penalty" },
+    hint: "set an attack's Size to apply it; extra damage dice belong to the weapon, the wielder's size sets the penalty" },
   { key: "magicItemPricing", label: "Magic item prices", kind: "choice", enforced: true, def: "",
     opts: [["", "as printed"], ["xge-mean", "Mean of XGtE asking price"]],
     hint: "fixed price per rarity, halved for consumables" },
@@ -153,6 +154,38 @@ function banNote(kind, name, source) {
   return null;
 }
 
+/* ----- marking banned options wherever one is offered -----
+   Banned entries are shown and coloured red, never removed. A ban is information the player needs
+   at the moment they would have picked the thing; an option that silently vanishes reads as missing
+   data, and the sheet has no way to say "your DM banned this" once it's gone. Same rule the Spell
+   and Equipment libraries already follow with their struck-through rows.
+
+   `prefix` reconciles how an option is *offered* with how a ban is *stored*: a subclass picker lists
+   a bare "Champion" while the ban reads "Fighter: Champion". */
+const BAN_MARK_CLASS = "banned-opt";
+function isBannedOption(kind, name, prefix) {
+  if (!kind || typeof isBanned !== "function") return false;
+  return isBanned(kind, (prefix || "") + name);
+}
+/* Reads a widget's own declared ban kind/prefix off the element, so the two dropdown widgets
+   (combobox.js, typeahead.js) share one contract and a caller only has to say it once, in markup. */
+function banInfoOf(el) {
+  if (!el || !el.dataset || !el.dataset.banKind) return null;
+  return { kind: el.dataset.banKind, prefix: el.dataset.banPrefix || "" };
+}
+/* Red the input itself when what's *already* selected is banned — the picker only warns while it's
+   open, and a character carrying a banned choice should keep saying so afterwards. */
+function markBannedInput(el) {
+  const info = banInfoOf(el); if (!el.classList) return;
+  const bad = !!info && !!(el.value || "").trim() && isBannedOption(info.kind, el.value.trim(), info.prefix);
+  el.classList.toggle("banned-value", bad);
+  if (bad) el.title = banNote(info.kind, info.prefix + el.value.trim()) || "banned by house rule";
+  else if (el.title === "banned by house rule") el.removeAttribute("title");
+}
+function markBannedInputs(root) {
+  (root || document).querySelectorAll("[data-ban-kind]").forEach(markBannedInput);
+}
+
 function toggleBan(kind, name) {
   const list = HOUSE_RULES.bans[kind]; if (!list) return;
   const q = hrNorm(name); if (!q) return;
@@ -177,6 +210,39 @@ function hrMagicItemPrice(rarity, isConsumable) {
   const base = XGE_PRICE_MEAN[hrNorm(rarity)];
   if (base === undefined) return null;
   return isConsumable ? base / 2 : base;
+}
+
+/* ----- oversized weapons (R17) -----
+   The DMG prices a weapon sized for a bigger creature two ways, and only one of them is a rule:
+   you have *disadvantage* on attacks with it (rule), and the DM *can* rule that two or more sizes
+   larger is unusable (suggestion). The extra damage dice belong to the weapon — a greataxe sized
+   for a Large creature is 2d12 for whoever swings it — so nothing here touches damage; that number
+   is whatever the attack row says. Only the penalty and the limit depend on who's holding it.
+
+   Three settings, because tables land in different places: `allow` takes the rule and drops the
+   suggestion, `twosize` takes both, `banned` refuses oversized weapons outright. */
+const CREATURE_SIZES = ["T", "S", "M", "L", "H", "G"];
+function sizeIndex(sz) { const i = CREATURE_SIZES.indexOf(String(sz || "M").toUpperCase()); return i < 0 ? 2 : i; }
+function characterSize() {
+  const el = document.getElementById("char-size");
+  return (el && el.value) || "M";
+}
+/* How a weapon sized `weaponSize` behaves in the hands of `wielderSize`:
+     { steps, disadvantage, unusable, note }
+   `steps` is how many sizes too big it is (0 or less = fine). */
+function oversizedVerdict(weaponSize, wielderSize) {
+  const steps = sizeIndex(weaponSize) - sizeIndex(wielderSize == null ? characterSize() : wielderSize);
+  if (!weaponSize || steps <= 0) return { steps: Math.min(0, steps), disadvantage: false, unusable: false, note: "" };
+  const rule = (typeof hrSetting === "function" && hrSetting("oversized")) || "allow";
+  if (rule === "banned") {
+    return { steps, disadvantage: true, unusable: true, note: "oversized weapons are banned in this campaign" };
+  }
+  if (rule === "twosize" && steps >= 2) {
+    return { steps, disadvantage: true, unusable: true,
+      note: `sized for a creature ${steps} sizes larger — too big to use under this campaign's House Rules` };
+  }
+  return { steps, disadvantage: true, unusable: false,
+    note: `sized for a creature ${steps} size${steps === 1 ? "" : "s"} larger — disadvantage on attack rolls` };
 }
 
 /* Every subclass the class library knows, as "Class: Subclass" — the form a DM bans them in, and
@@ -254,6 +320,10 @@ function refreshAfterHouseRules() {
   if (typeof renderClassFeatures === "function" && document.getElementById("class-feat-results")) renderClassFeatures();
   // Only if the wizard is actually open — renderCreator() throws on a null CREATOR.
   if (typeof renderCreator === "function" && typeof CREATOR !== "undefined" && CREATOR) renderCreator();
+  markBannedInputs();   // a name that just became (un)banned should recolour where it's already chosen
+  // The oversized-weapon rule changes an attack row's mode and label, and recompute() is what drives
+  // updateAttackRows() (see attacks.js).
+  if (typeof recompute === "function") recompute();
 }
 
 /* ----- rendering ----- */
@@ -349,10 +419,17 @@ function renderHouseRules() {
 }
 
 /* ----- wiring ----- */
+/* Any ban-aware input recolours as it changes, wherever it lives — the creator's pickers, the
+   Character module's race/class boxes, an ASI feat slot. Delegated at the document so a widget that
+   is rebuilt (and every one of them is, constantly) never needs re-binding. */
+document.addEventListener("input", e => { if (e.target && e.target.dataset && e.target.dataset.banKind) markBannedInput(e.target); });
+document.addEventListener("change", e => { if (e.target && e.target.dataset && e.target.dataset.banKind) markBannedInput(e.target); });
+
 document.addEventListener("DOMContentLoaded", () => {
   const mod = document.getElementById("hr-body"); if (!mod) return;
   loadHouseRules();
   renderHouseRules();
+  markBannedInputs();
 
   const commitBan = kindKey => {
     const inp = document.querySelector(`.hr-ban-add[data-hrkind="${kindKey}"]`); if (!inp) return;

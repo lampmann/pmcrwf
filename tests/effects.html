@@ -26,6 +26,7 @@
     <!-- data-persist matters: collectState() only captures fields carrying it, so a stub without it
          is silently absent from every saved character. -->
     <input type="text" data-persist id="char-name"><input type="text" data-persist id="char-race"><input type="text" data-persist id="char-subrace"><input type="text" data-persist id="char-bg">
+    <select data-persist id="char-size"><option value="T">T</option><option value="S">S</option><option value="M" selected>M</option><option value="L">L</option><option value="H">H</option><option value="G">G</option></select>
     <table><tbody id="class-rows"></tbody></table>
     <button id="btn-add-class">+</button>
     <span id="total-level">0</span> <span id="pb">+0</span> <input type="number" id="pb-override">
@@ -1487,6 +1488,52 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("...and leaves feats and multiclassing on", hrSetting("feats") && hrSetting("multiclass"));
     assert("...while banning no sources, since it is a denylist that names no exceptions",
       HOUSE_RULES.sourcesOff.length === 0);
+
+    // --- marking an option: a ban is shown, never removed, and a subclass needs its class ---
+    HOUSE_RULES = blankHouseRules();
+    toggleBan("race", "Elf");
+    toggleBan("subclass", "Wizard: School of Conjuration");
+    assert("a banned race marks in a picker", isBannedOption("race", "Elf"));
+    assert("...and an unbanned one does not", !isBannedOption("race", "Dwarf"));
+    assert("a bare subclass name needs its class prefix to match the stored ban",
+      isBannedOption("subclass", "School of Conjuration", "Wizard: "));
+    assert("...and the same name under another class is untouched",
+      !isBannedOption("subclass", "School of Conjuration", "Cleric: "));
+    assert("...as is the bare name with no prefix at all",
+      !isBannedOption("subclass", "School of Conjuration"));
+    assert("an element with no declared kind marks nothing", !isBannedOption(null, "Elf"));
+    assertEqual("banInfoOf reads a widget's declared kind and prefix",
+      JSON.stringify(banInfoOf({ dataset: { banKind: "subclass", banPrefix: "Wizard: " } })),
+      '{"kind":"subclass","prefix":"Wizard: "}');
+    assertEqual("...and returns null for a widget that declares none", banInfoOf({ dataset: {} }), null);
+
+    // --- oversized weapons (R17): the wielder's size sets the penalty, the setting sets the limit ---
+    HOUSE_RULES = blankHouseRules();
+    assertEqual("the default rule is fully allowed", hrSetting("oversized"), "allow");
+    assertEqual("a weapon of your own size is unremarkable", oversizedVerdict("M", "M").steps, 0);
+    assert("...and carries no penalty", !oversizedVerdict("M", "M").disadvantage);
+    assert("a smaller weapon carries none either", !oversizedVerdict("S", "M").disadvantage);
+    assert("an attack with no size set is never oversized", !oversizedVerdict("", "M").disadvantage);
+    assert("one size up gives disadvantage", oversizedVerdict("L", "M").disadvantage);
+    assert("...but is still usable while the rule is 'allow'", !oversizedVerdict("L", "M").unusable);
+    assert("two sizes up is still only disadvantage under 'allow'", !oversizedVerdict("H", "M").unusable);
+    hrSetSetting("oversized", "twosize");
+    assert("under the two-size limit, one size up stays usable", !oversizedVerdict("L", "M").unusable);
+    assert("...and two sizes up does not", oversizedVerdict("H", "M").unusable);
+    assertEqual("...with a note that says how far over it is", oversizedVerdict("H", "M").steps, 2);
+    hrSetSetting("oversized", "banned");
+    assert("banned makes even one size up unusable", oversizedVerdict("L", "M").unusable);
+    assert("...while a weapon of your own size is still fine", !oversizedVerdict("M", "M").unusable);
+    // A bigger wielder is the whole point of the comparison.
+    hrSetSetting("oversized", "twosize");
+    assert("a Large wielder swings a Large weapon freely", !oversizedVerdict("L", "L").disadvantage);
+    assert("...and a Huge one is only one size up for them", !oversizedVerdict("H", "L").unusable);
+    assertEqual("an unknown size string is read as Medium rather than throwing", sizeIndex("???"), 2);
+    // With no explicit wielder, the character's own size field is used.
+    $("char-size").value = "L";
+    assert("the wielder defaults to the character's size field", !oversizedVerdict("L").disadvantage);
+    $("char-size").value = "M";
+    assert("...which changing brings the penalty back", oversizedVerdict("L").disadvantage);
 
     HOUSE_RULES = savedHR;
   }
