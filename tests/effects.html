@@ -1219,6 +1219,23 @@ document.addEventListener("DOMContentLoaded", () => {
     correctTerrainInput({ value: "0" });
     assertEqual("...zero or blank falls back to ×1, not ×0", COMBAT.terrain, 1);
 
+    // --- R47: a bonus-action spell always costs a bonus action, so a spent one makes it uncastable ---
+    {
+      const savedHR3 = HOUSE_RULES;
+      HOUSE_RULES = blankHouseRules();
+      COMBAT = blankCombat(); COMBAT.active = true;
+      const castEntry = () => bonusMenu().find(e => e.label === "Cast a Spell");
+      assert("with the bonus action in hand, casting is offered", !castEntry().disabled);
+      COMBAT.used.bonus = 1;
+      assert("with it spent, a bonus-action spell can't be cast at all", castEntry().disabled);
+      assert("...and the entry says why rather than just greying out", /R47|bonus action is spent/.test(castEntry().hint));
+      assert("...and offers no submenu to cast from", !castEntry().submenu);
+      hrSetSetting("bonusActionSpellStrict", false);
+      assert("a table that doesn't take R47 gets the old behaviour back", !castEntry().disabled);
+      HOUSE_RULES = savedHR3;
+      COMBAT = blankCombat(); COMBAT.active = true;
+    }
+
     // --- menu entries are labels; the explanation is a tooltip ---
     COMBAT = blankCombat(); COMBAT.active = true;
     assert("every menu entry has a label", menuFor("action").every(e => e.label && e.label.length));
@@ -1401,6 +1418,34 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...and Death Ward with it", boonCount("deathward"), 0);
     assertEqual("a rest with nothing active reports nothing cleared", clearBoonsForRest("long"), 0);
 
+    // --- concurrent castings (H4): counted per character, capped by the ruleset ---
+    {
+      const savedHR2 = HOUSE_RULES;
+      HOUSE_RULES = blankHouseRules();
+      BOONS = blankBoons();
+      assertEqual("nothing is being tracked to start with", castingCount("Planar Binding"), 0);
+      assert("...and with no limit set, nothing is over", !castingOverLimit("Planar Binding"));
+      setSpellLimit("Planar Binding", 1);
+      setCastingCount("Planar Binding", 1);
+      assertEqual("a casting counts", castingCount("Planar Binding"), 1);
+      assert("...and at the limit is not over it", !castingOverLimit("Planar Binding"));
+      setCastingCount("Planar Binding", 2);
+      assert("one past the limit is over", castingOverLimit("Planar Binding"));
+      assertEqual("...and the sheet still records it rather than refusing", castingCount("Planar Binding"), 2);
+      setCastingCount("Planar Binding", -4);
+      assertEqual("a negative count clamps to zero", castingCount("Planar Binding"), 0);
+      assert("...and drops out of the map entirely rather than sitting at 0",
+        !("Planar Binding" in (BOONS.castings || {})));
+      // A save predating the feature must not break the counters.
+      BOONS = normalizeBoons({ guidance: 1 });
+      assertEqual("a save with no castings block gets an empty one", Object.keys(BOONS.castings).length, 0);
+      assertEqual("...and keeps the boons it did have", boonCount("guidance"), 1);
+      BOONS = normalizeBoons({ castings: { "Planar Binding": 2, "Bad": -1, "Worse": "x" } });
+      assertEqual("...while a stored count survives a reload", castingCount("Planar Binding"), 2);
+      assertEqual("...and nonsense counts are dropped", Object.keys(BOONS.castings).length, 1);
+      HOUSE_RULES = savedHR2;
+    }
+
     BOONS = savedBoons;
     $("hp-cur").value = ""; commitMath($("hp-cur"));
   }
@@ -1534,6 +1579,47 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("the wielder defaults to the character's size field", !oversizedVerdict("L").disadvantage);
     $("char-size").value = "M";
     assert("...which changing brings the penalty back", oversizedVerdict("L").disadvantage);
+
+    // --- item value, once the rulings have had their say (S8 pricing + R9 trinkets) ---
+    HOUSE_RULES = blankHouseRules();
+    const ring = { name: "Fancy Ring", rarity: "rare", valueGp: 250, valueDefaulted: false, consumable: false, misc: [] };
+    const potion = { name: "Fancy Potion", rarity: "rare", valueGp: 250, valueDefaulted: false, consumable: true, misc: [] };
+    const abacus = { name: "Abacus", rarity: "", valueGp: 2, valueDefaulted: false, consumable: false, misc: [] };
+    assertEqual("with no pricing rule, the printed price stands", itemValueGp(ring), 250);
+    assert("...and nothing claims to be ruled", !itemValueRuled(ring));
+    hrSetSetting("magicItemPricing", "xge-mean");
+    assertEqual("the pricing rule overrides a printed price, not just a missing one", itemValueGp(ring), 11000);
+    assertEqual("...halving a consumable", itemValueGp(potion), 5500);
+    assert("...and says the number came from a ruling", itemValueRuled(ring));
+    assertEqual("mundane gear is untouched by a magic-item rule", itemValueGp(abacus), 2);
+    hrSetSetting("magicItemPricing", "");
+
+    // R9. 5e.tools tags trinket-table entries, which is a better test than the name.
+    const tagged = { name: "Whatever", rarity: "", valueGp: 500, valueDefaulted: false, consumable: false, misc: ["Trinket Table"] };
+    const named = { name: "Aerenal Trinket", rarity: "", valueGp: 500, valueDefaulted: false, consumable: false, misc: [] };
+    assert("a trinket-table entry is recognized by its tag", isTrinketItem(tagged));
+    assert("...or by its name when the tag is missing", isTrinketItem(named));
+    assert("...and an ordinary item is neither", !isTrinketItem(abacus));
+    assertEqual("without the rule, a priced trinket keeps its price", itemValueGp(tagged), 500);
+    hrSetSetting("trinketsWorthless", true);
+    assertEqual("with it, a trinket is worth nothing", itemValueGp(tagged), 0);
+    assertEqual("...however it was identified", itemValueGp(named), 0);
+    assertEqual("...while everything else is unaffected", itemValueGp(abacus), 2);
+
+    // --- H4, generalized: at most N concurrent castings of a named spell ---
+    HOUSE_RULES = blankHouseRules();
+    assertEqual("nothing is capped by default", spellLimitFor("Planar Binding"), null);
+    setSpellLimit("Planar Binding", 1);
+    assertEqual("a limit reads back", spellLimitFor("Planar Binding"), 1);
+    assertEqual("...case-insensitively, like every other name here", spellLimitFor("planar binding"), 1);
+    assertEqual("an uncapped spell is still null", spellLimitFor("Fireball"), null);
+    setSpellLimit("PLANAR BINDING", 3);
+    assertEqual("setting it again under different case updates rather than duplicating", spellLimitFor("Planar Binding"), 3);
+    assertEqual("...leaving exactly one entry", Object.keys(spellLimits()).length, 1);
+    setSpellLimit("Planar Binding", 0);
+    assertEqual("a limit of zero removes it", spellLimitFor("Planar Binding"), null);
+    setSpellLimit("   ", 2);
+    assertEqual("a blank name is not a limit", Object.keys(spellLimits()).length, 0);
 
     HOUSE_RULES = savedHR;
   }

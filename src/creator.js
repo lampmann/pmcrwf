@@ -639,7 +639,13 @@ function creatorStep5Html() {
   }).join("") : `<div class="hint">No starting-equipment data for this class &mdash; add what you need from the Equipment Library.</div>`;
 
   return `<div class="cr-step"><b>Step 5 &middot; Choose Equipment</b> <span class="hint">PHB p14</span>
-    <div class="hint">Take your class's starting equipment package, or its starting gold and buy your own (PHB p143). Items are added to Inventory by name from the Equipment Library, so weight, value and armour class come from the library entry &mdash; anything the data leaves as "any martial weapon" is a pick you make there yourself.</div>
+    <div class="hint">Take your class's starting equipment package, or its starting gold and buy your own (PHB p143). Items are added to Inventory by name from the Equipment Library, so weight, value and armour class come from the library entry &mdash; anything the data leaves as "any martial weapon" is a pick you make there yourself.${
+      // R35: the open-ended picks are exactly where this ruling bites, so it's stated here rather
+      // than left in the rules reference. The sheet can't police it — it never learns which
+      // inventory line filled which slot — so this is a statement at the point of choice.
+      (typeof hrSetting === "function" && hrSetting("mundaneEquipment"))
+        ? ` <b>This campaign's House Rules:</b> unless a line says otherwise, an open-ended equipment choice must be a <b>mundane</b> item.`
+        : ""}</div>
     <div style="margin:.4rem 0">
       <button type="button" class="cr-method${c.equipMode === "package" ? " active" : ""}" data-creqmode="package">Equipment package</button>
       <button type="button" class="cr-method${c.equipMode === "gold" ? " active" : ""}" data-creqmode="gold"${goldDice ? "" : " disabled"}>Starting gold${goldDice ? ` (${escapeHtml(goldDice)})` : " — no data"}</button>

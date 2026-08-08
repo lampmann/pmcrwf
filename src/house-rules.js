@@ -70,7 +70,36 @@ const HR_SETTINGS = [
     opts: [["", "as printed"], ["xge-mean", "Mean of XGtE asking price"]],
     hint: "fixed price per rarity, halved for consumables" },
   { key: "hirelings", label: "Hirelings allowed", kind: "bool", enforced: false, def: true },
+  { key: "trinketsWorthless", label: "Trinkets are worth 0 gp", kind: "bool", enforced: true,
+    hint: "R9 — overrides any price on a trinket, in the library and in your inventory total" },
+  { key: "mundaneEquipment", label: "Starting equipment must be mundane", kind: "bool", enforced: true,
+    hint: "R35 — stated on the creator's equipment step, where the open-ended picks are made" },
+  { key: "bonusActionSpellStrict", label: "A bonus-action spell always costs a bonus action", kind: "bool", enforced: true, def: true,
+    hint: "R47 — with your bonus action spent, such a spell can't be cast at all" },
 ];
+
+/* ----- concurrent casting limits (H4) -----
+   "Only one casting of Planar Binding per player character may be active at a time" generalizes to
+   "at most N of X running at once", so it's stored as a table rather than special-cased: any spell a
+   table wants to cap goes in the same map, and boons.js renders a counter for each. The counts
+   themselves are per character (BOONS.castings); only the limits live here, with the ruleset. */
+function spellLimits() { return (HOUSE_RULES.spellLimits && typeof HOUSE_RULES.spellLimits === "object") ? HOUSE_RULES.spellLimits : {}; }
+function spellLimitFor(name) {
+  const lim = spellLimits();
+  const q = hrNorm(name);
+  const hit = Object.keys(lim).find(k => hrNorm(k) === q);
+  return hit ? Math.max(1, Math.floor(Number(lim[hit])) || 1) : null;
+}
+function setSpellLimit(name, n) {
+  const clean = String(name || "").trim(); if (!clean) return;
+  if (!HOUSE_RULES.spellLimits || typeof HOUSE_RULES.spellLimits !== "object") HOUSE_RULES.spellLimits = {};
+  const existing = Object.keys(HOUSE_RULES.spellLimits).find(k => hrNorm(k) === hrNorm(clean));
+  const key = existing || clean;
+  const v = Math.floor(Number(n));
+  if (!v || v < 1) delete HOUSE_RULES.spellLimits[key];
+  else HOUSE_RULES.spellLimits[key] = Math.min(99, v);
+  saveHouseRules();
+}
 
 /* XGtE gives an asking price as a die expression per rarity. A table that wants fixed prices takes
    the mean of that expression rather than rolling per item, halved for consumables (potions and
@@ -88,6 +117,7 @@ function blankHouseRules() {
     bans: BAN_KINDS.reduce((o, k) => { o[k.key] = []; return o; }, {}),
     sourcesOff: [],                   // denylisted source codes
     settings: {},                     // sparse: only what's been set, defaults come from HR_SETTINGS
+    spellLimits: {},                  // spell name -> max concurrent castings (H4)
   };
 }
 
@@ -103,6 +133,7 @@ function normalizeHouseRules(saved) {
     ...blank, ...saved, bans,
     sourcesOff: Array.isArray(saved.sourcesOff) ? saved.sourcesOff.slice() : [],
     settings: (saved.settings && typeof saved.settings === "object") ? { ...saved.settings } : {},
+    spellLimits: (saved.spellLimits && typeof saved.spellLimits === "object") ? { ...saved.spellLimits } : {},
   };
 }
 
@@ -290,9 +321,11 @@ const HR_PRESETS = {
           "Shemeshka, the Fortune's Wheel and the time chamber"],
       },
       sourcesOff: [],
+      spellLimits: { "Planar Binding": 1 },   // H4
       settings: {
         abilityMethod: "pointbuy", averageHp: true, multiclass: true, feats: true,
         optionalFeatures: true, oversized: "allow", magicItemPricing: "xge-mean", hirelings: false,
+        trinketsWorthless: true, mundaneEquipment: true, bonusActionSpellStrict: true,
       },
     }),
   },
@@ -316,6 +349,7 @@ function refreshAfterHouseRules() {
   if (typeof renderSpellResults === "function" && document.getElementById("spell-results")) renderSpellResults();
   if (typeof renderItemResults === "function" && document.getElementById("item-results")) renderItemResults();
   if (typeof renderItemList === "function") renderItemList();
+  if (typeof renderBoons === "function") renderBoons();   // concurrent-casting counters follow spellLimits
   // The Features module draws the ASI feat picker, which the `feats` setting can remove.
   if (typeof renderClassFeatures === "function" && document.getElementById("class-feat-results")) renderClassFeatures();
   // Only if the wizard is actually open — renderCreator() throws on a null CREATOR.
@@ -388,10 +422,33 @@ function hrSettingRowHtml(s) {
   const note = [s.hint || "", s.enforced ? "" : "recorded only"].filter(Boolean).join(" &middot; ");
   return `<div class="hr-setting">${control}${note ? ` <span class="hint">${note}</span>` : ""}</div>`;
 }
+/* Concurrent-casting limits (H4). Its own block rather than an HR_SETTINGS row, because it's a
+   table of spell -> number instead of one value. */
+function hrRenderSpellLimits() {
+  const lim = spellLimits();
+  const names = Object.keys(lim).sort();
+  const options = (typeof SPELL_LIB !== "undefined") ? [...new Set(SPELL_LIB.map(s => s.name))].sort() : [];
+  const rows = names.length
+    ? names.map(n => `<span class="hr-chip">${escapeHtml(n)} <b>&times;${spellLimitFor(n)}</b>
+        <button type="button" class="hr-chip-x" data-hrunlimit="${escapeHtml(n).replace(/"/g, "&quot;")}" title="remove this limit">&times;</button></span>`).join("")
+    : `<span class="hint">no limits set</span>`;
+  return `<div class="hr-ban-kind" style="margin-top:.6rem">
+    <div class="flabel">Concurrent castings</div>
+    <div class="fbody">
+      <div class="hint">At most N of a spell running at once, per character &mdash; a counter for each appears beside your HP.
+        Going over is shown, never prevented.</div>
+      ${comboboxHtml({ options, placeholder: options.length ? "spell name…" : "spell name", extraClass: "hr-limit-name", width: "14rem" })}
+      <input type="text" inputmode="numeric" class="tiny hr-limit-n" value="1" title="how many may be active at once">
+      <button type="button" id="hr-limit-add">Limit</button>
+      <div class="hr-chips">${rows}</div>
+    </div>
+  </div>`;
+}
 function hrRenderSettings() {
   return `<div class="hint">Settings marked <i>recorded only</i> are here so the table has one place to look them up &mdash;
       nothing in the sheet reads them yet. The rest change how the sheet behaves.</div>
-    ${HR_SETTINGS.map(hrSettingRowHtml).join("")}`;
+    ${HR_SETTINGS.map(hrSettingRowHtml).join("")}
+    ${hrRenderSpellLimits()}`;
 }
 
 function renderHouseRules() {
@@ -457,6 +514,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (unban) { toggleBan(unban.dataset.hrunban, unban.dataset.hrname); refreshAfterHouseRules(); return; }
     const src = e.target.closest("[data-hrsrc]");
     if (src) { toggleSourceBan(src.dataset.hrsrc); refreshAfterHouseRules(); return; }
+    const unlimit = e.target.closest("[data-hrunlimit]");
+    if (unlimit) { setSpellLimit(unlimit.dataset.hrunlimit, 0); refreshAfterHouseRules(); return; }
+    if (e.target.id === "hr-limit-add") {
+      const nameEl = mod.querySelector(".hr-limit-name"), nEl = mod.querySelector(".hr-limit-n");
+      if (nameEl && (nameEl.value || "").trim()) {
+        setSpellLimit(nameEl.value, (nEl && nEl.value) || 1);
+        nameEl.value = "";
+        refreshAfterHouseRules();
+      }
+      return;
+    }
   });
 
   // Enter in a ban combobox commits it, the same as clicking Ban. Keydown rather than change so it

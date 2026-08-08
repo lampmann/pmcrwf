@@ -311,6 +311,9 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 /* An active boon is stated in text too (the label grows a "+2d4"), so weight rather than colour
    alone carries it — same rule as the combat tracker's pips. */
 .boon-on { font-weight: bold; }
+/* Over a concurrent-casting limit (H4). Says "over" in words next to the count, so the colour is
+   reinforcement; the sheet shows it rather than preventing it. */
+.boon-over { color: #c00; }
 
 /* ----- house rules (src/house-rules.js) ----- */
 .hr-tab { font: inherit; font-size: .85rem; padding: .15rem .6rem; margin-right: .2rem; }

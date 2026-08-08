@@ -308,9 +308,19 @@ function bonusMenu() {
     out.push({ label: "Two-Weapon Fighting", hint: `needs two light melee weapons equipped (you have ${light.length})`, disabled: true });
   }
 
+  /* R47 (house rule): a spell with a bonus-action casting time always costs a bonus action. The
+     argument this rejects reads PHB's "you must use a bonus action… provided that you haven't
+     already taken a bonus action this turn" as lapsing once you have — making the spell free rather
+     than uncastable. It doesn't: with the bonus action spent, the spell simply can't be cast. Said
+     rather than blocked, like everything else in this tracker. */
   const spells = spellEntries("bonus", "bonus");
-  out.push({ label: "Cast a Spell", hint: spells.length ? `${spells.length} with a bonus-action casting time` : "no bonus-action spells on your list",
-    submenu: spells.length ? spells : null, run: spells.length ? null : () => spend("Cast a Spell") });
+  const baSpent = (typeof hrSetting !== "function" || hrSetting("bonusActionSpellStrict") !== false) && leftOf("bonus") <= 0;
+  out.push({ label: "Cast a Spell",
+    hint: baSpent ? "your bonus action is spent — a bonus-action spell can't be cast at all this turn (R47)"
+      : (spells.length ? `${spells.length} with a bonus-action casting time` : "no bonus-action spells on your list"),
+    disabled: baSpent,
+    submenu: (!baSpent && spells.length) ? spells : null,
+    run: (!baSpent && !spells.length) ? () => spend("Cast a Spell") : null });
 
   // Class features that say "bonus action" in their own text — read from what the Features module
   // rendered, so this follows your actual classes and level with nothing hardcoded per class.
