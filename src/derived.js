@@ -33,7 +33,13 @@ function maxHP() {
 
 /* speed is a plain user-typed input (not auto-calculated like AC/initiative), but effects can still
    add to it — same "base + effects = total" pattern as an ability score (see abilityScore in data.js). */
-function speedTotal() { return num($("speed")) + effFlat("speed"); }
+/* Variant Encumbrance (DMG/PHB p176) subtracts from Speed once carried weight passes 5x/10x your
+   Strength — see encumbranceState() in variant-rules.js. Clamped at 0: a heavily-encumbered creature
+   with a 20 ft speed is stopped, not moving backwards. */
+function speedTotal() {
+  const enc = (typeof encumbranceState === "function") ? encumbranceState().speedPenalty : 0;
+  return Math.max(0, num($("speed")) + effFlat("speed") - enc);
+}
 
 /* ---------- Armor Class (auto-calculated from equipped armor, like initiative) ----------
    No armor equipped: 10 + DEX. Light armor: armor AC + full DEX. Medium: armor AC + DEX (max +2).
@@ -185,11 +191,13 @@ function baseOf(key) {   // the fixed part: ability mod + proficiency (no misc, 
     const ov = $("ac-override").value;
     return (ov !== "" && !isNaN(Number(ov))) ? Number(ov) : armorClassAuto();
   }
-  if (key.startsWith("save-")) { const a = key.slice(5); return abilityMod(a) + saveProfMult(a) * profBonus(); }
+  // Proficiency Dice (DMG p263) replaces the flat bonus with a die, so the flat part drops to zero
+  // here and checkDice() supplies the die instead.
+  if (key.startsWith("save-")) { const a = key.slice(5); return abilityMod(a) + (profDiceOn() ? 0 : saveProfMult(a) * profBonus()); }
   if (key.startsWith("skill-")) {
     const slug = key.slice(6);
     const tr = [...document.querySelectorAll("#skill-rows tr")].find(t => t.dataset.slug === slug);
-    return abilityMod(tr.dataset.ability) + profBonus() * skillProfMult(slug);
+    return abilityMod(tr.dataset.ability) + (profDiceOn() ? 0 : profBonus() * skillProfMult(slug));
   }
   return 0;
 }
@@ -197,6 +205,17 @@ function checkBonus(key) { return baseOf(key) + parseBonus(miscOf(key)).flat + e
 // Dice from misc + effects + any active boon, e.g. "+1d4". Guidance/Resistance ride along here rather
 // than being added at roll time so the derived display and the roll agree by construction — a skill
 // showing "+5 +2d4" is stating exactly the expression its button will roll (see boons.js).
+function profDiceOn() { return typeof proficiencyDie === "function" && !!proficiencyDie(); }
+/* The proficiency die a check contributes under DMG p263, or "" — expertise rolls it twice rather
+   than doubling a bonus, which is exactly what a multiplier of 2 produces here. */
+function profDiceFor(key) {
+  if (!profDiceOn()) return "";
+  let mult = 0;
+  if (key.startsWith("save-")) mult = saveProfMult(key.slice(5));
+  else if (key.startsWith("skill-")) mult = skillProfMult(key.slice(6));
+  return typeof proficiencyDiceTerm === "function" ? proficiencyDiceTerm(mult) : "";
+}
 function checkDice(key) {
-  return parseBonus(miscOf(key)).dice + effDice(key) + (typeof boonDice === "function" ? boonDice(key) : "");
+  return parseBonus(miscOf(key)).dice + effDice(key) + profDiceFor(key) +
+    (typeof boonDice === "function" ? boonDice(key) : "");
 }

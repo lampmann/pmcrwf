@@ -52,14 +52,14 @@ const BOON_DEFS = [
 ];
 
 let BOONS = blankBoons();
-function blankBoons() { return { guidance: 0, resistance: 0, deathward: 0, castings: {} }; }
+function blankBoons() { return { guidance: 0, resistance: 0, deathward: 0, heroPoints: 0, castings: {} }; }
 /* A character saved before boons existed has no `boons` key at all; layering over the blank keeps a
    missing field at 0 rather than undefined, which would poison the arithmetic in boonDice(). */
 function normalizeBoons(saved) {
   const blank = blankBoons();
   if (!saved || typeof saved !== "object") return blank;
   const out = { ...blank, castings: {} };
-  ["guidance", "resistance", "deathward"].forEach(k => { const n = Math.floor(Number(saved[k])); if (n > 0) out[k] = n; });
+  ["guidance", "resistance", "deathward", "heroPoints"].forEach(k => { const n = Math.floor(Number(saved[k])); if (n > 0) out[k] = n; });
   if (saved.castings && typeof saved.castings === "object") {
     Object.entries(saved.castings).forEach(([name, n]) => { const v = Math.floor(Number(n)); if (v > 0) out.castings[name] = v; });
   }
@@ -189,11 +189,33 @@ function castingRowHtml(name, limit) {
     <span class="boon-label${n ? " boon-on" : ""}${over ? " boon-over" : ""}">${escapeHtml(name)} <span class="hint">/${limit}</span>${over ? " <b>over</b>" : ""}</span>
   </span>`;
 }
+/* Hero Points (DMG p264), only while that optional rule is switched on. A point is spent AFTER the
+   d20 lands but before the result applies, so there is no die to fold into a roll in advance — this
+   is a counter and nothing more, showing the level-scaled maximum beside it. */
+function heroPointHtml() {
+  const max = (typeof heroPointMax === "function") ? heroPointMax() : null;
+  if (max == null) return "";
+  const n = boonCount("heroPoints"), over = n > max;
+  return `<span class="boon" title="DMG p264 — spend one after a d20 lands to add 1d6; you get 5 + half your level each time you gain one">
+    <button type="button" class="boon-step" data-boon="heroPoints" data-delta="-1" title="spend one">&minus;</button>
+    <input type="text" inputmode="numeric" class="tiny boon-count${n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-boon="heroPoints" value="${n}">
+    <button type="button" class="boon-step" data-boon="heroPoints" data-delta="1" title="one more">+</button>
+    <span class="boon-label${n ? " boon-on" : ""}${over ? " boon-over" : ""}">Hero Points <span class="hint">/${max}</span>${over ? " <b>over</b>" : ""}</span>
+  </span>`;
+}
+/* Variant Encumbrance status, when that rule is on and you're actually carrying enough to matter. */
+function encumbranceHtml() {
+  const enc = (typeof encumbranceState === "function") ? encumbranceState() : null;
+  if (!enc || !enc.level) return "";
+  return `<span class="boon boon-over" title="${escapeHtml(enc.note)}"><b>${escapeHtml(enc.level)}</b>
+    <span class="hint">${enc.carried} lb vs Str ${enc.str} &mdash; speed &minus;${enc.speedPenalty} ft</span></span>`;
+}
 function renderBoons() {
   const el = document.getElementById("boons-row"); if (!el) return;
   const limits = (typeof spellLimits === "function") ? spellLimits() : {};
-  el.innerHTML = BOON_DEFS.map(boonRowHtml).join("") +
-    Object.keys(limits).sort().map(name => castingRowHtml(name, spellLimitFor(name))).join("");
+  el.innerHTML = BOON_DEFS.map(boonRowHtml).join("") + heroPointHtml() +
+    Object.keys(limits).sort().map(name => castingRowHtml(name, spellLimitFor(name))).join("") +
+    encumbranceHtml();
   syncHpWatch();
 }
 

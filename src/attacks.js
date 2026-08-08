@@ -95,10 +95,14 @@
     if (title) btn.title = title; else btn.removeAttribute("title");
   }
 
+  /* Proficiency Dice (DMG p263) applies to attack rolls as well as checks and saves, so a proficient
+     row trades its flat bonus for the die — see proficiencyDiceTerm in variant-rules.js. */
   function toHit(d) {
     const pb = parseBonus(d.atkMisc);
-    const b = attackAbilityMod(d.abil) + (d.prof ? profBonus() : 0) + pb.flat + fxFlat(d, "attack-hit");
-    return { bonus: b, dice: pb.dice + fxDice(d, "attack-hit") };
+    const profDie = (d.prof && typeof proficiencyDiceTerm === "function") ? proficiencyDiceTerm(1) : "";
+    const flatProf = (d.prof && !profDie) ? profBonus() : 0;
+    const b = attackAbilityMod(d.abil) + flatProf + pb.flat + fxFlat(d, "attack-hit");
+    return { bonus: b, dice: pb.dice + profDie + fxDice(d, "attack-hit") };
   }
   function damageExpr(d) {
     const parts = [];

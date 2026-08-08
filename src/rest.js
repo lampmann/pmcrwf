@@ -94,6 +94,18 @@ function correctHitDiceRemaining(input) {
   recompute(); renderHitDice(); renderShortRestModal(); scheduleSave();
 }
 
+/* Rest Variants (DMG p267) change how LONG a rest takes, not what it restores — so the buttons say
+   the duration rather than behaving differently. Gritty Realism turns a short rest into 8 hours and
+   a long rest into 7 days; Epic Heroism makes them 5 minutes and 1 hour. See variant-rules.js. */
+function renderRestButtons() {
+  const times = (typeof restVariantTimes === "function") ? restVariantTimes() : null;
+  if (!times) return;
+  const std = times.short === "1 hour" && times.long === "8 hours";
+  const sr = $("btn-short-rest"), lr = $("btn-long-rest");
+  if (sr) { sr.textContent = std ? "Short Rest" : `Short Rest (${times.short})`; sr.title = `a short rest is ${times.short}`; }
+  if (lr) { lr.textContent = std ? "Long Rest" : `Long Rest (${times.long})`; lr.title = `a long rest is ${times.long}`; }
+}
+
 /* Clears a math-field-style HP box (data-allow-empty) the same way a user emptying it by hand would,
    so it participates correctly in commitMath's own min/max/prev bookkeeping. */
 function clearHpField(id) {
