@@ -161,6 +161,7 @@
 <script src="../src/attacks.js"></script>
 <script src="../src/persistence.js"></script>
 <script src="../src/combobox.js"></script>
+<script src="../src/rulings.js"></script>
 <script src="../src/house-rules.js"></script>
 <script src="../src/characters.js"></script>
 <script src="../src/creator.js"></script>
@@ -1620,6 +1621,73 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("a limit of zero removes it", spellLimitFor("Planar Binding"), null);
     setSpellLimit("   ", 2);
     assertEqual("a blank name is not a limit", Object.keys(spellLimits()).length, 0);
+
+    // --- the rulings set: data integrity, search, and relevance ---
+    HOUSE_RULES = blankHouseRules();
+    assertEqual("no ruleset means no rulings", activeRulings().length, 0);
+    HOUSE_RULES.rulingSet = "lampmann";
+    const rulings = activeRulings();
+    assert("a loaded set has rulings", rulings.length > 40);
+    assertEqual("...every id is unique", new Set(rulings.map(r => r.id)).size, rulings.length);
+    assert("...every one names a subject the tab can render",
+      rulings.every(r => RULING_SUBJECTS.some(s => s[0] === r.subject)));
+    assert("...and every one has text", rulings.every(r => r.text && r.text.length > 10));
+    assert("some are applied by the sheet and say which part does it",
+      rulings.filter(r => r.auto).length >= 5 && rulings.filter(r => r.auto).every(r => r.auto.length > 5));
+    assert("...and most are not, which is the point", rulings.filter(r => !r.auto).length > rulings.filter(r => r.auto).length);
+
+    // Search covers id, text and tags.
+    const find = q => rulings.filter(r => rulingMatches(r, q)).map(r => r.id);
+    assert("searching an id finds it", find("r26").includes("R26"));
+    assert("searching body text finds it", find("total cover").includes("R2"));
+    assert("searching a tag finds it", find("planar binding").includes("H4"));
+    assertEqual("an empty query matches everything", rulings.filter(r => rulingMatches(r, "")).length, rulings.length);
+    assertEqual("a query matching nothing returns nothing", find("zzzznope").length, 0);
+
+    // Relevance: tags matched against what a character actually has.
+    assert("an Echo Knight surfaces the Echo rulings",
+      rulingIsRelevant(rulings.find(r => r.id === "R26"), ["fighter", "echo knight"]));
+    assert("...and a Rogue does not", !rulingIsRelevant(rulings.find(r => r.id === "R26"), ["rogue"]));
+    assert("a tag matches a longer term containing it",
+      rulingIsRelevant({ tags: ["Echo Knight"] }, ["echo knight (wildemount)"]));
+    assert("...and a shorter term contained by it", rulingIsRelevant({ tags: ["The Genie"] }, ["genie"]));
+    assert("a ruling with no tags is never surfaced", !rulingIsRelevant({ }, ["fighter", "wizard"]));
+    assert("a term under three characters can't match, or it would hit half the list",
+      !rulingIsRelevant({ tags: ["Guidance"] }, ["ui"]));
+
+    // --- exporting and importing a whole ruleset ---
+    HOUSE_RULES = normalizeHouseRules(HR_PRESETS.lampmann.build());
+    toggleBan("spell", "Wish");
+    const file = houseRulesExport();
+    assertEqual("an export is labelled so a wrong file can be spotted", file.kind, "pmcrwf-house-rules");
+    assert("...carries the bans as they stand, not as the preset shipped them",
+      file.bans.spell.includes("Wish") && file.bans.spell.includes("Fabricate"));
+    assertEqual("...carries the settings", file.settings.magicItemPricing, "xge-mean");
+    assertEqual("...carries the concurrent-casting limits", file.spellLimits["Planar Binding"], 1);
+    assertEqual("...names the ruling set", file.rulingSet, "lampmann");
+    assert("...but does not copy the ruling prose, which ships with the sheet",
+      !JSON.stringify(file).includes("gentlemyowwas"));
+
+    HOUSE_RULES = blankHouseRules();
+    assertEqual("cleared first, so the import is really doing the work", totalBanCount(), 0);
+    assertEqual("a good file imports without complaint", importHouseRules(JSON.stringify(file)), null);
+    assert("...restoring the bans", isBanned("spell", "Wish") && isBanned("item", "Cube of Force"));
+    assertEqual("...the settings", hrSetting("magicItemPricing"), "xge-mean");
+    assertEqual("...the limits", spellLimitFor("Planar Binding"), 1);
+    assert("...and the rulings", activeRulings().length > 40);
+
+    const banCountBefore = totalBanCount();
+    assert("rubbish is refused with a reason", !!importHouseRules("not json at all"));
+    assert("...as is a character export picked by mistake",
+      /not a ruleset/.test(importHouseRules(JSON.stringify({ kind: "pmcrwf-character", fields: {} })) || ""));
+    assert("...and an object that simply isn't one",
+      !!importHouseRules(JSON.stringify({ hello: "world" })));
+    assertEqual("...none of which disturbs the ruleset already loaded", totalBanCount(), banCountBefore);
+    // A file from an older build, missing fields added since, still loads.
+    assertEqual("a file predating a field imports anyway",
+      importHouseRules(JSON.stringify({ kind: "pmcrwf-house-rules", bans: { spell: ["Fabricate"] } })), null);
+    assert("...keeping what it had", isBanned("spell", "Fabricate"));
+    assertEqual("...and defaulting what it lacked", spellLimitFor("Planar Binding"), null);
 
     HOUSE_RULES = savedHR;
   }

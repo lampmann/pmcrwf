@@ -349,6 +349,20 @@ input.banned-value { color: #c00; }
 #attack-rows tr.atk-unusable .atk-size { color: #c00; font-weight: bold; }
 .atk-size { font: inherit; font-size: .8rem; }
 
+/* ----- rulings reference (src/rulings.js) ----- */
+.ruling-group { margin: .5rem 0; }
+.ruling-group .flabel { font-weight: bold; border-bottom: 1px solid var(--border-hair); margin-bottom: .2rem; }
+.ruling { margin: .25rem 0; font-size: .85rem; line-height: 1.35; }
+.ruling-id { display: inline-block; min-width: 2.4rem; font-weight: bold; opacity: .75; }
+/* Both badges are words, and the "yours to apply" one is deliberately no quieter than the other:
+   most of a ruleset is adjudication, and styling it as an absence teaches the wrong lesson. */
+.ruling-auto, .ruling-manual {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
+  border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 0 .25rem; white-space: nowrap;
+}
+.ruling-auto { border-style: solid; }
+.ruling-manual { border-style: dashed; }
+
 /* ----- combobox (src/combobox.js) ----- */
 .combo { display: inline-flex; align-items: stretch; }
 .combo .combo-input { flex: 1; min-width: 0; }
