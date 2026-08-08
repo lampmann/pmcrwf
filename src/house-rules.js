@@ -74,6 +74,9 @@ const HR_SETTINGS = [
     hint: "R9 — overrides any price on a trinket, in the library and in your inventory total" },
   { key: "mundaneEquipment", label: "Starting equipment must be mundane", kind: "bool", enforced: true,
     hint: "R35 — stated on the creator's equipment step, where the open-ended picks are made" },
+  { key: "restVariant", label: "Rest lengths", kind: "choice", enforced: true, def: "",
+    opts: [["", "standard (1 hour / 8 hours)"], ["gritty", "Gritty Realism (8 hours / 7 days)"], ["epic", "Epic Heroism (5 minutes / 1 hour)"]],
+    hint: "DMG p267 — takes effect once Rest Variants is switched on under Optional rules" },
   { key: "bonusActionSpellStrict", label: "A bonus-action spell always costs a bonus action", kind: "bool", enforced: true, def: true,
     hint: "R47 — with your bonus action spent, such a spell can't be cast at all" },
 ];
@@ -119,6 +122,7 @@ function blankHouseRules() {
     settings: {},                     // sparse: only what's been set, defaults come from HR_SETTINGS
     spellLimits: {},                  // spell name -> max concurrent castings (H4)
     rulingSet: "",                    // which RULING_SETS entry supplies the Rulings tab
+    variants: [],                     // RAW optional/variant rules switched on (src/variant-rules.js)
   };
 }
 
@@ -136,6 +140,7 @@ function normalizeHouseRules(saved) {
     settings: (saved.settings && typeof saved.settings === "object") ? { ...saved.settings } : {},
     spellLimits: (saved.spellLimits && typeof saved.spellLimits === "object") ? { ...saved.spellLimits } : {},
     rulingSet: typeof saved.rulingSet === "string" ? saved.rulingSet : "",
+    variants: Array.isArray(saved.variants) ? saved.variants.slice() : [],
   };
 }
 
@@ -395,7 +400,8 @@ function refreshAfterHouseRules() {
   if (typeof renderSpellResults === "function" && document.getElementById("spell-results")) renderSpellResults();
   if (typeof renderItemResults === "function" && document.getElementById("item-results")) renderItemResults();
   if (typeof renderItemList === "function") renderItemList();
-  if (typeof renderBoons === "function") renderBoons();   // concurrent-casting counters follow spellLimits
+  if (typeof renderBoons === "function") renderBoons();   // concurrent-casting + Hero Point counters
+  if (typeof renderRestButtons === "function") renderRestButtons();   // Gritty/Epic durations on the labels
   // The Features module draws the ASI feat picker, which the `feats` setting can remove.
   if (typeof renderClassFeatures === "function" && document.getElementById("class-feat-results")) renderClassFeatures();
   // Only if the wizard is actually open — renderCreator() throws on a null CREATOR.
@@ -409,7 +415,7 @@ function refreshAfterHouseRules() {
 /* ----- rendering ----- */
 
 let HR_TAB = "bans";
-const HR_TABS = [["bans", "Bans"], ["sources", "Sources"], ["settings", "Settings"], ["rulings", "Rulings"]];
+const HR_TABS = [["bans", "Bans"], ["sources", "Sources"], ["settings", "Settings"], ["variants", "Optional rules"], ["rulings", "Rulings"]];
 
 function hrTabsHtml() {
   return HR_TABS.map(([k, label]) =>
@@ -520,6 +526,7 @@ function renderHouseRules() {
   </div>`;
   const body = HR_TAB === "sources" ? hrRenderSources()
     : HR_TAB === "settings" ? hrRenderSettings()
+    : HR_TAB === "variants" ? (typeof hrRenderVariants === "function" ? hrRenderVariants() : "")
     : HR_TAB === "rulings" ? (typeof hrRenderRulings === "function" ? hrRenderRulings() : "")
     : hrRenderBans();
   el.innerHTML = presetBar + body;
@@ -536,6 +543,11 @@ document.addEventListener("change", e => { if (e.target && e.target.dataset && e
 document.addEventListener("DOMContentLoaded", () => {
   const mod = document.getElementById("hr-body"); if (!mod) return;
   loadHouseRules();
+  if (typeof loadVariantRuleLib === "function") {
+    loadVariantRuleLib();
+    // Auto-load like every other library: cached copy shows instantly, the fetch refreshes it.
+    if (typeof autoLoadVariantRules === "function") autoLoadVariantRules().then(() => renderHouseRules());
+  }
   renderHouseRules();
   markBannedInputs();
 
@@ -566,6 +578,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (unban) { toggleBan(unban.dataset.hrunban, unban.dataset.hrname); refreshAfterHouseRules(); return; }
     const src = e.target.closest("[data-hrsrc]");
     if (src) { toggleSourceBan(src.dataset.hrsrc); refreshAfterHouseRules(); return; }
+    const vrMore = e.target.closest("[data-vrtext]");
+    if (vrMore) { toggleVariantText(vrMore); return; }
+    const vrType = e.target.closest("[data-vrtype]");
+    if (vrType) { VR_TYPE_FILTER = vrType.dataset.vrtype; renderHouseRules(); return; }
     const unlimit = e.target.closest("[data-hrunlimit]");
     if (unlimit) { setSpellLimit(unlimit.dataset.hrunlimit, 0); refreshAfterHouseRules(); return; }
     if (e.target.id === "hr-limit-add") {
@@ -592,11 +608,12 @@ document.addEventListener("DOMContentLoaded", () => {
      into — so focus and caret are put back afterwards, the same problem (and fix) the character
      creator's own comboboxes have. */
   mod.addEventListener("input", e => {
-    const box = e.target.closest("#hr-ruling-search"); if (!box) return;
-    RULINGS_QUERY = box.value;
-    const at = box.selectionStart;
+    const box = e.target.closest("#hr-ruling-search") || e.target.closest("#vr-search");
+    if (!box) return;
+    if (box.id === "vr-search") VR_QUERY = box.value; else RULINGS_QUERY = box.value;
+    const id = box.id, at = box.selectionStart;
     renderHouseRules();
-    const again = document.getElementById("hr-ruling-search");
+    const again = document.getElementById(id);
     if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (err) {} }
   });
 
@@ -612,6 +629,12 @@ document.addEventListener("DOMContentLoaded", () => {
       rd.readAsText(file);
       return;
     }
+    const vrToggle = e.target.closest(".vr-toggle");
+    if (vrToggle) { toggleVariant(vrToggle.dataset.vr); refreshAfterHouseRules(); return; }
+    const vrSrc = e.target.closest("#vr-source");
+    if (vrSrc) { VR_SOURCE_FILTER = vrSrc.value; renderHouseRules(); return; }
+    const vrImp = e.target.closest("#vr-import");
+    if (vrImp) { const f = vrImp.files; if (f && f.length) loadVariantRuleFiles(f); vrImp.value = ""; return; }
     const set = e.target.closest(".hr-set"); if (!set) return;
     const def = hrSettingDef(set.dataset.hrset); if (!def) return;
     hrSetSetting(def.key, def.kind === "bool" ? set.checked : set.value);

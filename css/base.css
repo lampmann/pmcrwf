@@ -349,6 +349,14 @@ input.banned-value { color: #c00; }
 #attack-rows tr.atk-unusable .atk-size { color: #c00; font-weight: bold; }
 .atk-size { font: inherit; font-size: .8rem; }
 
+/* ----- optional & variant rules (src/variant-rules.js) ----- */
+.vr-rule { margin: .3rem 0; padding-bottom: .2rem; border-bottom: 1px solid var(--border-hair); font-size: .85rem; }
+.vr-head { cursor: pointer; margin-right: .3rem; }
+.vr-rule.vr-on .vr-head b { text-decoration: underline; }
+.vr-more { font: inherit; font-size: .8rem; padding: 0 .35rem; margin-left: .3rem; }
+.vr-effect { margin: .1rem 0 0 1.4rem; }
+.vr-text { margin: .25rem 0 .25rem 1.4rem; white-space: normal; max-width: 60rem; }
+
 /* ----- rulings reference (src/rulings.js) ----- */
 .ruling-group { margin: .5rem 0; }
 .ruling-group .flabel { font-weight: bold; border-bottom: 1px solid var(--border-hair); margin-bottom: .2rem; }

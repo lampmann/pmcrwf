@@ -162,6 +162,7 @@
 <script src="../src/persistence.js"></script>
 <script src="../src/combobox.js"></script>
 <script src="../src/rulings.js"></script>
+<script src="../src/variant-rules.js"></script>
 <script src="../src/house-rules.js"></script>
 <script src="../src/characters.js"></script>
 <script src="../src/creator.js"></script>
@@ -1621,6 +1622,132 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("a limit of zero removes it", spellLimitFor("Planar Binding"), null);
     setSpellLimit("   ", 2);
     assertEqual("a blank name is not a limit", Object.keys(spellLimits()).length, 0);
+
+    // --- RAW optional & variant rules (5e.tools' own catalogue) ---
+    {
+      const savedVR = VARIANT_RULES, savedItems = CHARACTER_ITEMS, savedLib = ITEM_LIB;
+      const savedRows = $("class-rows").innerHTML, savedPb = $("pb-override").value;
+      // Local, because the combat block's own setClasses is scoped to that block.
+      const vrClasses = rows => { $("class-rows").innerHTML = ""; rows.forEach(addClassRow); };
+      HOUSE_RULES = blankHouseRules();
+      VARIANT_RULES = [
+        { name: "Flanking", source: "DMG", page: 251, ruleType: "O", text: "A creature has advantage on attack rolls when flanking." },
+        { name: "Encumbrance", source: "PHB", page: 176, ruleType: "V", text: "Carrying more than 5x Strength encumbers you." },
+        { name: "Proficiency Dice", source: "DMG", page: 263, ruleType: "O", text: "Replaces the proficiency bonus with a die." },
+        { name: "Hero Points", source: "DMG", page: 264, ruleType: "O", text: "5 + half your level, spend to add a d6." },
+        { name: "Rest Variants", source: "DMG", page: 267, ruleType: "V", text: "Gritty Realism and Epic Heroism." },
+        { name: "Ship Repairs", source: "GoS", page: 200, ruleType: "", text: "Not an option — plain reference material." },
+      ];
+
+      // parsing keeps what the catalogue needs and nothing more
+      const parsed = parseVariantRule({ name: "X", source: "DMG", page: 9, ruleType: "O", entries: ["hello"] });
+      assertEqual("a parsed rule keeps its book and page", parsed.source + " " + parsed.page, "DMG 9");
+      assertEqual("...and its type", parsed.ruleType, "O");
+
+      // switching one on
+      assert("nothing is switched on to begin with", !variantEnabled("Flanking|DMG"));
+      toggleVariant("Flanking|DMG");
+      assert("switching one on records it", variantEnabled("Flanking|DMG"));
+      assertEqual("...and only it", enabledVariants().length, 1);
+      toggleVariant("Flanking|DMG");
+      assert("toggling again switches it off", !variantEnabled("Flanking|DMG"));
+
+      // the catalogue's own filters
+      VR_QUERY = ""; VR_SOURCE_FILTER = ""; VR_TYPE_FILTER = "options";
+      assertEqual("the default view hides plain reference entries", VARIANT_RULES.filter(vrMatches).length, 5);
+      VR_TYPE_FILTER = "all";
+      assertEqual("...and 'everything' shows them", VARIANT_RULES.filter(vrMatches).length, 6);
+      VR_TYPE_FILTER = "on";
+      assertEqual("'switched on' shows nothing when nothing is", VARIANT_RULES.filter(vrMatches).length, 0);
+      toggleVariant("Flanking|DMG");
+      assertEqual("...and just the one when one is", VARIANT_RULES.filter(vrMatches).length, 1);
+      toggleVariant("Flanking|DMG");
+      VR_TYPE_FILTER = "options"; VR_SOURCE_FILTER = "PHB";
+      assertEqual("a book filter narrows to that book", VARIANT_RULES.filter(vrMatches).length, 1);
+      VR_SOURCE_FILTER = ""; VR_QUERY = "flank";
+      assertEqual("search covers the name", VARIANT_RULES.filter(vrMatches).length, 1);
+      VR_QUERY = "advantage on attack";
+      assertEqual("...and the rule text", VARIANT_RULES.filter(vrMatches).length, 1);
+      VR_QUERY = "";
+
+      // --- Proficiency Dice (DMG p263) ---
+      assertEqual("with the rule off there is no die", proficiencyDie(), null);
+      assertEqual("...and no term", proficiencyDiceTerm(1), "");
+      toggleVariant("Proficiency Dice|DMG");
+      $("pb-override").value = "3";
+      assertEqual("PB 3 rolls a d6", proficiencyDie(), "d6");
+      assertEqual("proficiency contributes one die", proficiencyDiceTerm(1), "+1d6");
+      assertEqual("expertise rolls it twice rather than doubling a bonus", proficiencyDiceTerm(2), "+2d6");
+      assertEqual("no proficiency contributes nothing", proficiencyDiceTerm(0), "");
+      $("pb-override").value = "2";
+      assertEqual("PB 2 rolls a d4", proficiencyDie(), "d4");
+      $("pb-override").value = "6";
+      assertEqual("PB 6 rolls a d12", proficiencyDie(), "d12");
+      $("pb-override").value = "7";
+      assertEqual("a proficiency bonus off the table has no die rather than throwing", proficiencyDie(), null);
+      $("pb-override").value = savedPb;
+      toggleVariant("Proficiency Dice|DMG");
+
+      // --- Variant Encumbrance (PHB p176) ---
+      ITEM_LIB = [{ name: "Lead", weight: 10, valueGp: "", rarity: "", misc: [] }];
+      CHARACTER_ITEMS = [{ name: "Lead", qty: 6 }];        // 60 lb
+      $("score-str").value = "10";
+      assertEqual("with the rule off, weight costs nothing", encumbranceState().speedPenalty, 0);
+      toggleVariant("Encumbrance|PHB");
+      assertEqual("60 lb against Strength 10 is encumbered", encumbranceState().level, "encumbered");
+      assertEqual("...costing 10 ft of speed", encumbranceState().speedPenalty, 10);
+      CHARACTER_ITEMS = [{ name: "Lead", qty: 11 }];       // 110 lb
+      assertEqual("110 lb is heavily encumbered", encumbranceState().level, "heavily encumbered");
+      assertEqual("...costing 20 ft", encumbranceState().speedPenalty, 20);
+      assert("...and the note names the disadvantage the sheet can't apply", /disadvantage/.test(encumbranceState().note));
+      CHARACTER_ITEMS = [{ name: "Lead", qty: 5 }];        // 50 lb — exactly 5x, not "in excess of"
+      assertEqual("exactly 5x Strength is not yet encumbered", encumbranceState().level, "");
+      CHARACTER_ITEMS = [{ name: "Lead", qty: 10 }];       // exactly 10x
+      assertEqual("exactly 10x is encumbered but not heavily", encumbranceState().level, "encumbered");
+      toggleVariant("Encumbrance|PHB");
+      CHARACTER_ITEMS = savedItems; ITEM_LIB = savedLib;
+
+      // --- Hero Points (DMG p264) ---
+      assertEqual("with the rule off there is no pool", heroPointMax(), null);
+      toggleVariant("Hero Points|DMG");
+      vrClasses([{ name: "Fighter", lvl: 1 }]);
+      assertEqual("a 1st-level character has 5", heroPointMax(), 5);
+      vrClasses([{ name: "Fighter", lvl: 5 }]);
+      assertEqual("...and 5 + half your level thereafter", heroPointMax(), 7);
+      vrClasses([{ name: "Fighter", lvl: 20 }]);
+      assertEqual("...up to 15 at 20th", heroPointMax(), 15);
+      toggleVariant("Hero Points|DMG");
+
+      // --- Rest Variants (DMG p267) ---
+      assertEqual("standard rests unless the rule is on", restVariantTimes().short, "1 hour");
+      hrSetSetting("restVariant", "gritty");
+      assertEqual("...and the setting alone does nothing", restVariantTimes().short, "1 hour");
+      toggleVariant("Rest Variants|DMG");
+      assertEqual("Gritty Realism makes a short rest 8 hours", restVariantTimes().short, "8 hours");
+      assertEqual("...and a long rest 7 days", restVariantTimes().long, "7 days");
+      hrSetSetting("restVariant", "epic");
+      assertEqual("Epic Heroism makes a short rest 5 minutes", restVariantTimes().short, "5 minutes");
+      assertEqual("...and a long rest 1 hour", restVariantTimes().long, "1 hour");
+      hrSetSetting("restVariant", "");
+      assertEqual("...and no pick means the standard lengths", restVariantTimes().long, "8 hours");
+      toggleVariant("Rest Variants|DMG");
+
+      // the enabled set travels in an exported ruleset
+      toggleVariant("Flanking|DMG");
+      const f = houseRulesExport();
+      assert("an export carries the switched-on rules", (f.variants || []).includes("Flanking|DMG"));
+      HOUSE_RULES = blankHouseRules();
+      assert("...which a clear removes", !variantEnabled("Flanking|DMG"));
+      importHouseRules(JSON.stringify(f));
+      assert("...and an import brings back", variantEnabled("Flanking|DMG"));
+      // A ruleset file written before optional rules existed must not crash the catalogue.
+      HOUSE_RULES = normalizeHouseRules({ bans: { spell: [] } });
+      assertEqual("a ruleset predating this feature has none switched on", enabledVariants().length, 0);
+
+      VARIANT_RULES = savedVR;
+      $("class-rows").innerHTML = savedRows; $("pb-override").value = savedPb;
+      HOUSE_RULES = blankHouseRules();
+    }
 
     // --- the rulings set: data integrity, search, and relevance ---
     HOUSE_RULES = blankHouseRules();
