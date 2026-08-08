@@ -171,8 +171,8 @@ clusters are real — seven of these are Echo Knight alone.
 | R14 | Hunger of Hadar's "blackness" is not darkness. | `ref` |
 | R15 | Animate Dead's target reads as "'a pile of bones' OR 'a corpse of a Medium or Small humanoid' within range" (prepositional phrase scope). | `ref` |
 | R18 | The invisible condition ends on everything affected by that casting of Invisibility when the spell ends. | `ref` |
-| R21 | **Guidance/Resistance stacking works.** "The die" refers to the d4, so stacking does not require the drop-concentration maneuver. See §4.9. | `track` |
-| R22 | **Death Ward stacking also works.** | `track` |
+| R21 | **Guidance/Resistance stacking works.** "The die" refers to the d4, so stacking does not require the drop-concentration maneuver. See §4.9. | `track` — implemented |
+| R22 | **Death Ward stacking also works.** | `track` — implemented |
 | R24 | Expert Divination only lets you regain one spell slot per expended spell slot. | `ref` |
 | R33 | Shapechange isn't considered a source of benefits for the purposes of itself. | `ref` |
 | R46 | Wristpocket doesn't generate extra copies of the object. | `ref` |
@@ -240,9 +240,13 @@ The "drop concentration" variant — dropping concentration on Guidance 2 the mo
 expended rather than letting it end on its own — is a way to reach the same result.
 R21 says it is unnecessary: stacking works either way.
 
-**Sheet support required:**
-- Add **multiple Guidance/Resistance dice to a single check** in the roller.
-- A **Death Ward counter** beside HP, tracking how many are currently active (R22).
+**Sheet support — implemented** (`src/boons.js`, see DOCS' Boons section):
+- Guidance and Resistance are **counts**, not toggles, and fold `+Nd4` into the matching rolls —
+  Guidance on ability checks and initiative, Resistance on saving throws. A roll spends every
+  active die of that kind and logs what it added.
+- A **Death Ward counter** beside HP. It fires on the transition to 0 HP, leaving you at 1, spending
+  one ward and logging it.
+- Guidance and Resistance end on any rest; Death Ward survives a short rest and ends on a long one.
 
 ---
 
@@ -258,6 +262,5 @@ What each part becomes in the app.
 | §3 bans | Bans tab | 9 named entities, 4 creation options, 1 content ban, 3 rule toggles |
 | §4 rulings | House rules reference | ~50 entries, subject-tagged, searchable |
 
-**Mechanizable rulings** (everything else is reference): R9 trinket value, R35 mundane
-starting equipment, R47 bonus-action spells, H4 Planar Binding limit, R21/R22 stacking
-(new roller and HP-module features).
+**Mechanizable rulings** (everything else is reference): R21/R22 stacking (**done** — `src/boons.js`),
+R9 trinket value, R35 mundane starting equipment, R47 bonus-action spells, H4 Planar Binding limit.

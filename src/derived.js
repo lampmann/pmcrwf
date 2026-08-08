@@ -194,4 +194,9 @@ function baseOf(key) {   // the fixed part: ability mod + proficiency (no misc, 
   return 0;
 }
 function checkBonus(key) { return baseOf(key) + parseBonus(miscOf(key)).flat + effFlat(key); }   // static numeric bonus
-function checkDice(key) { return parseBonus(miscOf(key)).dice + effDice(key); }                   // dice from misc + effects, e.g. "+1d4"
+// Dice from misc + effects + any active boon, e.g. "+1d4". Guidance/Resistance ride along here rather
+// than being added at roll time so the derived display and the roll agree by construction — a skill
+// showing "+5 +2d4" is stating exactly the expression its button will roll (see boons.js).
+function checkDice(key) {
+  return parseBonus(miscOf(key)).dice + effDice(key) + (typeof boonDice === "function" ? boonDice(key) : "");
+}
