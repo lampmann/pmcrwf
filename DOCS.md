@@ -14,6 +14,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 - [Event Log (and the dice roller)](#event-log-and-the-dice-roller)
 - [Roll buttons](#roll-buttons)
 - [Combat rounds](#combat-rounds)
+- [Boons: Guidance, Resistance, Death Ward](#boons-guidance-resistance-death-ward)
 - [House rules (bans, sources, campaign settings)](#house-rules-bans-sources-campaign-settings)
 - [Resting](#resting)
 - [Spell library (5e.tools import)](#spell-library-5etools-import)
@@ -116,6 +117,7 @@ Values are clamped to their limits: ability scores **1–30**, class level **1�
 - *(Conditions, Exhaustion, and Death Saves are separate modules and, for now, display-only trackers — they don't yet auto-apply their mechanics (disadvantage, halved HP, etc.) to the sheet's math.)*
 - **Combat** — the round tracker: what's left of your action, bonus action, reaction, object interaction and movement this turn, with a menu per resource of what you can spend it on. See [Combat rounds](#combat-rounds).
 - **House Rules** — the table's ruleset: banned spells/items/subclasses, excluded sourcebooks, and campaign settings like point buy or feats-off. Shared by every character tab rather than owned by one. See [House rules](#house-rules-bans-sources-campaign-settings).
+- **HP & Defenses** also carries the **Guidance / Resistance / Death Ward** counters, which stack and fold their d4s into the matching rolls. See [Boons](#boons-guidance-resistance-death-ward).
 - **Inventory & Equipment** — coin purse (cp/sp/ep/gp/pp, auto-summed to a gp total via SRD exchange rates), plus a Features-styled item list: each line shows qty, name (click to show/hide its description, looked up from the Equipment Library by name), equipped toggle, and — for items that require it — an attuned toggle, with an **Attuned X/3** counter above the list. Items are added only from the Equipment Library (click "+ Add Item" to open it), same as Spells below; weight/value are looked up live from the library entry, not hand-edited. The **quantity box is editable** — type into it and the row's per-item and total weight/value follow as you go. The footer totals weight and item value, and shows **total wealth = coins + items** in gp.
 
   *Equipped slots (PHB p141).* Above the list is a paper doll — main hand, off hand, armour, headwear, cloak, gloves, bracers, footwear — one item each, because that's what the rule says: you can't normally wear more than one pair of footwear, one pair of gloves, one pair of bracers, one suit of armour, one item of headwear, or one cloak. Click a slot to see what fits, or **drag** an item from the list onto it (and drag it back off to unequip). A **two-handed weapon takes both hands**, and putting something in the off hand displaces it.
@@ -194,6 +196,25 @@ The character creation wizard fills in **Speed** from the race you pick (walking
 *Two documented simplifications.* Your reaction actually refreshes at the **start** of your turn (PHB p190), not the end; with no initiative order on a single-character sheet, one End Round button standing for "end my turn / start my next" is the honest version, and the button says what it refreshes. And the free object interaction is one per turn — a second one costs your action, which is the separate **Use an Object** entry.
 
 The tracker is per character, so switching to your familiar's tab shows that character's own turn, and a fight survives a reload.
+
+## Boons: Guidance, Resistance, Death Ward
+Three counters in the HP & Defenses module, below Roll Initiative. They're **counts, not toggles**, because at this table these spells stack — see [house rule R21/R22](#house-rules-bans-sources-campaign-settings) and `house-rules/lampmann.md` §4.9 for the full argument. The short version: Combining Magical Effects (PHB p205) suppresses the older of two identical spells rather than ending it, a spell's end condition lives in its *effect* rather than its *duration*, so a suppressed Guidance has its "the spell then ends" suppressed too. Expend the active one and the suppressed one wakes up with "after making the ability check" still true — so it can be expended on the same check. Hence N d4 on one roll.
+
+| Boon | Applies to | Effect |
+| --- | --- | --- |
+| **Guidance** | ability checks — every skill, plus **initiative** (PHB p189 defines it as a Dexterity check) | +1d4 per casting |
+| **Resistance** | saving throws | +1d4 per casting |
+| **Death Ward** | nothing rolled | dropping to 0 HP leaves you at 1 instead |
+
+The dice are folded in through the same path as the Misc field and feature effects, so a skill showing `+6 +2d4` is stating exactly the expression its roll button will use — the display and the roll can't disagree. Attack rolls, AC and a companion's own rolls draw on none of them.
+
+**A roll spends every active die of the matching kind.** Stacking three Guidances is something you do deliberately, right before the check you care about, so "spend them all" is the case worth optimizing; spending one of three means editing the count down, rolling, and putting it back. Every spend is logged with what it added, and the counts are ordinary editable boxes (the same correct-it-directly rule as Hit Dice), so an unwanted spend is one keystroke to undo rather than a mode you had to know about first.
+
+**Death Ward fires by itself** when your current HP drops to 0: you go to 1 instead, one ward is spent, and the Event Log says so and how many are left. It triggers on the *transition* to 0, not on being at 0 — so sitting at 0 doesn't burn a second one, and switching character tabs or reloading never fires one. With no ward up, 0 is 0.
+
+**Rests.** Guidance and Resistance last a minute, so no rest of any length leaves them running. Death Ward runs 8 hours — exactly a long rest — so a short rest leaves it alone and a long one ends it.
+
+Boons are **per character**, saved with that character: two characters can each be under their own Guidance, and switching tabs shows the right one.
 
 ## House rules (bans, sources, campaign settings)
 The **House Rules** module holds the *table's* ruleset rather than any one character's. It is shared by every character tab, persists to its own storage slot, and is deliberately **not** included when you export a character — a character handed to another table gets played under that table's rules, not the one it was built at.

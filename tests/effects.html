@@ -38,6 +38,7 @@
   </section>
   <section class="module" data-module="hp">
     <input type="text" id="hp-cur" data-math data-min="0" data-max-from="hp-max" data-allow-empty><span id="hp-max">0</span><input type="number" id="hp-max-override">
+    <div id="boons-row"></div>
     <input type="text" id="hp-temp" data-math data-min="0" data-allow-empty><div id="hit-dice-pools"></div>
     <span id="ac">10</span><input type="text" id="ac-misc"><input type="number" id="ac-override">
     <input type="text" id="speed"><span id="speed-total" style="display:none"></span>
@@ -116,6 +117,7 @@
 <script src="../src/derived.js"></script>
 <script src="../src/event-log.js"></script>
 <script src="../src/dice.js"></script>
+<script src="../src/boons.js"></script>
 <script src="../src/filters.js"></script>
 <script src="../src/spell-library.js"></script>
 <script src="../src/class-library.js"></script>
@@ -1299,6 +1301,107 @@ document.addEventListener("DOMContentLoaded", () => {
       CHARACTER_ITEMS = savedItems; ITEM_LIB = savedItemLib;
     }
     COMBAT = blankCombat();
+  }
+
+  // ===== boons: Guidance / Resistance / Death Ward (boons.js) =====
+  {
+    const savedBoons = BOONS;
+    BOONS = blankBoons();
+
+    // --- which roll draws on which boon ---
+    assertEqual("a skill check draws on Guidance", boonKindFor("skill-athletics"), "guidance");
+    assertEqual("initiative does too — it is a Dex check (PHB p189)", boonKindFor("init"), "guidance");
+    assertEqual("a saving throw draws on Resistance", boonKindFor("save-wis"), "resistance");
+    assertEqual("AC draws on neither", boonKindFor("ac"), null);
+    assertEqual("...and neither does a button with no check key at all", boonKindFor(undefined), null);
+
+    // --- the dice, signed so they concatenate onto a roll expression ---
+    assertEqual("no boon means no dice", boonDice("skill-athletics"), "");
+    setBoonCount("guidance", 1);
+    assertEqual("one Guidance is +1d4", boonDice("skill-athletics"), "+1d4");
+    setBoonCount("guidance", 3);
+    assertEqual("three stack into one +3d4 rather than three terms", boonDice("skill-athletics"), "+3d4");
+    assertEqual("...and reach initiative", boonDice("init"), "+3d4");
+    assertEqual("...but not a saving throw", boonDice("save-dex"), "");
+    setBoonCount("resistance", 2);
+    assertEqual("Resistance reaches saves", boonDice("save-dex"), "+2d4");
+    assertEqual("...and not skills", boonDice("skill-athletics"), "+3d4");
+    // Death Ward is a trigger, not a die: however many are up, no roll gains anything from it.
+    BOONS = blankBoons(); setBoonCount("deathward", 5);
+    assertEqual("Death Ward adds no dice to a check", boonDice("skill-athletics"), "");
+    assertEqual("...nor to a save", boonDice("save-con"), "");
+    assertEqual("...nor to initiative", boonDice("init"), "");
+    setBoonCount("guidance", 3); setBoonCount("resistance", 2);
+
+    // --- counts are clamped, never negative or fractional ---
+    setBoonCount("guidance", -5);
+    assertEqual("a negative count clamps to zero", boonCount("guidance"), 0);
+    setBoonCount("guidance", 2.7);
+    assertEqual("a fractional count floors", boonCount("guidance"), 2);
+    setBoonCount("guidance", "not a number");
+    assertEqual("garbage reads as zero rather than NaN", boonCount("guidance"), 0);
+
+    // --- spending: a roll takes every active die of the matching kind, and only that kind ---
+    setBoonCount("guidance", 3); setBoonCount("resistance", 2);
+    spendBoonsFor("skill-athletics");
+    assertEqual("rolling a skill spends every Guidance", boonCount("guidance"), 0);
+    assertEqual("...and leaves Resistance alone", boonCount("resistance"), 2);
+    spendBoonsFor("save-dex");
+    assertEqual("rolling a save spends Resistance", boonCount("resistance"), 0);
+    setBoonCount("guidance", 2);
+    spendBoonsFor("ac");
+    spendBoonsFor(undefined);
+    assertEqual("a roll that draws on no boon spends nothing", boonCount("guidance"), 2);
+    setBoonCount("guidance", 0);
+    spendBoonsFor("skill-athletics");
+    assertEqual("spending with nothing active is a no-op", boonCount("guidance"), 0);
+
+    // --- a character saved before boons existed loads as all-zero rather than undefined ---
+    BOONS = normalizeBoons(undefined);
+    assertEqual("a save predating boons has none", boonCount("guidance") + boonCount("resistance") + boonCount("deathward"), 0);
+    BOONS = normalizeBoons({ guidance: 2 });
+    assertEqual("...a partial one keeps what it had", boonCount("guidance"), 2);
+    assertEqual("...and zeroes what it lacks", boonCount("deathward"), 0);
+    BOONS = normalizeBoons({ guidance: -3, resistance: "x" });
+    assertEqual("...and sanitizes nonsense on the way in", boonCount("guidance") + boonCount("resistance"), 0);
+
+    // --- Death Ward fires on the transition to 0, not on being at 0 ---
+    BOONS = blankBoons();
+    $("hp-cur").value = "20"; commitMath($("hp-cur")); renderBoons();
+    setBoonCount("deathward", 2);
+    $("hp-cur").value = "0"; commitMath($("hp-cur"));
+    assert("a drop to 0 with a ward up fires it", checkDeathWardTrigger());
+    assertEqual("...leaving you at 1 HP", $("hp-cur").value, "1");
+    assertEqual("...and spending exactly one ward", boonCount("deathward"), 1);
+    // Already at 0: not a fresh drop, so a second ward must survive.
+    $("hp-cur").value = "0"; commitMath($("hp-cur")); renderBoons();   // renderBoons re-syncs the watcher at 0
+    $("hp-cur").value = "0"; commitMath($("hp-cur"));
+    assert("sitting at 0 does not fire another", !checkDeathWardTrigger());
+    assertEqual("...so the ward is still there", boonCount("deathward"), 1);
+    // No ward left: a drop to 0 stays at 0.
+    setBoonCount("deathward", 0);
+    $("hp-cur").value = "12"; commitMath($("hp-cur")); renderBoons();
+    $("hp-cur").value = "0"; commitMath($("hp-cur"));
+    assert("with no ward, a drop to 0 is not rescued", !checkDeathWardTrigger());
+    assertEqual("...and you stay at 0", $("hp-cur").value, "0");
+    // Triggering directly with none active does nothing.
+    assert("triggering with no ward active is a no-op", !triggerDeathWard());
+
+    // --- rests: a minute-long boon cannot survive any rest; an 8-hour one survives a short one ---
+    BOONS = blankBoons();
+    setBoonCount("guidance", 2); setBoonCount("resistance", 1); setBoonCount("deathward", 1);
+    clearBoonsForRest("short");
+    assertEqual("a short rest ends Guidance", boonCount("guidance"), 0);
+    assertEqual("...and Resistance", boonCount("resistance"), 0);
+    assertEqual("...but not Death Ward, which runs 8 hours", boonCount("deathward"), 1);
+    setBoonCount("guidance", 2);
+    clearBoonsForRest("long");
+    assertEqual("a long rest ends Guidance too", boonCount("guidance"), 0);
+    assertEqual("...and Death Ward with it", boonCount("deathward"), 0);
+    assertEqual("a rest with nothing active reports nothing cleared", clearBoonsForRest("long"), 0);
+
+    BOONS = savedBoons;
+    $("hp-cur").value = ""; commitMath($("hp-cur"));
   }
 
   // ===== house rules (house-rules.js) =====

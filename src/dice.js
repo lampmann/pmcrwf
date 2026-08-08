@@ -191,6 +191,10 @@ function fireRoll(btn, mode) {
   // advantage); an effect wins only when the user didn't ask for anything ("normal" from a plain click).
   const forced = (mode && mode !== "normal") ? mode : (info.mode || undefined);
   runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, forced);
+  // Guidance/Resistance are one-shot: the dice were already folded into the expression above (via
+  // checkDice), so this only marks them used. Here rather than in rollInfo() because that also runs
+  // for the hover tooltip and the right-click menu, neither of which is a roll.
+  if (typeof spendBoonsFor === "function" && btn.dataset.rollCheck) spendBoonsFor(btn.dataset.rollCheck);
 }
 
 /* modifier-aware tooltip + right-click menu on d20 roll buttons */

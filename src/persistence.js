@@ -10,6 +10,7 @@ function collectState() {
     routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
     companions: (typeof COMPANIONS !== "undefined" ? COMPANIONS : []),
     combat: (typeof COMBAT !== "undefined" ? COMBAT : null),   // the round tracker, so a fight survives a reload
+    boons: (typeof BOONS !== "undefined" ? BOONS : null),      // Guidance/Resistance/Death Ward counts (src/boons.js)
     featChoices: FEAT_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
@@ -40,6 +41,10 @@ function applyState(state) {
   // The round tracker is per character: switching tabs mid-fight shows that character's own turn.
   // normalizeCombat fills in any field a save made before it existed is missing (see its own comment).
   if (typeof normalizeCombat === "function") { COMBAT = normalizeCombat(state.combat); if (typeof renderCombat === "function") renderCombat(); }
+  // Boons are per character too — two characters can each be under their own Guidance. renderBoons()
+  // also re-syncs the Death Ward HP watcher, so switching tabs can't read the previous character's
+  // hit points as a drop to 0.
+  if (typeof normalizeBoons === "function") { BOONS = normalizeBoons(state.boons); if (typeof renderBoons === "function") renderBoons(); }
   refreshSpellAddClassSelect();
   invalidateEffects();
   recompute();

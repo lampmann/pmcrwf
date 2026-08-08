@@ -120,6 +120,11 @@ function performRest(kind) {
   const notes = [];                                    // what actually changed, for the event log
   if (($("hp-temp").value || "").trim() !== "") notes.push("Temp HP cleared");
   clearHpField("hp-temp");
+  // Guidance and Resistance run a minute, so no rest of any length leaves them standing. Death Ward
+  // runs 8 hours — exactly a long rest — so a short rest leaves it alone (see boons.js).
+  if (typeof clearBoonsForRest === "function" && clearBoonsForRest(kind === "lr" ? "long" : "short")) {
+    notes.push(kind === "lr" ? "Guidance/Resistance/Death Ward ended" : "Guidance/Resistance ended");
+  }
   if (kind === "lr") {
     const hpBefore = num($("hp-cur"));
     $("hp-cur").value = String(maxHP());
