@@ -547,7 +547,13 @@ function renderClassFeatures() {
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)} ${lvl}</b>${subNote}</div>${items}${grantedHtml}`;
   }).join("");
   el.innerHTML = raceHtml + classHtml;
-  el.querySelectorAll(".asi-input").forEach(inp => attachTypeahead(inp, () => Object.keys(FEAT_LIB).sort()));
+  el.querySelectorAll(".asi-input").forEach(inp => {
+    // A banned feat still appears, coloured red, rather than vanishing from the list — see
+    // house-rules.js for why marking beats removing.
+    inp.dataset.banKind = "feat";
+    attachTypeahead(inp, () => Object.keys(FEAT_LIB).sort(), () => ({ kind: "feat", prefix: "" }));
+    if (typeof markBannedInput === "function") markBannedInput(inp);
+  });
 }
 function toggleFeatDetail(link) {
   const div = link.closest("div");

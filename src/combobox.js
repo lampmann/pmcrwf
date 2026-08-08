@@ -54,6 +54,10 @@ function comboboxHtml(o) {
   const attrs = [
     o.id ? `id="${o.id}"` : "",
     o.dataAttr ? o.dataAttr : "",
+    // House-rule bans (src/house-rules.js). Declared once in markup; the panel reads it back off the
+    // input, so a banned option colours red rather than disappearing from the list.
+    o.banKind ? `data-ban-kind="${comboAttr(o.banKind)}"` : "",
+    o.banPrefix ? `data-ban-prefix="${comboAttr(o.banPrefix)}"` : "",
   ].filter(Boolean).join(" ");
   return `<span class="combo" style="width:${o.width || "12rem"}">` +
     `<input type="text" class="${cls}" ${attrs} value="${comboAttr(o.value || "")}"` +
@@ -88,12 +92,18 @@ function comboClose() {
   COMBO_OPEN = null;
 }
 
-function comboPanelHtml(options, highlight, query) {
+function comboPanelHtml(options, highlight, query, input) {
   if (!options.length) {
     return `<div class="combo-empty hint">${query ? "no match — what you typed is kept as-is" : "no options loaded"}</div>`;
   }
-  return options.map((o, i) =>
-    `<div class="combo-opt${i === highlight ? " hl" : ""}" data-comboidx="${i}">${escapeHtml(o)}</div>`).join("");
+  // A banned option is still listed and still pickable — it just says so. See house-rules.js for why
+  // marking beats removing.
+  const ban = (typeof banInfoOf === "function") ? banInfoOf(input) : null;
+  return options.map((o, i) => {
+    const banned = ban && typeof isBannedOption === "function" && isBannedOption(ban.kind, o, ban.prefix);
+    return `<div class="combo-opt${i === highlight ? " hl" : ""}${banned ? " banned-opt" : ""}" data-comboidx="${i}"` +
+      `${banned ? ` title="banned by house rule"` : ""}>${escapeHtml(o)}${banned ? ` <span class="banned-flag">banned</span>` : ""}</div>`;
+  }).join("");
 }
 
 /* Position the panel under its input. Fixed positioning, because the sheet's modules are absolutely
@@ -119,14 +129,14 @@ function comboOpen(input, opts) {
   if (COMBO_OPEN && COMBO_OPEN.input === input) {
     COMBO_OPEN.options = options;
     COMBO_OPEN.highlight = Math.min(COMBO_OPEN.highlight, options.length - 1);
-    COMBO_OPEN.panel.innerHTML = comboPanelHtml(options, COMBO_OPEN.highlight, input.value);
+    COMBO_OPEN.panel.innerHTML = comboPanelHtml(options, COMBO_OPEN.highlight, input.value, input);
     comboPlace(input, COMBO_OPEN.panel);
     return;
   }
   comboClose();
   const panel = document.createElement("div");
   panel.className = "combo-panel";
-  panel.innerHTML = comboPanelHtml(options, -1, input.value);
+  panel.innerHTML = comboPanelHtml(options, -1, input.value, input);
   document.body.appendChild(panel);
   comboPlace(input, panel);
   COMBO_OPEN = { input, panel, options, highlight: -1 };
@@ -150,7 +160,7 @@ function comboHighlight(delta) {
   let h = COMBO_OPEN.highlight + delta;
   if (h < 0) h = n - 1; else if (h >= n) h = 0;
   COMBO_OPEN.highlight = h;
-  COMBO_OPEN.panel.innerHTML = comboPanelHtml(COMBO_OPEN.options, h, COMBO_OPEN.input.value);
+  COMBO_OPEN.panel.innerHTML = comboPanelHtml(COMBO_OPEN.options, h, COMBO_OPEN.input.value, COMBO_OPEN.input);
   const el = COMBO_OPEN.panel.querySelector(".combo-opt.hl");
   if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest" });
 }
@@ -184,6 +194,8 @@ function initComboboxes(root) {
       }, 120);
     });
   });
+  // A freshly rendered combobox holding a banned value should already be red, before it's touched.
+  if (typeof markBannedInputs === "function") markBannedInputs(root);
   comboReopen();
 }
 

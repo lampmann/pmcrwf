@@ -332,6 +332,19 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
    never rests on colour alone. */
 .lib-banned .nm a { text-decoration: line-through; opacity: .65; }
 .lib-ban-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: #c00; border: 1px solid #c00; border-radius: var(--radius); padding: 0 .25rem; }
+/* A banned option in a dropdown, and an input already holding one. Both carry the word "banned"
+   (as a flag in the list, as a tooltip on the input), so the colour is reinforcement rather than
+   the only signal. Options stay listed and stay pickable — the DM's ban is advice at the point of
+   choosing, not a lock. */
+.banned-opt { color: #c00; }
+.banned-flag { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
+input.banned-value { color: #c00; }
+/* An oversized weapon (src/house-rules.js, R17). Disadvantage is already carried by the roll button's
+   own mode and label; unusable is stated in the Size cell's tooltip. The row tint is a hint, never
+   the only signal, and the button still rolls — the DM is at the table. */
+#attack-rows tr.atk-oversized .atk-size { color: #a60; }
+#attack-rows tr.atk-unusable .atk-size { color: #c00; font-weight: bold; }
+.atk-size { font: inherit; font-size: .8rem; }
 
 /* ----- combobox (src/combobox.js) ----- */
 .combo { display: inline-flex; align-items: stretch; }

@@ -33,11 +33,15 @@ function init() {
 
   // Race/Subrace search-as-you-type (mirrors the class/subclass typeahead in rows.js)
   const raceInput = $("char-race"), subraceInput = $("char-subrace");
-  attachTypeahead(raceInput, () => Object.keys(RACE_LIB));
+  // The third argument marks house-rule-banned options red in the dropdown (see house-rules.js);
+  // subraces are checked against the same `race` list, since that's how a DM writes such a ban down.
+  attachTypeahead(raceInput, () => Object.keys(RACE_LIB), () => ({ kind: "race", prefix: "" }));
   attachTypeahead(subraceInput, () => {
     const rec = ciFindRace(raceInput.value);
     return rec ? Object.values(rec.subs).map(s => s.name) : [];
-  });
+  }, () => ({ kind: "race", prefix: "" }));
+  raceInput.dataset.banKind = "race";
+  subraceInput.dataset.banKind = "race";
 
   // Attach all listeners FIRST, so that even if loading a saved state fails,
   // the sheet stays fully interactive (this is the "nothing auto-calcs" failsafe).

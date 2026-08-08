@@ -204,14 +204,14 @@ function pointsSpent() {
    Free text is still accepted, on purpose. The libraries are user-supplied (see DOCS' "Where game
    data comes from") and may be absent entirely, so a race the sheet has never heard of has to remain
    typeable — the datalist is a convenience, never a gate. */
-function creatorCombo(id, value, options, placeholder, extraClass, width) {
-  return comboboxHtml({ id, value, options, placeholder, extraClass, width: width || "12rem" });
+function creatorCombo(id, value, options, placeholder, extraClass, width, banKind, banPrefix) {
+  return comboboxHtml({ id, value, options, placeholder, extraClass, width: width || "12rem", banKind, banPrefix });
 }
 /* Same control for one row of the class table — ids have to be per-row, so these carry a data-crrow
    index and a class instead of an id. */
-function creatorRowCombo(cls, row, value, options, placeholder) {
+function creatorRowCombo(cls, row, value, options, placeholder, banKind, banPrefix) {
   return comboboxHtml({ value, options, placeholder, extraClass: cls, width: "11rem",
-    dataAttr: `data-crrow="${row}"` });
+    dataAttr: `data-crrow="${row}"`, banKind, banPrefix });
 }
 
 /* ----- source filters -----
@@ -443,8 +443,8 @@ function creatorStepHtml() {
     return `<div class="cr-step"><b>Step 1 &middot; Choose a Race</b> <span class="hint">PHB p11</span>
       <div class="hint">Your race sets your general appearance, natural talents, and one or more ability score increases.</div>
       ${sourceFilterHtml("race", RACE_LIB)}
-      <label>Race ${creatorCombo("cr-race", c.race, races, races.length ? "type to search" : "no race data — type freely")}</label>
-      ${subs.length || c.subrace ? `<label style="margin-left:.6rem">Subrace ${creatorCombo("cr-subrace", c.subrace, subs, "none")}</label>` : ""}
+      <label>Race ${creatorCombo("cr-race", c.race, races, races.length ? "type to search" : "no race data — type freely", "", "", "race")}</label>
+      ${subs.length || c.subrace ? `<label style="margin-left:.6rem">Subrace ${creatorCombo("cr-subrace", c.subrace, subs, "none", "", "", "race")}</label>` : ""}
       ${subs.includes(BASE_SUBRACE) ? `<div class="hint"><b>(base)</b> is this race's default version, the one with no subrace of its own &mdash; for a PHB Human that's the +1-to-everything build, as opposed to Variant.</div>` : ""}
       <div style="margin-top:.4rem"><b>Ability increases</b> <span class="hint">applied to your scores in step 3</span></div>
       ${racialAsiHtml()}
@@ -459,8 +459,8 @@ function creatorStepHtml() {
       const rec = ciFindClass(row.name);
       const hd = row.name ? classHitDie(row.name) : "";
       return `<tr>
-        <td>${creatorRowCombo("cr-cls", i, row.name, filteredNames("class", CLASS_LIB, row.name), "type to search")}</td>
-        <td>${creatorRowCombo("cr-sub", i, row.sub, subNames(rec), "no subclass")}</td>
+        <td>${creatorRowCombo("cr-cls", i, row.name, filteredNames("class", CLASS_LIB, row.name), "type to search", "class")}</td>
+        <td>${creatorRowCombo("cr-sub", i, row.sub, subNames(rec), "no subclass", "subclass", rec ? rec.name + ": " : "")}</td>
         <td><input type="number" class="tiny cr-lvl" data-crrow="${i}" min="1" max="20" value="${row.lvl}"></td>
         <td class="hint">${hd || ""}</td>
         <td>${c.classes.length > 1 ? `<button type="button" class="cr-cls-del" data-crrow="${i}" title="remove this class">&times;</button>` : ""}</td>
@@ -547,7 +547,7 @@ function creatorStepHtml() {
       <div class="hint">A background grants two skill proficiencies, often tools or languages, a feature, and its own equipment.</div>
       ${sourceFilterHtml("background", BACKGROUND_LIB)}
       <label>Name <input type="text" id="cr-name" value="${escapeHtml(c.name)}" style="width:14rem"></label>
-      <label style="margin-left:.6rem">Background ${creatorCombo("cr-background", c.background, bgs, bgs.length ? "type to search" : "no background data — type freely")}</label>
+      <label style="margin-left:.6rem">Background ${creatorCombo("cr-background", c.background, bgs, bgs.length ? "type to search" : "no background data — type freely", "", "", "background")}</label>
       <label style="margin-left:.6rem"><input type="checkbox" id="cr-custom-bg"${c.customBg ? " checked" : ""}> custom background</label>
       ${!bgs.length ? `<div class="hint">No <code>data/backgrounds.json</code> loaded, so there's nothing to look up &mdash; the name is recorded and its proficiencies are yours to add. Drop that file next to the sheet (see the Features module) to get the full list.</div>` : ""}
       ${c.customBg ? customBackgroundHtml() : backgroundSummaryHtml(rec)}
@@ -851,6 +851,13 @@ function creatorBuildState() {
   // every race, and it's a plain editable field either way if it's wrong.
   const raceSpeed = creatorRaceSpeed();
   fields["speed"] = String(raceSpeed != null ? raceSpeed : 30);
+  // Size: the wizard has been collecting this since step 1 (CREATOR.size, plus raceSizeHtml's picker
+  // for the races that genuinely let you choose) and was throwing it away — the character came out
+  // Medium whatever you picked. Races that state a single size supply it even though there was no
+  // picker to touch; anything unknown stays Medium, which is the field's own default.
+  const sizes = (ciFindRace(c.race) || {}).size || [];
+  const size = c.size || (sizes.length === 1 ? sizes[0] : "");
+  if (size && size !== "V") fields["char-size"] = size;
   CREATOR_ABILITIES.forEach(ab => { fields["score-" + ab] = String(creatorFinalScore(ab)); });
 
   // Coins. Starting gold and DMG p38's higher-level allowance are both plain gp.
@@ -1129,7 +1136,7 @@ function renderLevelUp() {
   // and a text box here re-rendered the dialog on every keystroke and lost focus after one character.
   const classes = Object.keys(CLASS_LIB).sort();
   const newClassHtml = isNew ? `<div style="margin-top:.4rem">
-      <label>New class ${creatorCombo("lu-newclass", LEVELUP.newClass, classes, "type to search")}</label>
+      <label>New class ${creatorCombo("lu-newclass", LEVELUP.newClass, classes, "type to search", "", "", "class")}</label>
       ${luMcHtml()}
     </div>` : "";
 

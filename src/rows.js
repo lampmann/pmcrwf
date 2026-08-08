@@ -81,11 +81,30 @@ function addClassRow(data = {}) {
   });
   $("class-rows").appendChild(tr);
   const nameInput = tr.querySelector(".cls-name"), subInput = tr.querySelector(".cls-sub");
-  attachTypeahead(nameInput, () => Object.keys(CLASS_LIB));
+  // Banned options show red rather than disappearing (see house-rules.js). A subclass ban is stored
+  // qualified by its class ("Fighter: Champion"), and the class in this row can change under the
+  // picker, so the prefix is resolved per-open rather than baked in.
+  // ciFindClass lives in class-library.js, which the standalone tests/derived.html doesn't load —
+  // this module has to stay usable without it, so every lookup goes through here.
+  const classRec = () => (typeof ciFindClass === "function") ? ciFindClass(nameInput.value) : null;
+  attachTypeahead(nameInput, () => Object.keys(typeof CLASS_LIB !== "undefined" ? CLASS_LIB : {}), () => ({ kind: "class", prefix: "" }));
   attachTypeahead(subInput, () => {
-    const rec = ciFindClass(nameInput.value);
+    const rec = classRec();
     return rec ? Object.values(rec.subs).map(s => s.name) : [];
+  }, () => {
+    const rec = classRec();
+    return { kind: "subclass", prefix: rec ? rec.name + ": " : "" };
   });
+  nameInput.dataset.banKind = "class";
+  subInput.dataset.banKind = "subclass";
+  // Keeps the subclass box's own red-when-banned test qualified by whatever class is typed now.
+  const syncSubPrefix = () => {
+    const rec = classRec();
+    subInput.dataset.banPrefix = rec ? rec.name + ": " : "";
+    if (typeof markBannedInput === "function") { markBannedInput(nameInput); markBannedInput(subInput); }
+  };
+  nameInput.addEventListener("input", syncSubPrefix);
+  syncSubPrefix();
 }
 function getClasses() {
   return [...document.querySelectorAll("#class-rows tr")].map(tr => ({

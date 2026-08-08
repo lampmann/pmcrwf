@@ -185,7 +185,7 @@ clusters are real — seven of these are Echo Knight alone.
 | R10 | Trinkets do not have any mechanical properties. | `ref` |
 | R11 | Spellwrought Tattoos vanish when you cast the spell using the tattoo, instead of at the end of the spell's duration. | `ref` |
 | R8 | Genie's Vessels cannot function as anything other than a Genie's Vessel. | `ref` |
-| R17 | **Oversized weapons can be wielded by PCs.** The extra damage dice belong to the *weapon* — a greataxe sized for a Large creature deals 2d12 whoever swings it. The *wielder's* size determines only the penalty: disadvantage on attack rolls with a weapon sized for a larger attacker. The DMG's optional "two or more sizes larger is too big to use at all" clause does not apply by default. | `setup` — three-way setting, see §1.2 |
+| R17 | **Oversized weapons can be wielded by PCs.** The extra damage dice belong to the *weapon* — a greataxe sized for a Large creature deals 2d12 whoever swings it. The *wielder's* size determines only the penalty: disadvantage on attack rolls with a weapon sized for a larger attacker. The DMG's optional "two or more sizes larger is too big to use at all" clause does not apply by default. | `setup` — three-way setting, see §1.2; **implemented** |
 | R35 | Unless explicitly stated, you must choose a mundane item when choosing an equipment. | `setup` — affects the creator's equipment step |
 | R36 | **Lifeberry works** — Goodberry cast by a Life Domain cleric gets Disciple of Life, so each berry heals 2 + spell level rather than 1. | `ref` |
 | R49 | You can't craft animals. | `ref` |
@@ -262,5 +262,7 @@ What each part becomes in the app.
 | §3 bans | Bans tab | 9 named entities, 4 creation options, 1 content ban, 3 rule toggles |
 | §4 rulings | House rules reference | ~50 entries, subject-tagged, searchable |
 
-**Mechanizable rulings** (everything else is reference): R21/R22 stacking (**done** — `src/boons.js`),
-R9 trinket value, R35 mundane starting equipment, R47 bonus-action spells, H4 Planar Binding limit.
+**Mechanizable rulings** (everything else is reference): R21/R22 stacking (**done** —
+`src/boons.js`), R17 oversized weapons (**done** — `src/house-rules.js` + an Attacks size column).
+Still open: R9 trinket value, R35 mundane starting equipment, R47 bonus-action spells, H4 Planar
+Binding limit.
