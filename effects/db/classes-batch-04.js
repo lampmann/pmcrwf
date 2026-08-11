@@ -120,8 +120,13 @@
 
     // ===== College of Eloquence =====
     "subclass|bard|college of eloquence|silver tongue": {
-      name: "Silver Tongue", sv: 1,
-      unsupported: [{ reason: "treats a d20 of 9 or lower as a 10 on Persuasion/Deception; the roll engine has no per-die floor", tags: ["skills", "roll-floor"] }],
+      name: "Silver Tongue", sv: 2,
+      // Named skills rather than Reliable Talent's "check-proficient": this one applies to two
+      // specific checks whether or not you're proficient in them.
+      effects: [
+        { target: "skill-persuasion", op: "diefloor", value: 10 },
+        { target: "skill-deception", op: "diefloor", value: 10 },
+      ],
     },
 
     // ===== College of Spirits =====

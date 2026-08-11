@@ -103,6 +103,33 @@ function parseBonus(str) {
   }
   return { flat, dice };
 }
+/* ----- what the effects engine grants that has no box of its own -----
+   Extra movement speeds (a flying or swimming speed rather than a bonus to walking), damage
+   resistances/immunities/vulnerabilities, and advantage on saves against a named condition. Each is
+   a target the engine writes and nothing else reads, so they are listed here rather than silently
+   dropped into snap.unapplied — which is what used to happen to every one of them.
+
+   Rendered as text because that's what they are: a resistance isn't a number that folds into a
+   total, it's a fact about you that the DM asks about. */
+function renderDefenses() {
+  const el = $("defenses-row"); if (!el) return;
+  if (typeof effFlatByPrefix !== "function") { el.textContent = ""; return; }
+  const bits = [];
+  const speeds = effFlatByPrefix("speed-");
+  if (speeds.length) bits.push(speeds.map(s => `<b>${escapeHtml(s.kind)}</b> ${s.n} ft`).join(", "));
+  [["resist-", "resistant to"], ["immune-", "immune to"], ["vuln-", "vulnerable to"]].forEach(([pre, label]) => {
+    const rows = effTagsByPrefix(pre);
+    if (!rows.length) return;
+    const names = rows.map(r => r.kind || r.items.map(i => i.label).join("/")).join(", ");
+    bits.push(`${label} <b>${escapeHtml(names)}</b>`);
+  });
+  const condSaves = effTagsByPrefix("save-vs-");
+  if (condSaves.length) {
+    bits.push("advantage on saves vs " + condSaves.map(r => `<b>${escapeHtml(r.kind)}</b>`).join(", "));
+  }
+  el.innerHTML = bits.length ? bits.join(" &middot; ") : "";
+}
+
 function recompute() {
   invalidateEffects();   // rebuild the effects snapshot at most once for this whole pass (see effects.js)
   const pb = profBonus();
@@ -118,6 +145,7 @@ function recompute() {
     $("skillbonus-" + tr.dataset.slug).textContent = sign(checkBonus(key)) + (d ? " " + d : "");
   });
   $("passive-perc").textContent = 10 + checkBonus("skill-perception") + effFlat("passive-perception");
+  renderDefenses();
   { const d = checkDice("init"); $("init").textContent = sign(checkBonus("init")) + (d ? " " + d : ""); }
   { const d = checkDice("ac"); $("ac").textContent = String(checkBonus("ac")) + (d ? " " + d : ""); }
   const ab = $("spell-ability").value;

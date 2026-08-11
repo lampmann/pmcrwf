@@ -259,7 +259,9 @@ document.addEventListener("DOMContentLoaded", () => {
       { target: "attack-hit", op: "add", value: -5, activation: { kind: "toggle", id: "ps", label: "test" } },
       { target: "damage-bonus", op: "add", value: 10, activation: { kind: "toggle", id: "ps", label: "test" } },
       { target: "attack-hit", op: "adv", activation: { kind: "toggle", id: "ps", label: "test" } },
-      { target: "damage-crit", op: "adddice", value: "1d6" },   // nothing reads this one
+      // "damage-crit" became a live target when the crit model landed, so the reserved-target test
+      // needs a name that genuinely still has no reader.
+      { target: "damage-riders", op: "adddice", value: "1d6" },   // nothing reads this one
     ],
   };
   FEAT_LIB["__Sharpshooter Test"] = { name: "__Sharpshooter Test", source: "TEST", text: "x" };
@@ -306,8 +308,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Reserved targets behave exactly as before for every name no module reads
   const snap = effectsSnapshot();
-  assert("unread damage-* target still lands in unapplied", snap.unapplied.some(u => u.target === "damage-crit"));
-  assertEqual("unread damage-* target is never applied", effDice("damage-crit"), "");
+  assert("unread damage-* target still lands in unapplied", snap.unapplied.some(u => u.target === "damage-riders"));
+  assertEqual("unread damage-* target is never applied", effDice("damage-riders"), "");
+  // ...while the ones the crit model now reads are applied rather than parked.
+  assert("damage-crit is a live target now", !isReservedTarget("damage-crit"));
+  assert("...as is the crit range", !isReservedTarget("attack-crit-range"));
+  assert("...and the ability swap", !isReservedTarget("attack-ability"));
   assert("a live attack target no longer lands in unapplied", !snap.unapplied.some(u => u.target === "attack-hit"));
 
   toggleEffect(resFkey, "ps");
@@ -1321,6 +1327,77 @@ document.addEventListener("DOMContentLoaded", () => {
       CHARACTER_ITEMS = savedItems; ITEM_LIB = savedItemLib;
     }
     COMBAT = blankCombat();
+  }
+
+  // ===== effects engine: the gaps that used to block whole feature categories =====
+  {
+    const f = { origin: {} };
+
+    // --- value expressions: ceil / round / div, which level-scaling dice need ---
+    assertEqual("ceil rounds up", evalValue(f, { ceil: { div: [11, 2] } }), 6);
+    assertEqual("floor still rounds down", evalValue(f, { floor: { div: [11, 2] } }), 5);
+    assertEqual("round goes to nearest", evalValue(f, { round: { div: [11, 2] } }), 6);
+    assertEqual("dividing by zero yields 0 rather than Infinity", evalValue(f, { div: [5, 0] }), 0);
+
+    // --- computed dice counts (Sneak Attack, Martial Arts, Psychic Blades) ---
+    assertEqual("a literal dice string passes through", evalDiceTerm(f, "2d6"), "2d6");
+    assertEqual("a computed count builds the term", evalDiceTerm(f, { count: { ceil: { div: [7, 2] } }, die: "d6" }), "4d6");
+    assertEqual("a count of zero contributes nothing, not '0d6'", evalDiceTerm(f, { count: 0, die: "d6" }), "");
+    assertEqual("a missing count defaults to one die", evalDiceTerm(f, { die: "d8" }), "1d8");
+    assertEqual("a negative count is floored at nothing", evalDiceTerm(f, { count: -3, die: "d6" }), "");
+    // The exact Rogue progression, which is the whole point of the feature.
+    const sneakAt = lvl => evalDiceTerm(f, { count: { ceil: { div: [lvl, 2] } }, die: "d6" });
+    assertEqual("Sneak Attack is 1d6 at level 1", sneakAt(1), "1d6");
+    assertEqual("...still 1d6 at 2", sneakAt(2), "1d6");
+    assertEqual("...2d6 at 3", sneakAt(3), "2d6");
+    assertEqual("...6d6 at 11", sneakAt(11), "6d6");
+    assertEqual("...and 10d6 at 20", sneakAt(20), "10d6");
+
+    // --- predicates ---
+    const savedRows2 = $("class-rows").innerHTML, savedItems2 = CHARACTER_ITEMS, savedLib2 = ITEM_LIB;
+    $("class-rows").innerHTML = ""; addClassRow({ name: "Barbarian", lvl: 5 });
+    assert("minLevel still works", whenSatisfied({ minLevel: 5 }));
+    assert("maxLevel passes under the cap", whenSatisfied({ maxLevel: 5 }));
+    assert("...and fails over it", !whenSatisfied({ maxLevel: 4 }));
+    assert("a level band passes inside it", whenSatisfied({ minLevel: 3, maxLevel: 7 }));
+    assert("...and fails outside", !whenSatisfied({ minLevel: 6, maxLevel: 7 }));
+    assert("a per-class minimum reads that class's level",
+      whenSatisfied({ minClassLevel: { class: "Barbarian", level: 5 } }));
+    assert("...and isn't fooled by another class's", !whenSatisfied({ minClassLevel: { class: "Rogue", level: 1 } }));
+    assert("@self resolves to the feature's own class",
+      whenSatisfied({ minClassLevel: { class: "@self", level: 5 } }, { origin: { className: "Barbarian" } }));
+    assert("an unrecognized predicate refuses rather than guessing", !whenSatisfied({ phaseOfMoon: "full" }));
+
+    // Armour state, read from what's actually equipped.
+    ITEM_LIB = [{ name: "Plate", armor: true, armorCat: "heavy", ac: 18, weight: 65 },
+                { name: "Leather", armor: true, armorCat: "light", ac: 11, weight: 10 },
+                { name: "Buckler", armor: true, armorCat: "shield", ac: 2, weight: 6 }];
+    CHARACTER_ITEMS = [];
+    assertEqual("nothing equipped is 'none'", armorWorn(), "none");
+    assert("...which satisfies 'not heavy'", whenSatisfied({ notArmor: ["heavy"] }));
+    CHARACTER_ITEMS = [{ name: "Leather", qty: 1, eq: true }];
+    assertEqual("light armour reads as light", armorWorn(), "light");
+    assert("...and still isn't heavy", whenSatisfied({ notArmor: ["heavy"] }));
+    assert("...and satisfies an allow-list naming it", whenSatisfied({ armor: ["light", "none"] }));
+    CHARACTER_ITEMS = [{ name: "Plate", qty: 1, eq: true }];
+    assertEqual("plate reads as heavy", armorWorn(), "heavy");
+    assert("...which fails 'not heavy'", !whenSatisfied({ notArmor: ["heavy"] }));
+    // A shield is not body armour — "not wearing heavy armor" says nothing about carrying one.
+    CHARACTER_ITEMS = [{ name: "Buckler", qty: 1, eq: true }];
+    assertEqual("a shield alone leaves you unarmoured", armorWorn(), "none");
+    assert("...and is reported separately", shieldWorn());
+    assert("...which a shield predicate sees", whenSatisfied({ shield: true }));
+    assert("...and its negation does not", !whenSatisfied({ shield: false }));
+    CHARACTER_ITEMS = savedItems2; ITEM_LIB = savedLib2; $("class-rows").innerHTML = savedRows2;
+
+    // --- the roller's proficiency test, which Reliable Talent's floor is gated on ---
+    assert("a skill with no proficiency isn't a proficient check", !isProficientCheck("skill-arcana"));
+    $("skillprof-arcana").checked = true;
+    assert("...and is once ticked", isProficientCheck("skill-arcana"));
+    $("skillexp-arcana").checked = true;
+    assert("expertise counts too, being a doubled proficiency", isProficientCheck("skill-arcana"));
+    $("skillprof-arcana").checked = false; $("skillexp-arcana").checked = false;
+    assert("an attack button has no proficiency target to test", !isProficientCheck(undefined));
   }
 
   // ===== boons: Guidance / Resistance / Death Ward (boons.js) =====

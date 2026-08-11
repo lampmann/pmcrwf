@@ -100,8 +100,10 @@ registerEffects({
   },
 
   "class|warrior sidekick|improved critical": {
-    name: "Improved Critical", sv: 1,
-    unsupported: [{ reason: "widened critical range (19-20); the Attacks module has no crit-range model", tags: ["attack", "critical"] }],
+    name: "Improved Critical", sv: 2,
+    // The Attacks module reads "attack-crit-range" onto each row's to-hit button; the engine keeps
+    // the LOWEST threshold, so a later Superior Critical (18) subsumes this one rather than fighting it.
+    effects: [{ target: "attack-crit-range", op: "critrange", value: 19 }],
   },
 
   "class|warrior sidekick|extra attack": {
