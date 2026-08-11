@@ -35,8 +35,13 @@
    contributing feature, so no number here is silently inflated; the roll
    log gets the same "[Feature +N]" annotations as the rest of the sheet.
 
-   Crits roll no extra damage dice yet — the log flags the crit, you double
-   the dice yourself (the Routines module does it for you).
+   CRITS are modelled: a row's crit threshold comes from the engine's
+   "attack-crit-range" target (Improved Critical's 19-20), and on a crit the
+   damage dice are doubled and any "damage-crit" dice added on top. Both
+   apply to a routine's swings as well as a single attack. What still can't
+   be expressed is a crit die the WEAPON defines (Savage Attacks, Brutal
+   Critical) — the engine has no per-weapon context, which is the same
+   reason there's no weapon-property predicate.
    ============================================================ */
 (function () {
   "use strict";
@@ -50,6 +55,14 @@
   let idSeq = 0;
   const newId = () => "a" + (Date.now().toString(36)) + (++idSeq);
 
+  /* Battle Smith / Hexblade-style "use INT instead of Strength or Dexterity": a feature effect can
+     REPLACE the ability a row uses rather than adding to it, via `useability` on "attack-ability".
+     Gated on the row's own fx flag like every other effect read, so a row it doesn't belong to opts
+     out with the same checkbox as everything else. */
+  function rowAbility(d) {
+    const override = (d.fx && typeof effAbility === "function") ? effAbility("attack-ability") : null;
+    return override || d.abil;
+  }
   function attackAbilityMod(abil) {
     if (abil === "fin") return Math.max(abilityMod("str"), abilityMod("dex"));
     if (["str", "dex", "con", "int", "wis", "cha"].includes(abil)) return abilityMod(abil);
@@ -101,13 +114,13 @@
     const pb = parseBonus(d.atkMisc);
     const profDie = (d.prof && typeof proficiencyDiceTerm === "function") ? proficiencyDiceTerm(1) : "";
     const flatProf = (d.prof && !profDie) ? profBonus() : 0;
-    const b = attackAbilityMod(d.abil) + flatProf + pb.flat + fxFlat(d, "attack-hit");
+    const b = attackAbilityMod(rowAbility(d)) + flatProf + pb.flat + fxFlat(d, "attack-hit");
     return { bonus: b, dice: pb.dice + profDie + fxDice(d, "attack-hit") };
   }
   function damageExpr(d) {
     const parts = [];
     if (d.dmg && d.dmg.trim()) parts.push(d.dmg.trim());
-    if (d.modDmg) { const m = attackAbilityMod(d.abil); if (m) parts.push(signed(m)); }
+    if (d.modDmg) { const m = attackAbilityMod(rowAbility(d)); if (m) parts.push(signed(m)); }
     const pb = parseBonus(d.dmgMisc), flat = pb.flat + fxFlat(d, "damage-bonus");
     if (flat) parts.push(signed(flat));
     if (pb.dice) parts.push(pb.dice);   // already signed, e.g. "+1d6"
@@ -134,6 +147,8 @@
     const over = (typeof oversizedVerdict === "function") ? oversizedVerdict(d.size) : null;
     hitBtn.dataset.bonus = th.bonus; hitBtn.dataset.dice = th.dice;
     hitBtn.dataset.mode = hitMode(d);   // read back by rollInfo() in dice.js
+    // Improved Critical and friends widen the range; dice.js reads this off the button.
+    hitBtn.dataset.critmin = (d.fx && typeof effCritMin === "function") ? effCritMin("attack-crit-range") : 20;
     hitBtn.dataset.rolllabel = (d.name || "Attack") + " to hit" + fxLabel(d, "attack-hit") +
       (over && over.disadvantage ? " (oversized)" : "");
     hitBtn.textContent = "to hit " + signed(th.bonus) + (th.dice || "");
@@ -146,9 +161,18 @@
     if (sizeSel) sizeSel.title = (over && over.note) || "the size this weapon is made for — only set it for an oversized weapon";
     const dmg = damageExpr(d), dmgBtn = tr.querySelector(".wpn-dmg");
     dmgBtn.dataset.expr = dmg;
+    // Savage Attacks / Brutal Critical: dice added only on a crit. Carried on the button so the
+    // crit path can pick them up without recomputing the row.
+    dmgBtn.dataset.critdice = (d.fx && typeof effDice === "function") ? effDice("damage-crit") : "";
     dmgBtn.textContent = dmg ? "dmg " + dmg : "dmg —";
     dmgBtn.disabled = !dmg;
     paintFx(dmgBtn, d, "damage-bonus", "Damage");
+    const cm = Number(hitBtn.dataset.critmin) || 20;
+    const cd = dmgBtn.dataset.critdice;
+    if (cm < 20 || cd) {
+      tr.querySelector(".atk-name").title =
+        [cm < 20 ? `crits on ${cm}-20` : "", cd ? `crit adds ${cd}` : ""].filter(Boolean).join(" · ");
+    }
   }
   function updateAllDerived() { allRows().forEach(updateRowDerived); }
 
@@ -159,9 +183,24 @@
     const r = evalExpr(applyMode(expr, mode || "normal"));
     return { value: r.value, display: r.display, d20: (typeof _d20kept !== "undefined" ? _d20kept.slice() : []) };
   }
-  function critNote(d20) {
-    if (d20.length === 1) { if (d20[0] === 20) return "  <b>Critical Success!</b>"; if (d20[0] === 1) return "  <b>Critical Failure!</b>"; }
+  /* The crit threshold for this row. Improved Critical / Superior Critical widen it to 19 or 18; the
+     engine keeps the lowest, and the row's fx flag gates it like every other effect read. */
+  function critMinFor(d) { return (d.fx && typeof effCritMin === "function") ? effCritMin("attack-crit-range") : 20; }
+  function isCrit(d20, min) { return d20.length === 1 && d20[0] >= (min || 20); }
+  function critNote(d20, min) {
+    if (d20.length !== 1) return "";
+    if (isCrit(d20, min)) return (min || 20) < 20 ? `  <b>Critical Success!</b> <i>(${min}-20)</i>` : "  <b>Critical Success!</b>";
+    if (d20[0] === 1) return "  <b>Critical Failure!</b>";
     return "";
+  }
+  /* Crit damage: double every dice term (the standard rule), then add whatever `damage-crit` grants —
+     Savage Attacks and Brutal Critical add dice ONLY on a crit, which is why they can't live in the
+     ordinary damage expression. Those extra dice are added once, not doubled: the feature already
+     says how many dice a crit adds. */
+  function critDamageExpr(d, base) {
+    const extra = (d.fx && typeof effDice === "function") ? effDice("damage-crit") : "";
+    const doubled = doubleDiceExpr(base);
+    return extra ? doubled + extra : doubled;
   }
   // Same policy as fireRoll() in dice.js: the caller's own Shift/Ctrl wins, and an effect-forced
   // mode (Reckless Attack, Vow of Enmity, Steady Aim) only applies to a plain "normal" roll.
@@ -170,11 +209,18 @@
   // { hitText, dmgText, damage } for one swing of an attack; used by both .wpn-both and routines.
   function rollAttackOnce(d, requested) {
     const th = toHit(d), name = d.name || "Attack", mode = resolveMode(d, requested);
+    const cm = critMinFor(d);
     const hit = rollExpr(`1d20${signed(th.bonus)}${th.dice || ""}`, mode);
     const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
-    const out = { hitText: `<b>${hit.value}</b> to hit${modeTag} ← ${hit.display}${critNote(hit.d20)}`, dmgText: "", damage: 0 };
+    const crit = isCrit(hit.d20, cm);
+    const out = { hitText: `<b>${hit.value}</b> to hit${modeTag} ← ${hit.display}${critNote(hit.d20, cm)}`, dmgText: "", damage: 0, crit };
     const de = damageExpr(d);
-    if (de) { const dm = rollExpr(de, "normal"); out.dmgText = `<b>${dm.value}</b> damage ← ${dm.display}`; out.damage = dm.value; }
+    if (de) {
+      const expr = crit ? critDamageExpr(d, de) : de;
+      const dm = rollExpr(expr, "normal");
+      out.dmgText = `<b>${dm.value}</b> damage${crit ? " <i>(crit)</i>" : ""} ← ${dm.display}`;
+      out.damage = dm.value;
+    }
     out.name = name;
     return out;
   }
@@ -195,12 +241,16 @@
     const d = rowData(tr), th = toHit(d), name = d.name || "Attack", mode = resolveMode(d, requested);
     const hit = rollExpr(`1d20${signed(th.bonus)}${th.dice || ""}`, mode);
     const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
-    const isCrit = hit.d20.length === 1 && hit.d20[0] === 20;
-    const out = { name, hitTotal: hit.value, isCrit, hitText: `<b>${hit.value}</b> to hit${modeTag} ← ${hit.display}${critNote(hit.d20)}`, dmgText: "", damage: 0 };
+    // Named `crit` rather than shadowing the isCrit() helper above, and going through the same
+    // threshold and crit-damage builder as rollAttackOnce so a widened crit range and any
+    // damage-crit dice reach a routine's swings too.
+    const cm = critMinFor(d);
+    const crit = isCrit(hit.d20, cm);
+    const out = { name, hitTotal: hit.value, isCrit: crit, hitText: `<b>${hit.value}</b> to hit${modeTag} ← ${hit.display}${critNote(hit.d20, cm)}`, dmgText: "", damage: 0 };
     const de = damageExpr(d);
     if (de) {
-      const dm = rollExpr(isCrit ? doubleDiceExpr(de) : de, "normal");
-      out.dmgText = `<b>${dm.value}</b> damage ← ${dm.display}${isCrit ? " <i>(crit, dice doubled)</i>" : ""}`;
+      const dm = rollExpr(crit ? critDamageExpr(d, de) : de, "normal");
+      out.dmgText = `<b>${dm.value}</b> damage ← ${dm.display}${crit ? " <i>(crit, dice doubled)</i>" : ""}`;
       out.damage = dm.value;
     }
     return out;

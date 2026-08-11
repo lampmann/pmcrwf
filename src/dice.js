@@ -120,13 +120,21 @@ function applyMode(expr, mode) {
 function fmtAnns(anns) { return anns.length ? " <i>[" + anns.map(escapeHtml).join("][") + "]</i>" : ""; }
 function fmtLabel(label, fallback) { return escapeHtml(label || fallback); }
 
-function runRoll(s, forceMode) {
+/* `opts` carries what a feature effect can change about a d20 roll itself rather than its total:
+     dieFloor — "treat a roll of N or lower as N" (Reliable Talent). Expressed with the roller's own
+                `mi` operator so it shows in the displayed dice rather than silently adjusting a total.
+     critMin  — a widened crit range (Improved Critical's 19-20).
+   Both are read off the effects snapshot by the caller, never inferred here. */
+function runRoll(s, forceMode, opts) {
   let { expr, mode, label } = splitRoll(s);
   if (forceMode) mode = forceMode;
+  const floor = opts && opts.dieFloor;
+  if (floor > 1) expr = expr.replace(/\b(\d*)d20\b/i, (m0, n) => `${n || 1}d20mi${floor}`);
   const rolled = evalExpr(applyMode(expr, mode));
   const modeTag = mode === "normal" ? "" : ` <i>(${mode})</i>`;
+  const critMin = (opts && opts.critMin) || 20;
   let crit = "";  // only the kept d20 can crit (deviates from 5eCrawler, which crits off any die's max/min)
-  if (_d20kept.length === 1) { if (_d20kept[0] === 20) crit = "  <b>Critical Success!</b>"; else if (_d20kept[0] === 1) crit = "  <b>Critical Failure!</b>"; }
+  if (_d20kept.length === 1) { if (_d20kept[0] >= critMin) crit = "  <b>Critical Success!</b>"; else if (_d20kept[0] === 1) crit = "  <b>Critical Failure!</b>"; }
   log(`<b>${rolled.value}</b> &larr; ${fmtLabel(label, "roll")}${modeTag}: ${rolled.display}${fmtAnns(rolled.annotations)}${crit}`);
   return rolled.value;
 }
@@ -160,12 +168,25 @@ function runCommand(input) {
   }
   runRoll(s);
 }
+/* Whether a check button's target is one you add your proficiency bonus to — the precondition
+   Reliable Talent and its cousins state. Expertise counts, being a doubled proficiency. */
+function isProficientCheck(key) {
+  if (typeof key !== "string") return false;
+  if (key.startsWith("skill-") && typeof skillProfMult === "function") return skillProfMult(key.slice(6)) > 0;
+  if (key.startsWith("save-") && typeof saveProfMult === "function") return saveProfMult(key.slice(5)) > 0;
+  return false;
+}
 const D20SEL = "[data-roll-check], .atk-roll, .wpn-roll, .mon-roll";   // buttons that roll a d20 check (adv/dis applies)
 function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlKey || ev.metaKey || ev.altKey)) ? "dis" : "normal"; }
 function rollInfo(btn) {
   if (btn.dataset.rollCheck) {
     const k = btn.dataset.rollCheck;
-    return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label + effAnnotations(k), mode: effMode(k) };
+    return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label + effAnnotations(k), mode: effMode(k),
+      // Reliable Talent floors a check you're proficient in; the engine records the floor per target.
+      // Reliable Talent floors any check you can add your proficiency bonus to, so it's declared on
+      // "check-proficient" rather than per skill; a floor aimed at one specific check still works.
+      dieFloor: (typeof effDieFloor === "function")
+        ? Math.max(effDieFloor(k), isProficientCheck(k) ? effDieFloor("check-proficient") : 0) : 0 };
   }
   // inline "spell attack" phrase inside an expanded spell description (see renderInlineSpellText)
   if (btn.classList.contains("atk-roll")) {
@@ -174,7 +195,8 @@ function rollInfo(btn) {
   // weapon attack to-hit button (Attacks module) — bonus/dice/label/mode are all set on the button by
   // attacks.js, which is what already folds that row's feature effects (attack-hit) into them
   if (btn.classList.contains("wpn-roll")) {
-    return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack", mode: btn.dataset.mode || null };
+    return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack",
+      mode: btn.dataset.mode || null, critMin: Number(btn.dataset.critmin) || 20 };
   }
   // a companion/summon's own d20 roll — attack, save, skill or initiative (companions.js). Same
   // button contract as .wpn-roll above, but the numbers come from a monster statblock rather than
@@ -190,7 +212,8 @@ function fireRoll(btn, mode) {
   // A click's own Shift/Ctrl modifier wins over an effect-forced mode (e.g. Alert doesn't force
   // advantage); an effect wins only when the user didn't ask for anything ("normal" from a plain click).
   const forced = (mode && mode !== "normal") ? mode : (info.mode || undefined);
-  runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, forced);
+  runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, forced,
+    { dieFloor: info.dieFloor, critMin: info.critMin });
   // Guidance/Resistance are one-shot: the dice were already folded into the expression above (via
   // checkDice), so this only marks them used. Here rather than in rollInfo() because that also runs
   // for the hover tooltip and the right-click menu, neither of which is a roll.

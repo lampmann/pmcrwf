@@ -65,10 +65,10 @@ registerEffects({
   },
 
   "class|barbarian|fast movement": {
-    name: "Fast Movement", sv: 1,
-    unsupported: [
-      { reason: "speed increase target not yet supported", tags: ["speed"] },
-    ],
+    name: "Fast Movement", sv: 2,
+    // "+10 feet while you aren't wearing heavy armor" — the `notArmor` predicate reads what's
+    // actually equipped (see armorWorn in effects.js), so putting plate on takes the bonus away.
+    effects: [{ target: "speed", op: "add", value: 10, when: { minClassLevel: { class: "Barbarian", level: 5 }, notArmor: ["heavy"] } }],
   },
 
   "class|barbarian|feral instinct": {

@@ -105,11 +105,15 @@ registerEffects({
   },
 
   "subclass|artificer|battle smith|battle ready": {
-    name: "Battle Ready", sv: 1,
-    // INT *replaces* STR/DEX on a magic weapon's attack and damage rolls — it isn't added on top,
-    // and the engine has no "swap the ability" op. The Attacks module already covers this manually:
-    // set that weapon's row Ability to Int. Adding { mod: "int" } here would double-count instead.
-    unsupported: [{ reason: "uses INT in place of STR/DEX for magic weapons — set that attack row's Ability to Int (no ability-swap op)", tags: ["ability-swap", "weapon"] }],
+    name: "Battle Ready", sv: 2,
+    // INT *replaces* STR/DEX on a magic weapon's attack and damage rolls rather than adding on top,
+    // which is what `useability` expresses. It applies to magic weapons only, and the engine has no
+    // per-weapon predicate — so a row it shouldn't touch opts out with that row's own fx checkbox,
+    // and the note says so.
+    effects: [
+      { target: "attack-ability", op: "useability", value: "int" },
+      { target: "attack-hit", op: "note", text: "magic weapons only — untick fx on a row this shouldn't apply to" },
+    ],
   },
   "subclass|artificer|battle smith|steel defender": {
     name: "Steel Defender", sv: 1,

@@ -31,8 +31,16 @@
     },
 
     "class|rogue|sneak attack": {
-      name: "Sneak Attack", sv: 1,
-      unsupported: [{ reason: "extra damage of ceil(rogue level / 2)d6; `adddice` takes a literal dice string, so a computed die count can't be expressed", tags: ["damage", "level-scaling"] }],
+      name: "Sneak Attack", sv: 2,
+      // ceil(rogue level / 2)d6, as a computed dice count. A toggle rather than always-on: Sneak
+      // Attack needs advantage or an ally adjacent, and applies once per turn — conditions the sheet
+      // can't see, so you say when it lands.
+      effects: [
+        { target: "damage-bonus", op: "adddice",
+          value: { count: { ceil: { div: [{ level: "class", class: "Rogue" }, 2] } }, die: "d6" },
+          activation: { kind: "toggle", id: "sneak-attack", label: "Sneak Attack", default: false } },
+        { target: "damage-bonus", op: "note", text: "once per turn, with advantage or an ally within 5 ft of the target" },
+      ],
     },
 
     "class|rogue|steady aim": {
@@ -55,8 +63,11 @@
     },
 
     "class|rogue|reliable talent": {
-      name: "Reliable Talent", sv: 1,
-      unsupported: [{ reason: "treats a d20 of 9 or lower as a 10 on any proficient ability check; the roll engine has no per-die floor", tags: ["skills", "roll-floor"] }],
+      name: "Reliable Talent", sv: 2,
+      // "check-proficient" is every check you add your proficiency bonus to — the rule's own
+      // precondition — so this doesn't have to be restated per skill. dice.js turns it into the
+      // roller's `mi` operator, so the floor shows in the rolled dice rather than adjusting a total.
+      effects: [{ target: "check-proficient", op: "diefloor", value: 10 }],
     },
 
     "class|rogue|slippery mind": {
@@ -128,8 +139,13 @@
 
     // ===== Inquisitive =====
     "subclass|rogue|inquisitive|ear for deceit": {
-      name: "Ear for Deceit", sv: 1,
-      unsupported: [{ reason: "treats a d20 of 7 or lower as an 8 on Insight checks to detect lies; the roll engine has no per-die floor", tags: ["skills", "roll-floor"] }],
+      name: "Ear for Deceit", sv: 2,
+      // The floor is unconditional on the sheet, but the rule limits it to Insight checks made to
+      // detect a lie — a purpose the sheet can't see — so the note carries that half.
+      effects: [
+        { target: "skill-insight", op: "diefloor", value: 8 },
+        { target: "skill-insight", op: "note", text: "the floor applies only to Insight checks made to detect a lie" },
+      ],
     },
 
     "subclass|rogue|inquisitive|steady eye": {
