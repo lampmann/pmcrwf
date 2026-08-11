@@ -31,7 +31,7 @@
     },
 
     "class|rogue|sneak attack": {
-      name: "Sneak Attack", sv: 2,
+      name: "Sneak Attack", sv: 1,
       // ceil(rogue level / 2)d6, as a computed dice count. A toggle rather than always-on: Sneak
       // Attack needs advantage or an ally adjacent, and applies once per turn — conditions the sheet
       // can't see, so you say when it lands.
@@ -63,7 +63,7 @@
     },
 
     "class|rogue|reliable talent": {
-      name: "Reliable Talent", sv: 2,
+      name: "Reliable Talent", sv: 1,
       // "check-proficient" is every check you add your proficiency bonus to — the rule's own
       // precondition — so this doesn't have to be restated per skill. dice.js turns it into the
       // roller's `mi` operator, so the floor shows in the rolled dice rather than adjusting a total.
@@ -139,7 +139,7 @@
 
     // ===== Inquisitive =====
     "subclass|rogue|inquisitive|ear for deceit": {
-      name: "Ear for Deceit", sv: 2,
+      name: "Ear for Deceit", sv: 1,
       // The floor is unconditional on the sheet, but the rule limits it to Insight checks made to
       // detect a lie — a purpose the sheet can't see — so the note carries that half.
       effects: [
@@ -184,7 +184,10 @@
     "subclass|rogue|scout|superior mobility": {
       name: "Superior Mobility", sv: 1,
       effects: [{ target: "speed", op: "add", value: 10 }],
-      unsupported: [{ reason: "also raises climbing/swimming speed by 10 ft if you have one — no separate speed-type targets", tags: ["speed"] }],
+      effects: [
+        { target: "speed-climb", op: "tag", value: "+10 ft, if you have one" },
+        { target: "speed-swim", op: "tag", value: "+10 ft, if you have one" },
+      ],
     },
 
     "subclass|rogue|scout|ambush master": {

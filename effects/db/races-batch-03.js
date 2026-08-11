@@ -10,16 +10,16 @@ registerEffects({
 
   "race|elf (zendikar)|fey ancestry": {
     name: "Fey Ancestry", sv: 1,
-    unsupported: [
-      { reason: "advantage on saves against being charmed (condition-specific, not ability-based); no per-condition save target", tags: ["condition", "save", "charmed"] },
-      { reason: "immunity to magical sleep effects", tags: ["magic", "sleep", "condition-immunity"] },
+    effects: [
+      { target: "save-vs-charmed", op: "tag", value: "charmed" },
+      { target: "immune-magical sleep", op: "tag", value: "magical sleep" },
     ],
   },
 
   "subrace|mul daya nation|sunlight sensitivity": {
     name: "Sunlight Sensitivity", sv: 1,
-    unsupported: [
-      { reason: "disadvantage on attack rolls and Perception checks in direct sunlight; requires terrain/lighting condition tracking", tags: ["condition", "terrain", "attack", "perception"] },
+    effects: [
+      { target: "situational-disadvantage", op: "tag", value: "on attack rolls and sight-based Perception checks in direct sunlight" },
     ],
   },
 
@@ -72,8 +72,9 @@ registerEffects({
 
   "subrace|githzerai|mental discipline": {
     name: "Mental Discipline", sv: 1,
-    unsupported: [
-      { reason: "advantage on saves against charmed/frightened conditions; no per-condition save target", tags: ["condition", "save", "charmed", "frightened"] },
+    effects: [
+      { target: "save-vs-charmed", op: "tag", value: "charmed" },
+      { target: "save-vs-frightened", op: "tag", value: "frightened" },
     ],
   },
 
@@ -100,22 +101,22 @@ registerEffects({
 
   "race|gnome|gnome cunning": {
     name: "Gnome Cunning", sv: 1,
-    unsupported: [
-      { reason: "advantage on INT/WIS/CHA saves against magic spells; requires magic-type condition tracking", tags: ["condition", "save", "magic", "conditional"] },
+    effects: [
+      { target: "save-vs-magic", op: "tag", value: "magic (INT, WIS and CHA saves)" },
     ],
   },
 
   "subrace|deep|stone camouflage": {
     name: "Stone Camouflage", sv: 1,
-    unsupported: [
-      { reason: "advantage on Stealth checks in rocky terrain only; requires terrain condition tracking", tags: ["skill", "condition", "terrain", "stealth"] },
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Stealth checks in rocky terrain" },
     ],
   },
 
   "subrace|deep/svirfneblin|stone camouflage": {
     name: "Stone Camouflage", sv: 1,
-    unsupported: [
-      { reason: "advantage on Stealth checks in rocky terrain only; requires terrain condition tracking", tags: ["skill", "condition", "terrain", "stealth"] },
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Stealth checks in rocky terrain" },
     ],
   },
 });

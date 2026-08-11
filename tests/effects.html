@@ -44,6 +44,7 @@
     <span id="ac">10</span><input type="text" id="ac-misc"><input type="number" id="ac-override">
     <input type="text" id="speed"><span id="speed-total" style="display:none"></span>
     <span id="init">+0</span><input type="text" id="init-misc">
+    <div id="defenses-row"></div>
   </section>
   <section class="module wide" data-module="inventory">
     <input id="coin-cp"><input id="coin-sp"><input id="coin-ep"><input id="coin-gp"><input id="coin-pp">
@@ -428,6 +429,122 @@ document.addEventListener("DOMContentLoaded", () => {
     $("init").textContent, "+5");
   assert("Aura of the Sentinel is credited in the initiative audit",
     $("init").title.includes("Aura of the Sentinel"));
+
+  // ----- the categories the engine gaps used to block: level bands, armour predicates, tag readouts -----
+  // End to end on purpose: real EFFECTS_DB entries reached through a CLASS_LIB/RACE_LIB fixture, so a
+  // band that quietly stops applying, or a predicate that stops noticing a shield, fails right here
+  // rather than in a hand-built `when` object that only this file believes in.
+  {
+    const savedClassLib = CLASS_LIB, savedRaceLib = RACE_LIB;
+    const savedItems = CHARACTER_ITEMS, savedItemLib = ITEM_LIB, savedSpeed = $("speed").value;
+
+    // --- Unarmored Movement: five level bands, plus the two predicates that switch it all off ---
+    CLASS_LIB = { Monk: { name: "Monk", source: "PHB", hd: "d8", caster: "none", subs: {},
+      feats: [{ name: "Unarmored Movement", level: 2, source: "PHB", text: "" }] } };
+    RACE_LIB = {}; $("char-race").value = "";
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    addClassRow({ name: "Monk", sub: "", lvl: 2 });
+    $("speed").value = "30";
+    CHARACTER_ITEMS = []; ITEM_LIB = [
+      { name: "T Leather", armor: true, armorCat: "light", ac: 11, weight: 10 },
+      { name: "T Shield", armor: true, armorCat: "shield", ac: 2, weight: 6 },
+    ];
+    renderClassLibrary();
+    const monkSpeedAt = lvl => {
+      document.querySelector("#class-rows .cls-lvl").value = String(lvl);
+      renderClassFeatures(); invalidateEffects(); recompute();
+      return speedTotal();
+    };
+    // Both ends of every band: the bonus must step exactly on 2/6/10/14/18 and nowhere else.
+    assertEqual("Unarmored Movement hasn't started at Monk 1", monkSpeedAt(1), 30);
+    assertEqual("...+10 from Monk 2", monkSpeedAt(2), 40);
+    assertEqual("...still +10 at Monk 5", monkSpeedAt(5), 40);
+    assertEqual("...+15 from Monk 6", monkSpeedAt(6), 45);
+    assertEqual("...still +15 at Monk 9", monkSpeedAt(9), 45);
+    assertEqual("...+20 from Monk 10", monkSpeedAt(10), 50);
+    assertEqual("...still +20 at Monk 13", monkSpeedAt(13), 50);
+    assertEqual("...+25 from Monk 14", monkSpeedAt(14), 55);
+    assertEqual("...still +25 at Monk 17", monkSpeedAt(17), 55);
+    assertEqual("...+30 from Monk 18", monkSpeedAt(18), 60);
+    assertEqual("...and 18 is the last band, not a step every four levels", monkSpeedAt(20), 60);
+    // Exactly one band may be live at a time — overlapping bands would stack into 130 ft.
+    assertEqual("the bands are exclusive: one contribution to speed, not five",
+      effectsSnapshot().contribs.speed.filter(c => c.source === "Unarmored Movement" && c.op === "add").length, 1);
+
+    monkSpeedAt(10);
+    CHARACTER_ITEMS = [{ name: "T Leather", qty: 1, eq: true }]; invalidateEffects(); recompute();
+    assertEqual("armour cancels Unarmored Movement (light counts — the feature says any armour)", speedTotal(), 30);
+    CHARACTER_ITEMS = [{ name: "T Shield", qty: 1, eq: true }]; invalidateEffects(); recompute();
+    assertEqual("...and so does a shield, which is not body armour and needs its own predicate", speedTotal(), 30);
+    CHARACTER_ITEMS = []; invalidateEffects(); recompute();
+    assertEqual("...both removed, the bonus comes back", speedTotal(), 50);
+
+    // --- level-banded damage dice, the other shape the band predicate had to serve ---
+    const bladesFeat = { effKey: "subclass|bard|college of whispers|psychic blades", fkey: "test|blades",
+                         origin: { kind: "subclass", className: "Bard", subclassName: "College of Whispers" } };
+    const bladesAt = lvl => {
+      document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+      addClassRow({ name: "Bard", sub: "College of Whispers", lvl });
+      return (EFFECTS_DB[bladesFeat.effKey].effects
+        .filter(e => e.op === "adddice" && whenSatisfied(e.when, bladesFeat))
+        .map(e => evalDiceTerm(bladesFeat, e.value)));
+    };
+    assertEqual("Psychic Blades at Bard 3", bladesAt(3).join("+"), "2d6");
+    assertEqual("...unchanged at 4", bladesAt(4).join("+"), "2d6");
+    assertEqual("...3d6 from 5", bladesAt(5).join("+"), "3d6");
+    assertEqual("...5d6 from 10", bladesAt(10).join("+"), "5d6");
+    assertEqual("...8d6 from 15", bladesAt(15).join("+"), "8d6");
+    assertEqual("...and no higher band above 15", bladesAt(20).join("+"), "8d6");
+    assertEqual("a band that hasn't opened yet contributes nothing at all", bladesAt(2).length, 0);
+
+    // --- tag targets: resistances, immunities and condition saves reaching the defences line ---
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    CLASS_LIB = {};
+    RACE_LIB = { Warforged: { name: "Warforged", source: "ERLW", ability: [], size: [], speed: 30, subs: {},
+      entries: [{ name: "Constructed Resilience", source: "ERLW", text: "" }] } };
+    $("char-race").value = "Warforged"; $("char-subrace").value = "";
+    renderClassLibrary(); invalidateEffects(); recompute();
+    const defences = () => $("defenses-row").textContent;
+    assert("a tagged resistance reaches the defences line", /resistant to\s*poison/.test(defences()));
+    assert("...as does an immunity", /immune to\s*disease/.test(defences()));
+    assert("...and a condition save, phrased as advantage rather than as a number",
+      /advantage on saves vs\s*poisoned/.test(defences()));
+    assert("a note on a tag target is carried for the audit, not dropped",
+      (effectsSnapshot().notes["resist-poison"] || []).some(n => /don't need to eat/.test(n)));
+
+    // Non-numeric speeds: "+10 ft, if you have one" can't be computed (a value expression can't read
+    // another target), so it must show as text rather than silently resolving to 0 ft.
+    CLASS_LIB = { Rogue: { name: "Rogue", source: "PHB", hd: "d8", caster: "none",
+      feats: [], subs: { Scout: { name: "Scout", shortName: "Scout", source: "XGE", grantedSpells: [],
+        feats: [{ name: "Superior Mobility", level: 9, source: "XGE", text: "" }] } } } };
+    RACE_LIB = {}; $("char-race").value = "";
+    addClassRow({ name: "Rogue", sub: "Scout", lvl: 9 });
+    renderClassLibrary(); invalidateEffects(); recompute();
+    assert("a described extra speed is listed as text", /climb\s*\+10 ft, if you have one/.test(defences()));
+    assertEqual("...and doesn't leak into the walking speed as a number", speedTotal(), 30);
+
+    // Situational advantage is listed, never applied — the trigger is terrain or lighting, which the
+    // sheet cannot see. This is the "degrade to manual, never guess" rule in its most visible form.
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    CLASS_LIB = {};
+    RACE_LIB = { Halfling: { name: "Halfling", source: "PHB", ability: [], size: [], speed: 25, entries: [],
+      subs: { Lightfoot: { name: "Lightfoot", source: "PHB", ability: [], entries: [
+        { name: "Naturally Stealthy", source: "PHB", text: "" }] } } } };
+    $("char-race").value = "Halfling"; $("char-subrace").value = "Lightfoot";
+    renderClassLibrary(); invalidateEffects(); recompute();
+    assert("a situational advantage is listed under Situational",
+      /Situational:.*obscured by a larger creature/.test($("defenses-row").innerHTML.replace(/<[^>]+>/g, "")));
+    assert("...credited to the feature that grants it",
+      $("defenses-row").innerHTML.includes("Naturally Stealthy"));
+    assertEqual("...and never touches the Stealth bonus itself", effFlat("skill-stealth"), 0);
+    assertEqual("...nor its roll mode, which stays whatever the user picks", effMode("skill-stealth"), null);
+
+    CLASS_LIB = savedClassLib; RACE_LIB = savedRaceLib;
+    CHARACTER_ITEMS = savedItems; ITEM_LIB = savedItemLib; $("speed").value = savedSpeed;
+    $("char-race").value = ""; $("char-subrace").value = "";
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    renderClassLibrary(); invalidateEffects(); recompute();
+  }
 
   // ----- Resting (src/rest.js) — Hit Dice pools + full Short/Long Rest automation, PHB'14 p186 -----
   document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
@@ -1010,6 +1127,22 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("...and does not leak the second one's scores", $("score-str").value !== "17");
     switchCharacter(secondId);
     assertEqual("switching forward again restores the second", $("char-name").value, "Bruenor");
+
+    // A state that simply lacks a field — an older export, or anything hand-built — must blank it
+    // rather than leave the previous character's value standing. Everything else applyState touches
+    // resets to a default when absent; fields were written in place, so they didn't.
+    const sheetBefore = collectState();
+    $("char-race").value = "Half-Elf"; $("char-subrace").value = "High";
+    applyState({ v: 1, fields: { "char-name": "Fieldless" }, classes: [], spells: [], items: [], attacks: [] });
+    assertEqual("a state missing a field blanks it instead of inheriting it", $("char-race").value, "");
+    assertEqual("...for every persisted field, not just the first", $("char-subrace").value, "");
+    assertEqual("...while the fields it does carry are applied", $("char-name").value, "Fieldless");
+    assertEqual("...and a <select> falls back to its own default, not to blank",
+      $("char-size").value, "M");
+    // That state had no classes, so Max HP is 0 — restore the sheet for everything that follows.
+    // Not switchCharacter(): it saves the current sheet over the target first, which would write the
+    // blanked state into Bruenor rather than reload him.
+    applyState(sheetBefore); recompute();
 
     assert("the tab bar draws one tab per character plus the add button",
       document.querySelectorAll("#char-tabs .char-tab").length === 2 && !!$("char-tab-add"));

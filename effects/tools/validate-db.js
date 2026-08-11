@@ -25,8 +25,17 @@ const SKILL_SLUGS = new Set([
   "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival",
 ]);
 const ABILITIES = new Set(["str", "dex", "con", "int", "wis", "cha"]);
-const FIXED_TARGETS = new Set(["init", "hpmax", "profbonus", "spelldc", "spellatk", "passive-perception", "spell-grant", "ac", "speed"]);
-const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise", "adv", "dis", "note", "grant-free", "grant-list", "grant-innate"]);
+const FIXED_TARGETS = new Set(["init", "hpmax", "profbonus", "spelldc", "spellatk", "passive-perception", "spell-grant", "ac", "speed",
+  // "every check you're proficient in" — the Reliable Talent shape, read by checkDice()/runRoll().
+  "check-proficient",
+  // Listed rather than applied: the trigger is terrain, lighting, or another creature's behaviour.
+  "situational-advantage", "situational-disadvantage"]);
+const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise", "adv", "dis", "note",
+  "diefloor", "critrange", "useability", "tag", "grant-free", "grant-list", "grant-innate"]);
+// Free-text suffix targets: everything after the prefix is a name the readout prints verbatim
+// ("resist-poison", "resist-all damage except psychic", "save-vs-charmed", "speed-fly"), so there's
+// no closed vocabulary to check against — only that the suffix isn't empty.
+const TAG_PREFIXES = ["resist-", "immune-", "vuln-", "save-vs-", "speed-"];
 const ACTIVATION_KINDS = new Set(["always", "toggle", "choice"]);
 const CHOICE_KINDS = new Set(["pick", "ability", "spellfilter"]);
 const SPELL_GRANT_OPS = ["grant-free", "grant-list", "grant-innate"];
@@ -35,7 +44,9 @@ const EFFECT_FIELDS = new Set(["target", "op", "value", "text", "activation", "w
 const USES_FIELDS = new Set(["max", "per", "delayed"]);
 // whenSatisfied() in src/effects.js returns false for any predicate it doesn't recognize, so an
 // effect carrying a typo'd/invented key is silently inert forever — catch it here instead.
-const WHEN_PREDICATES = new Set(["minLevel", "hasClass", "casting"]);
+const WHEN_PREDICATES = new Set(["minLevel", "maxLevel", "minClassLevel", "maxClassLevel", "hasClass", "casting",
+  "armor", "notArmor", "shield"]);
+const ARMOR_CATEGORIES = new Set(["none", "light", "medium", "heavy"]);
 // evalValue() dispatches on the FIRST matching key and ignores every other field on the node, so
 // `{ mod: "con", min: 1 }` quietly evaluates to a bare CON modifier — the "minimum 1" vanishes.
 // Each node shape therefore declares exactly which sibling keys are legal.
@@ -47,6 +58,9 @@ const VALUE_NODE_FIELDS = [
   ["sum", new Set(["sum"])],
   ["mul", new Set(["mul"])],
   ["floor", new Set(["floor"])],
+  ["ceil", new Set(["ceil"])],
+  ["round", new Set(["round"])],
+  ["div", new Set(["div"])],
   ["max", new Set(["max"])],
   ["min", new Set(["min"])],
 ];
@@ -61,6 +75,8 @@ function isKnownTarget(t) {
   // attack-/damage- name is still reserved — valid to write, but it lands in `unapplied` until
   // something reads it. Both cases are accepted here; see isReservedTarget() in src/effects.js.
   if (/^attack-|^damage-/.test(t)) return true;
+  const tagPrefix = TAG_PREFIXES.find(p => t.startsWith(p));
+  if (tagPrefix) return t.length > tagPrefix.length;
   if (t.startsWith("save-")) return ABILITIES.has(t.slice(5));
   if (t.startsWith("skill-")) return SKILL_SLUGS.has(t.slice(6));
   if (t.startsWith("score-")) return ABILITIES.has(t.slice(6));
@@ -78,6 +94,10 @@ function isValidValueExpr(v, choiceIds) {
   if ("sum" in v) return Array.isArray(v.sum) && v.sum.every(x => isValidValueExpr(x, choiceIds));
   if ("mul" in v) return Array.isArray(v.mul) && v.mul.every(x => isValidValueExpr(x, choiceIds));
   if ("floor" in v) return isValidValueExpr(v.floor, choiceIds);
+  if ("ceil" in v) return isValidValueExpr(v.ceil, choiceIds);
+  if ("round" in v) return isValidValueExpr(v.round, choiceIds);
+  // evalValue destructures div as [a, b] — anything else yields b === undefined and a silent 0.
+  if ("div" in v) return Array.isArray(v.div) && v.div.length === 2 && v.div.every(x => isValidValueExpr(x, choiceIds));
   if ("max" in v) return Array.isArray(v.max) && v.max.every(x => isValidValueExpr(x, choiceIds));
   if ("min" in v) return Array.isArray(v.min) && v.min.every(x => isValidValueExpr(x, choiceIds));
   return false;
@@ -95,8 +115,8 @@ function checkValueFields(where, v, errors) {
       errors.push(`${where} value expression {${node[0]}: …} has field(s) ${stray.map(s => `"${s}"`).join(", ")} that evalValue() ignores — ${JSON.stringify(v)}`);
     }
   }
-  ["sum", "mul", "max", "min"].forEach(k => { if (Array.isArray(v[k])) v[k].forEach(x => checkValueFields(where, x, errors)); });
-  if (v.floor != null) checkValueFields(where, v.floor, errors);
+  ["sum", "mul", "div", "max", "min"].forEach(k => { if (Array.isArray(v[k])) v[k].forEach(x => checkValueFields(where, x, errors)); });
+  ["floor", "ceil", "round"].forEach(k => { if (v[k] != null) checkValueFields(where, v[k], errors); });
 }
 
 function validateEntry(key, entry, errors) {
@@ -127,13 +147,51 @@ function validateEntry(key, entry, errors) {
     if (eff.when) {
       unknownFields(eff.when, WHEN_PREDICATES).forEach(p =>
         errors.push(`${w} unrecognized "when" predicate "${p}" — whenSatisfied() will never let this effect apply`));
+      // A predicate whose *payload* is the wrong shape is the same silent-inert failure as a
+      // misspelt key: whenSatisfied() compares against undefined and the effect never fires.
+      ["minClassLevel", "maxClassLevel"].forEach(k => {
+        const v = eff.when[k];
+        if (v == null) return;
+        if (typeof v !== "object" || !Number.isInteger(v.level)) {
+          errors.push(`${w} "when.${k}" needs { class, level } with an integer level — got ${JSON.stringify(v)}`);
+        }
+      });
+      ["armor", "notArmor"].forEach(k => {
+        if (eff.when[k] == null) return;
+        const bad = [].concat(eff.when[k]).filter(c => !ARMOR_CATEGORIES.has(c));
+        if (bad.length) errors.push(`${w} "when.${k}" lists unknown armour categor(ies) ${bad.map(b => `"${b}"`).join(", ")} — armorWorn() only ever returns ${[...ARMOR_CATEGORIES].join("/")}`);
+      });
+      if (eff.when.shield != null && typeof eff.when.shield !== "boolean") {
+        errors.push(`${w} "when.shield" must be true or false — it is compared against shieldWorn()`);
+      }
     }
     if (["add", "min", "max", "set"].includes(eff.op) && !isValidValueExpr(eff.value, choiceIds)) {
       errors.push(`${w} op "${eff.op}" has invalid/missing "value" expression`);
     }
     checkValueFields(w, eff.value, errors);
-    if (eff.op === "adddice" && typeof eff.value !== "string") errors.push(`${w} op "adddice" needs a string dice "value"`);
+    // adddice takes a literal ("2d6") or a computed { count: <value expr>, die: "d6" }.
+    if (eff.op === "adddice") {
+      const v = eff.value;
+      if (typeof v === "string") {
+        if (!/^\d+d\d+$/i.test(v.trim())) errors.push(`${w} op "adddice" literal "${v}" is not dice notation like "2d6"`);
+      } else if (v && typeof v === "object") {
+        if (!/^d\d+$/i.test(String(v.die || ""))) errors.push(`${w} op "adddice" computed term needs a "die" like "d6" — got ${JSON.stringify(v.die)}`);
+        if (v.count != null && !isValidValueExpr(v.count, choiceIds)) errors.push(`${w} op "adddice" has an invalid "count" value expression`);
+        checkValueFields(w, v.count, errors);
+      } else {
+        errors.push(`${w} op "adddice" needs a dice string or { count, die }`);
+      }
+    }
     if (eff.op === "note" && typeof eff.text !== "string") errors.push(`${w} op "note" needs a string "text"`);
+    // `tag` records a standing fact; the value is the label the readout prints, so it must be text.
+    if (eff.op === "tag" && !(typeof eff.value === "string" && eff.value.trim())) {
+      errors.push(`${w} op "tag" needs a non-empty string "value" — it is what the defences line prints`);
+    }
+    if (eff.op === "diefloor" && !Number.isInteger(eff.value)) errors.push(`${w} op "diefloor" needs an integer "value" (the lowest die result you may treat as rolled)`);
+    if (eff.op === "critrange" && !(Number.isInteger(eff.value) && eff.value >= 2 && eff.value <= 20)) {
+      errors.push(`${w} op "critrange" needs an integer 2–20 "value" (the lowest d20 that crits)`);
+    }
+    if (eff.op === "useability" && !ABILITIES.has(eff.value)) errors.push(`${w} op "useability" needs an ability key, got "${eff.value}"`);
     if (SPELL_GRANT_OPS.includes(eff.op) && !(eff.value && typeof eff.value.name === "string" && eff.value.name.trim())) {
       errors.push(`${w} op "${eff.op}" needs a "value.name" string (the spell's name, or a "{choice:id}" template)`);
     }

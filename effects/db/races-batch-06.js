@@ -28,7 +28,9 @@ registerEffects({
   "race|kor|brave": {
     name: "Brave",
     sv: 1,
-    unsupported: [{ reason: "advantage on saving throws against a specific condition (frightened), not modeled per-condition", tags: ["advantage", "condition"] }],
+    effects: [
+      { target: "save-vs-frightened", op: "tag", value: "frightened" },
+    ],
   },
   "race|kor|lucky": {
     name: "Lucky",
@@ -45,12 +47,16 @@ registerEffects({
   "race|kuo-toa|slippery": {
     name: "Slippery",
     sv: 1,
-    unsupported: [{ reason: "advantage on ability checks and saves to escape a grapple; not a single ability target", tags: ["advantage", "grapple"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on checks and saves to escape a grapple" },
+    ],
   },
   "race|kuo-toa|sunlight sensitivity": {
     name: "Sunlight Sensitivity",
     sv: 1,
-    unsupported: [{ reason: "disadvantage on attack rolls and Perception checks in sunlight; condition-specific", tags: ["disadvantage", "condition"] }],
+    effects: [
+      { target: "situational-disadvantage", op: "tag", value: "on attack rolls and sight-based Perception checks in direct sunlight" },
+    ],
   },
 
   // ----- LEONIN -----
@@ -105,19 +111,31 @@ registerEffects({
   "race|locathah|leviathan will": {
     name: "Leviathan Will",
     sv: 1,
-    unsupported: [{ reason: "advantage on saves vs charmed/frightened/paralyzed/poisoned/stunned/sleep; multiple condition-specific advantages", tags: ["advantage", "condition"] }],
+    effects: [
+      { target: "save-vs-charmed", op: "tag", value: "charmed" },
+      { target: "save-vs-frightened", op: "tag", value: "frightened" },
+      { target: "save-vs-paralyzed", op: "tag", value: "paralyzed" },
+      { target: "save-vs-poisoned", op: "tag", value: "poisoned" },
+      { target: "save-vs-stunned", op: "tag", value: "stunned" },
+      { target: "immune-magical sleep", op: "tag", value: "magical sleep" },
+    ],
   },
 
   // ----- LOXODON -----
   "race|loxodon|keen smell": {
     name: "Keen Smell",
     sv: 1,
-    unsupported: [{ reason: "advantage on Perception/Survival/Investigation checks involving smell; sense-specific advantage not modeled", tags: ["advantage", "sense"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Perception, Survival and Investigation checks that rely on smell" },
+    ],
   },
   "race|loxodon|loxodon serenity": {
     name: "Loxodon Serenity",
     sv: 1,
-    unsupported: [{ reason: "advantage on saving throws against being charmed or frightened; condition-specific advantage", tags: ["advantage", "condition"] }],
+    effects: [
+      { target: "save-vs-charmed", op: "tag", value: "charmed" },
+      { target: "save-vs-frightened", op: "tag", value: "frightened" },
+    ],
   },
 
   // ----- MERFOLK (IXALAN: BLUE) -----
@@ -204,7 +222,10 @@ registerEffects({
   "race|minotaur|labyrinthine recall": {
     name: "Labyrinthine Recall",
     sv: 1,
-    unsupported: [{ reason: "always know north direction; advantage on Survival checks to navigate/track (sense-specific advantage)", tags: ["navigation", "advantage"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Survival checks to navigate or track" },
+      { target: "situational-advantage", op: "note", text: "you always know which way is north" },
+    ],
   },
 
   // ----- MINOTAUR (AMONKHET) -----

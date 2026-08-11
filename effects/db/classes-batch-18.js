@@ -29,7 +29,10 @@ registerEffects({
 
   "subclass|wizard|school of abjuration|spell resistance": {
     name: "Spell Resistance", sv: 1,
-    unsupported: [{ reason: "advantage on saves against spells plus resistance to spell damage; neither a spell-source save predicate nor resistances are modeled", tags: ["advantage", "resistance"] }],
+    effects: [
+      { target: "resist-damage from spells", op: "tag", value: "spells" },
+      { target: "save-vs-magic", op: "tag", value: "spells" },
+    ],
   },
 
   // ===== School of Evocation =====
@@ -46,7 +49,10 @@ registerEffects({
   // ===== School of Necromancy =====
   "subclass|wizard|school of necromancy|inured to undeath": {
     name: "Inured to Undeath", sv: 1,
-    unsupported: [{ reason: "resistance to necrotic damage and immunity to max-HP reduction; no resistances model", tags: ["resistance", "hp"] }],
+    effects: [
+      { target: "resist-necrotic", op: "tag", value: "necrotic" },
+      { target: "resist-necrotic", op: "note", text: "and immunity to having your hit point maximum reduced" },
+    ],
   },
 
   // ===== School of Transmutation =====

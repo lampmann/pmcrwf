@@ -27,11 +27,15 @@ registerEffects({
   },
   "race|plasmoid|amorphous": {
     name: "Amorphous", sv: 1,
-    unsupported: [{ reason: "grapple check advantage; no per-action-type advantage target", tags: ["advantage"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on checks and saves to escape a grapple" },
+    ],
   },
   "race|plasmoid|natural resilience": {
     name: "Natural Resilience", sv: 1,
-    unsupported: [{ reason: "condition-specific save advantage (poisoned); no per-condition save target", tags: ["advantage", "condition"] }],
+    effects: [
+      { target: "save-vs-poisoned", op: "tag", value: "poisoned" },
+    ],
   },
   "race|reborn|ancestral legacy": {
     name: "Ancestral Legacy", sv: 1,
@@ -50,7 +54,9 @@ registerEffects({
   },
   "race|satyr|magic resistance": {
     name: "Magic Resistance", sv: 1,
-    unsupported: [{ reason: "spell-context save advantage; no per-spell-type advantage target", tags: ["advantage", "spell"] }],
+    effects: [
+      { target: "save-vs-magic", op: "tag", value: "spells and other magical effects" },
+    ],
   },
   "race|satyr|ram": {
     name: "Ram", sv: 1,
@@ -65,7 +71,10 @@ registerEffects({
   },
   "race|sea elf|fey ancestry": {
     name: "Fey Ancestry", sv: 1,
-    unsupported: [{ reason: "condition-specific save advantage (charmed); no per-condition save target", tags: ["advantage", "condition"] }],
+    effects: [
+      { target: "save-vs-charmed", op: "tag", value: "charmed" },
+      { target: "immune-magical sleep", op: "tag", value: "magical sleep" },
+    ],
   },
   "race|sea elf|keen senses": {
     name: "Keen Senses", sv: 1,
@@ -77,7 +86,10 @@ registerEffects({
   },
   "race|shadar-kai|fey ancestry": {
     name: "Fey Ancestry", sv: 1,
-    unsupported: [{ reason: "condition-specific save advantage (charmed); no per-condition save target", tags: ["advantage", "condition"] }],
+    effects: [
+      { target: "save-vs-charmed", op: "tag", value: "charmed" },
+      { target: "immune-magical sleep", op: "tag", value: "magical sleep" },
+    ],
   },
   "race|shadar-kai|keen senses": {
     name: "Keen Senses", sv: 1,
@@ -115,7 +127,10 @@ registerEffects({
   },
   "subrace|swiftstride|shifting feature": {
     name: "Shifting Feature", sv: 1,
-    unsupported: [{ reason: "state-dependent speed increase + reaction movement while shifted; no state/speed model", tags: ["state", "speed"] }],
+    effects: [
+      { target: "speed", op: "add", value: 10, activation: { kind: "toggle", id: "swiftstride", label: "Shifted", default: false } },
+      { target: "speed", op: "note", text: "while shifted; a reaction also moves you 10 ft when a creature ends its turn within 5 ft" },
+    ],
   },
   "subrace|wildhunt|natural tracker": {
     name: "Natural Tracker", sv: 1,
@@ -131,7 +146,10 @@ registerEffects({
   },
   "race|tabaxi|cat's claws": {
     name: "Cat's Claws", sv: 1,
-    unsupported: [{ reason: "custom unarmed strike damage (1d4 + STR slashing) + climbing speed; an effect can't create an attack row, and speed isn't a target", tags: ["attack", "speed"] }],
+    effects: [
+      { target: "speed-climb", op: "tag", value: "equal to your walking speed" },
+      { target: "speed-climb", op: "note", text: "your claws are an unarmed strike dealing 1d4 + STR slashing" },
+    ],
   },
   "race|tabaxi|cat's talents": {
     name: "Cat's Talents", sv: 1,

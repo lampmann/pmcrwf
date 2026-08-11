@@ -77,13 +77,35 @@ don't create an empty entry just to have one.
 - `"score-<ability>"` — a raw ability score (str/dex/con/int/wis/cha)
 - `"speed"` — walking speed, in feet. Adds on top of whatever the user typed
   into the Speed box — see `speedTotal()` in src/derived.js (same
-  base-input + effects-total pattern as an ability score). Fine for a flat,
-  *unconditional* bonus (Powered Steps' +5 ft, Mobile's +10 ft). **Not
-  suited to** a conditional bonus (Fast Movement's "+10 ft while not
-  wearing heavy armor", anything gated on being mounted/raging/dashing) —
-  there's no armor-equipped/state predicate yet, so those stay
-  `unsupported`; likewise anything granting a *different* speed type
-  (flying/climbing/swimming) rather than adding to walking speed.
+  base-input + effects-total pattern as an ability score). Conditional
+  bonuses are fine too now: Fast Movement's "+10 ft while not wearing heavy
+  armor" is `when: { notArmor: ["heavy"] }`, and Unarmored Movement's level
+  table is one banded effect per step (see "Level gating"). Anything gated
+  on being mounted, raging or dashing still has no predicate and stays
+  `unsupported`.
+- `"speed-fly"` / `"speed-swim"` / `"speed-climb"` / `"speed-burrow"` — a
+  *separate* movement speed rather than an addition to walking speed. Use
+  `add` with a number where the rules give one ("a flying speed of 30
+  feet"), and `tag` with the rules' own words where they don't ("equal to
+  your walking speed", "+10 ft, if you have one") — a value expression
+  deliberately can't read another target, so those cannot be computed and
+  must not be guessed at. Both forms show on the defences line.
+- `"resist-<type>"` / `"immune-<type>"` / `"vuln-<type>"` — damage
+  resistance/immunity/vulnerability, always with op `tag`. The suffix is
+  free text and is what gets printed, so keep it the type as the book names
+  it (`resist-poison`, `resist-all damage except psychic`).
+- `"save-vs-<condition>"` — advantage on saves against a condition
+  (Fey Ancestry, Brave, Gnome Cunning), op `tag`. Note this is *not*
+  `save-<ability>`, which is the numeric bonus target.
+- `"situational-advantage"` / `"situational-disadvantage"` — advantage or
+  disadvantage whose trigger is terrain, lighting, or what another creature
+  is doing, op `tag`, with the value phrased as a clause that reads after
+  the word: `"on Stealth checks in rocky terrain"`. **These are listed, not
+  applied** — the sheet can't see the trigger, so applying them would be
+  wrong more often than right. Use this rather than `adv` on a skill for
+  anything conditional, and rather than `unsupported`, which would hide it.
+- `"check-proficient"` — every check you're proficient in, which is the
+  Reliable Talent / Silver Tongue shape. Pair with op `diefloor`.
 - `"attack-hit"` / `"damage-bonus"` — a flat/dice bonus on a weapon
   attack's to-hit roll and damage roll. **Live**: the Attacks module folds
   these into every attack row (rows can opt out individually). `adv`/`dis`
@@ -106,7 +128,12 @@ ac/init/speed/save-*/skill-*). If a feat needs one of those, use
 ## Ops
 
 - `add` — add a flat number (`value` required, see Value expressions)
-- `adddice` — append dice notation, e.g. `value: "1d4"` (string)
+- `adddice` — append dice, either a literal (`value: "1d4"`) or a computed
+  term `value: { count: <value expr>, die: "d6" }`. The computed form is
+  how a die count that scales gets written once instead of as a band per
+  level: Sneak Attack is `{ count: { ceil: { div: [{ level: "class",
+  class: "@self" }, 2] } }, die: "d6" }`. A count of zero contributes no
+  term at all rather than a bogus `0d6`.
 - `min` / `max` — clamp: raises/lowers the target to at least/at most `value`
 - `set` — force the target to exactly `value`
 - `grant-free` / `grant-list` — see "Spell grants" below (only valid on
@@ -115,6 +142,16 @@ ac/init/speed/save-*/skill-*). If a feat needs one of those, use
 - `expertise` — grant expertise (double proficiency)
 - `adv` / `dis` — force advantage/disadvantage on that target's rolls
 - `note` — attach a short reminder string (`text`, not mechanically applied)
+- `diefloor` — treat a die result below `value` as `value` ("treat a d20 of
+  9 or lower as a 10"). Routed through the roller's own `mi` operator, so
+  the floor shows in the rolled dice rather than quietly adjusting a total.
+- `critrange` — the lowest d20 that counts as a critical hit (`value: 19`).
+  The lowest declared value wins when several apply.
+- `useability` — *replace* the ability a roll uses (`value: "int"`), rather
+  than adding to it. This is Battle Ready / Hexblade's shape.
+- `tag` — record a standing fact rather than a number. `value` is the
+  string the defences line prints. See the tag targets above; `tag` is only
+  meaningful on those.
 
 ## Value expressions (for `add`/`min`/`max`/`set`)
 
@@ -125,9 +162,12 @@ ac/init/speed/save-*/skill-*). If a feat needs one of those, use
 - `{ level: "class", class: "@self" }` — levels in the class/subclass
   that granted this feature (or `class: "Wizard"` for a specific class)
 - `{ choice: "someId" }` — a numeric choice value
-- `{ sum: [a, b, ...] }`, `{ mul: [a, b, ...] }`, `{ floor: a }`,
-  `{ max: [a, b] }`, `{ min: [a, b] }` — composition, each element itself
-  a value expression. Example: Tough's `{ mul: [2, { level: "total" }] }`.
+- `{ sum: [a, b, ...] }`, `{ mul: [a, b, ...] }`, `{ div: [a, b] }`,
+  `{ floor: a }`, `{ ceil: a }`, `{ round: a }`, `{ max: [a, b] }`,
+  `{ min: [a, b] }` — composition, each element itself a value expression.
+  Example: Tough's `{ mul: [2, { level: "total" }] }`. `div` takes exactly
+  two elements; division is not integer division, so wrap it in `floor`,
+  `ceil` or `round` to say which way a half rounds.
 
 There is deliberately **no** way to read another computed stat (no
 "current initiative", no "current AC") — only ability scores, proficiency
@@ -144,22 +184,40 @@ bonus, level, and choices.
 
 ## Level gating (optional `when` on an effect, alongside `activation`)
 
-`{ when: { minLevel: N } }` only applies the effect once the character's
-**total character level** (not class level — this is a known approximation;
-see below) is at least N. Use this for a feature whose numeric effect
-itself scales up at a later level within the *same* named feature (see
-"Recurring/leveled features" below) — never invent a conditional inside a
-value expression, `when` is the only conditional the engine has.
+`when` is the only conditional the engine has — never invent one inside a
+value expression. Every predicate on it must hold for the effect to apply,
+and **an unrecognized predicate leaves the effect inactive** rather than
+applying it, so a typo fails safe (and `validate-db.js` catches it).
 
-Because `minLevel` reads *total* level (multiclassing-aware, matches
-`totalLevel()`), not "levels in this class," a effect gated this way is
-approximate for multiclass characters (e.g. a Cleric 6 / Fighter 4 has
-total level 10, so a `minLevel: 6` Cleric effect and a `minLevel: 8`
-Fighter effect both read the same combined number). This is the existing
-engine's limitation, not something to work around — just be aware a
-`when`-gated entry is slightly optimistic for heavily multiclassed
-characters, same tradeoff the rest of the sheet already makes (see
-`profBonus()`, spell slots, etc., all keyed off total level too).
+- `{ minLevel: N }` / `{ maxLevel: N }` — total character level, matching
+  `totalLevel()`. Right for anything keyed off character level (a feat's
+  scaling, a racial trait), wrong for a class feature on a multiclass
+  character.
+- `{ minClassLevel: { class: "@self", level: N } }` and its `maxClassLevel`
+  twin — levels in one class, `"@self"` meaning the class this feature came
+  from, which is what a class/subclass feature almost always wants. Prefer
+  these over `minLevel` for anything a class grants: a Cleric 6 / Fighter 4
+  reads total level 10, so `minLevel` would fire a Cleric 8 feature early.
+- `{ hasClass: "Wizard" }`, `{ casting: true }` — has levels in that class;
+  is a spellcaster at all.
+- `{ armor: ["none", "light"] }` — an allow-list of body-armour categories
+  you may be wearing; `{ notArmor: ["heavy"] }` is the deny-list form the
+  rules usually phrase themselves in. Categories are `none`/`light`/
+  `medium`/`heavy`, read from what's actually equipped through the same
+  lookup the AC formula uses, so a predicate and the AC it implies can't
+  disagree.
+- `{ shield: false }` — whether a shield is equipped. A shield is
+  deliberately **not** body armour, so "no armour" and "no shield" are two
+  separate predicates and a feature that means both must say both
+  (Unarmored Movement does).
+
+**Level bands.** A feature whose number steps at set levels is written as
+one effect per band, each carrying both ends — `minClassLevel` *and*
+`maxClassLevel` — except the last, which is open-ended. The bands must not
+overlap, or every one of them applies at once and the bonuses stack
+(`tests/effects.html` pins this for Unarmored Movement). Where the scaling
+is arithmetic rather than a table, prefer a computed `adddice` count over a
+stack of bands.
 
 ## Choices (top-level `choices` array on the entry)
 
@@ -179,7 +237,8 @@ expands a `{choice:id}` target into one application per filled slot. So
 Separate ids are still correct when the picks are *mechanically distinct* —
 most often when a later batch of picks is level-gated, e.g. Rogue Expertise
 grants two at 1st level and two more at 6th, so it uses one choice for the
-first pair and a second choice gated `when: { minLevel: 6 }` for the rest.
+first pair and a second choice gated
+`when: { minClassLevel: { class: "@self", level: 6 } }` for the rest.
 
 ## Limited uses (top-level `uses` object on the entry)
 
@@ -328,12 +387,11 @@ at a second level). Your input batch pre-merges every level's text for the
 same feature name under one record, in level order — write **one** DB
 entry per key, not one per level-record. For a feature whose *mechanic
 itself* grows at a later level (more uses, more skill picks, a bigger
-die), use `choices`/`effects` gated with `when: { minLevel: N }` (see
+die), use `choices`/`effects` gated with `when` (see
 "Level gating" above) for the later-level increment — e.g. Expertise:
 a `pick` choice for the level-1-or-3 picks (always active) plus a second
-`pick` choice for the later-level picks, gated `when: { minLevel: N }`
-using the *class's* stated level (accepting the total-level approximation
-documented above).
+`pick` choice for the later-level picks, gated
+`when: { minClassLevel: { class: "@self", level: N } }`.
 
 **Skip pure placeholder stubs.** Some records exist only to mark "you gain
 a subclass feature at this level" with no mechanical content of their own
@@ -389,11 +447,16 @@ advantage, etc.).
     untick that row's Fx box.
   - **`adddice` accumulates**, so a feature that grows from 1d8 to 2d8 at
     14th writes the *increment* — `"1d8"` plus a second `"1d8"` gated
-    `when: { minLevel: 14 }`, never `"2d8"`.
+    `when: { minClassLevel: { class: "@self", level: 14 } }`, never
+    `"2d8"`. A *replacement* table (2d6 → 3d6 → 5d6 → 8d6, where the
+    later number is the whole die count rather than an increment) is the
+    other shape: write it as non-overlapping bands, each with both
+    `minClassLevel` and `maxClassLevel`.
 
-  Anything needing an actual extra attack action, a crit-only die, a
-  widened crit range, a weapon proficiency, or an ability *swap* rather
-  than a bonus (Battle Smith's Battle Ready) is still `unsupported`.
+  A crit-only die, a widened crit range and an ability *swap* all have ops
+  now (`damage-crit`, `critrange`, `useability`). Anything needing an
+  actual extra attack action, a weapon proficiency, or per-weapon context
+  ("heavy weapons only") is still `unsupported`.
 - Anything requiring tracking a resource this sheet has no model for
   (extra reactions, uses tied to a homebrew resource pool not covered by
   the Features panel's pip-counting, rerolls, "once per turn" riders on
@@ -434,8 +497,11 @@ correct and mean something else:
   rest, so this is a bare CON modifier and the floor is lost. Write
   `{ max: [{ mod: "con" }, 1] }`.
 - A `when` predicate the engine doesn't know (`{ wearingArmor: true }`)
-  makes the effect inert forever rather than unconditional — only
-  `minLevel`, `hasClass`, and `casting` exist.
+  makes the effect inert forever rather than unconditional — only the keys
+  listed under "Level gating" exist. `validate-db.js` checks both the key
+  and its payload shape, so run it rather than trusting the read.
+- Overlapping level bands all apply at once and their bonuses stack. A band
+  that isn't the last one needs `maxClassLevel` as well as `minClassLevel`.
 
 Finally, open `tests/effects.html` through the local server and confirm it
 still reports `N passed, 0 failed`.

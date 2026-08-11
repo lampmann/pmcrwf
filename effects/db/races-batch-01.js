@@ -111,7 +111,9 @@ registerEffects({
 
   "race|bullywug|swamp camouflage": {
     name: "Swamp Camouflage", sv: 1,
-    unsupported: [{ reason: "advantage on Stealth checks in specific terrain (swamp); condition-specific advantage, not modeled per-terrain", tags: ["advantage", "conditional"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Stealth checks in swampy terrain" },
+    ],
   },
 
   "race|centaur|charge": {
@@ -131,12 +133,17 @@ registerEffects({
 
   "race|deep gnome|gnomish magic resistance": {
     name: "Gnomish Magic Resistance", sv: 1,
-    unsupported: [{ reason: "advantage on INT/WIS/CHA saves against spells; condition-specific (spell) advantage, not modeled per-condition", tags: ["advantage", "condition", "save"] }],
+    effects: [
+      { target: "save-vs-magic", op: "tag", value: "spells (INT, WIS and CHA saves)" },
+    ],
   },
 
   "race|dhampir|spider climb": {
     name: "Spider Climb", sv: 1,
-    unsupported: [{ reason: "climbing speed with level-gated vertical-surface traversal (3rd level); speed mechanics not modeled", tags: ["speed", "level-scaling"] }],
+    effects: [
+      { target: "speed-climb", op: "tag", value: "equal to your walking speed" },
+      { target: "speed-climb", op: "note", text: "from 3rd level you can also move up vertical surfaces and across ceilings, hands free" },
+    ],
   },
 
   "race|dragonborn|breath weapon": {
@@ -146,7 +153,9 @@ registerEffects({
 
   "subrace|draconblood|forceful presence": {
     name: "Forceful Presence", sv: 1,
-    unsupported: [{ reason: "advantage on Intimidation or Persuasion checks (uses, recharges on SR); conditional advantage on specific checks (not per-skill/per-ability), unsupported", tags: ["advantage", "conditional"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on one Intimidation or Persuasion check, once per short rest" },
+    ],
   },
 
   "subrace|ravenite|vengeful assault": {

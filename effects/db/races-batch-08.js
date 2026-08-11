@@ -71,7 +71,11 @@ registerEffects({
   // ----- Vampire Ixalan -----
   "subrace|ixalan|feast of blood": {
     name: "Feast of Blood", sv: 1,
-    unsupported: [{ reason: "speed +10 ft and advantage on STR/DEX checks and saves for 1 minute (conditional, post-bloodthirst); speed not modeled", tags: ["speed", "conditional-advantage"] }],
+    effects: [
+      { target: "speed", op: "add", value: 10, activation: { kind: "toggle", id: "feast-of-blood", label: "Feast of Blood", default: false } },
+      { target: "situational-advantage", op: "tag", value: "on Strength and Dexterity checks and saves, while feasting" },
+      { target: "speed", op: "note", text: "for 1 minute after drinking a creature's blood" },
+    ],
   },
 
   // ----- Vampire Zendikar -----
@@ -88,7 +92,9 @@ registerEffects({
 
   "race|vedalken|vedalken cunning": {
     name: "Vedalken Cunning", sv: 1,
-    unsupported: [{ reason: "advantage on INT/WIS/CHA saving throws against magic; condition-based advantage (against spells), not per-ability", tags: ["condition-based-advantage"] }],
+    effects: [
+      { target: "save-vs-magic", op: "tag", value: "magic (INT, WIS and CHA saves)" },
+    ],
   },
 
   // ----- Verdan -----
@@ -120,7 +126,12 @@ registerEffects({
   // ----- Warforged -----
   "race|warforged|constructed resilience": {
     name: "Constructed Resilience", sv: 1,
-    unsupported: [{ reason: "advantage on poison saves; poison resistance; immunity to disease/sleep effects; no sleep requirement; complex mix of immunities and resistances not modeled", tags: ["condition-advantage", "resistance", "immunity"] }],
+    effects: [
+      { target: "save-vs-poisoned", op: "tag", value: "poisoned" },
+      { target: "resist-poison", op: "tag", value: "poison" },
+      { target: "immune-disease", op: "tag", value: "disease" },
+      { target: "resist-poison", op: "note", text: "you don't need to eat, drink or breathe, and you rest without sleeping" },
+    ],
   },
 
   "race|warforged|integrated protection": {
@@ -142,12 +153,17 @@ registerEffects({
   // ----- Yuan-Ti -----
   "race|yuan-ti|magic resistance": {
     name: "Magic Resistance", sv: 1,
-    unsupported: [{ reason: "advantage on saving throws against spells; condition-based advantage (against magic), not modeled per-ability", tags: ["condition-based-advantage"] }],
+    effects: [
+      { target: "save-vs-magic", op: "tag", value: "spells and other magical effects" },
+    ],
   },
 
   "race|yuan-ti|poison resilience": {
     name: "Poison Resilience", sv: 1,
-    unsupported: [{ reason: "advantage on saves to avoid/end poisoned condition; poison resistance; condition-based advantage", tags: ["condition-based-advantage", "resistance"] }],
+    effects: [
+      { target: "save-vs-poisoned", op: "tag", value: "poisoned" },
+      { target: "resist-poison", op: "tag", value: "poison" },
+    ],
   },
 
   "race|yuan-ti|serpentine spellcasting": {
@@ -158,7 +174,9 @@ registerEffects({
   // ----- Yuan-Ti Pureblood -----
   "race|yuan-ti pureblood|magic resistance": {
     name: "Magic Resistance", sv: 1,
-    unsupported: [{ reason: "advantage on saving throws against spells and other magical effects; condition-based advantage", tags: ["condition-based-advantage"] }],
+    effects: [
+      { target: "save-vs-magic", op: "tag", value: "spells and other magical effects" },
+    ],
   },
 
   // ----- Zombie -----
@@ -169,6 +187,10 @@ registerEffects({
 
   "race|zombie|undead nature": {
     name: "Undead Nature", sv: 1,
-    unsupported: [{ reason: "immunity to poison damage and poisoned condition; no need for air/food/drink/sleep; immunities/resistances not modeled", tags: ["immunity", "resistance"] }],
+    effects: [
+      { target: "immune-poison", op: "tag", value: "poison" },
+      { target: "save-vs-poisoned", op: "tag", value: "poisoned" },
+      { target: "immune-poison", op: "note", text: "you don't need air, food, drink or sleep" },
+    ],
   },
 });
