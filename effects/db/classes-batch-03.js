@@ -65,7 +65,7 @@ registerEffects({
   },
 
   "class|barbarian|fast movement": {
-    name: "Fast Movement", sv: 2,
+    name: "Fast Movement", sv: 1,
     // "+10 feet while you aren't wearing heavy armor" — the `notArmor` predicate reads what's
     // actually equipped (see armorWorn in effects.js), so putting plate on takes the bonus away.
     effects: [{ target: "speed", op: "add", value: 10, when: { minClassLevel: { class: "Barbarian", level: 5 }, notArmor: ["heavy"] } }],
@@ -299,8 +299,9 @@ registerEffects({
 
   "subclass|barbarian|path of the totem warrior|bear": {
     name: "Bear", sv: 1,
-    unsupported: [
-      { reason: "all damage resistance while raging (except psychic); doubled carrying capacity + advantage on Strength checks; melee enemies have disadvantage on non-you attacks", tags: ["resistance", "ability-bonus", "advantage", "conditional-adv"] },
+    effects: [
+      { target: "resist-all damage except psychic", op: "tag", value: "while raging" },
+      { target: "resist-all damage except psychic", op: "note", text: "only while raging; also doubles your carrying capacity" },
     ],
   },
 
@@ -313,8 +314,9 @@ registerEffects({
 
   "subclass|barbarian|path of the totem warrior|elk": {
     name: "Elk", sv: 1,
-    unsupported: [
-      { reason: "walking speed +15 while raging; doubled travel pace for self/allies; bonus action knockdown attack; requires speed and action mechanics", tags: ["speed", "travel-pace", "action-bonus", "knockdown"] },
+    effects: [
+      { target: "speed", op: "add", value: 15, when: { notArmor: ["heavy"] }, activation: { kind: "toggle", id: "totem-elk", label: "Elk (raging)", default: false } },
+      { target: "speed", op: "note", text: "doubles travel pace for you and your companions; at 14th a bonus action can knock a target prone" },
     ],
   },
 

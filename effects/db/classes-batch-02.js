@@ -105,7 +105,7 @@ registerEffects({
   },
 
   "subclass|artificer|battle smith|battle ready": {
-    name: "Battle Ready", sv: 2,
+    name: "Battle Ready", sv: 1,
     // INT *replaces* STR/DEX on a magic weapon's attack and damage rolls rather than adding on top,
     // which is what `useability` expresses. It applies to magic weapons only, and the engine has no
     // per-weapon predicate — so a row it shouldn't touch opts out with that row's own fx checkbox,

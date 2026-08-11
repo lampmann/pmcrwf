@@ -53,7 +53,10 @@ registerEffects({
 
   "subclass|warlock|the fiend|fiendish resilience": {
     name: "Fiendish Resilience", sv: 1,
-    unsupported: [{ reason: "resistance to a damage type chosen on each rest; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-a damage type of your choice", op: "tag", value: "chosen on each rest" },
+      { target: "resist-a damage type of your choice", op: "note", text: "pick the type when you finish a short or long rest; not from magical weapons or silvered ones" },
+    ],
   },
 
   // ===== The Celestial =====
@@ -65,7 +68,10 @@ registerEffects({
 
   "subclass|warlock|the celestial|radiant soul": {
     name: "Radiant Soul", sv: 1,
-    unsupported: [{ reason: "resistance to radiant damage plus CHA added to radiant/fire spell damage; neither resistances nor spell damage rolls are effects targets", tags: ["resistance", "damage"] }],
+    effects: [
+      { target: "resist-radiant", op: "tag", value: "radiant" },
+      { target: "resist-radiant", op: "note", text: "and add your CHA modifier once per casting to a radiant or fire spell's damage" },
+    ],
   },
 
   "subclass|warlock|the celestial|celestial resilience": {
@@ -106,24 +112,33 @@ registerEffects({
   // ===== The Great Old One =====
   "subclass|warlock|the great old one|thought shield": {
     name: "Thought Shield", sv: 1,
-    unsupported: [{ reason: "resistance to psychic damage and reflected psychic damage; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-psychic", op: "tag", value: "psychic" },
+    ],
   },
 
   // ===== The Undying =====
   "subclass|warlock|the undying|among the dead": {
     name: "Among the Dead", sv: 1,
-    unsupported: [{ reason: "advantage on saving throws against disease; conditional advantage isn't modeled per-ability", tags: ["advantage", "condition"] }],
+    effects: [
+      { target: "save-vs-disease", op: "tag", value: "disease" },
+    ],
   },
 
   // ===== The Fathomless =====
   "subclass|warlock|the fathomless|oceanic soul": {
     name: "Oceanic Soul", sv: 1,
-    unsupported: [{ reason: "resistance to cold damage; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-cold", op: "tag", value: "cold" },
+    ],
   },
 
   // ===== The Undead =====
   "subclass|warlock|the undead|necrotic husk": {
     name: "Necrotic Husk", sv: 1,
-    unsupported: [{ reason: "resistance (or immunity, while transformed) to necrotic damage; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-necrotic", op: "tag", value: "necrotic" },
+      { target: "resist-necrotic", op: "note", text: "immunity instead, while transformed by Form of Dread" },
+    ],
   },
 });

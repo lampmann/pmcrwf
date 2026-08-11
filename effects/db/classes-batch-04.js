@@ -56,7 +56,11 @@
 
     "class|bard|countercharm": {
       name: "Countercharm", sv: 1,
-      unsupported: [{ reason: "advantage on saves against being frightened or charmed; conditional advantage isn't modeled per-ability", tags: ["advantage", "condition"] }],
+      effects: [
+        { target: "save-vs-charmed", op: "tag", value: "charmed" },
+        { target: "save-vs-frightened", op: "tag", value: "frightened" },
+        { target: "save-vs-charmed", op: "note", text: "an action starts the performance; it protects you and allies within 30 ft" },
+      ],
     },
 
     "class|bard|superior inspiration": {
@@ -120,7 +124,7 @@
 
     // ===== College of Eloquence =====
     "subclass|bard|college of eloquence|silver tongue": {
-      name: "Silver Tongue", sv: 2,
+      name: "Silver Tongue", sv: 1,
       // Named skills rather than Reliable Talent's "check-proficient": this one applies to two
       // specific checks whether or not you're proficient in them.
       effects: [
@@ -154,7 +158,10 @@
 
     "subclass|bard|college of swords|blade flourish": {
       name: "Blade Flourish", sv: 1,
-      unsupported: [{ reason: "+10 ft walking speed on the Attack action; speed isn't an effects target", tags: ["speed"] }],
+      effects: [
+        { target: "speed", op: "add", value: 10, activation: { kind: "toggle", id: "blade-flourish", label: "Blade Flourish", default: false } },
+        { target: "speed", op: "note", text: "on your turn, when you take the Attack action" },
+      ],
     },
 
     "subclass|bard|college of swords|defensive flourish": {
@@ -170,7 +177,13 @@
     // ===== College of Whispers =====
     "subclass|bard|college of whispers|psychic blades": {
       name: "Psychic Blades", sv: 1,
-      unsupported: [{ reason: "extra psychic damage stepping 2d6/3d6/5d6/8d6 at bard 1/5/10/15; `when` supports only minLevel, so a level *band* can't be expressed", tags: ["damage", "level-scaling"] }],
+      effects: [
+        { target: "damage-bonus", op: "adddice", value: "2d6", when: { minClassLevel: { class: "Bard", level: 3 }, maxClassLevel: { class: "Bard", level: 4 } }, activation: { kind: "toggle", id: "psychic-blades", label: "Psychic Blades", default: false } },
+        { target: "damage-bonus", op: "adddice", value: "3d6", when: { minClassLevel: { class: "Bard", level: 5 }, maxClassLevel: { class: "Bard", level: 9 } }, activation: { kind: "toggle", id: "psychic-blades", label: "Psychic Blades", default: false } },
+        { target: "damage-bonus", op: "adddice", value: "5d6", when: { minClassLevel: { class: "Bard", level: 10 }, maxClassLevel: { class: "Bard", level: 14 } }, activation: { kind: "toggle", id: "psychic-blades", label: "Psychic Blades", default: false } },
+        { target: "damage-bonus", op: "adddice", value: "8d6", when: { minClassLevel: { class: "Bard", level: 15 } }, activation: { kind: "toggle", id: "psychic-blades", label: "Psychic Blades", default: false } },
+        { target: "damage-bonus", op: "note", text: "once per turn, and it costs a use of Bardic Inspiration" },
+      ],
     },
   });
 })();

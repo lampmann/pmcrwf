@@ -5,11 +5,15 @@ registerEffects({
   // ----- Gnome subraces -----
   "race|gnome (deep)|gnome cunning": {
     name: "Gnome Cunning", sv: 1,
-    unsupported: [{ reason: "advantage against magic (condition-specific, not ability-based)", tags: ["condition-advantage"] }],
+    effects: [
+      { target: "save-vs-magic", op: "tag", value: "magic (INT, WIS and CHA saves)" },
+    ],
   },
   "race|gnome (deep)|stone camouflage": {
     name: "Stone Camouflage", sv: 1,
-    unsupported: [{ reason: "advantage on Stealth checks in rocky terrain only (condition-specific)", tags: ["condition-advantage"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Stealth checks in rocky terrain" },
+    ],
   },
 
   // ----- Goblin -----
@@ -22,7 +26,9 @@ registerEffects({
   },
   "subrace|zendikar; lavastep tribe|lavastep grit": {
     name: "Lavastep Grit", sv: 1,
-    unsupported: [{ reason: "advantage on Stealth checks in rocky/subterranean terrain only (condition-specific)", tags: ["condition-advantage"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Stealth checks in rocky or subterranean terrain" },
+    ],
   },
 
   // ----- Goliath -----
@@ -34,11 +40,15 @@ registerEffects({
   // ----- Grimlock -----
   "race|grimlock|keen hearing and smell": {
     name: "Keen Hearing and Smell", sv: 1,
-    unsupported: [{ reason: "advantage on Perception checks only for hearing/smell senses (sense-specific, not ability-based)", tags: ["condition-advantage"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Perception checks that rely on hearing or smell" },
+    ],
   },
   "race|grimlock|stone camouflage": {
     name: "Stone Camouflage", sv: 1,
-    unsupported: [{ reason: "advantage on Stealth checks in rocky terrain only (condition-specific)", tags: ["condition-advantage"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Stealth checks in rocky terrain" },
+    ],
   },
 
   // ----- Grung -----
@@ -57,7 +67,10 @@ registerEffects({
   // ----- Half-Elf -----
   "race|half-elf|fey ancestry": {
     name: "Fey Ancestry", sv: 1,
-    unsupported: [{ reason: "advantage vs charmed + immunity to magical sleep; two separate mechanics, neither ability-specific", tags: ["condition-advantage", "sleep-immunity"] }],
+    effects: [
+      { target: "save-vs-charmed", op: "tag", value: "charmed" },
+      { target: "immune-magical sleep", op: "tag", value: "magical sleep" },
+    ],
   },
   "race|half-elf|skill versatility": {
     name: "Skill Versatility", sv: 1,
@@ -132,7 +145,9 @@ registerEffects({
   // ----- Halfling -----
   "race|halfling|brave": {
     name: "Brave", sv: 1,
-    unsupported: [{ reason: "advantage vs frightened (condition-specific, not ability-based)", tags: ["condition-advantage"] }],
+    effects: [
+      { target: "save-vs-frightened", op: "tag", value: "frightened" },
+    ],
   },
   "race|halfling|lucky": {
     name: "Lucky", sv: 1,
@@ -142,7 +157,9 @@ registerEffects({
   // ----- Halfling subraces -----
   "subrace|lightfoot|naturally stealthy": {
     name: "Naturally Stealthy", sv: 1,
-    unsupported: [{ reason: "advantage on Stealth checks only when obscured by larger creature (condition-specific)", tags: ["condition-advantage"] }],
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Stealth checks while obscured by a larger creature" },
+    ],
   },
   "subrace|lotusden|timberwalk": {
     name: "Timberwalk", sv: 1,

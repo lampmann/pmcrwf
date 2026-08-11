@@ -67,34 +67,51 @@ registerEffects({
 
   "subclass|sorcerer|shadow magic|umbral form": {
     name: "Umbral Form", sv: 1,
-    unsupported: [{ reason: "resistance to all damage except force and radiant; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-all damage except force and radiant", op: "tag", value: "all but force/radiant" },
+      { target: "resist-all damage except force and radiant", op: "note", text: "only while transformed — costs 6 sorcery points" },
+    ],
   },
 
   // ===== Aberrant Mind =====
   "subclass|sorcerer|aberrant mind|psychic defenses": {
     name: "Psychic Defenses", sv: 1,
-    unsupported: [{ reason: "resistance to psychic damage plus advantage on saves against being charmed or frightened; neither resistances nor condition-specific advantage are modeled", tags: ["resistance", "advantage", "condition"] }],
+    effects: [
+      { target: "resist-psychic", op: "tag", value: "psychic" },
+      { target: "save-vs-charmed", op: "tag", value: "charmed" },
+      { target: "save-vs-frightened", op: "tag", value: "frightened" },
+    ],
   },
 
   // ===== Storm Sorcery =====
   "subclass|sorcerer|storm sorcery|heart of the storm": {
     name: "Heart of the Storm", sv: 1,
-    unsupported: [{ reason: "resistance to lightning and thunder damage, plus an automatic damage burst; no resistances model", tags: ["resistance", "damage"] }],
+    effects: [
+      { target: "resist-lightning and thunder", op: "tag", value: "lightning/thunder" },
+      { target: "resist-lightning and thunder", op: "note", text: "casting a 1st-level-or-higher lightning/thunder spell also bursts for half your sorcerer level" },
+    ],
   },
 
   "subclass|sorcerer|storm sorcery|wind soul": {
     name: "Wind Soul", sv: 1,
-    unsupported: [{ reason: "immunity to lightning and thunder damage and a flying speed; neither immunities nor speed are effects targets", tags: ["resistance", "speed"] }],
+    effects: [
+      { target: "immune-lightning and thunder", op: "tag", value: "lightning/thunder" },
+      { target: "speed-fly", op: "add", value: 60 },
+    ],
   },
 
   // ===== Pyromancer (PSK) =====
   "subclass|sorcerer|pyromancer (psk)|fire in the veins": {
     name: "Fire in the Veins", sv: 1,
-    unsupported: [{ reason: "resistance to fire damage; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-fire", op: "tag", value: "fire" },
+    ],
   },
 
   "subclass|sorcerer|pyromancer (psk)|fiery soul": {
     name: "Fiery Soul", sv: 1,
-    unsupported: [{ reason: "immunity to fire damage; no immunities model", tags: ["resistance"] }],
+    effects: [
+      { target: "immune-fire", op: "tag", value: "fire" },
+    ],
   },
 });

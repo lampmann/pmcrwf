@@ -91,7 +91,10 @@ registerEffects({
   "subclass|cleric|twilight domain|steps of night": {
     name: "Steps of Night", sv: 1,
     uses: { max: { prof: true }, per: "lr" },
-    unsupported: [{ reason: "flying speed not modeled; requires dim-light/darkness condition check", tags: ["movement", "condition"] }],
+    effects: [
+      { target: "speed-fly", op: "tag", value: "equal to your walking speed" },
+      { target: "speed-fly", op: "note", text: "a bonus action, in dim light or darkness, for 1 minute" },
+    ],
   },
   "subclass|cleric|twilight domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
@@ -157,7 +160,10 @@ registerEffects({
   },
   "subclass|cleric|war domain|avatar of battle": {
     name: "Avatar of Battle", sv: 1,
-    unsupported: [{ reason: "damage resistance (bludgeoning/piercing/slashing from nonmagical) not modeled", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-bludgeoning, piercing and slashing", op: "tag", value: "nonmagical" },
+      { target: "resist-bludgeoning, piercing and slashing", op: "note", text: "from nonmagical attacks" },
+    ],
   },
 
   // ----- ZEAL DOMAIN (PSA) -----

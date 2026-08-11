@@ -44,7 +44,10 @@ registerEffects({
   },
   "subrace|stout|stout resilience": {
     name: "Stout Resilience", sv: 1,
-    unsupported: [{ reason: "condition-specific advantage (poison saves) and damage-type-specific resistance (poison)", tags: ["advantage", "condition", "resistance", "damage-type"] }],
+    effects: [
+      { target: "save-vs-poisoned", op: "tag", value: "poisoned" },
+      { target: "resist-poison", op: "tag", value: "poison" },
+    ],
   },
   "race|harengon|lucky footwork": {
     name: "Lucky Footwork", sv: 1,

@@ -76,13 +76,18 @@ registerEffects({
 
   "subclass|paladin|oathbreaker|supernatural resistance": {
     name: "Supernatural Resistance", sv: 1,
-    unsupported: [{ reason: "resistance to nonmagical bludgeoning/piercing/slashing; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-bludgeoning, piercing and slashing", op: "tag", value: "nonmagical" },
+      { target: "resist-bludgeoning, piercing and slashing", op: "note", text: "from nonmagical attacks" },
+    ],
   },
 
   // ===== Oath of the Ancients =====
   "subclass|paladin|oath of the ancients|aura of warding": {
     name: "Aura of Warding", sv: 1,
-    unsupported: [{ reason: "resistance to damage from spells; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-damage from spells", op: "tag", value: "spells" },
+    ],
   },
 
   "subclass|paladin|oath of the ancients|undying sentinel": {
@@ -117,7 +122,10 @@ registerEffects({
   // ===== Oath of the Crown =====
   "subclass|paladin|oath of the crown|unyielding spirit": {
     name: "Unyielding Spirit", sv: 1,
-    unsupported: [{ reason: "advantage on saves to avoid being paralyzed or stunned; conditional advantage isn't modeled per-ability", tags: ["advantage", "condition"] }],
+    effects: [
+      { target: "save-vs-paralyzed", op: "tag", value: "paralyzed" },
+      { target: "save-vs-stunned", op: "tag", value: "stunned" },
+    ],
   },
 
   // ===== Oath of Glory =====
@@ -175,6 +183,8 @@ registerEffects({
 
   "subclass|paladin|oath of redemption|emissary of redemption": {
     name: "Emissary of Redemption", sv: 1,
-    unsupported: [{ reason: "resistance to all damage dealt by other creatures; no resistances model", tags: ["resistance"] }],
+    effects: [
+      { target: "resist-all damage from other creatures", op: "tag", value: "all" },
+    ],
   },
 });

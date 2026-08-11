@@ -27,7 +27,14 @@ registerEffects({
 
   "class|monk|unarmored movement": {
     name: "Unarmored Movement", sv: 1,
-    unsupported: [{ reason: "speed bonus not yet supported (scaling by level; gains vertical/liquid movement at 9th)", tags: ["speed"] }],
+    effects: [
+      { target: "speed", op: "add", value: 10, when: { minClassLevel: { class: "Monk", level: 2 }, maxClassLevel: { class: "Monk", level: 5 }, armor: ["none"], shield: false } },
+      { target: "speed", op: "add", value: 15, when: { minClassLevel: { class: "Monk", level: 6 }, maxClassLevel: { class: "Monk", level: 9 }, armor: ["none"], shield: false } },
+      { target: "speed", op: "add", value: 20, when: { minClassLevel: { class: "Monk", level: 10 }, maxClassLevel: { class: "Monk", level: 13 }, armor: ["none"], shield: false } },
+      { target: "speed", op: "add", value: 25, when: { minClassLevel: { class: "Monk", level: 14 }, maxClassLevel: { class: "Monk", level: 17 }, armor: ["none"], shield: false } },
+      { target: "speed", op: "add", value: 30, when: { minClassLevel: { class: "Monk", level: 18 }, armor: ["none"], shield: false } },
+      { target: "speed", op: "note", text: "from 9th level you can move along vertical surfaces and across liquids on your turn" },
+    ],
   },
 
   "class|monk|deflect missiles": {
@@ -166,6 +173,9 @@ registerEffects({
   "subclass|monk|way of the ascendant dragon|wings unfurled": {
     name: "Wings Unfurled", sv: 1,
     uses: { max: { prof: true }, per: "lr" },
-    unsupported: [{ reason: "bonus action (via Step of the Wind) grants flying speed equal to walking speed; speed target not yet supported", tags: ["speed"] }],
+    effects: [
+      { target: "speed-fly", op: "tag", value: "equal to your walking speed" },
+      { target: "speed-fly", op: "note", text: "a bonus action via Step of the Wind, for this turn only" },
+    ],
   },
 });

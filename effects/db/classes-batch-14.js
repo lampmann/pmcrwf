@@ -42,7 +42,10 @@
 
     "class|ranger|land's stride": {
       name: "Land's Stride", sv: 1,
-      unsupported: [{ reason: "advantage on saves against magically created plants; conditional advantage isn't modeled per-ability", tags: ["advantage", "conditional"] }],
+      effects: [
+        { target: "save-vs-magical plants", op: "tag", value: "magically created plants" },
+        { target: "save-vs-magical plants", op: "note", text: "difficult terrain from nonmagical plants doesn't slow you" },
+      ],
     },
 
     "class|ranger|hide in plain sight": {
@@ -90,7 +93,9 @@
 
     "subclass|ranger|hunter|steel will": {
       name: "Steel Will", sv: 1,
-      unsupported: [{ reason: "advantage on saves against being frightened; conditional advantage isn't modeled per-ability", tags: ["advantage", "condition"] }],
+      effects: [
+        { target: "save-vs-frightened", op: "tag", value: "frightened" },
+      ],
     },
 
     "subclass|ranger|hunter|volley": {
@@ -131,12 +136,20 @@
 
     "subclass|ranger|fey wanderer|dreadful strikes": {
       name: "Dreadful Strikes", sv: 1,
-      unsupported: [{ reason: "extra psychic damage stepping 1d4 to 1d6 at ranger 11; `when` supports only minLevel, so a level *band* can't be expressed", tags: ["damage", "level-scaling"] }],
+      effects: [
+        { target: "damage-bonus", op: "adddice", value: "1d4", when: { minClassLevel: { class: "Ranger", level: 3 }, maxClassLevel: { class: "Ranger", level: 10 } }, activation: { kind: "toggle", id: "dreadful-strikes", label: "Dreadful Strikes", default: false } },
+        { target: "damage-bonus", op: "adddice", value: "1d6", when: { minClassLevel: { class: "Ranger", level: 11 } }, activation: { kind: "toggle", id: "dreadful-strikes", label: "Dreadful Strikes", default: false } },
+        { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
+      ],
     },
 
     "subclass|ranger|fey wanderer|beguiling twist": {
       name: "Beguiling Twist", sv: 1,
-      unsupported: [{ reason: "advantage on saves against being charmed or frightened; conditional advantage isn't modeled per-ability", tags: ["advantage", "condition"] }],
+      effects: [
+        { target: "save-vs-charmed", op: "tag", value: "charmed" },
+        { target: "save-vs-frightened", op: "tag", value: "frightened" },
+        { target: "save-vs-charmed", op: "note", text: "a reaction can also redirect a failed charm/fright to another creature" },
+      ],
     },
 
     // ===== Gloom Stalker =====
@@ -188,18 +201,29 @@
     // ===== Horizon Walker =====
     "subclass|ranger|horizon walker|planar warrior": {
       name: "Planar Warrior", sv: 1,
-      unsupported: [{ reason: "extra force damage stepping 1d8 to 2d8 at ranger 11; `when` supports only minLevel, so a level *band* can't be expressed", tags: ["damage", "level-scaling"] }],
+      effects: [
+        { target: "damage-bonus", op: "adddice", value: "1d8", when: { minClassLevel: { class: "Ranger", level: 3 }, maxClassLevel: { class: "Ranger", level: 10 } }, activation: { kind: "toggle", id: "planar-warrior", label: "Planar Warrior", default: false } },
+        { target: "damage-bonus", op: "adddice", value: "2d8", when: { minClassLevel: { class: "Ranger", level: 11 } }, activation: { kind: "toggle", id: "planar-warrior", label: "Planar Warrior", default: false } },
+        { target: "damage-bonus", op: "note", text: "a bonus action marks the target; the damage becomes force" },
+      ],
     },
 
     "subclass|ranger|horizon walker|spectral defense": {
       name: "Spectral Defense", sv: 1,
-      unsupported: [{ reason: "reaction granting resistance to an attack's damage; no resistances model", tags: ["resistance", "reaction"] }],
+      effects: [
+        { target: "resist-one attack's damage", op: "tag", value: "as a reaction" },
+        { target: "resist-one attack's damage", op: "note", text: "a reaction, uses equal to your proficiency bonus" },
+      ],
     },
 
     // ===== Swarmkeeper =====
     "subclass|ranger|swarmkeeper|gathered swarm": {
       name: "Gathered Swarm", sv: 1,
-      unsupported: [{ reason: "extra damage stepping 1d6 to 1d8 at ranger 11, plus forced movement; `when` supports only minLevel, so a level *band* can't be expressed", tags: ["damage", "level-scaling"] }],
+      effects: [
+        { target: "damage-bonus", op: "adddice", value: "1d6", when: { minClassLevel: { class: "Ranger", level: 3 }, maxClassLevel: { class: "Ranger", level: 10 } }, activation: { kind: "toggle", id: "gathered-swarm", label: "Gathered Swarm", default: false } },
+        { target: "damage-bonus", op: "adddice", value: "1d8", when: { minClassLevel: { class: "Ranger", level: 11 } }, activation: { kind: "toggle", id: "gathered-swarm", label: "Gathered Swarm", default: false } },
+        { target: "damage-bonus", op: "note", text: "once per turn; the swarm can move the target or you instead of dealing damage" },
+      ],
     },
   });
 })();

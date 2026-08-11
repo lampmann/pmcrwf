@@ -111,7 +111,10 @@ registerEffects({
 
   "subclass|fighter|psi warrior|psi-powered leap": {
     name: "Psi-Powered Leap", sv: 1,
-    unsupported: [{ reason: "flying speed (2× walking) granted until turn end, limited by short rest or Psionic Energy die; speed not modeled", tags: ["speed", "resource-pool"] }],
+    effects: [
+      { target: "speed-fly", op: "tag", value: "twice your walking speed" },
+      { target: "speed-fly", op: "note", text: "a bonus action, until the end of your turn; once per short rest or a Psionic Energy die" },
+    ],
   },
 
   "subclass|fighter|psi warrior|telekinetic thrust": {
@@ -121,7 +124,10 @@ registerEffects({
 
   "subclass|fighter|psi warrior|guarded mind": {
     name: "Guarded Mind", sv: 1,
-    unsupported: [{ reason: "psychic damage resistance; condition-removal (charmed/frightened) using Psionic Energy die", tags: ["resistance", "resource-pool", "condition-removal"] }],
+    effects: [
+      { target: "resist-psychic", op: "tag", value: "psychic" },
+      { target: "resist-psychic", op: "note", text: "a bonus action and a Psionic Energy die also ends charmed or frightened" },
+    ],
   },
 
   "subclass|fighter|psi warrior|bulwark of force": {

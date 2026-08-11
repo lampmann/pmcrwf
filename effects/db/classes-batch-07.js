@@ -28,7 +28,10 @@ registerEffects({
   },
   "subclass|cleric|nature domain|dampen elements": {
     name: "Dampen Elements", sv: 1,
-    unsupported: [{ reason: "damage-type-specific resistance (acid/cold/fire/lightning/thunder)", tags: ["resistance", "damage-type"] }],
+    effects: [
+      { target: "resist-acid, cold, fire, lightning and thunder", op: "tag", value: "elemental" },
+      { target: "resist-acid, cold, fire, lightning and thunder", op: "note", text: "a reaction, granted to one creature per use" },
+    ],
   },
   "subclass|cleric|nature domain|blessed strikes": {
     name: "Blessed Strikes", sv: 1,
@@ -158,6 +161,8 @@ registerEffects({
   },
   "subclass|cleric|strength domain (psa)|avatar of battle": {
     name: "Avatar of Battle", sv: 1,
-    unsupported: [{ reason: "damage-type-specific resistance (nonmagical BPS)", tags: ["resistance", "damage-type"] }],
+    effects: [
+      { target: "resist-bludgeoning, piercing and slashing", op: "tag", value: "nonmagical" },
+    ],
   },
 });

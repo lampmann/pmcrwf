@@ -115,8 +115,11 @@ function renderDefenses() {
   const el = $("defenses-row"); if (!el) return;
   if (typeof effFlatByPrefix !== "function") { el.textContent = ""; return; }
   const bits = [];
-  const speeds = effFlatByPrefix("speed-");
-  if (speeds.length) bits.push(speeds.map(s => `<b>${escapeHtml(s.kind)}</b> ${s.n} ft`).join(", "));
+  // Numeric extra speeds ("fly 60 ft") and described ones ("fly equal to your walking speed" — a
+  // value the engine can't compute, since a value expression deliberately can't read another target).
+  const speeds = effFlatByPrefix("speed-").map(s => `<b>${escapeHtml(s.kind)}</b> ${s.n} ft`)
+    .concat(effTagsByPrefix("speed-").map(t => `<b>${escapeHtml(t.kind)}</b> ${escapeHtml(t.items.map(i => i.label).join(", "))}`));
+  if (speeds.length) bits.push(speeds.join(", "));
   [["resist-", "resistant to"], ["immune-", "immune to"], ["vuln-", "vulnerable to"]].forEach(([pre, label]) => {
     const rows = effTagsByPrefix(pre);
     if (!rows.length) return;
@@ -127,7 +130,16 @@ function renderDefenses() {
   if (condSaves.length) {
     bits.push("advantage on saves vs " + condSaves.map(r => `<b>${escapeHtml(r.kind)}</b>`).join(", "));
   }
-  el.innerHTML = bits.length ? bits.join(" &middot; ") : "";
+  /* Situational advantage and disadvantage — "on Stealth checks in rocky terrain", "on attack rolls
+     in direct sunlight". Listed rather than applied on purpose: the trigger is terrain, light, or
+     what a creature is doing, none of which the sheet can see. Applying them unconditionally would
+     be wrong far more often than right, and this is the whole "degrade to manual, never guess" rule. */
+  const sit = [];
+  effTagsByPrefix("situational-").forEach(row => {
+    row.items.forEach(i => sit.push(`<b>${escapeHtml(row.kind)}</b> ${escapeHtml(i.label)} <span class="hint">(${escapeHtml(i.source)})</span>`));
+  });
+  el.innerHTML = (bits.length ? bits.join(" &middot; ") : "") +
+    (sit.length ? `<div class="hint" style="margin-top:.15rem">Situational: ${sit.join(" &middot; ")}</div>` : "");
 }
 
 function recompute() {
