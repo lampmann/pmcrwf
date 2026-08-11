@@ -30,6 +30,17 @@ function applyState(state) {
   HD_STATE = state.hdState || {};
   EFFECT_CHOICES = state.effectChoices || {};
   EFFECT_TOGGLES = state.effectToggles || {};
+  /* Blank every persisted field BEFORE writing the incoming ones. Everything else in this function
+     resets to a default when the saved state lacks it (`state.spells || []`), but fields were written
+     in place, so any field absent from the incoming state kept the *previous* character's value —
+     switch from an elf to a state that predates the race box and you'd inherit their Fey Ancestry.
+     A live save always carries every field (collectState walks the same selector), so this only bit
+     hand-built and older-build states — which is exactly when you least want a silent carry-over. */
+  document.querySelectorAll("[data-persist]").forEach(el => {
+    if (el.type === "checkbox") el.checked = false;
+    else if (el.tagName === "SELECT") el.selectedIndex = Math.max(0, [...el.options].findIndex(o => o.defaultSelected));
+    else el.value = "";
+  });
   Object.entries(state.fields || {}).forEach(([id, val]) => {
     const el = $(id); if (!el) return;
     if (el.type === "checkbox") el.checked = val; else el.value = val;
