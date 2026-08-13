@@ -102,6 +102,19 @@ function moveMax() { return (typeof speedTotal === "function" ? speedTotal() : 0
 function moveLeft() { return Math.max(0, moveMax() - COMBAT.moveUsed); }
 function leftOf(kind) { return Math.max(0, COMBAT_MAX[kind] - COMBAT.used[kind]); }
 
+/* The movement pool is the one part of the tracker that depends on a number outside it — your Speed,
+   which you can change mid-fight (a race correction, an effect, an item). renderCombat() can't be
+   called from recompute() to pick that up: this row holds live text boxes, and rebuilding it on
+   every keystroke would take the caret with it. So recompute() calls THIS instead — it writes the
+   two numbers in place and touches nothing else. Without it the row kept whatever max it was drawn
+   with, so a fight entered while Speed was blank stayed at 0/0 however you fixed the Speed after. */
+function syncCombatMovement() {
+  const max = document.querySelector(".cbt-move-max"); if (!max) return;
+  max.textContent = moveMax();
+  const box = document.querySelector(".cbt-move-box");
+  if (box && box !== document.activeElement) box.value = moveLeft();
+}
+
 /* Equipped weapons, by inventory + library. Used for Two-Weapon Fighting's precondition and for
    the object-interaction menu, both of which need to know what you're actually holding. */
 function equippedWeapons() {
@@ -463,7 +476,7 @@ function renderCombat() {
        <button type="button" class="cbt-mv" data-mv="-5" title="give back 5 ft of distance">&minus;5</button>
        <button type="button" class="cbt-mv" data-mv="-1" title="give back 1 ft of distance">&minus;1</button>
        <span class="cbt-move-box-wrap" title="feet of movement left this turn — edit to correct">
-         <input type="text" inputmode="numeric" class="tiny cbt-move-box" value="${mv}">/${mvMax} ft
+         <input type="text" inputmode="numeric" class="tiny cbt-move-box" value="${mv}">/<span class="cbt-move-max">${mvMax}</span> ft
        </span>
        <button type="button" class="cbt-mv" data-mv="1" title="move 1 ft of distance">+1</button>
        <button type="button" class="cbt-mv" data-mv="5" title="move 5 ft of distance">+5</button>

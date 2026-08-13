@@ -112,6 +112,39 @@ function raceWalkSpeed(speed) {
   if (speed && typeof speed === "object" && typeof speed.walk === "number") return speed.walk;
   return null;
 }
+
+/* The walking speed implied by whatever is in the Race/Subrace boxes, or 30 when the race isn't
+   recognized — most often because the sheet was opened straight from disk (file://), where the
+   browser blocks the fetch autoLoadRaces() needs. 30 is the walking speed of most PHB races and is
+   closer to right than nothing for nearly all the rest. */
+function sheetRaceSpeed() {
+  const rec = (typeof ciFindRace === "function") ? ciFindRace(($("char-race") || {}).value || "") : null;
+  if (!rec) return 30;
+  const sub = ciFindRaceSub(rec, ($("char-subrace") || {}).value || "");
+  const n = raceWalkSpeed((sub && sub.speed != null) ? sub.speed : rec.speed);
+  return n == null ? 30 : n;
+}
+
+/* Keep the Speed box in step with the race WITHOUT ever overwriting a number the player typed.
+   `data-autospeed` records the last value this function put there: if the box still holds it, the
+   player hasn't touched it and we're free to update it; the moment they type anything else the two
+   diverge and this stops touching the field for good. An empty box always refills — a blank Speed
+   is what made Movement read 0/0, and no character actually wants one.
+
+   Returns true when it actually changed the field, so a caller that isn't already about to
+   recompute (the race box's own change handler) knows it has to. */
+function syncRaceSpeed() {
+  const el = $("speed"); if (!el) return false;
+  const cur = el.value.trim(), n = String(sheetRaceSpeed());
+  // Already exactly what the race says: nothing to change, but adopt it as auto-filled. That's how a
+  // character built by the creation wizard — which writes its own speed, and so arrives here with a
+  // number this function didn't put there — goes on tracking a race change made later on the sheet.
+  if (cur === n) { el.dataset.autospeed = n; return false; }
+  if (cur !== "" && cur !== (el.dataset.autospeed || "")) return false;   // player-set: leave it alone
+  el.dataset.autospeed = n;
+  el.value = n;
+  return true;
+}
 /* ----- granted spells (Cleric domain spells, Mark of X subraces, Eldritch Knight/Divine Soul/
    Warlock-patron/Wizard-subschool spell-list expansions, etc.) -----
    5e.tools' "additionalSpells" blocks come in a few shapes — "prepared"/"known"/"innate" keyed

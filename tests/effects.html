@@ -42,7 +42,9 @@
     <div id="boons-row"></div>
     <input type="text" id="hp-temp" data-math data-min="0" data-allow-empty><div id="hit-dice-pools"></div>
     <span id="ac">10</span><input type="text" id="ac-misc"><input type="number" id="ac-override">
-    <input type="text" id="speed"><span id="speed-total" style="display:none"></span>
+    <!-- value/data-autospeed mirror the app's own markup: a blank Speed is what made Movement read
+         0/0, so the field ships with a default and applyState restores it (see syncRaceSpeed). -->
+    <input type="text" data-persist data-math data-min="0" data-allow-empty id="speed" value="30" data-autospeed="30"><span id="speed-total" style="display:none"></span>
     <span id="init">+0</span><input type="text" id="init-misc">
     <div id="defenses-row"></div>
   </section>
@@ -66,6 +68,9 @@
   <section class="module wide" data-module="attacks">
     <table><tbody id="attack-rows"></tbody></table>
     <button id="btn-add-attack">+</button>
+  </section>
+  <section class="module wide" data-module="combat">
+    <span id="combat-status"></span><div id="combat-body"></div>
   </section>
   <section class="module wide" data-module="class-features">
     <button id="class-lib-reload"></button><button id="class-lib-clear"></button>
@@ -1359,6 +1364,91 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("the terrain box sets the multiplier directly", COMBAT.terrain, 3);
     correctTerrainInput({ value: "0" });
     assertEqual("...zero or blank falls back to ×1, not ×0", COMBAT.terrain, 1);
+
+    /* --- the pool follows Speed while the row is on screen ---
+       renderCombat() can't be called from recompute() (this row holds live text boxes; rebuilding
+       it every keystroke would take the caret), so the drawn max used to be frozen at whatever
+       Speed was when the row was painted. Enter a fight with Speed blank and it read 0/0 forever,
+       however you fixed the Speed afterwards. recompute() now writes the two numbers in place. */
+    COMBAT = blankCombat(); COMBAT.active = true; COMBAT.terrain = 1;
+    $("speed").value = ""; recompute(); renderCombat();
+    const moveMaxDrawn = () => $("combat-body").querySelector(".cbt-move-max").textContent;
+    const moveLeftDrawn = () => $("combat-body").querySelector(".cbt-move-box").value;
+    assertEqual("a fight entered with no Speed starts at 0", moveMaxDrawn(), "0");
+    $("speed").value = "30"; recompute();
+    assertEqual("...and filling Speed in fixes the max without a re-render", moveMaxDrawn(), "30");
+    assertEqual("...and the feet remaining with it", moveLeftDrawn(), "30");
+    spendMovement(5, "Move"); renderCombat();
+    assertEqual("spending 5 leaves 25", moveLeftDrawn(), "25");
+    $("speed").value = "60"; recompute();
+    assertEqual("raising Speed mid-turn raises the max", moveMaxDrawn(), "60");
+    assertEqual("...and credits the extra feet without refunding what was spent", moveLeftDrawn(), "55");
+    $("speed").value = "30";
+
+    /* --- Speed's own default, and following the race without overwriting the player ---
+       A blank Speed box is what made Movement read 0/0 in the first place: the field shipped with no
+       default, so a character that never went through the creation wizard had nothing in it. */
+    {
+      const savedRaceLib2 = RACE_LIB, savedRace = $("char-race").value, savedSub = $("char-subrace").value;
+      RACE_LIB = {
+        Halfling: { name: "Halfling", source: "PHB", ability: [], entries: [], speed: 25, subs: {
+          Lightfoot: { name: "Lightfoot", source: "PHB", ability: [], entries: [] } } },
+        Human: { name: "Human", source: "PHB", ability: [], entries: [], speed: 30, subs: {} },
+        Vagueling: { name: "Vagueling", source: "TEST", ability: [], entries: [], subs: {} },   // no speed in its data
+      };
+      assertEqual("the Speed box ships with a default rather than blank", $("speed").defaultValue, "30");
+      $("speed").value = "17";
+      applyState({ v: 1, fields: { "char-name": "NoSpeed" }, classes: [], spells: [], items: [], attacks: [] });
+      assertEqual("a state that carries no Speed at all falls back to the markup default, not blank",
+        $("speed").value, "30");
+
+      $("char-race").value = ""; $("char-subrace").value = "";
+      $("speed").value = ""; $("speed").dataset.autospeed = "";
+      assert("an empty Speed is refilled", syncRaceSpeed());
+      assertEqual("...with 30 when there's no race to read", $("speed").value, "30");
+
+      $("char-race").value = "Halfling";
+      assert("changing race moves an auto-filled Speed", syncRaceSpeed());
+      assertEqual("...to that race's own walking speed", $("speed").value, "25");
+
+      $("char-race").value = "Vagueling";
+      syncRaceSpeed();
+      assertEqual("a race whose data omits speed falls back to 30 rather than blanking it", $("speed").value, "30");
+
+      // The moment the player types their own number, this stops touching the field — the flag it
+      // left behind no longer matches, so there's no way for a later race change to eat the edit.
+      $("speed").value = "45";
+      $("char-race").value = "Halfling";
+      assert("a Speed the player set is never overwritten", !syncRaceSpeed());
+      assertEqual("...and keeps their number", $("speed").value, "45");
+      assert("...still not, on a second race change", (($("char-race").value = "Human"), !syncRaceSpeed()));
+      assertEqual("...still theirs", $("speed").value, "45");
+
+      // A box already holding exactly what its race says can't be told apart from an auto-filled
+      // one, so it's adopted. That's the creation wizard's case: it writes the speed itself, so the
+      // number arrives here with no flag on it, and without adoption a wizard-built character's
+      // Speed would ignore every later race change.
+      $("char-race").value = "Halfling"; $("speed").value = "25"; $("speed").dataset.autospeed = "";
+      assert("a Speed that already matches its race changes nothing", !syncRaceSpeed());
+      assertEqual("...and is left where it is", $("speed").value, "25");
+      $("char-race").value = "Human";
+      assert("...but is adopted, so the next race change does move it", syncRaceSpeed());
+      assertEqual("...to the new race's speed", $("speed").value, "30");
+
+      // Loading a character saved before the box had a default must not leave it blank.
+      const sheetBefore2 = collectState();
+      applyState({ v: 1, fields: { "char-name": "Old", "char-race": "Halfling", "speed": "" },
+        classes: [], spells: [], items: [], attacks: [] });
+      assertEqual("a character saved with a blank Speed loads with its race's speed", $("speed").value, "25");
+      applyState({ v: 1, fields: { "char-name": "Set", "char-race": "Halfling", "speed": "40" },
+        classes: [], spells: [], items: [], attacks: [] });
+      assertEqual("...while a saved number is left exactly as saved", $("speed").value, "40");
+
+      applyState(sheetBefore2); recompute();
+      RACE_LIB = savedRaceLib2; $("char-race").value = savedRace; $("char-subrace").value = savedSub;
+      $("speed").value = "30"; $("speed").dataset.autospeed = "30";
+    }
+    COMBAT = blankCombat(); COMBAT.active = true;
 
     // --- R47: a bonus-action spell always costs a bonus action, so a spent one makes it uncastable ---
     {

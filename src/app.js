@@ -42,6 +42,12 @@ function init() {
   }, () => ({ kind: "race", prefix: "" }));
   raceInput.dataset.banKind = "race";
   subraceInput.dataset.banKind = "race";
+  // Picking a race sets the Speed box to that race's walking speed — halflings and dwarves are 25,
+  // not 30. Only while the box still holds what this last put there: type your own number and it
+  // stops following the race (see syncRaceSpeed).
+  [raceInput, subraceInput].forEach(el => el.addEventListener("change", () => {
+    if (syncRaceSpeed()) { recompute(); scheduleSave(); }
+  }));
 
   // Attach all listeners FIRST, so that even if loading a saved state fails,
   // the sheet stays fully interactive (this is the "nothing auto-calcs" failsafe).
