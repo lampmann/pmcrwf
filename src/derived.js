@@ -158,6 +158,8 @@ function recompute() {
   });
   $("passive-perc").textContent = 10 + checkBonus("skill-perception") + effFlat("passive-perception");
   renderDefenses();
+  // Just the two movement numbers, not a re-render of the round tracker — see syncCombatMovement.
+  if (typeof syncCombatMovement === "function") syncCombatMovement();
   { const d = checkDice("init"); $("init").textContent = sign(checkBonus("init")) + (d ? " " + d : ""); }
   { const d = checkDice("ac"); $("ac").textContent = String(checkBonus("ac")) + (d ? " " + d : ""); }
   const ab = $("spell-ability").value;
