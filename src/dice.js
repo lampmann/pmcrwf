@@ -177,6 +177,11 @@ function isProficientCheck(key) {
   return false;
 }
 const D20SEL = "[data-roll-check], .atk-roll, .wpn-roll, .mon-roll";   // buttons that roll a d20 check (adv/dis applies)
+/* The value + check-key of the most recent d20 roll, for callers that need to react to what a roll
+   actually came up as (combat.js reads this off an Initiative roll to seed the turn-order tracker)
+   without re-rolling it themselves — a second roll would land on a different number than the one
+   already in the log. */
+let LAST_D20_ROLL = null;
 function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlKey || ev.metaKey || ev.altKey)) ? "dis" : "normal"; }
 function rollInfo(btn) {
   if (btn.dataset.rollCheck) {
@@ -212,8 +217,9 @@ function fireRoll(btn, mode) {
   // A click's own Shift/Ctrl modifier wins over an effect-forced mode (e.g. Alert doesn't force
   // advantage); an effect wins only when the user didn't ask for anything ("normal" from a plain click).
   const forced = (mode && mode !== "normal") ? mode : (info.mode || undefined);
-  runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, forced,
+  const value = runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, forced,
     { dieFloor: info.dieFloor, critMin: info.critMin });
+  LAST_D20_ROLL = { key: btn.dataset.rollCheck || null, value };
   // Guidance/Resistance are one-shot: the dice were already folded into the expression above (via
   // checkDice), so this only marks them used. Here rather than in rollInfo() because that also runs
   // for the hover tooltip and the right-click menu, neither of which is a roll.

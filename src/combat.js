@@ -60,6 +60,8 @@ function blankCombat() {
     terrain: 1,                    // ft of movement each ft of distance costs (TERRAIN_COSTS) — a
                                    // terrain property, so it survives End Round but not a fresh fight
     history: [],                   // undo stack — see pushHistory/undoLast below
+    order: [],                     // initiative order — [{id, name, init, pc}], highest init first
+    turnId: null,                  // id (into order) of whose turn it is, or null if nobody's been stepped to yet
   };
 }
 const HISTORY_MAX = 20;
@@ -75,7 +77,9 @@ function normalizeCombat(saved) {
   const blank = blankCombat();
   if (!saved || typeof saved !== "object") return blank;
   return { ...blank, ...saved, used: { ...blank.used, ...(saved.used || {}) },
-    history: Array.isArray(saved.history) ? saved.history : blank.history };
+    history: Array.isArray(saved.history) ? saved.history : blank.history,
+    order: Array.isArray(saved.order) ? saved.order : blank.order,
+    turnId: (typeof saved.turnId === "string" ? saved.turnId : blank.turnId) };
 }
 
 /* ----- derived numbers ----- */
@@ -157,7 +161,11 @@ function combatLog(html) { if (typeof logEvent === "function") logEvent("resourc
 
 function enterCombat(reason) {
   if (COMBAT.active) return;
+  // A DM can build the initiative order before anyone's rolled — don't let the fresh blankCombat()
+  // this function does for everything else throw that list away.
+  const order = COMBAT.order, turnId = COMBAT.turnId;
   COMBAT = blankCombat();
+  COMBAT.order = order; COMBAT.turnId = turnId;
   COMBAT.active = true; COMBAT.round = 1;
   renderCombat(); scheduleSave();
   combatLog(`<b>Combat</b> — round 1${reason ? ` (${escapeHtml(reason)})` : ""}`);
@@ -180,6 +188,72 @@ function endRound() {
   renderCombat(); scheduleSave();
   combatLog(`<b>Round ${COMBAT.round}</b> — everything refreshed` +
     (spent.length || moved ? ` <span class="hint">(last round: ${[...spent, moved ? moved + " ft moved" : ""].filter(Boolean).join(", ")})</span>` : ""));
+}
+
+/* ----- initiative order -----
+   A local (single-browser) multi-actor turn tracker: the piece the round tracker's header names as
+   its own known limit ("no initiative order for the whole table"). It's a plain list — name +
+   initiative, highest first, with a pointer to whose turn it is — not tied to anyone's resource
+   pools. That's a deliberate boundary, not an oversight: this module already gives ITS character's
+   own action/bonus/reaction/movement pools their own refresh button (End Round), and coupling that
+   to "it became your turn in the order" would mean guessing which of possibly several entries is
+   "you" and reaching into a resource model this list has no business owning. A DM steps through
+   whose turn it is here; each player's own pools stay theirs to manage, same as always. */
+function newOrderId() { return "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+/* Stable per spec (ES2019+) — ties keep the order they were added/edited in, rather than jumping
+   around every time something re-sorts. */
+function sortOrder() { COMBAT.order.sort((a, b) => b.init - a.init); }
+
+function charName() {
+  const el = document.getElementById("char-name");
+  return (el && el.value && el.value.trim()) || "You";
+}
+
+function addOrderEntry(name, init) {
+  name = String(name || "").trim(); if (!name) return;
+  const n = Math.round(Number(init));
+  COMBAT.order.push({ id: newOrderId(), name, init: Number.isFinite(n) ? n : 0 });
+  sortOrder();
+  renderCombat(); scheduleSave();
+}
+function removeOrderEntry(id) {
+  if (!COMBAT.order.some(o => o.id === id)) return;
+  COMBAT.order = COMBAT.order.filter(o => o.id !== id);
+  if (COMBAT.turnId === id) COMBAT.turnId = null;
+  renderCombat(); scheduleSave();
+}
+function editOrderEntry(id, field, value) {
+  const e = COMBAT.order.find(o => o.id === id); if (!e) return;
+  if (field === "name") { const v = String(value || "").trim(); if (v) e.name = v; }
+  if (field === "init") { const n = Math.round(Number(value)); if (Number.isFinite(n)) e.init = n; }
+  sortOrder();
+  renderCombat(); scheduleSave();
+}
+/* Called off the real Roll Initiative button (see the click hook below) — seeds or updates the
+   character's own row with the number that actually landed in the log, never a second private roll
+   that could disagree with it. One entry per character: re-rolling initiative updates it in place
+   rather than adding a duplicate. */
+function setPcInitiative(name, value) {
+  let e = COMBAT.order.find(o => o.pc);
+  if (!e) { e = { id: newOrderId(), pc: true, name: name || "You", init: value }; COMBAT.order.push(e); }
+  else { e.name = name || e.name; e.init = value; }
+  sortOrder();
+  renderCombat(); scheduleSave();
+  combatLog(`<b>Initiative</b> — ${escapeHtml(e.name)}: ${value}`);
+}
+/* Advances to the next entry in the (already-sorted) order, wrapping back to the top after the last
+   one. Wrapping is announced but doesn't touch COMBAT.round itself or anyone's pools — see this
+   section's header comment for why those stay decoupled. */
+function nextTurn() {
+  if (!COMBAT.order.length) return;
+  const curIdx = COMBAT.order.findIndex(o => o.id === COMBAT.turnId);
+  const nextIdx = curIdx === -1 ? 0 : (curIdx + 1) % COMBAT.order.length;
+  const wrapped = curIdx !== -1 && nextIdx === 0;
+  COMBAT.turnId = COMBAT.order[nextIdx].id;
+  renderCombat(); scheduleSave();
+  if (wrapped) combatLog(`<span class="hint">— back to the top of the order —</span>`);
+  combatLog(`<b>Turn</b> — ${escapeHtml(COMBAT.order[nextIdx].name)}`);
 }
 
 /* Spend one of a resource. Never refuses — see this file's header — but says when you'd be over. */
@@ -448,6 +522,32 @@ function rollNamedSkill(name) {
 }
 
 /* ----- rendering ----- */
+function orderRowHtml(e) {
+  const active = e.id === COMBAT.turnId;
+  return `<li class="cbt-order-row${active ? " active" : ""}" data-oid="${e.id}">
+    <input type="text" inputmode="numeric" class="tiny cbt-order-init" value="${e.init}" title="initiative">
+    <input type="text" class="cbt-order-name" value="${escapeHtml(e.name)}">
+    ${e.pc ? `<span class="hint" title="rolled from your own Initiative button">(you)</span>` : ""}
+    <button type="button" class="cbt-order-del" title="remove from the order">&times;</button>
+  </li>`;
+}
+/* Shown whether or not combat is active — a table can build its initiative order before the first
+   roll — which is why this lives outside the active/!active branch of renderCombat() below. */
+function orderHtml() {
+  const rows = COMBAT.order.map(orderRowHtml).join("");
+  return `<div class="cbt-order">
+    <div class="cbt-order-head"><b>Initiative order</b>
+      ${COMBAT.order.length ? `<button type="button" id="cbt-order-next" title="advance to the next combatant's turn">Next turn</button>` : ""}
+    </div>
+    <ol class="cbt-order-list">${rows || `<li class="hint">Nobody yet — roll your own Initiative (HP &amp; Defenses), or add a combatant below.</li>`}</ol>
+    <div class="cbt-order-add">
+      <input type="text" inputmode="numeric" class="tiny" id="cbt-order-add-init" placeholder="init">
+      <input type="text" id="cbt-order-add-name" placeholder="name (monster, ally, …)">
+      <button type="button" id="cbt-order-add-btn">Add</button>
+    </div>
+  </div>`;
+}
+
 function combatChipHtml(kind) {
   const left = leftOf(kind), max = COMBAT_MAX[kind];
   const pips = Array.from({ length: max }, (_, i) => i < left ? "●" : "○").join("");
@@ -462,7 +562,8 @@ function renderCombat() {
   if (!COMBAT.active) {
     if (status) status.textContent = "";
     el.innerHTML = `<div class="hint">Not in combat. <b>Roll Initiative</b> (HP &amp; Defenses) starts a fight and this module starts tracking your turn — or press Start below.</div>
-      <div style="margin-top:.3rem"><button type="button" id="cbt-start">Start combat</button></div>`;
+      <div style="margin-top:.3rem"><button type="button" id="cbt-start">Start combat</button></div>
+      ${orderHtml()}`;
     return;
   }
 
@@ -470,7 +571,8 @@ function renderCombat() {
   const mv = moveLeft(), mvMax = moveMax();
   const undoLabel = lastHistoryLabel();
   el.innerHTML =
-    `<div class="cbt-chips">${COMBAT_KINDS.map(combatChipHtml).join("")}</div>
+    `${orderHtml()}
+     <div class="cbt-chips">${COMBAT_KINDS.map(combatChipHtml).join("")}</div>
      <div class="cbt-move-row">
        <span class="hint">move</span>
        <button type="button" class="cbt-mv" data-mv="-5" title="give back 5 ft of distance">&minus;5</button>
@@ -541,6 +643,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "cbt-end") { endRound(); return; }
     if (e.target.id === "cbt-leave") { leaveCombat(); return; }
     if (e.target.id === "cbt-undo") { undoLast(); return; }
+    if (e.target.id === "cbt-order-next") { nextTurn(); return; }
+    if (e.target.id === "cbt-order-add-btn") {
+      const nameEl = $("cbt-order-add-name"), initEl = $("cbt-order-add-init");
+      if (nameEl && nameEl.value.trim()) {
+        addOrderEntry(nameEl.value, initEl ? initEl.value : 0);
+        // renderCombat() just rebuilt these boxes from scratch, so re-find and focus for the next add.
+        const fresh = $("cbt-order-add-name"); if (fresh) fresh.focus();
+      }
+      return;
+    }
+    if (e.target.classList.contains("cbt-order-del")) {
+      const row = e.target.closest(".cbt-order-row");
+      if (row) removeOrderEntry(row.dataset.oid);
+      return;
+    }
     /* Foot-by-foot steps, right on the module rather than only inside the menu: movement is the one
        resource you spend in arbitrary amounts several times a turn, and often need back by a few
        feet. They take DISTANCE, so the terrain multiplier applies exactly as it does in the menu,
@@ -604,11 +721,35 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeCombatMenu(); });
 
+  /* Initiative-order rows: name/init edit boxes commit on change (same reasoning as the movement box
+     above), and Enter in either "add" box is the same as clicking Add. */
+  el.addEventListener("change", e => {
+    const row = e.target.closest(".cbt-order-row"); if (!row) return;
+    if (e.target.classList.contains("cbt-order-init")) editOrderEntry(row.dataset.oid, "init", e.target.value);
+    else if (e.target.classList.contains("cbt-order-name")) editOrderEntry(row.dataset.oid, "name", e.target.value);
+  });
+  el.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    if (e.target.id === "cbt-order-add-name" || e.target.id === "cbt-order-add-init") {
+      const btn = $("cbt-order-add-btn"); if (btn) btn.click();
+    }
+  });
+
   /* Rolling initiative is what puts you in combat — the whole point of the tracker is that you
-     don't have to remember to turn it on. */
+     don't have to remember to turn it on — and it's also what seeds/updates your own row in the
+     initiative order below, with the number that actually landed in the log (LAST_D20_ROLL, set by
+     fireRoll in dice.js). Deferred so that roll has already happened: app.js's own click listener
+     for [data-roll-check] buttons is registered after this file's (combat.js loads first), so it
+     fires later in this same click's dispatch — but only guaranteed complete by the next tick. */
   document.addEventListener("click", e => {
     const init = e.target.closest('[data-roll-check="init"]');
-    if (init && !COMBAT.active) setTimeout(() => enterCombat("initiative rolled"), 0);
+    if (!init) return;
+    setTimeout(() => {
+      if (!COMBAT.active) enterCombat("initiative rolled");
+      if (LAST_D20_ROLL && LAST_D20_ROLL.key === "init" && typeof LAST_D20_ROLL.value === "number") {
+        setPcInitiative(charName(), LAST_D20_ROLL.value);
+      }
+    }, 0);
   });
 
   /* Attack rolls book themselves. Deferred so the roll's own log entry lands first and the tracker's
