@@ -92,7 +92,10 @@ function switchCharacter(id) {
   // actually changes is what makes a group feel like one shared log rather than several copies.
   if (logKeyFor(target) !== fromKey) repaintEventLog();
   renderCharacterTabs();
-  logEvent("info", `Switched to <b>${escapeHtml(charDisplayName(target))}</b>`);
+  /* Only worth logging when the log is shared: in a group the entry tells the other characters who
+     is acting now, which is the point. On a solo character the log is that character's own, so
+     "Switched to Alice" in Alice's log says nothing you can't see from the tab bar. */
+  if (target.group) logEvent("info", `Switched to <b>${escapeHtml(charDisplayName(target))}</b>`);
 }
 
 /* Adds a character built from an already-assembled state object (the creation wizard hands one over)

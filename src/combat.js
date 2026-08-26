@@ -646,13 +646,13 @@ function renderCombat() {
      <div class="cbt-chips">${COMBAT_KINDS.map(combatChipHtml).join("")}</div>
      <div class="cbt-move-row">
        <span class="hint">move</span>
-       <button type="button" class="cbt-mv" data-mv="-5" title="give back 5 ft of distance">&minus;5</button>
-       <button type="button" class="cbt-mv" data-mv="-1" title="give back 1 ft of distance">&minus;1</button>
+       <button type="button" class="cbt-mv" data-mv="-5" title="move 5 ft of distance">&minus;5</button>
+       <button type="button" class="cbt-mv" data-mv="-1" title="move 1 ft of distance">&minus;1</button>
        <span class="cbt-move-box-wrap" title="feet of movement left this turn — edit to correct">
          <input type="text" inputmode="numeric" class="tiny cbt-move-box" value="${mv}">/<span class="cbt-move-max">${mvMax}</span> ft
        </span>
-       <button type="button" class="cbt-mv" data-mv="1" title="move 1 ft of distance">+1</button>
-       <button type="button" class="cbt-mv" data-mv="5" title="move 5 ft of distance">+5</button>
+       <button type="button" class="cbt-mv" data-mv="1" title="give back 1 ft of distance">+1</button>
+       <button type="button" class="cbt-mv" data-mv="5" title="give back 5 ft of distance">+5</button>
        <label class="hint" title="${escapeHtml(terrainLabel())} — feet of movement each foot of distance costs">&times;<input type="text" inputmode="numeric" class="tiny cbt-terrain-input" value="${terrainMult()}"></label>
        <button type="button" class="cbt-move-more" data-cbt="move" title="more movement options — presets, Dash, stand up from prone">&hellip;</button>
      </div>
@@ -738,9 +738,13 @@ document.addEventListener("DOMContentLoaded", () => {
        and they go through pushHistory so Undo covers them like everything else. */
     const mv = e.target.closest(".cbt-mv");
     if (mv) {
-      const ft = Number(mv.dataset.mv);
-      pushHistory(moveLabel(Math.abs(ft), ft < 0 ? "Give back" : "Move"));
-      spendMovement(moveCostFt(ft), moveLabel(Math.abs(ft), ft < 0 ? "Give back" : "Move"));
+      /* data-mv is the change to the number in the box, which counts feet REMAINING — so the
+         &minus; buttons spend and the + buttons refund. They used to be the other way round
+         (data-mv was feet spent), which meant pressing + made the number beside it go down. */
+      const delta = Number(mv.dataset.mv);
+      const label = moveLabel(Math.abs(delta), delta > 0 ? "Give back" : "Move");
+      pushHistory(label);
+      spendMovement(moveCostFt(-delta), label);
       return;
     }
     const chip = e.target.closest("[data-cbt]");

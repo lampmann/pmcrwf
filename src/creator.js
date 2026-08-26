@@ -1055,7 +1055,9 @@ document.addEventListener("DOMContentLoaded", () => {
       // Point buy starts everyone at 8 (0 points spent); the other methods start neutral at 10.
       const base = CREATOR.method === "pointbuy" ? 8 : 10;
       CREATOR_ABILITIES.forEach(ab => { CREATOR.scores[ab] = base; });
-      if (CREATOR.method === "roll" && !CREATOR.rolled.length) creatorRollScores();
+      /* Deliberately does NOT roll on arrival. Picking the method up to look at it would otherwise
+         commit you to a set of numbers, and re-rolling to get out of that reads as cheating rather
+         than as a first roll. The button does it, once you mean it. */
       renderCreator(); return;
     }
     const eq = e.target.closest("[data-creqmode]");
