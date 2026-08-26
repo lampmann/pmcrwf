@@ -4,7 +4,11 @@ function buildAbilities() {
   ABILITIES.forEach(a => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${a.name}</td>
-      <td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="1" data-max="30" id="score-${a.key}" value="10"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
+      <td><input type="text" inputmode="numeric" class="num" data-persist readonly id="score-${a.key}" value="10"
+            title="your base score, set at character creation and by level-up \u2014 everything since goes in Misc"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
+      <td><input type="text" data-persist class="score-misc" id="scoremisc-${a.key}"
+            placeholder="+2 belt, -1 curse"
+            title="signed terms, each optionally labelled with what it's from \u2014 e.g. &quot;+4-1&quot; or &quot;+2 belt, -1 curse&quot;"></td>
       <td class="derived" id="mod-${a.key}">+0</td>`;
     tb.appendChild(tr);
   });

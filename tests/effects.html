@@ -256,6 +256,42 @@ document.addEventListener("DOMContentLoaded", () => {
   assertEqual("Resilient grants CON save proficiency (PB +3 at total level 5)", $("savebonus-con").textContent, "+3");
   assertEqual("Resilient's +1 CON shows in the score-eff span", $("score-eff-con").textContent, "= 11");
 
+  /* ----- ability Misc: signed terms, each optionally labelled with what it's from -----
+     The base score is what the creator and level-up set and is no longer typed over; everything
+     since goes in Misc. One parse rule covers both shapes people actually write: numbers are found
+     first, and the words after each one (up to the next number or comma) are that number's label. */
+  {
+    const terms = str => parseMiscTerms(str).map(t => `${t.n}${t.label ? "|" + t.label : ""}`).join(" ");
+    assertEqual("a bare number is one term", terms("3"), "3");
+    assertEqual("run-on signs are separate terms", terms("+4-1"), "4 -1");
+    assertEqual("...which is what the field is for: they net out", parseMiscTerms("+4-1").reduce((s, t) => s + t.n, 0), 3);
+    assertEqual("a comma-separated list carries a label per term", terms("+2 belt, -1 curse"), "2|belt -1|curse");
+    assertEqual("...of any length", terms("+2 Belt of Giant Strength, -2 exhaustion"), "2|Belt of Giant Strength -2|exhaustion");
+    assertEqual("a hyphen inside a label survives, because it isn't followed by a digit",
+      terms("+1 half-plate"), "1|half-plate");
+    assertEqual("nothing typed is no terms", terms(""), "");
+    assertEqual("...and neither is prose with no numbers in it", terms("nonsense"), "");
+
+    const savedStr = $("score-str").value, savedMisc = $("scoremisc-str").value;
+    $("score-str").value = "15"; $("scoremisc-str").value = "+4-1";
+    assertEqual("Misc folds into the score", abilityScore("str"), 18);
+    assertEqual("...and therefore into the modifier", abilityMod("str"), 4);
+    recompute();
+    assertEqual("...and is shown as a total", $("score-eff-str").textContent, "= 18");
+    assert("...with every term in the tooltip", /15 base \+4 -1 = 18/.test($("score-eff-str").title));
+    $("scoremisc-str").value = "+2 belt, -1 curse";
+    recompute();
+    assert("...naming what each one is from, when you say", /\+2 \(belt\) -1 \(curse\)/.test($("score-eff-str").title));
+    $("scoremisc-str").value = "";
+    recompute();
+    assertEqual("an empty Misc leaves the score alone", abilityScore("str"), 15);
+    assert("...and hides the total span", $("score-eff-str").style.display === "none");
+    assert("the base score can't be typed over", $("score-str").readOnly);
+    assert("...while Misc can", !$("scoremisc-str").readOnly);
+    $("score-str").value = savedStr; $("scoremisc-str").value = savedMisc;
+    recompute();
+  }
+
   // ----- Attacks module: "attack-hit"/"damage-bonus" reach the weapon rows (src/attacks.js) -----
   // Sharpshooter's shape end to end: a toggle driving a to-hit penalty, a damage bonus and forced
   // advantage, plus a sibling effect on a still-reserved target that must stay in `unapplied`.

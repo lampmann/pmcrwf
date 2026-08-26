@@ -119,5 +119,23 @@ const num = el => Number(el && el.value) || 0;
 // classSpellAllowance below) so a feature that adds to an ability score — e.g. a half-feat like
 // Observant or Resilient — is picked up automatically. effFlat is defined in effects.js, which
 // loads after this file but before any of these are ever called (all calls happen post-load).
-function abilityScore(key) { return num($("score-" + key)) + effFlat("score-" + key); }
+/* Misc ability adjustments, as a list of signed terms each with an optional label saying what it's
+   from: "+4-1" is two unlabelled terms, "+2 belt, -1 curse" is two labelled ones. Numbers are found
+   first and the words after each one, up to the next number or comma, are its label — which handles
+   both shapes with one rule instead of two. A "-" inside a label survives as long as it isn't
+   followed by a digit, so "half-plate" reads as a label and "-1" reads as a term. */
+function parseMiscTerms(str) {
+  const out = [];
+  const re = /([+-]?\d+)((?:[^+\-,\d]|-(?!\d))*)/g;
+  let m;
+  while ((m = re.exec(String(str || "")))) {
+    out.push({ n: Number(m[1]), label: m[2].trim().replace(/[\s,]+$/, "") });
+  }
+  return out;
+}
+function miscTerms(key) { const el = $("scoremisc-" + key); return el ? parseMiscTerms(el.value) : []; }
+function miscTotal(key) { return miscTerms(key).reduce((s, t) => s + t.n, 0); }
+
+/* base (creator/level-up) + your own Misc + whatever features grant. */
+function abilityScore(key) { return num($("score-" + key)) + miscTotal(key) + effFlat("score-" + key); }
 function abilityMod(key) { return mod(abilityScore(key)); }
