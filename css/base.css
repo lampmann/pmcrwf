@@ -457,3 +457,6 @@ input[readonly] { background: rgba(128,128,128,.12); cursor: default; }
 }
 #roll-mirror-tab:hover { opacity: 1; }
 @media print { #roll-mirror, #roll-mirror-tab { display: none !important; } }
+
+/* Hand-entered defences, beside the ones features grant (src/derived.js renderDefenses). */
+.def-manual input { width: 7rem; }

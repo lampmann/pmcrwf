@@ -111,6 +111,14 @@ function parseBonus(str) {
 
    Rendered as text because that's what they are: a resistance isn't a number that folds into a
    total, it's a fact about you that the DM asks about. */
+/* A hand-entered defences box: comma-separated damage types. Kept deliberately free-text rather
+   than a picker — "fire", "bludgeoning from nonmagical attacks" and "everything except psychic" are
+   all things a table says, and only the first is in any list the sheet could offer. */
+function manualDefences(fieldId) {
+  const el = $(fieldId); if (!el) return [];
+  return String(el.value || "").split(",").map(x => x.trim()).filter(Boolean);
+}
+
 function renderDefenses() {
   const el = $("defenses-row"); if (!el) return;
   if (typeof effFlatByPrefix !== "function") { el.textContent = ""; return; }
@@ -120,11 +128,22 @@ function renderDefenses() {
   const speeds = effFlatByPrefix("speed-").map(s => `<b>${escapeHtml(s.kind)}</b> ${s.n} ft`)
     .concat(effTagsByPrefix("speed-").map(t => `<b>${escapeHtml(t.kind)}</b> ${escapeHtml(t.items.map(i => i.label).join(", "))}`));
   if (speeds.length) bits.push(speeds.join(", "));
-  [["resist-", "resistant to"], ["immune-", "immune to"], ["vuln-", "vulnerable to"]].forEach(([pre, label]) => {
-    const rows = effTagsByPrefix(pre);
-    if (!rows.length) return;
-    const names = rows.map(r => r.kind || r.items.map(i => i.label).join("/")).join(", ");
-    bits.push(`${label} <b>${escapeHtml(names)}</b>`);
+  /* Feature-granted AND hand-entered, in one list per category. Plenty of what a character is
+     resistant to on a given evening comes from somewhere the sheet can't see — a spell someone else
+     cast on you, a potion, a DM ruling, an item not itemised in Inventory — and a defences line that
+     could only ever show what a *feature* granted was read-only for exactly the cases that change
+     most. Duplicates collapse, so a resistance you both have and typed shows once. */
+  [["resist-", "resistant to", "def-resist"], ["immune-", "immune to", "def-immune"],
+   ["vuln-", "vulnerable to", "def-vuln"]].forEach(([pre, label, fieldId]) => {
+    const fromFeatures = effTagsByPrefix(pre).map(r => r.kind || r.items.map(i => i.label).join("/"));
+    const byHand = manualDefences(fieldId);
+    const seen = new Set(), names = [];
+    fromFeatures.concat(byHand).forEach(n => {
+      const k = n.trim().toLowerCase(); if (!k || seen.has(k)) return;
+      seen.add(k); names.push(n.trim());
+    });
+    if (!names.length) return;
+    bits.push(`${label} <b>${escapeHtml(names.join(", "))}</b>`);
   });
   const condSaves = effTagsByPrefix("save-vs-");
   if (condSaves.length) {

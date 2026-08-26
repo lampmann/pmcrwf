@@ -48,6 +48,7 @@
          0/0, so the field ships with a default and applyState restores it (see syncRaceSpeed). -->
     <input type="text" data-persist data-math data-min="0" data-allow-empty id="speed" value="30" data-autospeed="30"><span id="speed-total" style="display:none"></span>
     <span id="init">+0</span><input type="text" id="init-misc">
+    <input type="text" data-persist id="def-resist"><input type="text" data-persist id="def-immune"><input type="text" data-persist id="def-vuln">
     <div id="defenses-row"></div>
   </section>
   <section class="module wide" data-module="inventory">
@@ -550,6 +551,27 @@ document.addEventListener("DOMContentLoaded", () => {
     renderClassLibrary(); invalidateEffects(); recompute();
     const defences = () => $("defenses-row").textContent;
     assert("a tagged resistance reaches the defences line", /resistant to\s*poison/.test(defences()));
+    /* Hand-entered defences sit in the same lists as the feature-granted ones. Plenty of what a
+       character resists on a given evening comes from somewhere the sheet can't see — someone
+       else's spell, a potion, a DM ruling — and the line used to be readable only. */
+    $("def-resist").value = "fire, cold";
+    $("def-immune").value = "";
+    $("def-vuln").value = "radiant";
+    recompute();
+    assert("a hand-typed resistance joins the feature-granted ones", /resistant to.*fire/.test(defences()));
+    assert("...without displacing them", /poison/.test(defences()));
+    assert("...and a comma-separated list splits", /cold/.test(defences()));
+    assert("...vulnerabilities have their own line", /vulnerable to\s*radiant/.test(defences()));
+    $("def-resist").value = "poison";
+    recompute();
+    assertEqual("typing something a feature already grants shows it once, not twice",
+      (defences().match(/poison/g) || []).length, 2);   // once under "resistant to", once under "saves vs"
+    $("def-resist").value = "  ,  , fire ,";
+    recompute();
+    assert("blank entries and stray commas are ignored", /resistant to\s*poison,\s*fire/.test(defences()));
+    $("def-resist").value = ""; $("def-vuln").value = "";
+    recompute();
+    assert("clearing the boxes leaves only what features grant", !/radiant/.test(defences()));
     assert("...as does an immunity", /immune to\s*disease/.test(defences()));
     assert("...and a condition save, phrased as advantage rather than as a number",
       /advantage on saves vs\s*poisoned/.test(defences()));
