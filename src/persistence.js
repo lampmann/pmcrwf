@@ -11,7 +11,7 @@ function collectState() {
     companions: (typeof COMPANIONS !== "undefined" ? COMPANIONS : []),
     combat: (typeof COMBAT !== "undefined" ? COMBAT : null),   // the round tracker, so a fight survives a reload
     boons: (typeof BOONS !== "undefined" ? BOONS : null),      // Guidance/Resistance/Death Ward counts (src/boons.js)
-    featChoices: FEAT_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
+    featChoices: FEAT_CHOICES, asiChoices: ASI_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
   document.querySelectorAll("[data-persist]").forEach(el => { state.fields[el.id] = el.type === "checkbox" ? el.checked : el.value; });
@@ -26,6 +26,7 @@ function applyState(state) {
   CHARACTER_ITEMS = state.items || [];
   PROFICIENCIES = state.proficiencies || { weapons: [], tools: [], languages: [] };
   FEAT_CHOICES = state.featChoices || {};
+  ASI_CHOICES = state.asiChoices || {};
   USES_STATE = state.usesState || {};
   HD_STATE = state.hdState || {};
   EFFECT_CHOICES = state.effectChoices || {};

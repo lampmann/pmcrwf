@@ -73,6 +73,9 @@ function blankCreator() {
     rolled: [],                                          // 4d6kh3 results, when method === "roll"
     name: "", background: "", customBg: false,
     bgSkills: ["", ""], bgTools: ["", ""], bgFeature: "",   // custom background (PHB p125)
+    /* A listed background's own "choose N of ..." blocks, resolved rather than only displayed:
+       { skills: [...], tools: [...], languages: [...] }, one entry per slot the data asks for. */
+    bgChoices: { skills: [], tools: [], languages: [] },
     equipMode: "package",                                // package | gold
     equipPick: {},                                       // startingEquipment line index -> "a" | "b"
     startGold: null, goldAveraged: false,                // starting gold, rolled or averaged, when equipMode === "gold"
@@ -589,6 +592,39 @@ function flatProfNames(list) {
   });
   return out;
 }
+/* The `choose` blocks in a background's proficiency data, as actual pickers. The data says "choose
+   two from this list of six"; showing that sentence and leaving the character without the
+   proficiencies was the gap — this resolves it, one <select> per slot. */
+function chooseBlocks(list) {
+  const out = [];
+  (Array.isArray(list) ? list : []).forEach(entry => {
+    Object.entries(entry || {}).forEach(([k, v]) => {
+      if (k !== "choose" || !v) return;
+      out.push({ count: v.count || 1, from: (v.from || []).map(x => String(x).replace(/\|.*/, "")) });
+    });
+  });
+  return out;
+}
+function bgChooseHtml(rec, kind) {
+  const blocks = chooseBlocks(rec[kind]);
+  if (!blocks.length) return "";
+  const picked = (CREATOR.bgChoices && CREATOR.bgChoices[kind]) || [];
+  let slot = 0;
+  const rows = blocks.map(b => {
+    const sels = [];
+    for (let i = 0; i < b.count; i++) {
+      const idx = slot++;
+      const cur = picked[idx] || "";
+      sels.push(`<select class="cr-bgchoose" data-bgkind="${kind}" data-bgslot="${idx}">` +
+        `<option value=""${cur ? "" : " selected"}>&mdash; choose &mdash;</option>` +
+        b.from.map(o => `<option value="${escapeHtml(o)}"${o === cur ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") +
+        `</select>`);
+    }
+    return sels.join(" ");
+  }).join(" ");
+  return `<div class="hint" style="margin-top:.2rem"><b>${kind[0].toUpperCase() + kind.slice(1)}</b> to choose: ${rows}</div>`;
+}
+
 function backgroundSummaryHtml(rec) {
   if (!rec) return "";
   const parts = [];
@@ -597,6 +633,7 @@ function backgroundSummaryHtml(rec) {
   const lg = profListText(rec.languages); if (lg) parts.push(`<b>Languages</b> ${escapeHtml(lg)}`);
   if (rec.feature) parts.push(`<b>Feature</b> ${escapeHtml(rec.feature.name)}`);
   return `<div class="hint" style="margin-top:.4rem">${parts.join(" &middot; ") || "No mechanical details in your data for this background."}
+    ${bgChooseHtml(rec, "skills")}${bgChooseHtml(rec, "tools")}${bgChooseHtml(rec, "languages")}
     ${rec.equipmentText ? `<div><b>Equipment</b> ${escapeHtml(rec.equipmentText)}</div>` : ""}
     <div>Skill proficiencies are applied to the Skills module; tools and languages to Proficiencies. Anything listed as a choice is yours to make there.</div></div>`;
 }
@@ -891,6 +928,12 @@ function creatorBuildState() {
       flatProfNames(rec.skills).forEach(s => skillProfs.push(s));
       flatProfNames(rec.tools).forEach(t => prof.tools.push(t));
       flatProfNames(rec.languages).forEach(l => prof.languages.push(l));
+      // ...plus whatever was picked for its "choose N of ..." blocks, which used to be shown as a
+      // sentence and then dropped on the floor.
+      const bc = c.bgChoices || {};
+      (bc.skills || []).filter(Boolean).forEach(x => skillProfs.push(x));
+      (bc.tools || []).filter(Boolean).forEach(x => prof.tools.push(x));
+      (bc.languages || []).filter(Boolean).forEach(x => prof.languages.push(x));
     }
   }
   skillProfs.forEach(name => {
@@ -1007,6 +1050,13 @@ document.addEventListener("DOMContentLoaded", () => {
      fires `change`, but on blur — as you click the next control — which would tear that control out
      of the document before its own click resolved. Those are handled entirely by `input` above. */
   $("cr-body").addEventListener("change", e => {
+    const bgc = e.target.closest(".cr-bgchoose");
+    if (bgc) {
+      const kind = bgc.dataset.bgkind, slot = Number(bgc.dataset.bgslot);
+      const store = CREATOR.bgChoices || (CREATOR.bgChoices = { skills: [], tools: [], languages: [] });
+      (store[kind] || (store[kind] = []))[slot] = bgc.value;
+      renderCreator(); return;
+    }
     const t = e.target; if (!CREATOR) return;
     if (t.classList.contains("cr-racial")) { CREATOR[t.dataset.crstore][t.dataset.crslot] = t.value; renderCreator(); return; }
     if (t.id === "cr-custom-origin") {

@@ -137,5 +137,8 @@ function miscTerms(key) { const el = $("scoremisc-" + key); return el ? parseMis
 function miscTotal(key) { return miscTerms(key).reduce((s, t) => s + t.n, 0); }
 
 /* base (creator/level-up) + your own Misc + whatever features grant. */
-function abilityScore(key) { return num($("score-" + key)) + miscTotal(key) + effFlat("score-" + key); }
+function abilityScore(key) {
+  const asi = (typeof asiTotal === "function") ? asiTotal(key) : 0;
+  return num($("score-" + key)) + asi + miscTotal(key) + effFlat("score-" + key);
+}
 function abilityMod(key) { return mod(abilityScore(key)); }
