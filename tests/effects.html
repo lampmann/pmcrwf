@@ -50,6 +50,8 @@
     <span id="init">+0</span><input type="text" id="init-misc">
     <input type="text" data-persist id="def-resist"><input type="text" data-persist id="def-immune"><input type="text" data-persist id="def-vuln">
     <div id="defenses-row"></div>
+    <div id="conditions-list"><input type="checkbox" data-persist id="cond-blinded"><input type="checkbox" data-persist id="cond-charmed"><input type="checkbox" data-persist id="cond-deafened"><input type="checkbox" data-persist id="cond-frightened"><input type="checkbox" data-persist id="cond-grappled"><input type="checkbox" data-persist id="cond-incapacitated"><input type="checkbox" data-persist id="cond-invisible"><input type="checkbox" data-persist id="cond-paralyzed"><input type="checkbox" data-persist id="cond-petrified"><input type="checkbox" data-persist id="cond-poisoned"><input type="checkbox" data-persist id="cond-prone"><input type="checkbox" data-persist id="cond-restrained"><input type="checkbox" data-persist id="cond-stunned"><input type="checkbox" data-persist id="cond-unconscious"></div><div id="cond-applied"></div><div id="cond-manual"></div>
+    <input type="text" id="exhaustion-level" value="0">
   </section>
   <section class="module wide" data-module="inventory">
     <input id="coin-cp"><input id="coin-sp"><input id="coin-ep"><input id="coin-gp"><input id="coin-pp">
@@ -127,6 +129,7 @@
 <script src="../src/derived.js"></script>
 <script src="../src/event-log.js"></script>
 <script src="../src/roll-mirror.js"></script>
+<script src="../src/conditions-apply.js"></script>
 <script src="../src/dice.js"></script>
 <script src="../src/boons.js"></script>
 <script src="../src/filters.js"></script>
@@ -1634,6 +1637,82 @@ document.addEventListener("DOMContentLoaded", () => {
       assert("a table that doesn't take R47 gets the old behaviour back", !castEntry().disabled);
       HOUSE_RULES = savedHR3;
       COMBAT = blankCombat(); COMBAT.active = true;
+    }
+
+    /* --- conditions and exhaustion move the numbers, and say which parts they won't ---
+       The split is the whole point: adv/dis on YOUR rolls, your speed and your hit point maximum
+       are applied, because nothing else has to be true for them to bite. "Attacks against you have
+       advantage" is someone else's roll, and an auto-failed save is not disadvantage — those get
+       listed instead of being dressed up as a number this sheet can hold. */
+    {
+      const savedExh = $("exhaustion-level").value, savedSpeed2 = $("speed").value;
+      const cond = (k, on) => { $("cond-" + k).checked = on; };
+      const exh = n => { $("exhaustion-level").value = String(n); };
+      const clearAll = () => { CONDITION_KEYS.forEach(k => cond(k, false)); exh(0); };
+      clearAll(); $("speed").value = "30"; recompute();
+
+      cond("poisoned", true);
+      assertEqual("Poisoned gives disadvantage on attacks", conditionMode("attack-hit"), "dis");
+      assertEqual("...and on ability checks", conditionMode("skill-athletics"), "dis");
+      assertEqual("...including initiative, which is a Dex check", conditionMode("init"), "dis");
+      assertEqual("...but not on saves", conditionMode("save-wis"), null);
+      cond("invisible", true);
+      assertEqual("advantage and disadvantage cancel, however many of each (PHB p173)",
+        conditionMode("attack-hit"), "normal");
+      cond("poisoned", false);
+      assertEqual("...leaving plain advantage once the disadvantage goes", conditionMode("attack-hit"), "adv");
+      clearAll();
+
+      cond("restrained", true); recompute();
+      assertEqual("Restrained gives disadvantage on Dex saves", conditionMode("save-dex"), "dis");
+      assertEqual("...and on no other save", conditionMode("save-wis"), null);
+      assertEqual("...disadvantage on attacks", conditionMode("attack-hit"), "dis");
+      assertEqual("...and stops you", speedTotal(), 0);
+      clearAll(); recompute();
+      assertEqual("clearing it gives your speed back", speedTotal(), 30);
+
+      ["paralyzed", "petrified", "stunned", "unconscious", "grappled"].forEach(k => {
+        clearAll(); cond(k, true); recompute();
+        assertEqual(k + " stops you moving", speedTotal(), 0);
+      });
+      clearAll(); recompute();
+
+      exh(1); recompute();
+      assertEqual("exhaustion 1 hits ability checks", conditionMode("skill-athletics"), "dis");
+      assertEqual("...and nothing else yet", conditionMode("attack-hit"), null);
+      assertEqual("...leaving speed alone", speedTotal(), 30);
+      exh(2); recompute();
+      assertEqual("exhaustion 2 halves your speed", speedTotal(), 15);
+      exh(3); recompute();
+      assertEqual("exhaustion 3 reaches attacks", conditionMode("attack-hit"), "dis");
+      assertEqual("...and saves", conditionMode("save-str"), "dis");
+      const hpAt3 = maxHP();
+      exh(4); recompute();
+      assertEqual("exhaustion 4 halves your hit point maximum", maxHP(), Math.floor(hpAt3 / 2));
+      exh(5); recompute();
+      assertEqual("exhaustion 5 stops you outright", speedTotal(), 0);
+      exh(0); recompute();
+      assertEqual("clearing exhaustion restores everything", speedTotal(), 30);
+
+      cond("paralyzed", true); recompute();
+      assertEqual("an auto-failed save is recorded as such, not as disadvantage",
+        Object.keys(autoFailedSaves()).sort().join(","), "dex,str");
+      assertEqual("...and is NOT turned into a roll mode", conditionMode("save-str"), null);
+      assert("...it appears under what is yours to apply", /auto-fails Str and Dex/.test($("cond-manual").textContent));
+      assert("someone else's roll is listed too, never applied",
+        /attacks against you have advantage/.test($("cond-manual").textContent));
+      cond("incapacitated", true); recompute();
+      assert("Incapacitated is listed rather than zeroing your action, which would be the one refusal",
+        /take actions or reactions/.test($("cond-manual").textContent));
+
+      clearAll(); cond("frightened", true); recompute();
+      assert("the applied line says what moved", /disadvantage on/.test($("cond-applied").textContent));
+      assert("...and which condition moved it", /Frightened/.test($("cond-applied").textContent));
+      clearAll(); recompute();
+      assertEqual("with nothing ticked, nothing is claimed", $("cond-applied").textContent, "");
+      assertEqual("...and nothing is left to you", $("cond-manual").textContent, "");
+
+      $("exhaustion-level").value = savedExh; $("speed").value = savedSpeed2; recompute();
     }
 
     /* --- the initiative order: shared across characters, one row per PC ---

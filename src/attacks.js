@@ -135,11 +135,16 @@
      effect already forced on this row. Advantage and disadvantage cancel to a straight roll (PHB
      p173) rather than one winning, so that's what happens here. */
   function hitMode(d) {
-    const fx = fxMode(d, "attack-hit") || "";
+    /* Three things can force a weapon roll's mode and they all cancel against each other the same
+       way: this row's feature effects, an oversized weapon, and whatever conditions you're under.
+       Conditions apply whether or not the row's Fx box is ticked — Fx opts a weapon out of your
+       FEATURES, not out of being poisoned. */
+    let fx = fxMode(d, "attack-hit") || "";
+    if (typeof conditionMode === "function") fx = combineModes(fx, conditionMode("attack-hit")) || "";
     const over = (typeof oversizedVerdict === "function") ? oversizedVerdict(d.size) : null;
-    if (!over || !over.disadvantage) return fx;
+    if (!over || !over.disadvantage) return fx === "normal" ? "" : fx;
     if (fx === "adv") return "";        // advantage + disadvantage = neither
-    return "dis";
+    return fx === "normal" ? "" : "dis";
   }
   function updateRowDerived(tr) {
     const d = rowData(tr);
