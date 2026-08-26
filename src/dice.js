@@ -186,7 +186,10 @@ function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlK
 function rollInfo(btn) {
   if (btn.dataset.rollCheck) {
     const k = btn.dataset.rollCheck;
-    return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label + effAnnotations(k), mode: effMode(k),
+    return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label + effAnnotations(k),
+      // Conditions and exhaustion force a mode the same way a feature does — combined, not replaced,
+      // so Poisoned cancelling a feature's advantage lands on a straight roll rather than one winning.
+      mode: (typeof conditionMode === "function") ? combineModes(effMode(k), conditionMode(k)) : effMode(k),
       // Reliable Talent floors a check you're proficient in; the engine records the floor per target.
       // Reliable Talent floors any check you can add your proficiency bonus to, so it's declared on
       // "check-proficient" rather than per skill; a floor aimed at one specific check still works.
@@ -195,7 +198,8 @@ function rollInfo(btn) {
   }
   // inline "spell attack" phrase inside an expanded spell description (see renderInlineSpellText)
   if (btn.classList.contains("atk-roll")) {
-    return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: (btn.dataset.rolllabel || "spell attack") + effAnnotations("spellatk"), mode: effMode("spellatk") };
+    return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: (btn.dataset.rolllabel || "spell attack") + effAnnotations("spellatk"),
+      mode: (typeof conditionMode === "function") ? combineModes(effMode("spellatk"), conditionMode("spellatk")) : effMode("spellatk") };
   }
   // weapon attack to-hit button (Attacks module) — bonus/dice/label/mode are all set on the button by
   // attacks.js, which is what already folds that row's feature effects (attack-hit) into them

@@ -28,7 +28,8 @@ function maxHPAuto() {
 function maxHP() {
   const ov = $("hp-max-override").value;
   const base = ov !== "" && !isNaN(Number(ov)) ? Number(ov) : maxHPAuto();
-  return base + effFlat("hpmax");   // override sets the base; effects (e.g. Tough) still add on top
+  const n = base + effFlat("hpmax");   // override sets the base; effects (e.g. Tough) still add on top
+  return (typeof conditionMaxHp === "function") ? conditionMaxHp(n) : n;   // exhaustion 4 halves it
 }
 
 /* speed is a plain user-typed input (not auto-calculated like AC/initiative), but effects can still
@@ -38,7 +39,9 @@ function maxHP() {
    with a 20 ft speed is stopped, not moving backwards. */
 function speedTotal() {
   const enc = (typeof encumbranceState === "function") ? encumbranceState().speedPenalty : 0;
-  return Math.max(0, num($("speed")) + effFlat("speed") - enc);
+  const n = Math.max(0, num($("speed")) + effFlat("speed") - enc);
+  // Grappled and Restrained stop you; exhaustion halves at 2 and stops you at 5 (PHB p291).
+  return (typeof conditionSpeed === "function") ? conditionSpeed(n) : n;
 }
 
 /* ---------- Armor Class (auto-calculated from equipped armor, like initiative) ----------
@@ -181,6 +184,8 @@ function recompute() {
   if (typeof syncCombatMovement === "function") syncCombatMovement();
   // Likewise the character's own name in the initiative order, written in place.
   if (typeof syncPcOrderName === "function") syncPcOrderName();
+  // What conditions and exhaustion have done to the numbers, and what they've left to you.
+  if (typeof renderConditionEffects === "function") renderConditionEffects();
   { const d = checkDice("init"); $("init").textContent = sign(checkBonus("init")) + (d ? " " + d : ""); }
   { const d = checkDice("ac"); $("ac").textContent = String(checkBonus("ac")) + (d ? " " + d : ""); }
   const ab = $("spell-ability").value;
