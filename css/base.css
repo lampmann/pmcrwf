@@ -423,3 +423,7 @@ input.banned-value { color: #c00; }
 .boon-add { opacity: .8; }
 .boon-add:focus-within { opacity: 1; }
 input.boon-add-name { width: 8rem; }
+
+/* Ability Misc: wide enough for "+2 belt, -1 curse" without being the widest thing in the module. */
+input.score-misc { width: 9rem; }
+input[readonly] { background: rgba(128,128,128,.12); cursor: default; }

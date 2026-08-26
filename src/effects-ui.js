@@ -179,12 +179,20 @@ function paintEffectAudit() {
   document.querySelectorAll("#skill-rows tr").forEach(tr => paintEffectSpan($("skillbonus-" + tr.dataset.slug), "skill-" + tr.dataset.slug, "Skill"));
 
   ABILITIES.forEach(a => {
+    /* Three things can move a score and all three are shown here: the base the creator set, the
+       Misc terms you typed (each with whatever you labelled it), and what features grant. The
+       tooltip names every one, so a 20 that should be an 18 is traceable without hunting. */
     const key = "score-" + a.key, eff = effFlat(key), el = $("score-eff-" + a.key);
     if (!el) return;
-    if (eff) {
-      const base = num($("score-" + a.key)), total = base + eff;
+    const terms = (typeof miscTerms === "function") ? miscTerms(a.key) : [];
+    const misc = terms.reduce((s, t) => s + t.n, 0);
+    if (eff || misc) {
+      const base = num($("score-" + a.key)), total = base + misc + eff;
+      const parts = [`${base} base`]
+        .concat(terms.map(t => `${sign(t.n)}${t.label ? " (" + t.label + ")" : ""}`))
+        .concat(eff ? [`${sign(eff)} (${effContribs(key).map(c => c.source).join(", ")})`] : []);
       el.style.display = ""; el.textContent = `= ${total}`;
-      el.title = `${base} base ${sign(eff)} (${effContribs(key).map(c => c.source).join(", ")}) = ${total}`;
+      el.title = `${parts.join(" ")} = ${total}`;
     } else { el.style.display = "none"; el.title = ""; }
   });
   { // speed is still a plain input (not auto-calculated) — same "base + effects = total" audit span as before
