@@ -201,6 +201,7 @@ function repaintEventLog() {
   const entries = (ROSTER.logs && ROSTER.logs[activeLogKey()]) || [];
   const header = el.firstElementChild ? el.firstElementChild.outerHTML : "<div>— event log —</div>";
   el.innerHTML = header + entries.map(e => `<div class="ev ev-${e.kind}">${e.html}</div>`).join("");
+  if (typeof repaintRollMirror === "function") repaintRollMirror();
 }
 
 /* Persisting the whole roster on every die roll would serialise every character's full state each
