@@ -261,6 +261,8 @@ document.addEventListener("DOMContentLoaded", () => {
   EFFECT_CHOICES[resFkey] = { ability: "con" };
   invalidateEffects(); recompute();
   assertEqual("Resilient grants CON save proficiency (PB +3 at total level 5)", $("savebonus-con").textContent, "+3");
+
+
   assertEqual("Resilient's +1 CON shows in the score-eff span", $("score-eff-con").textContent, "= 11");
 
   /* ----- ability Misc: signed terms, each optionally labelled with what it's from -----
@@ -1148,6 +1150,43 @@ document.addEventListener("DOMContentLoaded", () => {
     CREATOR.classes.push({ name: "", sub: "", lvl: 1 });
     assertEqual("...but an added-and-never-filled row is dropped", creatorBuildState().classes.length, 2);
 
+    /* --- a background's "choose N of ..." is now a choice, not a sentence ---
+       The data says "choose two languages from these four"; the creator showed that and then built
+       a character without them. One <select> per slot, and the picks land in the built state. */
+    {
+      const savedBgLib = BACKGROUND_LIB;
+      BACKGROUND_LIB = { Sage: { name: "Sage", source: "PHB",
+        skills: [{ arcana: true, history: true }], tools: [],
+        languages: [{ choose: { count: 2, from: ["Draconic", "Elvish", "Dwarvish", "Celestial"] } }],
+        feature: { name: "Researcher", text: "" } } };
+      CREATOR.background = "Sage"; CREATOR.customBg = false;
+      CREATOR.bgChoices = { skills: [], tools: [], languages: [] };
+
+      const rec = ciFindBackground("Sage");
+      assertEqual("a choose block is read out of the data", chooseBlocks(rec.languages).length, 1);
+      assertEqual("...with its count", chooseBlocks(rec.languages)[0].count, 2);
+      assertEqual("...and its options", chooseBlocks(rec.languages)[0].from.join(","), "Draconic,Elvish,Dwarvish,Celestial");
+      assertEqual("a list with nothing to choose yields no blocks", chooseBlocks(rec.skills).length, 0);
+
+      assertEqual("what a background grants outright is unaffected",
+        flatProfNames(rec.skills).join(","), "arcana,history");
+      assertEqual("...and a choose block still contributes nothing on its own", flatProfNames(rec.languages).length, 0);
+
+      CREATOR.bgChoices.languages = ["Draconic", "Celestial"];
+      const built2 = creatorBuildState();
+      assertEqual("the picks reach the built character", built2.proficiencies.languages.join(","), "Draconic,Celestial");
+      assert("...alongside the outright grants", !!built2.fields["skillprof-arcana"] && !!built2.fields["skillprof-history"]);
+
+      CREATOR.bgChoices.languages = ["Draconic", ""];
+      assertEqual("a half-finished choice contributes what's been chosen",
+        creatorBuildState().proficiencies.languages.join(","), "Draconic");
+      CREATOR.bgChoices.languages = [];
+      assertEqual("...and none at all contributes nothing", creatorBuildState().proficiencies.languages.length, 0);
+
+      BACKGROUND_LIB = savedBgLib;
+      CREATOR.background = ""; CREATOR.bgChoices = { skills: [], tools: [], languages: [] };
+    }
+
     // --- background: what gets applied, and what is deliberately left as an open choice ---
     {
       const savedBg = BACKGROUND_LIB;
@@ -1638,6 +1677,62 @@ document.addEventListener("DOMContentLoaded", () => {
       HOUSE_RULES = savedHR3;
       COMBAT = blankCombat(); COMBAT.active = true;
     }
+
+  /* ----- an Ability Score Improvement is a feat OR two ability bumps -----
+     The slot always existed and always offered a feat; taking the +2 instead was listed as a gained
+     feature and left to you. Picks are stored as two slots because that IS the rule — the same
+     ability twice is the +2, two different ones is +1 each, and neither needs a special case. */
+  {
+    const savedFeatChoices = FEAT_CHOICES, savedAsi = ASI_CHOICES, savedStr = $("score-str").value;
+    const savedClassLib3 = CLASS_LIB, savedFeatLib = FEAT_LIB;
+    CLASS_LIB = { Fighter: { name: "Fighter", source: "PHB", hd: "d10", caster: "none", subs: {},
+      feats: [{ name: "Ability Score Improvement", level: 4, source: "PHB", text: "" }] } };
+    FEAT_LIB = { Alert: { name: "Alert", source: "PHB", text: "x" } };
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    addClassRow({ name: "Fighter", sub: "", lvl: 4 });
+    FEAT_CHOICES = {}; ASI_CHOICES = {};
+    $("score-str").value = "15"; $("scoremisc-str").value = "";
+    renderClassLibrary(); recompute();
+    const asiKey = fkeyFor("Fighter", "Ability Score Improvement", 4);
+
+    const dexBefore = abilityScore("dex");
+    assertEqual("an untaken ASI moves nothing", abilityScore("str"), 15);
+    ASI_CHOICES[asiKey] = ["str", "str"];
+    assertEqual("the same ability twice is the +2", abilityScore("str"), 17);
+    ASI_CHOICES[asiKey] = ["str", "dex"];
+    assertEqual("two different abilities is +1 each", abilityScore("str"), 16);
+    assertEqual("...to both of them", abilityScore("dex"), dexBefore + 1);
+    ASI_CHOICES[asiKey] = ["str", ""];
+    assertEqual("a half-finished pick counts what's been picked", abilityScore("str"), 16);
+
+    // one or the other, never both
+    ASI_CHOICES[asiKey] = ["str", "str"];
+    FEAT_CHOICES[asiKey] = "Alert";
+    assertEqual("a slot spent on a feat stops adding its scores", abilityScore("str"), 15);
+    delete FEAT_CHOICES[asiKey];
+    assertEqual("...and clearing the feat gives them back rather than losing the pick", abilityScore("str"), 17);
+    renderClassFeatures();
+    assertEqual("both pickers are rendered for the slot",
+      document.querySelectorAll(`.asi-score[data-asikey="${asiKey}"]`).length, 2);
+    FEAT_CHOICES[asiKey] = "Alert"; renderClassFeatures();
+    assert("...and are disabled while a feat holds the slot",
+      [...document.querySelectorAll(`.asi-score[data-asikey="${asiKey}"]`)].every(x => x.disabled));
+    delete FEAT_CHOICES[asiKey];
+
+    recompute();
+    assert("the score's tooltip credits the ASI alongside everything else",
+      /Ability Score Improvement/.test($("score-eff-str").title));
+    assertEqual("it round-trips through the character's state",
+      JSON.stringify(collectState().asiChoices[asiKey]), JSON.stringify(["str", "str"]));
+    ASI_CHOICES = {};
+    assertEqual("a character saved before ASIs were pickable has none", asiTotal("str"), 0);
+
+    FEAT_CHOICES = savedFeatChoices; ASI_CHOICES = savedAsi;
+    CLASS_LIB = savedClassLib3; FEAT_LIB = savedFeatLib;
+    $("score-str").value = savedStr;
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    renderClassLibrary(); recompute();
+  }
 
     /* --- conditions and exhaustion move the numbers, and say which parts they won't ---
        The split is the whole point: adv/dis on YOUR rolls, your speed and your hit point maximum

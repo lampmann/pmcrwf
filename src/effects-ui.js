@@ -186,9 +186,11 @@ function paintEffectAudit() {
     if (!el) return;
     const terms = (typeof miscTerms === "function") ? miscTerms(a.key) : [];
     const misc = terms.reduce((s, t) => s + t.n, 0);
-    if (eff || misc) {
-      const base = num($("score-" + a.key)), total = base + misc + eff;
+    const asi = (typeof asiTotal === "function") ? asiTotal(a.key) : 0;
+    if (eff || misc || asi) {
+      const base = num($("score-" + a.key)), total = base + asi + misc + eff;
       const parts = [`${base} base`]
+        .concat(asi ? [`+${asi} (Ability Score Improvement${asi > 1 ? "s" : ""})`] : [])
         .concat(terms.map(t => `${sign(t.n)}${t.label ? " (" + t.label + ")" : ""}`))
         .concat(eff ? [`${sign(eff)} (${effContribs(key).map(c => c.source).join(", ")})`] : []);
       el.style.display = ""; el.textContent = `= ${total}`;

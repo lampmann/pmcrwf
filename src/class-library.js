@@ -30,6 +30,33 @@ let BACKGROUND_LIB = {};
 // ASI feat picks, keyed by the same string used for that ASI feature's feat-link (see fkeyFor).
 // Persisted as part of the character (collectState/applyState in persistence.js).
 let FEAT_CHOICES = {};
+/* An Ability Score Improvement that was spent on scores rather than on a feat:
+   { fkey: ["dex", "dex"] } is +2 DEX, { fkey: ["str", "con"] } is +1 to each — which is exactly how
+   the rule reads ("increase one ability score by 2, or two ability scores by 1"), so picking the
+   same ability twice and picking two different ones need no separate cases. Kept apart from
+   FEAT_CHOICES because an ASI is one or the other, never both. */
+let ASI_CHOICES = {};
+
+/* The total an ability has gained from ASIs taken on features you currently have. Only counts slots
+   with no feat chosen — a slot spent on a feat gave you the feat instead. */
+function asiTotal(ab) {
+  let n = 0;
+  Object.entries(ASI_CHOICES).forEach(([fkey, picks]) => {
+    if (FEAT_CHOICES[fkey]) return;
+    (picks || []).forEach(p => { if (p === ab) n++; });
+  });
+  return n;
+}
+/* Which ASI slots contributed, for the ability score's audit tooltip. */
+function asiSources(ab) {
+  const out = [];
+  Object.entries(ASI_CHOICES).forEach(([fkey, picks]) => {
+    if (FEAT_CHOICES[fkey]) return;
+    const n = (picks || []).filter(p => p === ab).length;
+    if (n) out.push({ fkey, n, label: "ASI " + String(fkey).split("|").slice(0, 1) + " " + String(fkey).split("|")[2] });
+  });
+  return out;
+}
 // Limited-use tracking, keyed by the same feature key as FEAT_CHOICES/feat-link.
 // { used: number, pendingRests: number|null } — pendingRests is only set for a DB entry's
 // `uses.delayed` ("until you finish NdN long rests") recharge. The uses spec itself (whether a
@@ -439,6 +466,21 @@ function activeFeatures() {
   return out;
 }
 
+/* The other half of an Ability Score Improvement: two "+1 to..." pickers, which together express
+   both shapes of the rule (the same ability twice is the +2). Greyed out once a feat is chosen for
+   that slot, because it's one or the other — and the feat box is what you clear to get them back. */
+function asiScoreHtml(e) {
+  const picks = ASI_CHOICES[e.fkey] || ["", ""];
+  const taken = !!e.asiChosen;
+  const opt = (sel, i) => ABILITIES.map(a =>
+    `<option value="${a.key}"${sel === a.key ? " selected" : ""}>${a.key.toUpperCase()}</option>`).join("");
+  const sel = i => `<select class="asi-score" data-asikey="${e.fkey}" data-slot="${i}"${taken ? " disabled" : ""}>` +
+    `<option value=""${picks[i] ? "" : " selected"}>&mdash;</option>${opt(picks[i], i)}</select>`;
+  const total = (picks || []).filter(Boolean).length;
+  return ` <span class="hint" title="increase one score by 2 (pick it twice) or two scores by 1${taken ? " — cleared while a feat is chosen" : ""}">` +
+    `or +1 ${sel(0)} and +1 ${sel(1)}${total === 2 && picks[0] === picks[1] ? ` <b>(+2 ${escapeHtml(String(picks[0]).toUpperCase())})</b>` : ""}</span>`;
+}
+
 /* ----- limited-use tracker rendering: the *spec* (whether a feature has finite uses, its max, and
    its recharge) comes from the feature's EFFECTS_DB entry via usesSpecFor() (src/effects.js) — see
    effects/tools/conversion-guide.md's "Limited uses" section for the schema. This is purely the
@@ -573,7 +615,7 @@ function renderClassFeatures() {
       const picker = (featsOff && !e.asiChosen)
         ? ` <span class="hint">ASI only &mdash; feats are off in this campaign's House Rules.</span>`
         : ` &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${e.fkey}" value="${escapeHtml(e.asiChosen)}" style="width:12rem"></label>`;
-      return `<div>${link}${picker}${tracker}${renderEffectControls(e)}</div>`;
+      return `<div>${link}${picker}${asiScoreHtml(e)}${tracker}${renderEffectControls(e)}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
     const grantedHtml = (sub && sub.grantedSpells && sub.grantedSpells.length)
       ? grantedSpellsHtml(flattenGrantedSpells(sub.grantedSpells).filter(g => g.minLevel <= lvl), sub.name, rec.name) : "";
@@ -668,7 +710,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (inp) {
       const v = inp.value.trim();
       if (v) FEAT_CHOICES[inp.dataset.asikey] = v; else delete FEAT_CHOICES[inp.dataset.asikey];
-      scheduleSave(); renderClassFeatures(); return;
+      scheduleSave(); renderClassFeatures(); recompute(); return;
+    }
+    const asiSel = e.target.closest(".asi-score");
+    if (asiSel) {
+      const fkey = asiSel.dataset.asikey, slot = Number(asiSel.dataset.slot);
+      const picks = ASI_CHOICES[fkey] || ["", ""];
+      picks[slot] = asiSel.value;
+      if (picks.some(Boolean)) ASI_CHOICES[fkey] = picks; else delete ASI_CHOICES[fkey];
+      scheduleSave(); renderClassFeatures(); recompute(); return;
     }
     const sel = e.target.closest(".eff-choice");
     if (sel) {
