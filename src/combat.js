@@ -60,11 +60,50 @@ function blankCombat() {
     terrain: 1,                    // ft of movement each ft of distance costs (TERRAIN_COSTS) — a
                                    // terrain property, so it survives End Round but not a fresh fight
     history: [],                   // undo stack — see pushHistory/undoLast below
-    order: [],                     // initiative order — [{id, name, init, pc}], highest init first
-    turnId: null,                  // id (into order) of whose turn it is, or null if nobody's been stepped to yet
   };
 }
 const HISTORY_MAX = 20;
+
+/* ============================================================
+   INITIATIVE ORDER — the table's, not the character's.
+
+   This is who is in the fight and whose turn it is, which is a fact about the
+   table rather than about any one character, so it lives in its own shared
+   state with its own localStorage key — the same call House Rules makes, and
+   for the same reason. It rode along inside COMBAT at first, which made it
+   per-character: two PCs open in two tabs each kept their own private order,
+   stepping the turn on one did nothing on the other, and switching tabs
+   mid-fight showed an empty list. An initiative order that isn't shared isn't
+   an initiative order.
+
+   Each entry is { id, name, init, charId? }. `charId` marks a row as belonging
+   to a character on the roster, which is what lets several PCs each own their
+   own row: the single `pc: true` flag the first version used meant whichever
+   character rolled last overwrote the other's entry.
+   ============================================================ */
+let INITIATIVE = blankInitiative();
+
+function blankInitiative() { return { order: [], turnId: null }; }
+
+function normalizeInitiative(saved) {
+  const blank = blankInitiative();
+  if (!saved || typeof saved !== "object") return blank;
+  const order = (Array.isArray(saved.order) ? saved.order : [])
+    .filter(e => e && typeof e === "object" && typeof e.name === "string")
+    .map(e => ({ id: String(e.id || newOrderId()), name: e.name,
+                 init: Number.isFinite(Number(e.init)) ? Math.round(Number(e.init)) : 0,
+                 charId: typeof e.charId === "string" ? e.charId : undefined }));
+  const turnId = typeof saved.turnId === "string" && order.some(e => e.id === saved.turnId) ? saved.turnId : null;
+  return { order, turnId };
+}
+function saveInitiative() {
+  try { localStorage.setItem("charsheet-initiative", JSON.stringify(INITIATIVE)); }
+  catch (e) { console.warn("Could not save the initiative order", e); }
+}
+function loadInitiative() {
+  try { INITIATIVE = normalizeInitiative(JSON.parse(localStorage.getItem("charsheet-initiative"))); }
+  catch (e) { INITIATIVE = blankInitiative(); }
+}
 
 /* A character's `combat` is persisted as part of its state (see applyState in persistence.js), which
    means a save made before some field existed here — `history` when Undo was added, `terrain` when
@@ -76,10 +115,17 @@ const HISTORY_MAX = 20;
 function normalizeCombat(saved) {
   const blank = blankCombat();
   if (!saved || typeof saved !== "object") return blank;
-  return { ...blank, ...saved, used: { ...blank.used, ...(saved.used || {}) },
-    history: Array.isArray(saved.history) ? saved.history : blank.history,
-    order: Array.isArray(saved.order) ? saved.order : blank.order,
-    turnId: (typeof saved.turnId === "string" ? saved.turnId : blank.turnId) };
+  /* An order saved back when it lived on the character is rescued into the shared list rather than
+     dropped — but only if nothing has been put there yet, so loading a second character can't
+     clobber an order already on screen. `order`/`turnId` are then left out of COMBAT entirely. */
+  if (Array.isArray(saved.order) && saved.order.length && !INITIATIVE.order.length) {
+    INITIATIVE = normalizeInitiative({ order: saved.order, turnId: saved.turnId });
+    saveInitiative();
+  }
+  const out = { ...blank, ...saved, used: { ...blank.used, ...(saved.used || {}) },
+    history: Array.isArray(saved.history) ? saved.history : blank.history };
+  delete out.order; delete out.turnId;
+  return out;
 }
 
 /* ----- derived numbers ----- */
@@ -161,11 +207,9 @@ function combatLog(html) { if (typeof logEvent === "function") logEvent("resourc
 
 function enterCombat(reason) {
   if (COMBAT.active) return;
-  // A DM can build the initiative order before anyone's rolled — don't let the fresh blankCombat()
-  // this function does for everything else throw that list away.
-  const order = COMBAT.order, turnId = COMBAT.turnId;
+  // The order isn't in COMBAT any more, so this reset can't take it with it — a DM who built the
+  // list before anyone rolled keeps it, with no field-shuffling needed here.
   COMBAT = blankCombat();
-  COMBAT.order = order; COMBAT.turnId = turnId;
   COMBAT.active = true; COMBAT.round = 1;
   renderCombat(); scheduleSave();
   combatLog(`<b>Combat</b> — round 1${reason ? ` (${escapeHtml(reason)})` : ""}`);
@@ -198,12 +242,14 @@ function endRound() {
    own action/bonus/reaction/movement pools their own refresh button (End Round), and coupling that
    to "it became your turn in the order" would mean guessing which of possibly several entries is
    "you" and reaching into a resource model this list has no business owning. A DM steps through
-   whose turn it is here; each player's own pools stay theirs to manage, same as always. */
+   whose turn it is here; each player's own pools stay theirs to manage, same as always.
+
+   The list itself is shared across every character tab — see blankInitiative above. */
 function newOrderId() { return "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 /* Stable per spec (ES2019+) — ties keep the order they were added/edited in, rather than jumping
    around every time something re-sorts. */
-function sortOrder() { COMBAT.order.sort((a, b) => b.init - a.init); }
+function sortOrder() { INITIATIVE.order.sort((a, b) => b.init - a.init); }
 
 function charName() {
   const el = document.getElementById("char-name");
@@ -213,47 +259,72 @@ function charName() {
 function addOrderEntry(name, init) {
   name = String(name || "").trim(); if (!name) return;
   const n = Math.round(Number(init));
-  COMBAT.order.push({ id: newOrderId(), name, init: Number.isFinite(n) ? n : 0 });
+  INITIATIVE.order.push({ id: newOrderId(), name, init: Number.isFinite(n) ? n : 0 });
   sortOrder();
-  renderCombat(); scheduleSave();
+  renderCombat(); saveInitiative();
 }
 function removeOrderEntry(id) {
-  if (!COMBAT.order.some(o => o.id === id)) return;
-  COMBAT.order = COMBAT.order.filter(o => o.id !== id);
-  if (COMBAT.turnId === id) COMBAT.turnId = null;
-  renderCombat(); scheduleSave();
+  if (!INITIATIVE.order.some(o => o.id === id)) return;
+  INITIATIVE.order = INITIATIVE.order.filter(o => o.id !== id);
+  if (INITIATIVE.turnId === id) INITIATIVE.turnId = null;
+  renderCombat(); saveInitiative();
 }
 function editOrderEntry(id, field, value) {
-  const e = COMBAT.order.find(o => o.id === id); if (!e) return;
+  const e = INITIATIVE.order.find(o => o.id === id); if (!e) return;
   if (field === "name") { const v = String(value || "").trim(); if (v) e.name = v; }
   if (field === "init") { const n = Math.round(Number(value)); if (Number.isFinite(n)) e.init = n; }
   sortOrder();
-  renderCombat(); scheduleSave();
+  renderCombat(); saveInitiative();
 }
-/* Called off the real Roll Initiative button (see the click hook below) — seeds or updates the
+/* The id of the character whose sheet is on screen, or "" when the roster isn't loaded (the test
+   harnesses, an older build). Rows are keyed by it so every PC owns their own line in a shared
+   order — matching on a single `pc` flag meant the second character to roll took over the first
+   one's row. */
+function activeCharId() {
+  return (typeof activeChar === "function" && activeChar()) ? activeChar().id : "";
+}
+
+/* Called off the real Roll Initiative button (see the click hook below) — seeds or updates this
    character's own row with the number that actually landed in the log, never a second private roll
    that could disagree with it. One entry per character: re-rolling initiative updates it in place
    rather than adding a duplicate. */
 function setPcInitiative(name, value) {
-  let e = COMBAT.order.find(o => o.pc);
-  if (!e) { e = { id: newOrderId(), pc: true, name: name || "You", init: value }; COMBAT.order.push(e); }
+  const cid = activeCharId();
+  let e = INITIATIVE.order.find(o => o.charId && o.charId === cid);
+  if (!e) { e = { id: newOrderId(), charId: cid, name: name || "You", init: value }; INITIATIVE.order.push(e); }
   else { e.name = name || e.name; e.init = value; }
   sortOrder();
-  renderCombat(); scheduleSave();
+  renderCombat(); saveInitiative();
   combatLog(`<b>Initiative</b> — ${escapeHtml(e.name)}: ${value}`);
+}
+
+/* Keeps this character's own row labelled with their current name. Rename Alice to Alicia and the
+   order said "Alice" until the next initiative roll; called from recompute(), so it follows the
+   name box the moment it changes. Only ever touches a row this character owns — a name the DM typed
+   by hand for a monster is never overwritten. */
+function syncPcOrderName() {
+  const cid = activeCharId(); if (!cid) return;
+  const e = INITIATIVE.order.find(o => o.charId === cid); if (!e) return;
+  const n = charName(); if (!n || e.name === n) return;
+  e.name = n;
+  saveInitiative();
+  const row = document.querySelector(`.cbt-order-row[data-oid="${e.id}"] .cbt-order-name`);
+  // Written in place rather than through renderCombat(), which would rebuild the live inputs and
+  // take the caret with it — the same rule the movement box follows (see syncCombatMovement).
+  if (row && row !== document.activeElement) row.value = n;
 }
 /* Advances to the next entry in the (already-sorted) order, wrapping back to the top after the last
    one. Wrapping is announced but doesn't touch COMBAT.round itself or anyone's pools — see this
    section's header comment for why those stay decoupled. */
 function nextTurn() {
-  if (!COMBAT.order.length) return;
-  const curIdx = COMBAT.order.findIndex(o => o.id === COMBAT.turnId);
-  const nextIdx = curIdx === -1 ? 0 : (curIdx + 1) % COMBAT.order.length;
+  if (!INITIATIVE.order.length) return;
+  const curIdx = INITIATIVE.order.findIndex(o => o.id === INITIATIVE.turnId);
+  const nextIdx = curIdx === -1 ? 0 : (curIdx + 1) % INITIATIVE.order.length;
   const wrapped = curIdx !== -1 && nextIdx === 0;
-  COMBAT.turnId = COMBAT.order[nextIdx].id;
-  renderCombat(); scheduleSave();
+  INITIATIVE.turnId = INITIATIVE.order[nextIdx].id;
+  renderCombat(); saveInitiative();
   if (wrapped) combatLog(`<span class="hint">— back to the top of the order —</span>`);
-  combatLog(`<b>Turn</b> — ${escapeHtml(COMBAT.order[nextIdx].name)}`);
+  combatLog(`<b>Turn</b> — ${escapeHtml(INITIATIVE.order[nextIdx].name)}`);
 }
 
 /* Spend one of a resource. Never refuses — see this file's header — but says when you'd be over. */
@@ -523,21 +594,21 @@ function rollNamedSkill(name) {
 
 /* ----- rendering ----- */
 function orderRowHtml(e) {
-  const active = e.id === COMBAT.turnId;
+  const active = e.id === INITIATIVE.turnId;
   return `<li class="cbt-order-row${active ? " active" : ""}" data-oid="${e.id}">
     <input type="text" inputmode="numeric" class="tiny cbt-order-init" value="${e.init}" title="initiative">
-    <input type="text" class="cbt-order-name" value="${escapeHtml(e.name)}">
-    ${e.pc ? `<span class="hint" title="rolled from your own Initiative button">(you)</span>` : ""}
+    <input type="text" class="cbt-order-name" value="${escapeHtml(e.name)}"${e.charId ? ` readonly title="named after the character on your roster \u2014 rename them and this follows"` : ""}>
+    ${e.charId ? `<span class="hint" title="${e.charId === activeCharId() ? "rolled from your own Initiative button" : "another character on your roster"}">${e.charId === activeCharId() ? "(you)" : "(pc)"}</span>` : ""}
     <button type="button" class="cbt-order-del" title="remove from the order">&times;</button>
   </li>`;
 }
 /* Shown whether or not combat is active — a table can build its initiative order before the first
    roll — which is why this lives outside the active/!active branch of renderCombat() below. */
 function orderHtml() {
-  const rows = COMBAT.order.map(orderRowHtml).join("");
+  const rows = INITIATIVE.order.map(orderRowHtml).join("");
   return `<div class="cbt-order">
     <div class="cbt-order-head"><b>Initiative order</b>
-      ${COMBAT.order.length ? `<button type="button" id="cbt-order-next" title="advance to the next combatant's turn">Next turn</button>` : ""}
+      ${INITIATIVE.order.length ? `<button type="button" id="cbt-order-next" title="advance to the next combatant's turn">Next turn</button>` : ""}
     </div>
     <ol class="cbt-order-list">${rows || `<li class="hint">Nobody yet — roll your own Initiative (HP &amp; Defenses), or add a combatant below.</li>`}</ol>
     <div class="cbt-order-add">
@@ -636,6 +707,9 @@ function paintCombatMenu(anchor) {
 
 document.addEventListener("DOMContentLoaded", () => {
   const el = $("combat-body"); if (!el) return;
+  // The order is the table's, not the character's, so it comes off its own key rather than out of
+  // whichever character happened to load first (see the INITIATIVE block at the top of this file).
+  loadInitiative();
   renderCombat();
 
   el.addEventListener("click", e => {

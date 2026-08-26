@@ -160,6 +160,8 @@ function recompute() {
   renderDefenses();
   // Just the two movement numbers, not a re-render of the round tracker — see syncCombatMovement.
   if (typeof syncCombatMovement === "function") syncCombatMovement();
+  // Likewise the character's own name in the initiative order, written in place.
+  if (typeof syncPcOrderName === "function") syncPcOrderName();
   { const d = checkDice("init"); $("init").textContent = sign(checkBonus("init")) + (d ? " " + d : ""); }
   { const d = checkDice("ac"); $("ac").textContent = String(checkBonus("ac")) + (d ? " " + d : ""); }
   const ab = $("spell-ability").value;

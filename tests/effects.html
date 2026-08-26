@@ -1467,6 +1467,121 @@ document.addEventListener("DOMContentLoaded", () => {
       COMBAT = blankCombat(); COMBAT.active = true;
     }
 
+    /* --- the initiative order: shared across characters, one row per PC ---
+       The order is the table's, not the character's. It shipped inside COMBAT, which made it
+       per-character — two PCs each kept a private list, and switching tabs mid-fight showed an
+       empty one. It now lives in INITIATIVE with its own localStorage key, the same call House
+       Rules makes. These pin the parts that made that wrong. */
+    {
+      const savedInit = INITIATIVE;
+      INITIATIVE = blankInitiative();
+
+      addOrderEntry("Goblin", 12);
+      addOrderEntry("Ogre", 8);
+      addOrderEntry("Wolf", 19);
+      assertEqual("entries sort by initiative, highest first",
+        INITIATIVE.order.map(o => o.name).join(","), "Wolf,Goblin,Ogre");
+      assertEqual("...and each gets its own id", new Set(INITIATIVE.order.map(o => o.id)).size, 3);
+      addOrderEntry("   ", 5);
+      assertEqual("a blank name adds nothing", INITIATIVE.order.length, 3);
+      addOrderEntry("Mystery", "not a number");
+      assertEqual("an unparseable initiative becomes 0 rather than NaN",
+        INITIATIVE.order.find(o => o.name === "Mystery").init, 0);
+      removeOrderEntry(INITIATIVE.order.find(o => o.name === "Mystery").id);
+
+      // Ties keep insertion order rather than shuffling on every re-sort (Array#sort is stable).
+      addOrderEntry("Bandit A", 12); addOrderEntry("Bandit B", 12);
+      assertEqual("ties hold their relative order",
+        INITIATIVE.order.filter(o => o.init === 12).map(o => o.name).join(","), "Goblin,Bandit A,Bandit B");
+
+      // --- stepping the turn ---
+      INITIATIVE = blankInitiative();
+      addOrderEntry("A", 20); addOrderEntry("B", 10); addOrderEntry("C", 5);
+      assertEqual("nobody's turn until it's stepped", INITIATIVE.turnId, null);
+      const nameOfTurn = () => (INITIATIVE.order.find(o => o.id === INITIATIVE.turnId) || {}).name;
+      nextTurn(); assertEqual("the first step goes to the top of the order", nameOfTurn(), "A");
+      nextTurn(); assertEqual("...then down", nameOfTurn(), "B");
+      nextTurn(); assertEqual("...to the last", nameOfTurn(), "C");
+      nextTurn(); assertEqual("...and wraps back to the top", nameOfTurn(), "A");
+      removeOrderEntry(INITIATIVE.order.find(o => o.name === "A").id);
+      assertEqual("removing whose turn it is clears the pointer rather than dangling", INITIATIVE.turnId, null);
+      INITIATIVE = blankInitiative();
+      nextTurn();
+      assertEqual("stepping an empty order is a no-op, not a crash", INITIATIVE.turnId, null);
+
+      // --- one row per character (the bug the single `pc` flag caused) ---
+      INITIATIVE = blankInitiative();
+      const savedRoster = ROSTER;
+      ROSTER = { v: 1, activeId: "c1", chars: [{ id: "c1", name: "Alice", state: null }, { id: "c2", name: "Bob", state: null }], logs: {} };
+      $("char-name").value = "Alice";
+      setPcInitiative("Alice", 15);
+      ROSTER.activeId = "c2"; $("char-name").value = "Bob";
+      setPcInitiative("Bob", 20);
+      assertEqual("a second character rolling gets their OWN row, not the first one's",
+        INITIATIVE.order.map(o => `${o.name}:${o.init}`).join(","), "Bob:20,Alice:15");
+      assertEqual("...and both rows are marked as belonging to a character",
+        INITIATIVE.order.filter(o => o.charId).length, 2);
+      setPcInitiative("Bob", 4);
+      assertEqual("re-rolling updates that character's row in place rather than duplicating it",
+        INITIATIVE.order.filter(o => o.charId === "c2").length, 1);
+      assertEqual("...with the new number", INITIATIVE.order.find(o => o.charId === "c2").init, 4);
+
+      // Renaming the character follows the row without needing another roll.
+      $("char-name").value = "Robert";
+      syncPcOrderName();
+      assertEqual("renaming your character renames its row", INITIATIVE.order.find(o => o.charId === "c2").name, "Robert");
+      assertEqual("...and leaves every other row alone", INITIATIVE.order.find(o => o.charId === "c1").name, "Alice");
+      addOrderEntry("Goblin", 7);
+      const monster = INITIATIVE.order.find(o => !o.charId);
+      editOrderEntry(monster.id, "name", "Hand-named monster");
+      $("char-name").value = "Robert II"; syncPcOrderName();
+      assertEqual("a monster's hand-typed name is never touched by the rename sync",
+        INITIATIVE.order.find(o => o.id === monster.id).name, "Hand-named monster");
+      /* A character's own row is named after the character, so its name box is read-only rather
+         than editable-then-silently-reverted the next time recompute() runs. */
+      renderCombat();
+      const pcBox = document.querySelector(`.cbt-order-row[data-oid="${INITIATIVE.order.find(o => o.charId === "c2").id}"] .cbt-order-name`);
+      const monBox = document.querySelector(`.cbt-order-row[data-oid="${monster.id}"] .cbt-order-name`);
+      assert("a character's own row can't be renamed in the list", pcBox && pcBox.readOnly);
+      assert("...while a monster's row still can", monBox && !monBox.readOnly);
+
+      // --- persistence: its own key, and NOT the character's state ---
+      saveInitiative();
+      const onDisk = JSON.parse(localStorage.getItem("charsheet-initiative"));
+      assertEqual("the order persists to its own key", onDisk.order.length, INITIATIVE.order.length);
+      assert("...and never rides along in the character's own state",
+        !("order" in collectState().combat) && !("turnId" in collectState().combat));
+
+      INITIATIVE = blankInitiative();
+      loadInitiative();
+      assertEqual("...and loads back", INITIATIVE.order.length, onDisk.order.length);
+
+      assertEqual("rubbish in the key loads as empty rather than throwing",
+        normalizeInitiative("not an object").order.length, 0);
+      assertEqual("...as does a missing one", normalizeInitiative(null).order.length, 0);
+      assertEqual("a malformed entry is dropped rather than rendered as undefined",
+        normalizeInitiative({ order: [{ name: "ok", init: 3 }, null, { init: 9 }] }).order.length, 1);
+      assertEqual("a turnId pointing at nobody is cleared on load",
+        normalizeInitiative({ order: [{ name: "ok", init: 3 }], turnId: "gone" }).turnId, null);
+
+      // --- migration: an order saved back when it lived on the character is rescued, not dropped ---
+      INITIATIVE = blankInitiative();
+      const migrated = normalizeCombat({ active: true, round: 2, order: [{ id: "x1", name: "Old Goblin", init: 11 }], turnId: "x1" });
+      assertEqual("an order from an older save is adopted into the shared list",
+        INITIATIVE.order.map(o => o.name).join(","), "Old Goblin");
+      assertEqual("...including whose turn it was", INITIATIVE.turnId, "x1");
+      assert("...and is stripped from the character's own combat state",
+        !("order" in migrated) && !("turnId" in migrated));
+      normalizeCombat({ order: [{ id: "y1", name: "Second character's stale list", init: 30 }] });
+      assertEqual("loading a second old character can't clobber an order already on screen",
+        INITIATIVE.order.map(o => o.name).join(","), "Old Goblin");
+
+      localStorage.removeItem("charsheet-initiative");
+      ROSTER = savedRoster;
+      INITIATIVE = savedInit;
+      $("char-name").value = "";
+    }
+
     // --- menu entries are labels; the explanation is a tooltip ---
     COMBAT = blankCombat(); COMBAT.active = true;
     assert("every menu entry has a label", menuFor("action").every(e => e.label && e.label.length));
