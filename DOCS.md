@@ -164,6 +164,12 @@ The Event Log is the sheet's running history: dice rolls land here, and so do ac
 
 **Crits:** only the kept **d20** triggers *Critical Success* (nat 20) / *Critical Failure* (nat 1) — other dice never do. (This deliberately fixes a 5eCrawler bug.)
 
+### Roll mirror (the corner panel)
+
+The Event Log is a module like any other, so it can be anywhere in your layout — and once a few modules are open it's usually a scroll away from the button you just clicked. A small panel pinned to the **bottom-right** mirrors the newest entries so a roll is readable without leaving what you're doing.
+
+It is a mirror and nothing else: every entry in it was put there by the same call that writes the module, switching characters repaints it from that character's own stored log, and clearing the log clears it. It keeps the last 40 entries; the module keeps the full history. **▼** folds it to its title bar, **×** hides it and leaves a small **Rolls** tab to bring it back — and a roll arriving while it's hidden reopens it, since that's exactly the moment you want it. Folding is left alone in that case, because folding is a deliberate "I know it's there". Both settings are per browser rather than per character, and it doesn't print.
+
 ## Roll buttons
 Every save / skill / initiative / spell-attack has a `roll` button that uses its computed bonus.
 - **Shift-click** = advantage, **Ctrl-click** = disadvantage.

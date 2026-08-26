@@ -25,6 +25,19 @@
 <!-- Character tabs: one per character in the roster (src/characters.js). -->
 <div id="char-tabs"></div>
 
+<!-- Roll mirror: the tail of the Event Log, pinned to the corner so a roll is visible without
+     scrolling back to the module. See src/roll-mirror.js. -->
+<div id="roll-mirror">
+  <div id="roll-mirror-head">
+    <b>Rolls</b>
+    <span class="spacer"></span>
+    <button type="button" id="roll-mirror-fold" title="fold the roll log up">&#9660;</button>
+    <button type="button" id="roll-mirror-close" title="hide the roll log">&times;</button>
+  </div>
+  <div id="roll-mirror-body"></div>
+</div>
+<button type="button" id="roll-mirror-tab" title="show the roll log" style="display:none">Rolls</button>
+
 <div id="effects-strip"></div>
 
 <div class="modules">
@@ -536,6 +549,7 @@
 <script src="src/xp.js"></script>
 <script src="src/combat.js"></script>
 <script src="src/equip-slots.js"></script>
+<script src="src/roll-mirror.js"></script>
 <script src="src/theme.js"></script>
 <script src="src/app.js"></script>
 <script src="src/status.js"></script>

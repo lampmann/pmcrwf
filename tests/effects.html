@@ -20,6 +20,8 @@
   </span>
 </div>
 <div id="char-tabs"></div>
+<div id="roll-mirror"><div id="roll-mirror-head"><button id="roll-mirror-fold"></button><button id="roll-mirror-close"></button></div><div id="roll-mirror-body"></div></div>
+<button id="roll-mirror-tab" style="display:none"></button>
 <div id="effects-strip"></div>
 <div class="modules">
   <section class="module wide" data-module="header">
@@ -123,6 +125,7 @@
 <script src="../src/rows.js"></script>
 <script src="../src/derived.js"></script>
 <script src="../src/event-log.js"></script>
+<script src="../src/roll-mirror.js"></script>
 <script src="../src/dice.js"></script>
 <script src="../src/boons.js"></script>
 <script src="../src/filters.js"></script>
@@ -1255,6 +1258,58 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("...but switching within a group does", switchEntries("g1"), 1);
       assert("...naming who is up", /Grouped/.test((ROSTER.logs.g1 || []).map(e => e.html).join(" ")));
       ROSTER = savedRoster;
+    }
+
+    /* --- the roll mirror is a MIRROR: it never holds anything the log doesn't ---
+       Its whole contract is that it shows the same entries as the Event Log module, so what's worth
+       pinning is the agreement, not the panel's own contents. */
+    {
+      const savedRoster2 = ROSTER;
+      ROSTER = { v: 1, activeId: "m1", logs: {}, chars: [{ id: "m1", name: "A" }, { id: "m2", name: "B" }] };
+      clearLog();
+      const moduleRows = () => [...$("dicelog").querySelectorAll(".ev")].map(e => e.textContent);
+      const mirrorRows = () => [...$("roll-mirror-body").querySelectorAll(".ev")].map(e => e.textContent);
+
+      log("first"); log("second");
+      assertEqual("every entry reaches the mirror", mirrorRows().length, 2);
+      assertEqual("...newest first, like the module", mirrorRows()[0], "second");
+      assertEqual("...and the two agree exactly", mirrorRows().join("|"), moduleRows().join("|"));
+
+      logEvent("hp", "took 5"); logEvent("rest", "short rest");
+      assertEqual("kinds other than rolls are mirrored too — it mirrors the log, not just dice",
+        mirrorRows().join("|"), moduleRows().join("|"));
+
+      switchCharacter("m2");
+      assertEqual("switching characters repaints rather than appends", mirrorRows().join("|"), moduleRows().join("|"));
+      assertEqual("...so the other character's rolls aren't showing", mirrorRows().length, 0);
+      switchCharacter("m1");
+      assertEqual("...and switching back brings that character's own log to both", mirrorRows().join("|"), moduleRows().join("|"));
+      assert("...which still has its entries", mirrorRows().length === 4);
+
+      clearLog();
+      assertEqual("clearing the log clears the mirror with it", mirrorRows().length, 0);
+
+      // The panel is capped; the module is the full history.
+      for (let i = 0; i < MIRROR_MAX + 10; i++) log("entry " + i);
+      assertEqual("the corner panel keeps only its last few", mirrorRows().length, MIRROR_MAX);
+      assert("...while the module keeps more", moduleRows().length > MIRROR_MAX);
+      assertEqual("...and the newest is on top of both", mirrorRows()[0], moduleRows()[0]);
+
+      // fold/hide are preferences about the screen, not facts about the character
+      MIRROR = { folded: false, hidden: false };
+      toggleMirrorFold();
+      assert("folding is remembered", MIRROR.folded);
+      assert("...and marked on the panel", $("roll-mirror").classList.contains("mirror-folded"));
+      hideRollMirror();
+      assert("hiding is remembered", MIRROR.hidden);
+      assertEqual("...and leaves a tab to bring it back", $("roll-mirror-tab").style.display, "");
+      log("a roll while hidden");
+      assert("a roll arriving while hidden reopens it — that's the moment it's wanted", !MIRROR.hidden);
+      assert("...but folding is left alone, since that was deliberate", MIRROR.folded);
+      MIRROR = { folded: false, hidden: false }; renderRollMirror();
+
+      clearLog();
+      ROSTER = savedRoster2;
     }
 
     // --- groups and the shared Event Log ---

@@ -62,6 +62,8 @@ function logEvent(kind, html) {
   // Persist it against the active character's log (or its group's — see characters.js). The DOM
   // above stays the source of truth for what you're looking at; this is only what survives a switch.
   if (typeof recordLogEntry === "function") recordLogEntry(kind, html);
+  // The corner panel is a mirror of this, so it's fed from the one place every entry passes through.
+  if (typeof mirrorLogEntry === "function") mirrorLogEntry(kind, html);
 }
 
 /* Back-compat shorthand for the overwhelmingly common case. Every pre-existing caller logs a die
@@ -76,4 +78,7 @@ function clearLog() {
     delete ROSTER.logs[activeLogKey()];
     persistRoster();
   }
+  // After the delete, not before: the mirror rebuilds from the stored log, so repainting first
+  // would faithfully restore everything this function just cleared off the screen.
+  if (typeof repaintRollMirror === "function") repaintRollMirror();
 }
