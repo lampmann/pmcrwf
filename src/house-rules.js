@@ -79,6 +79,13 @@ const HR_SETTINGS = [
     hint: "DMG p267 — takes effect once Rest Variants is switched on under Optional rules" },
   { key: "bonusActionSpellStrict", label: "A bonus-action spell always costs a bonus action", kind: "bool", enforced: true, def: true,
     hint: "R47 — with your bonus action spent, such a spell can't be cast at all" },
+  /* R21/R22. Default true because that is RAW-as-argued (see boons.js's header), but a table that
+     reads Combining Magical Effects the other way switches it off — and then the Guidance and
+     Resistance counters go away with it, since counting to N is the only thing they were for.
+     Death Ward is deliberately not covered: it isn't a die you stack onto a roll, it's a number of
+     times you get saved from 0 HP, which is worth counting under either reading. */
+  { key: "boonStacking", label: "Guidance / Resistance stack", kind: "bool", enforced: true, def: true,
+    hint: "R21/R22 — off removes their counters entirely; Death Ward still stacks either way" },
 ];
 
 /* ----- concurrent casting limits (H4) -----
@@ -334,6 +341,7 @@ const HR_PRESETS = {
         abilityMethod: "pointbuy", averageHp: true, multiclass: true, feats: true,
         optionalFeatures: true, oversized: "allow", magicItemPricing: "xge-mean", hirelings: false,
         trinketsWorthless: true, mundaneEquipment: true, bonusActionSpellStrict: true,
+        boonStacking: false,
       },
     }),
   },
