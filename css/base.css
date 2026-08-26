@@ -416,3 +416,10 @@ input.banned-value { color: #c00; }
    button you press five times in a row makes a misclick expensive. */
 .cr-actions { display: flex; align-items: center; }
 .cr-actions-gap { flex: 1; }
+
+/* Custom counters (src/boons.js): a remove button on each, and the add control at the end of the row. */
+.boon-del { margin-left: .15rem; padding: 0 .25rem; line-height: 1; opacity: .55; }
+.boon-del:hover { opacity: 1; }
+.boon-add { opacity: .8; }
+.boon-add:focus-within { opacity: 1; }
+input.boon-add-name { width: 8rem; }

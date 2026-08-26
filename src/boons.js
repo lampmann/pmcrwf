@@ -37,6 +37,10 @@
    companion's own rolls, AC). Keyed by the same data-roll-check strings dice.js dispatches on. */
 function boonKindFor(key) {
   const k = key || "";
+  // With stacking off there are no Guidance/Resistance counters, so nothing here draws on them —
+  // closing it at this one gate means a count left behind from before the ruling flipped can't
+  // quietly keep adding dice to rolls.
+  if (!boonStackingOn()) return null;
   if (k === "init" || k.startsWith("skill-")) return "guidance";
   if (k.startsWith("save-")) return "resistance";
   return null;
@@ -52,7 +56,21 @@ const BOON_DEFS = [
 ];
 
 let BOONS = blankBoons();
-function blankBoons() { return { guidance: 0, resistance: 0, deathward: 0, heroPoints: 0, castings: {} }; }
+function blankBoons() { return { guidance: 0, resistance: 0, deathward: 0, heroPoints: 0, castings: {}, custom: [] }; }
+
+/* Whether this table reads Combining Magical Effects the way the header argues (house rule R21/R22,
+   settable under House Rules). Guidance and Resistance are counters ONLY because they stack: take
+   that away and "how many are running" collapses to a yes/no, so the counters come off the sheet
+   rather than sitting there able to count to three in a game where three is meaningless. Death Ward
+   is not covered — it was never a die stacked onto a roll, it's how many times you get pulled back
+   from 0 HP, which is worth counting under either reading. */
+function boonStackingOn() {
+  return (typeof hrSetting === "function") ? hrSetting("boonStacking") !== false : true;
+}
+/* The boons actually on the sheet right now. */
+function activeBoonDefs() {
+  return BOON_DEFS.filter(d => d.key === "deathward" || boonStackingOn());
+}
 /* A character saved before boons existed has no `boons` key at all; layering over the blank keeps a
    missing field at 0 rather than undefined, which would poison the arithmetic in boonDice(). */
 function normalizeBoons(saved) {
@@ -60,6 +78,11 @@ function normalizeBoons(saved) {
   if (!saved || typeof saved !== "object") return blank;
   const out = { ...blank, castings: {} };
   ["guidance", "resistance", "deathward", "heroPoints"].forEach(k => { const n = Math.floor(Number(saved[k])); if (n > 0) out[k] = n; });
+  out.custom = (Array.isArray(saved.custom) ? saved.custom : [])
+    .filter(c => c && typeof c === "object" && typeof c.name === "string" && c.name.trim())
+    .map(c => ({ id: String(c.id || newCounterId()), name: c.name.trim().slice(0, 40),
+                 n: Math.max(0, Math.min(999, Math.floor(Number(c.n)) || 0)),
+                 max: (c.max === "" || c.max == null) ? null : Math.max(0, Math.floor(Number(c.max)) || 0) }));
   if (saved.castings && typeof saved.castings === "object") {
     Object.entries(saved.castings).forEach(([name, n]) => { const v = Math.floor(Number(n)); if (v > 0) out.castings[name] = v; });
   }
@@ -93,6 +116,34 @@ function setBoonCount(kind, n) {
 
 /* The dice this button gets from boons, already signed so it concatenates onto a roll expression the
    same way the Misc field's and a feature effect's dice do (see checkDice in derived.js). */
+function newCounterId() { return "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+/* ----- custom counters -----
+   Anything a table needs to count that the sheet doesn't model: Sorcery Points on a homebrew
+   subclass, charges on a DM-invented item, "arrows left", "favours owed to the archfey". Per
+   character, like every other counter in this row. An optional max shows as /N and goes red over
+   it — shown, never enforced, same as the concurrent-casting limits beside it. */
+function customCounters() { return Array.isArray(BOONS.custom) ? BOONS.custom : (BOONS.custom = []); }
+function addCustomCounter(name, max) {
+  name = String(name || "").trim(); if (!name) return null;
+  const c = { id: newCounterId(), name: name.slice(0, 40), n: 0,
+              max: (max === "" || max == null) ? null : Math.max(0, Math.floor(Number(max)) || 0) };
+  customCounters().push(c);
+  renderBoons(); if (typeof scheduleSave === "function") scheduleSave();
+  return c.id;
+}
+function removeCustomCounter(id) {
+  const list = customCounters(), i = list.findIndex(c => c.id === id);
+  if (i < 0) return;
+  list.splice(i, 1);
+  renderBoons(); if (typeof scheduleSave === "function") scheduleSave();
+}
+function setCustomCounter(id, n) {
+  const c = customCounters().find(x => x.id === id); if (!c) return;
+  c.n = Math.max(0, Math.min(999, Math.floor(Number(n)) || 0));
+  renderBoons(); if (typeof scheduleSave === "function") scheduleSave();
+}
+
 function boonDice(key) {
   const kind = boonKindFor(key); if (!kind) return "";
   const n = boonCount(kind);
@@ -210,12 +261,31 @@ function encumbranceHtml() {
   return `<span class="boon boon-over" title="${escapeHtml(enc.note)}"><b>${escapeHtml(enc.level)}</b>
     <span class="hint">${enc.carried} lb vs Str ${enc.str} &mdash; speed &minus;${enc.speedPenalty} ft</span></span>`;
 }
+/* A counter the player invented. `max` is optional and advisory — over it goes red, nothing stops. */
+function customRowHtml(c) {
+  const over = c.max != null && c.n > c.max;
+  return `<span class="boon" title="a counter you added — the &times; removes it">
+    <button type="button" class="boon-step" data-custom="${c.id}" data-delta="-1" title="one fewer">&minus;</button>
+    <input type="text" inputmode="numeric" class="tiny boon-count${c.n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-custom="${c.id}" value="${c.n}">
+    <button type="button" class="boon-step" data-custom="${c.id}" data-delta="1" title="one more">+</button>
+    <span class="boon-label${c.n ? " boon-on" : ""}${over ? " boon-over" : ""}">${escapeHtml(c.name)}${c.max != null ? ` <span class="hint">/${c.max}</span>` : ""}${over ? " <b>over</b>" : ""}</span>
+    <button type="button" class="boon-del" data-customdel="${c.id}" title="remove this counter">&times;</button>
+  </span>`;
+}
+function customAddHtml() {
+  return `<span class="boon boon-add">
+    <input type="text" id="boon-add-name" class="boon-add-name" placeholder="counter name">
+    <input type="text" inputmode="numeric" id="boon-add-max" class="tiny" placeholder="max" title="optional maximum — shown, never enforced">
+    <button type="button" id="boon-add-btn" title="add a counter of your own">+ Counter</button>
+  </span>`;
+}
 function renderBoons() {
   const el = document.getElementById("boons-row"); if (!el) return;
   const limits = (typeof spellLimits === "function") ? spellLimits() : {};
-  el.innerHTML = BOON_DEFS.map(boonRowHtml).join("") + heroPointHtml() +
+  el.innerHTML = activeBoonDefs().map(boonRowHtml).join("") + heroPointHtml() +
     Object.keys(limits).sort().map(name => castingRowHtml(name, spellLimitFor(name))).join("") +
-    encumbranceHtml();
+    customCounters().map(customRowHtml).join("") +
+    encumbranceHtml() + customAddHtml();
   syncHpWatch();
 }
 
@@ -224,7 +294,20 @@ document.addEventListener("DOMContentLoaded", () => {
   renderBoons();
 
   el.addEventListener("click", e => {
+    const del = e.target.closest("[data-customdel]");
+    if (del) { removeCustomCounter(del.dataset.customdel); return; }
+    if (e.target.id === "boon-add-btn") {
+      const nameEl = document.getElementById("boon-add-name"), maxEl = document.getElementById("boon-add-max");
+      if (nameEl && nameEl.value.trim()) {
+        addCustomCounter(nameEl.value, maxEl ? maxEl.value : "");
+        // renderBoons() just rebuilt these boxes, so re-find and focus for the next one.
+        const fresh = document.getElementById("boon-add-name"); if (fresh) fresh.focus();
+      }
+      return;
+    }
     const step = e.target.closest(".boon-step"); if (!step) return;
+    if (step.dataset.custom) { const c = customCounters().find(x => x.id === step.dataset.custom);
+      if (c) setCustomCounter(c.id, c.n + Number(step.dataset.delta)); return; }
     if (step.dataset.casting) { setCastingCount(step.dataset.casting, castingCount(step.dataset.casting) + Number(step.dataset.delta)); return; }
     setBoonCount(step.dataset.boon, boonCount(step.dataset.boon) + Number(step.dataset.delta));
   });
@@ -232,6 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // the movement box: re-rendering mid-keystroke would take the caret with it.
   el.addEventListener("change", e => {
     const box = e.target.closest(".boon-count"); if (!box) return;
+    if (box.dataset.custom) { setCustomCounter(box.dataset.custom, box.value); return; }
     if (box.dataset.casting) { setCastingCount(box.dataset.casting, box.value); return; }
     setBoonCount(box.dataset.boon, box.value);
   });

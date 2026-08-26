@@ -1856,6 +1856,68 @@ document.addEventListener("DOMContentLoaded", () => {
     BOONS = normalizeBoons({ guidance: -3, resistance: "x" });
     assertEqual("...and sanitizes nonsense on the way in", boonCount("guidance") + boonCount("resistance"), 0);
 
+    /* --- the stacking ruling (R21/R22) governs whether Guidance and Resistance exist at all ---
+       They are counters only because they stack. Take that away and "how many are running" is a
+       yes/no, so the counters come off rather than sitting there able to count to three in a game
+       where three means nothing. Death Ward is untouched: it was never a die stacked onto a roll. */
+    {
+      const savedHR4 = HOUSE_RULES, savedB = BOONS;
+      HOUSE_RULES = blankHouseRules(); BOONS = blankBoons();
+      assert("stacking is on unless a table says otherwise", boonStackingOn());
+      assertEqual("...so all three counters are on the sheet", activeBoonDefs().length, 3);
+      setBoonCount("guidance", 3);
+      assertEqual("...and three castings are three dice", boonDice("skill-athletics"), "+3d4");
+
+      hrSetSetting("boonStacking", false);
+      assert("switching the ruling off is read back", !boonStackingOn());
+      assertEqual("...and leaves only Death Ward", activeBoonDefs().map(d => d.key).join(","), "deathward");
+      assertEqual("...no roll draws on Guidance any more", boonDice("skill-athletics"), "");
+      assertEqual("...nor on Resistance", boonDice("save-wis"), "");
+      assertEqual("...even though the old count is still stored", boonCount("guidance"), 3);
+      spendBoonsFor("skill-athletics");
+      assertEqual("...and a roll can't spend what it can't draw on", boonCount("guidance"), 3);
+
+      hrSetSetting("boonStacking", true);
+      assertEqual("switching it back restores the counters", activeBoonDefs().length, 3);
+      assertEqual("...and the count that was preserved", boonDice("skill-athletics"), "+3d4");
+
+      assertEqual("Lampmann's table doesn't stack them", HR_PRESETS.lampmann.build().settings.boonStacking, false);
+
+      // --- custom counters: anything the sheet doesn't model ---
+      BOONS = blankBoons();
+      assertEqual("a fresh character has none", customCounters().length, 0);
+      const cid = addCustomCounter("Arrows", 20);
+      assertEqual("adding one keeps it", customCounters().length, 1);
+      assertEqual("...with its name", customCounters()[0].name, "Arrows");
+      assertEqual("...starting at zero", customCounters()[0].n, 0);
+      setCustomCounter(cid, 5);
+      assertEqual("...and counts", customCounters()[0].n, 5);
+      setCustomCounter(cid, -3);
+      assertEqual("...never below zero", customCounters()[0].n, 0);
+      setCustomCounter(cid, 9999);
+      assertEqual("...nor absurdly high", customCounters()[0].n, 999);
+      assertEqual("a max is advisory: going over is allowed, like every other limit here",
+        (setCustomCounter(cid, 25), customCounters()[0].n), 25);
+      assertEqual("a counter with no max is fine", (addCustomCounter("Favours", ""), customCounters()[1].max), null);
+      assertEqual("a blank name adds nothing", (addCustomCounter("   ", 5), customCounters().length), 2);
+      removeCustomCounter(cid);
+      assertEqual("removing one takes it away", customCounters().length, 1);
+      assertEqual("...the right one", customCounters()[0].name, "Favours");
+      removeCustomCounter("nope");
+      assertEqual("removing one that isn't there is a no-op", customCounters().length, 1);
+
+      // round-trip through the character's own state, like every other per-character counter
+      const round = normalizeBoons(JSON.parse(JSON.stringify(BOONS)));
+      assertEqual("custom counters survive a save/load", round.custom.length, 1);
+      assertEqual("...keeping their count", round.custom[0].name, "Favours");
+      assertEqual("a save predating custom counters loads with none",
+        normalizeBoons({ guidance: 1 }).custom.length, 0);
+      assertEqual("malformed entries are dropped rather than rendered as undefined",
+        normalizeBoons({ custom: [{ name: "ok" }, null, { n: 3 }] }).custom.length, 1);
+
+      HOUSE_RULES = savedHR4; BOONS = savedB;
+    }
+
     // --- Death Ward fires on the transition to 0, not on being at 0 ---
     BOONS = blankBoons();
     $("hp-cur").value = "20"; commitMath($("hp-cur")); renderBoons();
