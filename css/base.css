@@ -44,6 +44,12 @@ th, td { text-align: left; padding: 1px 4px; }
 input[type="number"], input[type="text"] { font: inherit; background: var(--bg); color: var(--fg); }
 input.num { width: 3.6rem; text-align: right; }
 input.tiny { width: 2.6rem; text-align: right; }
+/* The override boxes are `type=number` and 2.6rem wide, and the browser's spinner arrows eat enough
+   of that to clip their "auto" placeholder to "aut". Nobody steps an HP override one point at a time
+   with the arrows, so drop them and give the text the whole box back. */
+input.tiny[type="number"] { width: 3rem; -moz-appearance: textfield; appearance: textfield; }
+input.tiny[type="number"]::-webkit-outer-spin-button,
+input.tiny[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.txt { width: 100%; }
 .derived { font-weight: bold; }
 button.roll { font: inherit; cursor: pointer; }

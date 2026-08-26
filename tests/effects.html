@@ -894,6 +894,21 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...and still defaults Speed to 30 ft when the race library has nothing for this race",
       creatorBuildState().fields["speed"], "30");
 
+    /* --- picking "roll" doesn't roll; the button does ---
+       Landing on the method used to commit you to a set of numbers just for looking at it, and
+       re-rolling out of that reads as cheating rather than as a first roll. */
+    CREATOR.method = "standard"; CREATOR.rolled = [];
+    CREATOR.method = "roll";
+    assertEqual("switching to 4d6 leaves you with nothing rolled yet", CREATOR.rolled.length, 0);
+    creatorRollScores();
+    assertEqual("...and the roll button produces six scores", CREATOR.rolled.length, 6);
+    assert("...each a plausible 4d6-drop-lowest total", CREATOR.rolled.every(n => n >= 3 && n <= 18));
+    const firstRoll = CREATOR.rolled.slice();
+    creatorRollScores();
+    assertEqual("...re-rolling replaces them rather than appending", CREATOR.rolled.length, 6);
+    assert("...and clears any assignment made from the old set", Object.keys(CREATOR.assign).length === 0);
+    CREATOR.method = "standard"; CREATOR.rolled = firstRoll;
+
     // --- point buy: the PHB p13 cost table and its 27-point budget ---
     CREATOR = blankCreator(); CREATOR.method = "pointbuy"; CREATOR.step = 3;
     CREATOR.scores = { str: 15, dex: 15, con: 15, int: 8, wis: 8, cha: 8 };
@@ -1116,6 +1131,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- the roster itself ---
+    // (the group-only switch log is asserted further down, once two characters exist)
     const firstId = ROSTER.activeId;
     assertEqual("a fresh install has exactly one character", ROSTER.chars.length, 1);
     assert("...which is the active one", !!activeChar());
@@ -1181,6 +1197,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     localStorage.setItem("charsheet-roster", savedRoster);
     loadRoster();
+
+    /* --- switching characters is logged only when the log is shared ---
+       Its own fixture, so the entry it writes can't shift the counts the group tests below assert.
+       On a solo character the log IS that character's, so "Switched to Alice" in Alice's own log
+       says nothing the tab bar doesn't — it was just noise at the top of every session. Inside a
+       group the log is shared, and the entry says who is acting now, which the others need. */
+    {
+      const savedRoster = ROSTER;
+      ROSTER = { v: 1, activeId: "z", logs: {}, chars: [
+        { id: "x", name: "Solo" }, { id: "y", name: "Grouped" }, { id: "z", name: "Start" },
+      ] };
+      const switchEntries = key => (ROSTER.logs[key] || []).filter(e => /Switched to/.test(e.html)).length;
+
+      switchCharacter("x");
+      assertEqual("switching to an ungrouped character logs nothing", switchEntries("x"), 0);
+
+      ROSTER.chars[1].group = "g1"; ROSTER.chars[2].group = "g1";
+      ROSTER.activeId = "z";
+      switchCharacter("y");
+      assertEqual("...but switching within a group does", switchEntries("g1"), 1);
+      assert("...naming who is up", /Grouped/.test((ROSTER.logs.g1 || []).map(e => e.html).join(" ")));
+      ROSTER = savedRoster;
+    }
 
     // --- groups and the shared Event Log ---
     {
@@ -1348,6 +1387,23 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("a move's label says what it really cost", /difficult terrain, 20 ft spent/.test(moveLabel(10)));
     COMBAT.terrain = 1;
     assertEqual("...and says nothing extra on normal ground", moveLabel(10), "Move 10 ft");
+
+    /* --- the +/- buttons move the number in the box the way the sign says ---
+       data-mv is the change to the feet REMAINING, which is what the box beside the buttons counts.
+       It used to be feet SPENT, so pressing + made the number next to it go down. */
+    COMBAT = blankCombat(); COMBAT.active = true; COMBAT.terrain = 1;
+    $("speed").value = "30"; recompute(); renderCombat();
+    const mvBtn = n => $("combat-body").querySelector(`.cbt-mv[data-mv="${n}"]`).click();
+    const feetLeft = () => Number($("combat-body").querySelector(".cbt-move-box").value);
+    assertEqual("a fresh turn has the whole pool", feetLeft(), 30);
+    mvBtn(-5); assertEqual("the −5 button spends five feet", feetLeft(), 25);
+    mvBtn(-1); assertEqual("the −1 button spends one", feetLeft(), 24);
+    mvBtn(1);  assertEqual("the +1 button gives one back", feetLeft(), 25);
+    mvBtn(5);  assertEqual("the +5 button gives five back", feetLeft(), 30);
+    mvBtn(5);  assertEqual("giving back more than you spent doesn't overfill the pool", feetLeft(), 30);
+    COMBAT.terrain = 2; renderCombat();
+    mvBtn(-5); assertEqual("the buttons take DISTANCE, so difficult terrain doubles what −5 costs", feetLeft(), 20);
+    COMBAT.terrain = 1;
 
     // --- the movement box and terrain box: direct correction, same shape as Hit Dice's remaining box ---
     COMBAT = blankCombat(); COMBAT.active = true;
