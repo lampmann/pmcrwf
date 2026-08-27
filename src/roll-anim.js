@@ -11,20 +11,25 @@
    THE SAME DIE, recomputes the total from what is currently showing, and then
    puts everything back to what was actually rolled.
 
-   THREE THINGS IT DELIBERATELY DOESN'T TOUCH:
+   DROPPED DICE TUMBLE TOO, and which one is dropped is re-decided every frame:
+   with advantage you watch the two fight over it, the strike-through moving to
+   whichever is momentarily lower. That re-runs the roller's own keep/drop
+   operators (see dropFlagsFor in dice.js) against the faces currently showing,
+   rather than a second rule written for the animation.
+
+   TWO THINGS IT DELIBERATELY DOESN'T TOUCH:
 
      - Modifiers and signs. "+5" is not a die and never flickers; watching a
        fixed number jitter would read as the sheet being unsure of it.
-     - Which dice were dropped. Advantage keeps the higher of two, and that
-       was decided by the roll that already happened — re-picking mid-flash
-       would show a kept die being discarded, which never occurred.
      - The result itself. The numbers shown during the flash are theatre; the
        ones it lands on are the roll, and they were rolled before the first
        frame drew. Nothing here can change an outcome.
 
    The total during the flash is COMPUTED, not faked: each term's coefficient
    was measured at roll time (bump the term by one, see what the total does),
-   so "10-1d6" counts down as the die tumbles and "2*1d6" moves in twos.
+   so "10-1d6" counts down as the die tumbles and "2*1d6" moves in twos. It is
+   summed per TERM from whatever that term is currently keeping, which is why a
+   strike-through moving between two dice needs no case of its own.
 
    It runs on every new log entry, which means every path that rolls dice gets
    it — the command line, roll buttons, attacks, companions, routines, rests,
