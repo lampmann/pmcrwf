@@ -26,12 +26,112 @@ function buildSaves() {
     tb.appendChild(tr);
   });
 }
+/* ============================================================
+   SKILL ORDER — yours, per character.
+
+   Eighteen skills, and on most characters a dozen of them never come up. The
+   alphabetical order the book prints them in is the worst one for play: the
+   three you actually roll are scattered through a list you have to read past
+   every time. So the rows drag.
+
+   Order is stored as a list of slugs on the character, not in the layout: a
+   rogue and a wizard want different skills on top, and it travels with an
+   exported character rather than staying behind in this browser. Anything the
+   stored list doesn't mention keeps its alphabetical position after the ones
+   it does, so a saved order from before a skill existed doesn't lose it.
+   ============================================================ */
+let SKILL_ORDER = [];
+
+function skillRowEls() { return [...document.querySelectorAll("#skill-rows tr")]; }
+
+/* The order as it currently stands on screen — what gets saved. */
+function currentSkillOrder() { return skillRowEls().map(tr => tr.dataset.slug); }
+
+/* Reorder the rows to match a stored list. Unknown slugs are ignored and unmentioned rows keep
+   their relative order at the end, so this can never drop a skill off the sheet. */
+function applySkillOrder(order) {
+  const tb = document.getElementById("skill-rows"); if (!tb) return;
+  SKILL_ORDER = Array.isArray(order) ? order.filter(x => typeof x === "string") : [];
+  // No stored order means alphabetical, which is also what a brand-new character gets.
+  if (!SKILL_ORDER.length) { resetSkillOrderRows(); return; }
+  const rows = skillRowEls();
+  const bySlug = {}; rows.forEach(tr => { bySlug[tr.dataset.slug] = tr; });
+  const seen = new Set();
+  SKILL_ORDER.forEach(slug => {
+    const tr = bySlug[slug];
+    if (!tr || seen.has(slug)) return;
+    seen.add(slug); tb.appendChild(tr);
+  });
+  rows.forEach(tr => { if (!seen.has(tr.dataset.slug)) tb.appendChild(tr); });
+}
+
+function resetSkillOrderRows() {
+  const tb = document.getElementById("skill-rows"); if (!tb) return;
+  skillRowEls().sort((a, b) => a.dataset.slug.localeCompare(b.dataset.slug)).forEach(tr => tb.appendChild(tr));
+}
+function resetSkillOrder() {
+  resetSkillOrderRows();
+  SKILL_ORDER = currentSkillOrder();
+  if (typeof scheduleSave === "function") scheduleSave();
+}
+
+/* Drag to reorder. Insertion goes above or below the row you're over depending on which half of it
+   the pointer is in, and the line showing where it will land is drawn while you drag — a drop with
+   no preview is a guess, the same reasoning the character tabs follow. */
+let SKILL_DRAG_SLUG = null;
+function clearSkillDropMarks() {
+  document.querySelectorAll("#skill-rows tr").forEach(t => t.classList.remove("drop-before", "drop-after"));
+}
+function skillDropAfter(tr, clientY) {
+  const r = tr.getBoundingClientRect();
+  return (clientY - r.top) > r.height / 2;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const tb = document.getElementById("skill-rows"); if (!tb) return;
+
+  tb.addEventListener("dragstart", e => {
+    const tr = e.target.closest("tr"); if (!tr || !tr.dataset.slug) return;
+    SKILL_DRAG_SLUG = tr.dataset.slug;
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", SKILL_DRAG_SLUG); } catch (err) {}   // Firefox needs a payload
+    tr.classList.add("dragging");
+  });
+  tb.addEventListener("dragend", () => {
+    SKILL_DRAG_SLUG = null; clearSkillDropMarks();
+    document.querySelectorAll("#skill-rows tr").forEach(t => { t.classList.remove("dragging"); t.draggable = false; });
+  });
+  tb.addEventListener("dragover", e => {
+    if (!SKILL_DRAG_SLUG) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = "move";
+    clearSkillDropMarks();
+    const tr = e.target.closest("tr");
+    if (!tr || tr.dataset.slug === SKILL_DRAG_SLUG) return;
+    tr.classList.add(skillDropAfter(tr, e.clientY) ? "drop-after" : "drop-before");
+  });
+  tb.addEventListener("drop", e => {
+    if (!SKILL_DRAG_SLUG) return;
+    e.preventDefault();
+    const moved = document.querySelector(`#skill-rows tr[data-slug="${SKILL_DRAG_SLUG}"]`);
+    const tr = e.target.closest("tr");
+    SKILL_DRAG_SLUG = null; clearSkillDropMarks();
+    if (!moved || !tr || tr === moved) return;
+    if (skillDropAfter(tr, e.clientY)) tr.after(moved); else tr.before(moved);
+    SKILL_ORDER = currentSkillOrder();
+    if (typeof scheduleSave === "function") scheduleSave();
+  });
+
+  const reset = document.getElementById("btn-skill-reset-order");
+  if (reset) reset.addEventListener("click", resetSkillOrder);
+});
+
 function buildSkills() {
   const tb = $("skill-rows");
   SKILLS.forEach(([name, ab]) => {
     const slug = name.toLowerCase().replace(/[^a-z]/g, "");
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td class="skill-grip" title="drag to reorder">&#8942;&#8942;</td>
       <td><input type="checkbox" data-persist id="skillprof-${slug}"></td>
       <td><input type="checkbox" data-persist id="skillexp-${slug}"></td>
       <td>${name} <span class="hint">(${ab})</span></td>
@@ -39,6 +139,13 @@ function buildSkills() {
       <td class="derived" id="skillbonus-${slug}">+0</td>
       <td><button class="roll" data-roll-check="skill-${slug}" data-label="${name}">roll</button></td>`;
     tr.dataset.ability = ab; tr.dataset.slug = slug;
+    /* Draggable from the grip only, not the whole row: the row is full of checkboxes and a text
+       field, and a row that starts a drag when you try to select text in Misc is worse than one
+       that can't be reordered at all. */
+    tr.draggable = false;
+    const grip = tr.querySelector(".skill-grip");
+    grip.addEventListener("mousedown", () => { tr.draggable = true; });
+    grip.addEventListener("mouseup", () => { tr.draggable = false; });
     // expertise and proficiency are mutually exclusive
     const prof = tr.querySelector(`#skillprof-${slug}`), exp = tr.querySelector(`#skillexp-${slug}`);
     exp.addEventListener("change", () => { if (exp.checked) prof.checked = false; });
