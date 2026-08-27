@@ -460,3 +460,30 @@ input[readonly] { background: rgba(128,128,128,.12); cursor: default; }
 
 /* Hand-entered defences, beside the ones features grant (src/derived.js renderDefenses). */
 .def-manual input { width: 7rem; }
+
+/* ===== Tumbling dice (src/roll-anim.js) =====
+   The flash is the numbers changing; this only marks the entry while it happens and gives it a
+   brief settle so the eye lands on the row that just arrived. */
+.die { font-variant-numeric: tabular-nums; }   /* so a face going 7 -> 17 doesn't shift the line */
+.roll-total { font-variant-numeric: tabular-nums; }
+.ev.rolling .die { opacity: .75; }
+.ev.rolled { animation: roll-settle .55s ease-out; }
+@keyframes roll-settle {
+  0%   { background: rgba(255, 196, 0, .30); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .ev.rolled { animation: none; } }
+
+/* ===== Roll mirror: resize grip and command line (src/roll-mirror.js) =====
+   The grip is top-left because the panel is pinned bottom-right — dragging up and left makes it
+   bigger, which is the only direction that doesn't push its own corner off the screen. */
+#roll-mirror-grip {
+  width: .7rem; height: .7rem; margin-right: .1rem; cursor: nwse-resize; flex: none;
+  border-left: 2px solid currentColor; border-top: 2px solid currentColor; opacity: .35;
+}
+#roll-mirror-grip:hover { opacity: .8; }
+#roll-mirror-cmd {
+  display: block; width: calc(100% - .8rem); margin: .25rem .4rem .35rem;
+  font: inherit; font-size: .85rem;
+}
+#roll-mirror.mirror-folded #roll-mirror-cmd { display: none; }

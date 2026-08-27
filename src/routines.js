@@ -153,7 +153,7 @@
           const dm = diceRollExpr(st.dmg.trim(), "normal");
           failDmg = dm.value;
           succDmg = st.onSave === "half" ? Math.floor(dm.value / 2) : 0;
-          dmgTxt = ` · <b>${dm.value}</b> damage ← ${dm.display}`;
+          dmgTxt = ` · ${totalHtml(dm)} damage ← ${dm.display}`;
         }
         saveFailDamage += failDmg;
         detailLines.push(`  <b>${escapeHtml(name)}</b> — target rolls <b>${roll.value}</b> ← ${roll.display} (DC ${dc} ${abilLabel(st.abil || "dex")} save)${dmgTxt}`);
