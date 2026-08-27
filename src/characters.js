@@ -154,7 +154,10 @@ function resetSheetToBlank() {
   const fields = {};
   document.querySelectorAll("[data-persist]").forEach(el => { fields[el.id] = el.type === "checkbox" ? false : ""; });
   applyState({ v: 1, fields, classes: [{ name: "", sub: "", lvl: 1 }], spells: [], items: [],
-    attacks: [], routines: [], featChoices: {}, usesState: {}, hdState: {},
+    attacks: [], routines: [], featChoices: {}, asiChoices: {}, usesState: {}, hdState: {},
+    // An empty skillOrder means alphabetical: a new character shouldn't inherit the row order of
+    // whoever happened to be on screen when you pressed "+", any more than it inherits their name.
+    skillOrder: [],
     effectChoices: {}, effectToggles: {}, proficiencies: { weapons: [], tools: [], languages: [] } });
 }
 

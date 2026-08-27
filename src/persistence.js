@@ -12,6 +12,7 @@ function collectState() {
     combat: (typeof COMBAT !== "undefined" ? COMBAT : null),   // the round tracker, so a fight survives a reload
     boons: (typeof BOONS !== "undefined" ? BOONS : null),      // Guidance/Resistance/Death Ward counts (src/boons.js)
     featChoices: FEAT_CHOICES, asiChoices: ASI_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
+    skillOrder: (typeof currentSkillOrder === "function" ? currentSkillOrder() : []),
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
   document.querySelectorAll("[data-persist]").forEach(el => { state.fields[el.id] = el.type === "checkbox" ? el.checked : el.value; });
@@ -27,6 +28,8 @@ function applyState(state) {
   PROFICIENCIES = state.proficiencies || { weapons: [], tools: [], languages: [] };
   FEAT_CHOICES = state.featChoices || {};
   ASI_CHOICES = state.asiChoices || {};
+  // The row order is the character's, so it follows a tab switch and an export (see rows.js).
+  if (typeof applySkillOrder === "function") applySkillOrder(state.skillOrder || []);
   USES_STATE = state.usesState || {};
   HD_STATE = state.hdState || {};
   EFFECT_CHOICES = state.effectChoices || {};

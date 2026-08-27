@@ -83,44 +83,23 @@
     m.classList.toggle("lay-collapsed", on);
     const btn = m.querySelector(":scope > h2 > .lay-collapse-btn");
     if (btn) { btn.textContent = on ? "▸" : "▾"; btn.title = on ? "expand" : "collapse"; btn.setAttribute("aria-expanded", String(!on)); }
-    // A collapsed module's height comes from its (now-hidden) content normally; if it was ever
-    // manually resized in Free mode it also carries an explicit inline height that content-hiding
-    // alone can't shrink. Collapsing clears it so the module shrinks to just its title bar; expanding
-    // restores whatever height was stored (or back to auto, for a module never resized).
+    /* A collapsed module's height comes from its (now-hidden) content normally; if it was ever
+       manually resized in Free mode it also carries an explicit inline height that content-hiding
+       alone can't shrink. So each state gets its own remembered height: folding drops to `hc` (or
+       to auto — just the title bar — for one never dragged while folded), and expanding restores
+       `h`. Dragging the bottom edge writes whichever of the two applies at the time. */
     const p = state.map[key(m)];
-    if (p) m.style.height = (!on && p.h) ? p.h + "px" : "";
+    if (p) m.style.height = on ? (p.hc ? p.hc + "px" : "") : (p.h ? p.h + "px" : "");
   }
   function toggleCollapse(m) {
     const k = key(m); state.collapsed[k] = !state.collapsed[k];
     applyCollapse(m);
-    if (state.activated) compactLayout(); else sizeContainer();
+    /* Collapsing used to run a compaction pass, sliding everything below up to fill the gap. It was
+       removed along with the Compact button: an arrangement you built by hand rearranging itself
+       because you folded something is exactly the "helpful" surprise this sheet avoids elsewhere.
+       A folded module leaves a hole, and the hole is yours to use or close. */
+    sizeContainer();
     save();
-  }
-
-  /* ---- compact: close vertical gaps between absolutely-positioned modules without touching x/width.
-     Only meaningful once the layout is "activated" (modules absolutely positioned) — the ordinary
-     flex flow already reflows around a collapsed/shrunk module with no help needed. A skyline-style
-     pack: walk modules top-to-bottom (ties broken left-to-right), and drop each one to the lowest
-     point directly beneath anything already placed that it horizontally overlaps. x and width are
-     never touched, so a deliberately-built column layout stays exactly as wide/aligned as it was —
-     only the empty space between rows disappears. Run automatically after a collapse/expand, and
-     also offered as its own "Compact" button for closing gaps left by anything else (an attack row
-     deleted, a companion removed, ...). */
-  function compactLayout() {
-    if (!state.activated) return;
-    const items = modules().map(m => {
-      const p = state.map[key(m)]; if (!p) return null;
-      return { m, x: p.x, w: p.w || m.offsetWidth, h: m.offsetHeight, y: p.y };
-    }).filter(Boolean).sort((a, b) => a.y - b.y || a.x - b.x);
-    const placed = [];
-    items.forEach(it => {
-      let newY = 0;
-      placed.forEach(o => { if (it.x < o.x + o.w && it.x + it.w > o.x) newY = Math.max(newY, o.newY + o.h); });
-      it.newY = newY;
-      placed.push(it);
-    });
-    items.forEach(it => { const p = state.map[key(it.m)]; p.y = it.newY; it.m.style.top = p.y + "px"; });
-    sizeContainer(); save();
   }
 
   /* ---- positions ---- */
@@ -136,7 +115,9 @@
   function applyPos(m) {
     const p = state.map[key(m)]; if (!p) return;
     m.style.left = p.x + "px"; m.style.top = p.y + "px"; m.style.width = p.w + "px";
-    m.style.height = p.h ? p.h + "px" : ""; if (p.z) m.style.zIndex = p.z;
+    const collapsed = m.classList.contains("lay-collapsed");
+    const h = collapsed ? p.hc : p.h;
+    m.style.height = h ? h + "px" : ""; if (p.z) m.style.zIndex = p.z;
   }
   function clearPos(m) { m.style.left = m.style.top = m.style.width = m.style.height = m.style.zIndex = ""; }
   function bumpZ(m) { const p = state.map[key(m)]; if (!p) return; state.zTop = (state.zTop || 0) + 1; p.z = state.zTop; m.style.zIndex = p.z; }
@@ -264,8 +245,13 @@
       if (right - left < MINW) { if (dir.includes("w")) left = right - MINW; else right = left + MINW; }
       if (bottom - top < MINH) { if (dir.includes("n")) top = bottom - MINH; else bottom = top + MINH; }
       left = Math.max(0, left); top = Math.max(0, top);
-      p.x = left; p.y = top; p.w = right - left; p.h = bottom - top;
-      m.style.left = p.x + "px"; m.style.top = p.y + "px"; m.style.width = p.w + "px"; m.style.height = p.h + "px";
+      p.x = left; p.y = top; p.w = right - left;
+      /* Folded and open are two different heights, remembered separately. Writing one number for
+         both meant either a folded module snapped back to a title bar the moment you let go, or
+         unfolding it restored the height you had dragged it to WHILE folded and clipped its
+         content. `hc` is how tall it is folded; `h` is how tall it is open. */
+      if (m.classList.contains("lay-collapsed")) p.hc = bottom - top; else p.h = bottom - top;
+      m.style.left = p.x + "px"; m.style.top = p.y + "px"; m.style.width = p.w + "px"; m.style.height = (bottom - top) + "px";
     }
     function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); document.body.style.userSelect = ""; sizeContainer(); save(); }
     document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
@@ -383,7 +369,6 @@
       <label>grid <input type="number" id="lay-gridsize" min="1" max="64" style="width:3rem"></label>
       <label><input type="checkbox" id="lay-edge"> snap to modules</label>
       <button id="lay-reset">reset</button>
-      <button id="lay-compact" title="close vertical gaps between modules without moving them left/right">compact</button>
       <button id="lay-save">save file</button>
       <label>load <input type="file" id="lay-load" accept="application/json" style="width:8.5rem"></label>
       <span class="hint" id="lay-hint"></span>
@@ -395,7 +380,6 @@
     byId("lay-edge").addEventListener("change", e => { state.snapEdge = e.target.checked; save(); });
     byId("lay-gridsize").addEventListener("change", e => { state.grid = Math.max(1, Math.min(64, Number(e.target.value) || 8)); e.target.value = state.grid; updateGrid(); save(); });
     byId("lay-reset").addEventListener("click", () => { if (confirm("Reset module layout back to the default flow? This also expands any collapsed modules.")) { state.map = {}; state.collapsed = {}; state.free = false; state.activated = false; state.zTop = 0; clearSelection(); syncControls(); apply(); save(); updateHint(); } });
-    byId("lay-compact").addEventListener("click", () => { if (!state.activated) { alert("Nothing to compact — modules are only absolutely positioned once you've used Free mode at least once."); return; } compactLayout(); });
     byId("lay-save").addEventListener("click", exportLayout);
     byId("lay-load").addEventListener("change", e => { if (e.target.files[0]) importLayout(e.target.files[0]); e.target.value = ""; });
     updateHint();
@@ -403,5 +387,5 @@
 
   document.addEventListener("DOMContentLoaded", () => { buildBar(); wrapBodies(); addCollapseToggles(); addHandles(); apply(); });
   window.__layout = { state, apply, snapMove, modules, ensurePositions, save, selected, selectAdd, updateSelectionUI, selectionRect,
-    toggleCollapse, compactLayout, wrapBodies, addCollapseToggles };
+    toggleCollapse, wrapBodies, addCollapseToggles };
 })();
