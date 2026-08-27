@@ -176,11 +176,15 @@ It is a mirror and nothing else: every entry in it was put there by the same cal
 
 A new roll flashes before it settles: each die face runs through a few other faces **of its own die** and then lands on what was rolled, with the total recomputed live from whatever is showing at that moment. It's there to catch your eye when the result arrives somewhere you weren't looking.
 
-Three things deliberately don't move. **Modifiers and signs** never flicker — watching a fixed `+5` jitter reads as the sheet being unsure of it. **Dropped dice** stay dropped: advantage kept the higher of two and that was decided by the roll that already happened, so re-picking mid-flash would show a kept die being discarded that never was. And the **result** is not in play at all — every number was rolled before the first frame drew, and nothing in the animation can reach it.
+**Dropped dice tumble too, and the strike-through moves with them.** Roll with advantage and you watch the two dice fight over it: whichever is momentarily higher is the kept one, the other is struck through, and the total follows — all of it re-running the roller's own keep/drop rule against what's currently showing, not a second rule written for the animation.
 
-The running total is computed, not faked. Each die term's effect on the total is measured when the roll happens (bump it by one, see what the total does), so `20-1d6` counts *down* as the die climbs and `2*1d6` moves in twos. Both copies of an entry — the module and the corner panel — are driven from one sequence, so they can never show different numbers at the same moment.
+Two things deliberately don't move. **Modifiers and signs** never flicker — watching a fixed `+5` jitter reads as the sheet being unsure of it. And the **result** is not in play at all: every number was rolled before the first frame drew, and nothing in the animation can reach it. What you see mid-tumble is theatre; what it lands on is the roll.
 
-It runs off the log itself, which means every path that rolls dice gets it: the command line, roll buttons, attacks, companions, routines, rests, death saves. It respects `prefers-reduced-motion`, and `setRollAnim(false)` turns it off for good.
+The running total is computed, not faked. Each die term's effect on the total is measured when the roll happens (bump it by one, see what the total does), so `20-1d6` counts *down* as the die climbs and `2*1d6` moves in twos; the total is summed per *term* from whatever that term is currently keeping, which is why a moving strike-through needs no special case. Both copies of an entry — the module and the corner panel — are driven from one sequence, so they can never show different numbers at the same moment.
+
+It runs off the log itself, which means every path that rolls dice gets it: the command line, roll buttons, attacks, companions, routines, rests, death saves.
+
+**The ⚅ button in the roll mirror's title bar switches it on and off.** If your system asks for reduced motion the animation starts off — but that only sets the default, and the button overrides it, because a feature that silently isn't there is worse than one you can turn off.
 
 ## Roll buttons
 Every save / skill / initiative / spell-attack has a `roll` button that uses its computed bonus.

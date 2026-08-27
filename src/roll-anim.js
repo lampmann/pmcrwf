@@ -31,26 +31,43 @@
    death saves — without any of them knowing this file exists.
    ============================================================ */
 
-const ROLL_ANIM_FRAMES = 7;      // flashes before it settles
-const ROLL_ANIM_MS = 38;         // between flashes — ~270ms total, long enough to catch, short
-                                 // enough that a Fireball's eight dice don't hold up the table
+const ROLL_ANIM_FRAMES = 11;     // flashes before it settles
+const ROLL_ANIM_MS = 45;         // between flashes — ~500ms total. The first version ran in 270ms
+                                 // and was genuinely easy to miss; this is long enough to read as a
+                                 // tumble without making a Fireball's eight dice hold up the table.
 const ROLL_ANIM_KEY = "charsheet-rollanim";
 
-let ROLL_ANIM_ON = true;
+/* null = never chosen, so the OS decides; true/false = the user said so and that wins.
+   The distinction matters: gating this on prefers-reduced-motion ALONE meant anyone with that
+   setting on simply never saw the feature and had no way to find out why, which is a worse
+   accessibility outcome than a visible switch they can flip. The system preference still picks the
+   default — it just no longer has the final word over someone who has asked for the animation. */
+let ROLL_ANIM_PREF = null;
+function prefersReducedMotion() {
+  try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  catch (e) { return false; }
+}
 function loadRollAnimPref() {
-  try { const v = localStorage.getItem(ROLL_ANIM_KEY); if (v != null) ROLL_ANIM_ON = v !== "off"; }
+  try { const v = localStorage.getItem(ROLL_ANIM_KEY); ROLL_ANIM_PREF = v == null ? null : v !== "off"; }
   catch (e) { /* a corrupt pref isn't worth a broken sheet */ }
 }
 function setRollAnim(on) {
-  ROLL_ANIM_ON = !!on;
+  ROLL_ANIM_PREF = !!on;
   try { localStorage.setItem(ROLL_ANIM_KEY, on ? "on" : "off"); } catch (e) {}
+  if (typeof renderRollAnimToggle === "function") renderRollAnimToggle();
 }
-
-/* Someone who has asked their OS not to animate things means it. */
 function rollAnimAllowed() {
-  if (!ROLL_ANIM_ON) return false;
-  try { return !window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
-  catch (e) { return true; }
+  return ROLL_ANIM_PREF == null ? !prefersReducedMotion() : ROLL_ANIM_PREF;
+}
+/* The small die button in the roll mirror's title bar, so the switch is somewhere you'd find it. */
+function renderRollAnimToggle() {
+  const btn = document.getElementById("roll-anim-toggle"); if (!btn) return;
+  const on = rollAnimAllowed();
+  btn.textContent = on ? "\u2685" : "\u2680";
+  btn.classList.toggle("off", !on);
+  btn.title = on ? "dice tumble when they land \u2014 click to switch off"
+                 : "dice land without tumbling \u2014 click to switch on"
+                   + (prefersReducedMotion() ? " (your system asks for reduced motion)" : "");
 }
 
 /* The running total for a set of currently-showing faces. Starts from the value actually rolled and
@@ -59,11 +76,20 @@ function rollAnimAllowed() {
 function rollAnimTotal(totalEl, faces) {
   const final = Number(totalEl.dataset.final);
   const coeffs = (totalEl.dataset.coeffs || "").split(",").map(Number);
-  let n = final;
+  /* Per TERM rather than per die: a term's value is the sum of whatever it is currently KEEPING, so
+     a strike-through moving from one advantage die to the other falls out of the arithmetic instead
+     of needing a case of its own. */
+  const cur = {}, fin = {};
   faces.forEach(f => {
-    if (f.dropped) return;   // a dropped die is in no total
-    const c = Number.isFinite(coeffs[f.term]) ? coeffs[f.term] : 1;
-    n += c * (f.cur - f.finalV);
+    cur[f.term] = cur[f.term] || 0;
+    fin[f.term] = fin[f.term] || 0;
+    if (!f.dropped) cur[f.term] += f.cur;
+    if (!f.finalDropped) fin[f.term] += f.finalV;
+  });
+  let n = final;
+  Object.keys(cur).forEach(t => {
+    const c = Number.isFinite(coeffs[t]) ? coeffs[t] : 1;
+    n += c * (cur[t] - fin[t]);
   });
   return n;
 }
@@ -86,17 +112,37 @@ function animateRollCopies(entries) {
   const faces = copies[0].dice.map(el => ({
     sides: Math.max(2, Number(el.dataset.sides) || 20),
     finalV: Number(el.dataset.final),
+    finalDropped: el.classList.contains("die-dropped"),
     dropped: el.classList.contains("die-dropped"),
-    term: Number(el.dataset.term),
+    ops: el.dataset.ops || "",
+    term: el.dataset.term || "0",
     cur: Number(el.dataset.final),
   }));
+  // Terms that select between their dice (advantage's kh1, and friends) re-decide every frame.
+  const termsWithOps = [...new Set(faces.filter(f => f.ops).map(f => f.term))];
 
   copies.forEach(c => c.entry.classList.add("rolling"));
   let frame = 0;
   const paint = () => {
     copies.forEach(c => {
-      c.dice.forEach((el, i) => { if (faces[i]) el.textContent = String(faces[i].cur); });
+      c.dice.forEach((el, i) => {
+        const f = faces[i]; if (!f) return;
+        el.textContent = String(f.cur);
+        el.classList.toggle("die-dropped", f.dropped);
+      });
       c.totals.forEach(t => { t.textContent = String(rollAnimTotal(t, faces)); });
+    });
+  };
+  /* Re-run the roller's own keep/drop rule against what the dice are currently showing, so a
+     tumbling advantage strikes out whichever die is momentarily lower — the discarded die moves as
+     the numbers do, which is what watching two dice fight over a roll actually looks like. */
+  const reselect = () => {
+    if (typeof dropFlagsFor !== "function") return;
+    termsWithOps.forEach(term => {
+      const group = faces.filter(f => f.term === term);
+      if (!group.length) return;
+      const flags = dropFlagsFor(group.map(f => f.cur), group[0].ops, group[0].sides);
+      group.forEach((f, i) => { f.dropped = !!flags[i]; });
     });
   };
   const tick = () => {
@@ -108,15 +154,20 @@ function animateRollCopies(entries) {
         if (v === f.finalV) v = (v % f.sides) + 1;
         f.cur = v;
       });
+      reselect();
       paint();
       frame++;
       setTimeout(tick, ROLL_ANIM_MS);
       return;
     }
-    // Settle: every number goes back to what was actually rolled.
-    faces.forEach(f => { f.cur = f.finalV; });
+    // Settle: every number, and every strike-through, goes back to what was actually rolled.
+    faces.forEach(f => { f.cur = f.finalV; f.dropped = f.finalDropped; });
     copies.forEach(c => {
-      c.dice.forEach((el, i) => { if (faces[i]) el.textContent = String(faces[i].finalV); });
+      c.dice.forEach((el, i) => {
+        const f = faces[i]; if (!f) return;
+        el.textContent = String(f.finalV);
+        el.classList.toggle("die-dropped", f.finalDropped);
+      });
       c.totals.forEach(t => { t.textContent = t.dataset.final; });
       c.entry.classList.remove("rolling");
       c.entry.classList.add("rolled");
@@ -140,4 +191,9 @@ function animateNewestRoll() {
   animateRollCopies(entries);
 }
 
-document.addEventListener("DOMContentLoaded", loadRollAnimPref);
+document.addEventListener("DOMContentLoaded", () => {
+  loadRollAnimPref();
+  renderRollAnimToggle();
+  const btn = document.getElementById("roll-anim-toggle");
+  if (btn) btn.addEventListener("click", () => setRollAnim(!rollAnimAllowed()));
+});

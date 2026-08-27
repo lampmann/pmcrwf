@@ -1372,7 +1372,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const advFaces = [...advEl.querySelectorAll(".die")].map(d => ({
         sides: 20, finalV: Number(d.dataset.final), dropped: d.classList.contains("die-dropped"),
         term: 0, cur: Number(d.dataset.final) }));
-      advFaces.forEach(f => { if (f.dropped) f.cur = 1; });
+      advFaces.forEach(f => { f.finalDropped = f.dropped; if (f.dropped) f.cur = 1; });
       assertEqual("...and moving the dropped one doesn't move the total",
         rollAnimTotal(advEl.querySelector(".roll-total"), advFaces), adv.value);
 
@@ -1391,12 +1391,49 @@ document.addEventListener("DOMContentLoaded", () => {
         (animateRollCopies([entry("just some text")]), true));
       assert("...as is nothing at all", (animateRollCopies([null]), true));
 
-      // the preference is honoured
-      const wasOn = ROLL_ANIM_ON;
+      /* The preference: an explicit choice wins over the system's reduced-motion setting.
+         Gating on reduced-motion alone meant anyone with it on never saw the feature and had no way
+         to find out why — a worse outcome than a switch they can flip. */
+      const wasPref = ROLL_ANIM_PREF;
+      ROLL_ANIM_PREF = null;
+      assertEqual("with no choice made, the system setting decides", rollAnimAllowed(), !prefersReducedMotion());
       setRollAnim(false);
-      assert("switching the animation off is read back", !rollAnimAllowed());
+      assert("switching it off is read back", !rollAnimAllowed());
       setRollAnim(true);
-      setRollAnim(wasOn);
+      assert("...and switching it on wins even under reduced motion", rollAnimAllowed());
+      ROLL_ANIM_PREF = wasPref;
+
+      /* --- dropped dice tumble too, and which one is dropped is re-decided every frame --- */
+      assertEqual("with advantage, the higher of two is kept",
+        dropFlagsFor([4, 17], "kh1", 20).join(","), "true,false");
+      assertEqual("...and it follows the numbers, not the positions",
+        dropFlagsFor([17, 4], "kh1", 20).join(","), "false,true");
+      assertEqual("disadvantage keeps the lower — so here it's the 17 that goes",
+        dropFlagsFor([4, 17], "kl1", 20).join(","), "false,true");
+      assertEqual("a term with no selection drops nothing", dropFlagsFor([3, 5], "", 6).join(","), "false,false");
+      assertEqual("4d6 drop lowest keeps three", dropFlagsFor([6, 1, 4, 3], "kh3", 6).filter(Boolean).length, 1);
+
+      // the markup carries what that needs
+      const advOps = evalExpr("2d20kh1+3");
+      const advOpsEl = entry(totalHtml(advOps) + " " + advOps.display);
+      assert("a selecting term tells each die its own rule",
+        [...advOpsEl.querySelectorAll(".die")].every(d => d.dataset.ops === "kh1"));
+      assert("dropped is a class, not an <s> wrapper, so it can move mid-tumble",
+        !/<s>/.test(advOpsEl.innerHTML) && advOpsEl.querySelectorAll(".die-dropped").length === 1);
+
+      // the total follows the strike-through when it moves
+      const twoFaces = [...advOpsEl.querySelectorAll(".die")].map(d => ({
+        sides: 20, finalV: Number(d.dataset.final), finalDropped: d.classList.contains("die-dropped"),
+        dropped: d.classList.contains("die-dropped"), term: d.dataset.term, ops: "kh1",
+        cur: Number(d.dataset.final) }));
+      // force the currently-kept die low and the dropped one high, then re-decide
+      const keptIdx = twoFaces.findIndex(f => !f.finalDropped);
+      twoFaces[keptIdx].cur = 2; twoFaces[1 - keptIdx].cur = 19;
+      const flags = dropFlagsFor(twoFaces.map(f => f.cur), "kh1", 20);
+      twoFaces.forEach((f, i) => { f.dropped = !!flags[i]; });
+      assert("the die that is momentarily higher becomes the kept one", !twoFaces[1 - keptIdx].dropped);
+      assertEqual("...and the total counts THAT one",
+        rollAnimTotal(advOpsEl.querySelector(".roll-total"), twoFaces), 19 + 3);
 
       $("dicelog").innerHTML = savedHtml;
     }

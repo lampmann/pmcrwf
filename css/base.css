@@ -466,7 +466,6 @@ input[readonly] { background: rgba(128,128,128,.12); cursor: default; }
    brief settle so the eye lands on the row that just arrived. */
 .die { font-variant-numeric: tabular-nums; }   /* so a face going 7 -> 17 doesn't shift the line */
 .roll-total { font-variant-numeric: tabular-nums; }
-.ev.rolling .die { opacity: .75; }
 .ev.rolled { animation: roll-settle .55s ease-out; }
 @keyframes roll-settle {
   0%   { background: rgba(255, 196, 0, .30); }
@@ -487,3 +486,11 @@ input[readonly] { background: rgba(128,128,128,.12); cursor: default; }
   font: inherit; font-size: .85rem;
 }
 #roll-mirror.mirror-folded #roll-mirror-cmd { display: none; }
+
+/* A dropped die is marked by class rather than wrapped in <s>, so the strike-through can move
+   between dice while they tumble (see roll-anim.js). */
+.die-dropped { text-decoration: line-through; opacity: .55; }
+/* The tumbling numbers themselves, given some weight so the movement is easy to catch. */
+.ev.rolling .die, .ev.rolling .roll-total { font-weight: bold; }
+.ev.rolling .roll-total { color: var(--accent, #b35c00); }
+#roll-anim-toggle.off { opacity: .35; }

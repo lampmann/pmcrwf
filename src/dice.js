@@ -44,6 +44,18 @@ function applyOp(dice, op, selRaw, sides) {
   if (op === "rr") { dice.forEach(d => { let g = 0; while (!d.dropped && matchSel(d.v, sel) && g < 1000) { d.v = rollDie(sides); d.rer = true; g++; } }); return; }
   if (op === "ra") { const add = []; dice.forEach(d => { if (!d.dropped && matchSel(d.v, sel)) add.push({ v: rollDie(sides), dropped: false, exp: true }); }); dice.push(...add); return; }
 }
+/* Which of a term's dice would be dropped if it were showing these faces — the same keep/drop
+   operators the roller itself applies, re-run rather than reimplemented, so a tumbling advantage
+   strikes out the same die the finished roll would. Only SELECTION ops are replayed: rerolls and
+   explosions changed which dice exist at roll time and can't be redone against faces that are only
+   passing through. */
+function dropFlagsFor(values, ops, sides) {
+  const dice = values.map(v => ({ v, dropped: false }));
+  const opRe = /(kh|kl|ph|pl|k|p)([<>]?\d+|h\d+|l\d+)?/gi;
+  let m; while ((m = opRe.exec(ops || ""))) applyOp(dice, m[1].toLowerCase(), m[2], sides);
+  return dice.map(d => d.dropped);
+}
+
 function evalDice(tok, termIdx) {
   const mm = tok.match(/^(\d*)d(\d+)(.*)$/i);
   const count = mm[1] === "" ? 1 : +mm[1], sides = +mm[2], rest = mm[3] || "";
@@ -63,10 +75,17 @@ function evalDice(tok, termIdx) {
      is what lets the tumbling animation flash it through other faces of the SAME die and then put
      it back (see animateRoll in roll-anim.js). Dropped and rerolled faces keep their own markup —
      a dropped die is still a die, and watching the one advantage discarded is half the fun. */
+  /* Dropped-ness is a CLASS, not an <s> wrapper, because it has to be able to change while the
+     dice are tumbling: with advantage, which of the two is kept depends on what they're currently
+     showing, so the strike-through moves between them frame by frame. A wrapper element would mean
+     restructuring the DOM mid-animation; a class is one toggle. `data-ops` carries the term's own
+     selection operators so the animator can re-run the real keep/drop rule rather than reimplement
+     one — see dropFlagsFor below. */
+  const selOps = (rest.match(/(kh|kl|ph|pl|k|p)([<>]?\d+|h\d+|l\d+)?/gi) || []).join("");
   const face = d => {
     const cls = "die" + (d.dropped ? " die-dropped" : "") + (d.rer || d.exp ? " die-note" : "");
-    const inner = `<span class="${cls}" data-sides="${sides}" data-final="${d.v}" data-term="${termIdx == null ? "" : termIdx}">${d.v}</span>`;
-    return d.dropped ? "<s>" + inner + "</s>" : (d.rer || d.exp ? "<b>" + inner + "</b>" : inner);
+    const inner = `<span class="${cls}" data-sides="${sides}" data-final="${d.v}" data-term="${termIdx == null ? "" : termIdx}"${selOps ? ` data-ops="${escapeHtml(selOps)}"` : ""}>${d.v}</span>`;
+    return (d.rer || d.exp) ? "<b>" + inner + "</b>" : inner;
   };
   const render = escapeHtml(tok) + " (" + dice.map(face).join(", ") + ")"
     + (capped ? ` <b>[capped at ${MAX_DICE} of ${count} dice]</b>` : "");
