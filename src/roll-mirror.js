@@ -73,9 +73,15 @@ function mirrorLogEntry(kind, html) {
   d.innerHTML = html;
   body.insertBefore(d, body.firstChild);
   while (body.children.length > MIRROR_MAX) body.removeChild(body.lastChild);
-  // A roll arriving while the panel is hidden shouldn't silently vanish — that's exactly the moment
-  // it's wanted. Folded is a deliberate "I know it's there", so that state is left alone.
-  if (MIRROR.hidden) showRollMirror();
+  /* A ROLL arriving while the panel is hidden shouldn't silently vanish — that's exactly the moment
+     it's wanted. Restricted to kind "roll": every OTHER kind (info, rest, hp, resource, condition)
+     used to reopen the panel too, so loading a house-rule preset, taking a rest, or ticking a
+     condition could pop a hidden window back open with no visible cause — from the outside, "some
+     unrelated click reopened this window" with no explanation. Not narrowed further to "roll entries
+     that actually show a die": the creator's own ability-score/gold/hit-die rolls log as kind "roll"
+     with hand-built HTML that carries no <span class="die">, and are exactly the rolls you'd want the
+     panel to surface. Folded is left alone either way — that's a deliberate "I know it's there". */
+  if (MIRROR.hidden && kind === "roll") showRollMirror();
 }
 
 /* Rebuild from the active character's stored log — switching characters replaces the whole history,

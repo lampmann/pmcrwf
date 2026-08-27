@@ -1481,6 +1481,13 @@ document.addEventListener("DOMContentLoaded", () => {
       hideRollMirror();
       assert("hiding is remembered", MIRROR.hidden);
       assertEqual("...and leaves a tab to bring it back", $("roll-mirror-tab").style.display, "");
+      /* Every OTHER kind used to reopen it too — loading a house-rule preset, taking a rest, ticking
+         a condition, none of them a roll — which meant a click somewhere unrelated on the sheet could
+         pop a hidden window back open with no visible cause. */
+      logEvent("info", "House rules — loaded Lampmann's");
+      assert("a non-roll entry does NOT reopen a hidden mirror", MIRROR.hidden);
+      logEvent("rest", "short rest"); logEvent("hp", "took 5"); logEvent("condition", "Poisoned ticked");
+      assert("...none of the other kinds do either", MIRROR.hidden);
       log("a roll while hidden");
       assert("a roll arriving while hidden reopens it — that's the moment it's wanted", !MIRROR.hidden);
       assert("...but folding is left alone, since that was deliberate", MIRROR.folded);
