@@ -44,7 +44,7 @@ function applyOp(dice, op, selRaw, sides) {
   if (op === "rr") { dice.forEach(d => { let g = 0; while (!d.dropped && matchSel(d.v, sel) && g < 1000) { d.v = rollDie(sides); d.rer = true; g++; } }); return; }
   if (op === "ra") { const add = []; dice.forEach(d => { if (!d.dropped && matchSel(d.v, sel)) add.push({ v: rollDie(sides), dropped: false, exp: true }); }); dice.push(...add); return; }
 }
-function evalDice(tok) {
+function evalDice(tok, termIdx) {
   const mm = tok.match(/^(\d*)d(\d+)(.*)$/i);
   const count = mm[1] === "" ? 1 : +mm[1], sides = +mm[2], rest = mm[3] || "";
   // Hard cap on dice per term, so a typo ("1000d6") can't lock the tab up. It is reported in the
@@ -59,9 +59,18 @@ function evalDice(tok) {
   let om; while ((om = opRe.exec(rest))) applyOp(dice, om[1].toLowerCase(), om[2], sides);
   const total = dice.filter(d => !d.dropped).reduce((s, d) => s + d.v, 0);
   if (sides === 20) dice.forEach(d => { if (!d.dropped) _d20kept.push(d.v); });
-  const render = escapeHtml(tok) + " (" + dice.map(d => d.dropped ? "<s>" + d.v + "</s>" : (d.rer || d.exp ? "<b>" + d.v + "</b>" : String(d.v))).join(", ") + ")"
+  /* Each face is its own element carrying the die it came off and the number it settled on, which
+     is what lets the tumbling animation flash it through other faces of the SAME die and then put
+     it back (see animateRoll in roll-anim.js). Dropped and rerolled faces keep their own markup —
+     a dropped die is still a die, and watching the one advantage discarded is half the fun. */
+  const face = d => {
+    const cls = "die" + (d.dropped ? " die-dropped" : "") + (d.rer || d.exp ? " die-note" : "");
+    const inner = `<span class="${cls}" data-sides="${sides}" data-final="${d.v}" data-term="${termIdx == null ? "" : termIdx}">${d.v}</span>`;
+    return d.dropped ? "<s>" + inner + "</s>" : (d.rer || d.exp ? "<b>" + inner + "</b>" : inner);
+  };
+  const render = escapeHtml(tok) + " (" + dice.map(face).join(", ") + ")"
     + (capped ? ` <b>[capped at ${MAX_DICE} of ${count} dice]</b>` : "");
-  return { value: total, render, dice };
+  return { value: total, render, dice, sides };
 }
 function evalExpr(expr) {
   _d20kept = [];
@@ -70,22 +79,39 @@ function evalExpr(expr) {
   const re = /(\d*d\d+[hlkproaeim<>\d]*|\d+|[+\-*()])/gi;
   const tokens = []; let m; while ((m = re.exec(expr))) tokens.push(m[1]);
   const out = [], ops = [], prec = { "+": 1, "-": 1, "*": 2 }, display = [];
+  let termIdx = 0;   // die terms in source order — the animation keys each face back to its term
   for (const t of tokens) {
     if (/^[+\-*]$/.test(t)) {
       while (ops.length && ops[ops.length - 1] !== "(" && prec[ops[ops.length - 1]] >= prec[t]) out.push(ops.pop());
       ops.push(t); display.push(" " + t + " ");
     } else if (t === "(") { ops.push(t); display.push("("); }
     else if (t === ")") { while (ops.length && ops[ops.length - 1] !== "(") out.push(ops.pop()); ops.pop(); display.push(")"); }
-    else if (/d/i.test(t)) { const r = evalDice(t); out.push(r); display.push(r.render); }
+    else if (/d/i.test(t)) { const r = evalDice(t, termIdx++); out.push(r); display.push(r.render); }
     else { out.push({ value: Number(t) }); display.push(t); }
   }
   while (ops.length) out.push(ops.pop());
-  const st = [];
-  for (const o of out) {
-    if (typeof o === "string") { const b = st.pop(), a = st.pop(); st.push(o === "+" ? a + b : o === "-" ? a - b : a * b); }
-    else st.push(o.value);
-  }
-  return { value: st.length ? st[0] : 0, display: display.join(""), annotations };
+  const run = () => {
+    const st = [];
+    for (const o of out) {
+      if (typeof o === "string") { const b = st.pop(), a = st.pop(); st.push(o === "+" ? a + b : o === "-" ? a - b : a * b); }
+      else st.push(o.value);
+    }
+    return st.length ? st[0] : 0;
+  };
+  const value = run();
+  /* How much the total moves per point on each die term, measured rather than assumed: bump the
+     term by one, re-run the same RPN, take the difference. That's +1 for "1d20+5", -1 for "10-1d6"
+     and 2 for "2*1d6" — so the tumbling animation can show a live total without re-parsing anything.
+     It is exact for any expression linear in that term, which is every expression anyone rolls; a
+     die multiplied by another die would only be approximate, and only mid-flash. */
+  const terms = out.filter(o => o && typeof o === "object" && o.dice);
+  terms.forEach(t => {
+    const was = t.value;
+    t.value = was + 1;
+    t.coeff = run() - value;
+    t.value = was;
+  });
+  return { value, display: display.join(""), annotations, terms, coeffs: terms.map(t => t.coeff) };
 }
 
 /* split "1d20+5 adv Attack!" -> {expr, mode, label} (space at bracket-depth 0 ends the expression) */
@@ -118,6 +144,13 @@ function applyMode(expr, mode) {
    innerHTML on every load (see event-log.js / repaintEventLog), so anything user- or data-supplied
    is escaped on the way in; only engine-built markup (a roll's own `display`) goes through raw. */
 function fmtAnns(anns) { return anns.length ? " <i>[" + anns.map(escapeHtml).join("][") + "]</i>" : ""; }
+/* The total, as an element the tumbling animation can rewrite. It carries the number it settles on
+   and how much each die term moves it, so the running total during the flash is computed rather
+   than faked — see animateRoll in roll-anim.js. */
+function totalHtml(rolled) {
+  const coeffs = (rolled.coeffs || []).join(",");
+  return `<b class="roll-total" data-final="${rolled.value}"${coeffs ? ` data-coeffs="${coeffs}"` : ""}>${rolled.value}</b>`;
+}
 function fmtLabel(label, fallback) { return escapeHtml(label || fallback); }
 
 /* `opts` carries what a feature effect can change about a d20 roll itself rather than its total:
@@ -135,19 +168,19 @@ function runRoll(s, forceMode, opts) {
   const critMin = (opts && opts.critMin) || 20;
   let crit = "";  // only the kept d20 can crit (deviates from 5eCrawler, which crits off any die's max/min)
   if (_d20kept.length === 1) { if (_d20kept[0] >= critMin) crit = "  <b>Critical Success!</b>"; else if (_d20kept[0] === 1) crit = "  <b>Critical Failure!</b>"; }
-  log(`<b>${rolled.value}</b> &larr; ${fmtLabel(label, "roll")}${modeTag}: ${rolled.display}${fmtAnns(rolled.annotations)}${crit}`);
+  log(`${totalHtml(rolled)} &larr; ${fmtLabel(label, "roll")}${modeTag}: ${rolled.display}${fmtAnns(rolled.annotations)}${crit}`);
   return rolled.value;
 }
 function runMultiroll(n, s) {
   const { expr, mode, label } = splitRoll(s);
   const lines = []; let sum = 0;
-  for (let i = 0; i < n; i++) { const r = evalExpr(applyMode(expr, mode)); sum += r.value; lines.push(`  ${r.value}  ⇐ ${r.display}`); }
+  for (let i = 0; i < n; i++) { const r = evalExpr(applyMode(expr, mode)); sum += r.value; lines.push(`  ${totalHtml(r)}  ⇐ ${r.display}`); }
   log(`<b>${fmtLabel(label, "multiroll")} ×${n}</b> (sum ${sum})\n${lines.join("\n")}`);
 }
 function runIterroll(n, dc, s) {
   const { expr, mode, label } = splitRoll(s);
   const lines = []; let succ = 0;
-  for (let i = 0; i < n; i++) { const r = evalExpr(applyMode(expr, mode)); const ok = r.value >= dc; if (ok) succ++; lines.push((ok ? "✓" : "✗") + " " + r.value); }
+  for (let i = 0; i < n; i++) { const r = evalExpr(applyMode(expr, mode)); const ok = r.value >= dc; if (ok) succ++; lines.push((ok ? "✓" : "✗") + " " + totalHtml(r)); }
   log(`<b>${fmtLabel(label, "iterroll")}: ${succ}/${n} ≥ DC ${dc}</b>\n  ${lines.join(",  ")}`);
 }
 function runCommand(input) {

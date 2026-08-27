@@ -210,9 +210,9 @@
       if (expr) {
         const dm = diceRollExpr(isCrit ? doubleDice(expr) : expr, "normal");
         dmg = dm.value;
-        dmgText = ` · <b>${dm.value}</b> damage ← ${dm.display}${isCrit ? " <i>(crit, dice doubled)</i>" : ""}`;
+        dmgText = ` · ${totalHtml(dm)} damage ← ${dm.display}${isCrit ? " <i>(crit, dice doubled)</i>" : ""}`;
       }
-      lines.push(`  #${i + 1} — <b>${hit.value}</b> to hit ← ${hit.display}${isCrit ? " <b>Critical!</b>" : ""}${dmgText}`);
+      lines.push(`  #${i + 1} — ${totalHtml(hit)} to hit ← ${hit.display}${isCrit ? " <b>Critical!</b>" : ""}${dmgText}`);
       hits.push({ total: hit.value, damage: dmg });
     }
     const modeTag = mode && mode !== "normal" ? ` <i>(${mode})</i>` : "";

@@ -22,12 +22,13 @@
 const MIRROR_MAX = 40;          // entries kept in the corner; the module itself keeps everything
 const MIRROR_KEY = "charsheet-rollmirror";
 
-let MIRROR = { folded: false, hidden: false };
+let MIRROR = { folded: false, hidden: false, w: 0, h: 0 };
 
 function loadMirrorPrefs() {
   try {
     const d = JSON.parse(localStorage.getItem(MIRROR_KEY));
-    if (d && typeof d === "object") MIRROR = { folded: !!d.folded, hidden: !!d.hidden };
+    if (d && typeof d === "object") MIRROR = { folded: !!d.folded, hidden: !!d.hidden,
+      w: Math.max(0, Math.floor(Number(d.w)) || 0), h: Math.max(0, Math.floor(Number(d.h)) || 0) };
   } catch (e) { /* a corrupt pref is not worth a broken sheet — keep the defaults */ }
 }
 function saveMirrorPrefs() {
@@ -47,6 +48,11 @@ function renderRollMirror() {
   el.style.display = MIRROR.hidden ? "none" : "";
   const tab = document.getElementById("roll-mirror-tab");
   if (tab) tab.style.display = MIRROR.hidden ? "" : "none";
+  /* A size the user dragged to, if any. Applied as width on the panel and height on the body, so
+     folding still collapses to the title bar rather than leaving a tall empty box. */
+  if (MIRROR.w) el.style.width = MIRROR.w + "px";
+  const bodyEl = mirrorBody();
+  if (bodyEl && MIRROR.h) bodyEl.style.maxHeight = MIRROR.h + "px";
   const fold = document.getElementById("roll-mirror-fold");
   if (fold) {
     fold.textContent = MIRROR.folded ? "▲" : "▼";
@@ -82,11 +88,56 @@ function repaintRollMirror() {
     .map(e => `<div class="ev ev-${e.kind}">${e.html}</div>`).join("");
 }
 
+/* Resizing from the TOP-LEFT, because the panel is pinned to the bottom-right: CSS `resize` only
+   ever offers a bottom-right grabber, which on this panel would drag its own corner off-screen.
+   Dragging up and left therefore makes it bigger, which is what the corner it's anchored to implies. */
+function wireMirrorResize() {
+  const grip = document.getElementById("roll-mirror-grip"); if (!grip) return;
+  const el = mirrorEl(), body = mirrorBody();
+  const MIN_W = 14, MIN_H = 4;   // rem — below this it stops being readable
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  let start = null;
+
+  const onMove = e => {
+    if (!start) return;
+    const dx = start.x - e.clientX, dy = start.y - e.clientY;   // up/left is bigger
+    MIRROR.w = Math.round(Math.max(MIN_W * rem, Math.min(window.innerWidth - 20, start.w + dx)));
+    MIRROR.h = Math.round(Math.max(MIN_H * rem, Math.min(window.innerHeight - 80, start.h + dy)));
+    el.style.width = MIRROR.w + "px";
+    if (body) body.style.maxHeight = MIRROR.h + "px";
+    e.preventDefault();
+  };
+  const onUp = () => {
+    if (!start) return;
+    start = null;
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    saveMirrorPrefs();
+  };
+  grip.addEventListener("mousedown", e => {
+    start = { x: e.clientX, y: e.clientY, w: el.getBoundingClientRect().width,
+              h: body ? body.getBoundingClientRect().height : 0 };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    e.preventDefault();
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const el = mirrorEl(); if (!el) return;
   loadMirrorPrefs();
   repaintRollMirror();
   renderRollMirror();
+  wireMirrorResize();
+
+  /* The same command line the Event Log module has, on the panel that is now the one you keep open.
+     It calls the same runCommand, so there is one parser and one set of commands, not two. */
+  const cmd = document.getElementById("roll-mirror-cmd");
+  if (cmd) cmd.addEventListener("keydown", e => {
+    if (e.key !== "Enter") return;
+    if (typeof runCommand === "function") runCommand(e.target.value);
+    e.target.value = "";
+  });
 
   el.addEventListener("click", e => {
     if (e.target.id === "roll-mirror-fold") { toggleMirrorFold(); return; }

@@ -168,9 +168,19 @@ The Event Log is the sheet's running history: dice rolls land here, and so do ac
 
 ### Roll mirror (the corner panel)
 
-The Event Log is a module like any other, so it can be anywhere in your layout — and once a few modules are open it's usually a scroll away from the button you just clicked. A small panel pinned to the **bottom-right** mirrors the newest entries so a roll is readable without leaving what you're doing.
+**This is the primary rolling surface.** A panel pinned to the **bottom-right** shows the newest entries and carries the same command line the Event Log module has, so a roll is readable and repeatable without leaving what you're doing. The Event Log module itself starts **folded** on a fresh install — it's where you go to read back through history, not something that needs to be open. (An existing layout is untouched: only a first run gets the fold.)
 
-It is a mirror and nothing else: every entry in it was put there by the same call that writes the module, switching characters repaints it from that character's own stored log, and clearing the log clears it. It keeps the last 40 entries; the module keeps the full history. **▼** folds it to its title bar, **×** hides it and leaves a small **Rolls** tab to bring it back — and a roll arriving while it's hidden reopens it, since that's exactly the moment you want it. Folding is left alone in that case, because folding is a deliberate "I know it's there". Both settings are per browser rather than per character, and it doesn't print.
+It is a mirror and nothing else: every entry in it was put there by the same call that writes the module, switching characters repaints it from that character's own stored log, and clearing the log clears it. It keeps the last 40 entries; the module keeps the full history. Drag the **grip in its top-left corner** to resize it — up and left makes it bigger, which is the only direction that doesn't push a bottom-right-anchored panel off the screen; the size is remembered. **▼** folds it to its title bar, **×** hides it and leaves a small **Rolls** tab to bring it back — and a roll arriving while it's hidden reopens it, since that's exactly the moment you want it. Folding is left alone in that case, because folding is a deliberate "I know it's there". Both settings are per browser rather than per character, and it doesn't print.
+
+### Tumbling dice
+
+A new roll flashes before it settles: each die face runs through a few other faces **of its own die** and then lands on what was rolled, with the total recomputed live from whatever is showing at that moment. It's there to catch your eye when the result arrives somewhere you weren't looking.
+
+Three things deliberately don't move. **Modifiers and signs** never flicker — watching a fixed `+5` jitter reads as the sheet being unsure of it. **Dropped dice** stay dropped: advantage kept the higher of two and that was decided by the roll that already happened, so re-picking mid-flash would show a kept die being discarded that never was. And the **result** is not in play at all — every number was rolled before the first frame drew, and nothing in the animation can reach it.
+
+The running total is computed, not faked. Each die term's effect on the total is measured when the roll happens (bump it by one, see what the total does), so `20-1d6` counts *down* as the die climbs and `2*1d6` moves in twos. Both copies of an entry — the module and the corner panel — are driven from one sequence, so they can never show different numbers at the same moment.
+
+It runs off the log itself, which means every path that rolls dice gets it: the command line, roll buttons, attacks, companions, routines, rests, death saves. It respects `prefers-reduced-motion`, and `setRollAnim(false)` turns it off for good.
 
 ## Roll buttons
 Every save / skill / initiative / spell-attack has a `roll` button that uses its computed bonus.

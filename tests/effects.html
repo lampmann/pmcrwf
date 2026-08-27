@@ -20,7 +20,7 @@
   </span>
 </div>
 <div id="char-tabs"></div>
-<div id="roll-mirror"><div id="roll-mirror-head"><button id="roll-mirror-fold"></button><button id="roll-mirror-close"></button></div><div id="roll-mirror-body"></div></div>
+<div id="roll-mirror"><div id="roll-mirror-head"><button id="roll-mirror-fold"></button><button id="roll-mirror-close"></button></div><div id="roll-mirror-body"></div><input id="roll-mirror-cmd"><span id="roll-mirror-grip"></span></div>
 <button id="roll-mirror-tab" style="display:none"></button>
 <div id="effects-strip"></div>
 <div class="modules">
@@ -128,6 +128,7 @@
 <script src="../src/rows.js"></script>
 <script src="../src/derived.js"></script>
 <script src="../src/event-log.js"></script>
+<script src="../src/roll-anim.js"></script>
 <script src="../src/roll-mirror.js"></script>
 <script src="../src/conditions-apply.js"></script>
 <script src="../src/dice.js"></script>
@@ -1322,6 +1323,82 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("...but switching within a group does", switchEntries("g1"), 1);
       assert("...naming who is up", /Grouped/.test((ROSTER.logs.g1 || []).map(e => e.html).join(" ")));
       ROSTER = savedRoster;
+    }
+
+    /* --- tumbling dice: the flash is theatre, the numbers underneath are the roll ---
+       What matters here is that the animation can never change an outcome and that the running
+       total during it is computed from the real roll rather than invented. The markup carries
+       everything it needs: each face knows its die and where it lands, the total knows its own
+       final and how much each term moves it. */
+    {
+      const savedHtml = $("dicelog").innerHTML;
+      const entry = html => { const d = document.createElement("div"); d.className = "ev"; d.innerHTML = html; return d; };
+
+      // the roller marks up every face and the total
+      const r1 = evalExpr("1d20+5");
+      assert("every die face is its own element", /class="die"/.test(r1.display));
+      assert("...carrying the die it came off", /data-sides="20"/.test(r1.display));
+      assert("...and the number it settled on", /data-final="\d+"/.test(r1.display));
+      assert("a modifier is not a die and gets no markup", !/class="die"[^>]*>5</.test(r1.display));
+      assertEqual("the total's coefficient for a plain +N roll is 1", r1.coeffs.join(","), "1");
+      assertEqual("...and -1 when the die is subtracted", evalExpr("20-1d6").coeffs.join(","), "-1");
+      assertEqual("...and 2 when it's doubled", evalExpr("2*1d6").coeffs.join(","), "2");
+      assertEqual("a roll with no dice has no terms to move", evalExpr("7").coeffs.length, 0);
+
+      // the running total is computed from whatever is showing
+      const el = entry(totalHtml(r1) + " " + r1.display);
+      const totalEl = el.querySelector(".roll-total");
+      const dieEl = el.querySelector(".die");
+      const finalV = Number(dieEl.dataset.final);
+      const faces = [{ sides: 20, finalV, dropped: false, term: 0, cur: finalV }];
+      assertEqual("showing the settled face gives the settled total",
+        rollAnimTotal(totalEl, faces), r1.value);
+      faces[0].cur = finalV + 3;
+      assertEqual("...and a face three higher moves the total by three",
+        rollAnimTotal(totalEl, faces), r1.value + 3);
+
+      const sub = evalExpr("20-1d6");
+      const subEl = entry(totalHtml(sub) + " " + sub.display);
+      const subFinal = Number(subEl.querySelector(".die").dataset.final);
+      assertEqual("a subtracted die moves the total the other way",
+        rollAnimTotal(subEl.querySelector(".roll-total"),
+          [{ sides: 6, finalV: subFinal, dropped: false, term: 0, cur: subFinal + 1 }]), sub.value - 1);
+
+      // a dropped die is shown but counts for nothing
+      const adv = evalExpr("2d20kh1+3");
+      const advEl = entry(totalHtml(adv) + " " + adv.display);
+      assertEqual("advantage renders both dice", advEl.querySelectorAll(".die").length, 2);
+      assertEqual("...one of them marked dropped", advEl.querySelectorAll(".die-dropped").length, 1);
+      const advFaces = [...advEl.querySelectorAll(".die")].map(d => ({
+        sides: 20, finalV: Number(d.dataset.final), dropped: d.classList.contains("die-dropped"),
+        term: 0, cur: Number(d.dataset.final) }));
+      advFaces.forEach(f => { if (f.dropped) f.cur = 1; });
+      assertEqual("...and moving the dropped one doesn't move the total",
+        rollAnimTotal(advEl.querySelector(".roll-total"), advFaces), adv.value);
+
+      // the animation settles on exactly what was rolled
+      const settleEl = entry(totalHtml(r1) + " " + r1.display);
+      $("dicelog").appendChild(settleEl);
+      const beforeFaces = [...settleEl.querySelectorAll(".die")].map(d => d.dataset.final);
+      const beforeTotal = settleEl.querySelector(".roll-total").dataset.final;
+      animateRollCopies([settleEl]);
+      // ...and the data it settles back to is untouched by the frames in between
+      assertEqual("the faces it will settle on never change",
+        [...settleEl.querySelectorAll(".die")].map(d => d.dataset.final).join(","), beforeFaces.join(","));
+      assertEqual("...nor does the total", settleEl.querySelector(".roll-total").dataset.final, beforeTotal);
+
+      assert("an entry with no dice in it is left alone",
+        (animateRollCopies([entry("just some text")]), true));
+      assert("...as is nothing at all", (animateRollCopies([null]), true));
+
+      // the preference is honoured
+      const wasOn = ROLL_ANIM_ON;
+      setRollAnim(false);
+      assert("switching the animation off is read back", !rollAnimAllowed());
+      setRollAnim(true);
+      setRollAnim(wasOn);
+
+      $("dicelog").innerHTML = savedHtml;
     }
 
     /* --- the roll mirror is a MIRROR: it never holds anything the log doesn't ---

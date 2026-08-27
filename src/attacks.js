@@ -186,7 +186,8 @@
      how to present the result: a single attack logs one line, a routine collects many into one block. */
   function rollExpr(expr, mode) {
     const r = evalExpr(applyMode(expr, mode || "normal"));
-    return { value: r.value, display: r.display, d20: (typeof _d20kept !== "undefined" ? _d20kept.slice() : []) };
+    return { value: r.value, display: r.display, coeffs: r.coeffs,
+             d20: (typeof _d20kept !== "undefined" ? _d20kept.slice() : []) };
   }
   /* The crit threshold for this row. Improved Critical / Superior Critical widen it to 19 or 18; the
      engine keeps the lowest, and the row's fx flag gates it like every other effect read. */
@@ -218,12 +219,12 @@
     const hit = rollExpr(`1d20${signed(th.bonus)}${th.dice || ""}`, mode);
     const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
     const crit = isCrit(hit.d20, cm);
-    const out = { hitText: `<b>${hit.value}</b> to hit${modeTag} ← ${hit.display}${critNote(hit.d20, cm)}`, dmgText: "", damage: 0, crit };
+    const out = { hitText: `${totalHtml(hit)} to hit${modeTag} ← ${hit.display}${critNote(hit.d20, cm)}`, dmgText: "", damage: 0, crit };
     const de = damageExpr(d);
     if (de) {
       const expr = crit ? critDamageExpr(d, de) : de;
       const dm = rollExpr(expr, "normal");
-      out.dmgText = `<b>${dm.value}</b> damage${crit ? " <i>(crit)</i>" : ""} ← ${dm.display}`;
+      out.dmgText = `${totalHtml(dm)} damage${crit ? " <i>(crit)</i>" : ""} ← ${dm.display}`;
       out.damage = dm.value;
     }
     out.name = name;
@@ -251,11 +252,11 @@
     // damage-crit dice reach a routine's swings too.
     const cm = critMinFor(d);
     const crit = isCrit(hit.d20, cm);
-    const out = { name, hitTotal: hit.value, isCrit: crit, hitText: `<b>${hit.value}</b> to hit${modeTag} ← ${hit.display}${critNote(hit.d20, cm)}`, dmgText: "", damage: 0 };
+    const out = { name, hitTotal: hit.value, isCrit: crit, hitText: `${totalHtml(hit)} to hit${modeTag} ← ${hit.display}${critNote(hit.d20, cm)}`, dmgText: "", damage: 0 };
     const de = damageExpr(d);
     if (de) {
       const dm = rollExpr(crit ? critDamageExpr(d, de) : de, "normal");
-      out.dmgText = `<b>${dm.value}</b> damage ← ${dm.display}${crit ? " <i>(crit, dice doubled)</i>" : ""}`;
+      out.dmgText = `${totalHtml(dm)} damage ← ${dm.display}${crit ? " <i>(crit, dice doubled)</i>" : ""}`;
       out.damage = dm.value;
     }
     return out;

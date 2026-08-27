@@ -12,7 +12,12 @@
 (function () {
   "use strict";
   const LKEY = "charsheet-layout";
-  const state = { free: false, activated: false, grid: 8, snapGrid: true, snapEdge: true, zTop: 0, map: {}, collapsed: {} };
+  /* The Event Log starts collapsed on a FRESH install: the roll mirror in the corner is the primary
+     rolling surface now — it has the same command line and shows the same entries — so the module
+     is where you go to read back through history rather than something that needs to be open. Only
+     a fresh install: the Object.assign below replaces `collapsed` wholesale from a saved layout, so
+     anyone who already has one keeps exactly what they left. */
+  const state = { free: false, activated: false, grid: 8, snapGrid: true, snapEdge: true, zTop: 0, map: {}, collapsed: { dice: true } };
   try { const d = JSON.parse(localStorage.getItem(LKEY)); if (d) Object.assign(state, d); } catch (e) {}
   if (!state.collapsed) state.collapsed = {};   // a layout saved before collapsing existed
 

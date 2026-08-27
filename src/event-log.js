@@ -64,6 +64,10 @@ function logEvent(kind, html) {
   if (typeof recordLogEntry === "function") recordLogEntry(kind, html);
   // The corner panel is a mirror of this, so it's fed from the one place every entry passes through.
   if (typeof mirrorLogEntry === "function") mirrorLogEntry(kind, html);
+  /* ...and so is the tumbling animation. Hooking it here rather than at each roll site means every
+     path that rolls dice gets it — command line, roll buttons, attacks, companions, routines, rests,
+     death saves — without any of them having to know it exists. An entry with no dice does nothing. */
+  if (typeof animateNewestRoll === "function") animateNewestRoll();
 }
 
 /* Back-compat shorthand for the overwhelmingly common case. Every pre-existing caller logs a die
