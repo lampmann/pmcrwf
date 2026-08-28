@@ -1633,6 +1633,43 @@ document.addEventListener("DOMContentLoaded", () => {
         gapHit && (gapHit.id === "b" ? gapHit.intent === "after" : gapHit.intent === "before"));
       assertEqual("...and never to \"group\", which only the middle of a tab means",
         gapHit && gapHit.intent === "group", false);
+
+      /* THE DRAGGED TAB IS NOT A CANDIDATE FOR ITS OWN DROP.
+
+         It stays in the bar at its old place while you drag it, so pulling the FIRST or
+         LAST tab of a group out past its own end makes it the tab nearest the cursor. That
+         resolved to "you dropped on yourself", which the handlers discard — so pulling an
+         end tab out towards its own side did nothing, while hauling it across to the far
+         side worked, because some other tab was then nearest. */
+      const leftOfA = { target: document.body, clientX: rectOf("a").left - 6, clientY: mid(rectOf("a")) };
+      assertEqual("dragging the leftmost tab out to the left resolves to itself when unfiltered",
+        dropTargetAt(leftOfA).id, "a");
+      const outLeft = dropTargetAt(leftOfA, "a");
+      assertEqual("...and to its real neighbour once the dragged tab is excluded", outLeft.id, "b");
+      assertEqual("...on the side the cursor is on", outLeft.intent, "before");
+
+      const rightOfC = { target: document.body, clientX: rectOf("c").right + 40, clientY: mid(rectOf("c")) };
+      assertEqual("the same on the right-hand end", dropTargetAt(rightOfC, "c").id, "b");
+      assertEqual("...also on the side the cursor is on", dropTargetAt(rightOfC, "c").intent, "after");
+
+      /* --- leaving from the MIDDLE of a run must not split the group in two ---
+         A character dropped off the bar keeps its position, which is right when it came
+         from an end and wrong when it came from the middle: the group it left is then split
+         across it, one group in two runs, which renderCharacterTabs draws as two boxes
+         because it boxes each contiguous run of one group id. */
+      ROSTER = { v: 1, activeId: "a", logs: { g1: [{ t: 1, kind: "roll", html: "G" }] }, chars: [
+        { id: "a", name: "A", group: "g1" }, { id: "b", name: "B", group: "g1" },
+        { id: "c", name: "C", group: "g1" }, { id: "d", name: "D", group: "g1" },
+      ] };
+      ungroupCharacter("b");                       // straight out of the middle
+      assertEqual("the character that left is ungrouped", ROSTER.chars.find(c => c.id === "b").group, null);
+      assertEqual("...and the group it left is contiguous again, not split around it",
+        ROSTER.chars.map(c => c.group || "-").join(""), "g1g1g1-");
+      renderCharacterTabs();
+      assertEqual("...so the bar draws one box, not two",
+        document.querySelectorAll("#char-tabs .char-group").length, 1);
+      assertEqual("...holding the three who stayed",
+        document.querySelectorAll("#char-tabs .char-group .char-tab").length, 3);
     }
   }
 
