@@ -231,8 +231,11 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 /* Groups (src/characters.js): a boxed run of tabs that share one Event Log. */
 .char-group { display: inline-flex; align-items: stretch; gap: .25rem; padding: .1rem .2rem;
   border: 1px dashed var(--link-border); border-radius: var(--radius); }
-.char-group-x { font-size: .75rem; padding: 0 .25rem; opacity: .7; }
-.char-group-x:hover { opacity: 1; }
+/* While a drag is heading somewhere that would take a tab out of this group. The ⛓ button used
+   to make leaving a visible, clickable thing; with the gesture doing the work instead, the box
+   has to say so itself or the drop is a guess. Red because a member is about to be lost — the
+   same colour the × that deletes a tab uses. */
+.char-group.losing { border-style: solid; border-color: var(--danger); }
 /* Drag feedback: a ring means "these will be grouped", a bar means "it will land here". */
 .char-tab.dragging { opacity: .4; }
 .char-tab.drop-group { outline: 2px solid var(--link-border); outline-offset: 1px; }

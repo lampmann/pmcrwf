@@ -1529,18 +1529,99 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("...and it takes a copy of the shared history rather than losing it",
         (ROSTER.logs.b || []).length, 4);
       assertEqual("...and a group of one is dissolved too", ROSTER.chars[0].group, null);
+      /* The character LEFT HOLDING the group keeps the history too. Dissolving used to clear
+         `group` and stop, stranding the entries under a group id nothing pointed at any more —
+         so the one who walked out kept a copy and the one who stayed lost everything. Barely
+         reachable when the only way out was a button that always ejected the first member; the
+         everyday case now that any tab leaves by being dragged out of the box. */
+      assertEqual("...and so does the character left behind, not just the one that left",
+        (ROSTER.logs.a || []).slice(1).length, 4);
+      assert("...with the departure itself recorded on top of it",
+        /left the group/.test(((ROSTER.logs.a || [])[0] || {}).html || ""));
 
-      // Reordering moves a whole group as a unit, so a group can't be split by a drag.
+      // --- moveCharacter: one tab, never a block ---
       ROSTER = { v: 1, activeId: "a", logs: {}, chars: [
         { id: "a", name: "A", group: "g1" }, { id: "b", name: "B", group: "g1" }, { id: "c", name: "C" },
       ] };
-      reorderCharacter("a", null);
-      assertEqual("dragging a grouped tab to the end takes its whole group",
-        ROSTER.chars.map(c => c.id).join(""), "cab");
-      reorderCharacter("c", "a");
-      assertEqual("...and an ungrouped tab moves on its own", ROSTER.chars.map(c => c.id).join(""), "cab");
-      reorderCharacter("b", "c");
-      assertEqual("...still as a unit when dragged the other way", ROSTER.chars.map(c => c.id).join(""), "abc");
+      const order = () => ROSTER.chars.map(c => c.id).join("");
+      /* A grouped tab used to drag its whole group along, so that a drag could never split a
+         group in two. Dragging a tab out is now the only way to leave a group, which inverts the
+         reasoning: moving the block would make the one gesture that must move a single tab the
+         one gesture that cannot. */
+      moveCharacter("a", "c", "after");
+      assertEqual("dragging a grouped tab moves that tab alone, not its group", order(), "bca");
+      moveCharacter("c", "b", "before");
+      assertEqual("...and an ungrouped tab still moves on its own", order(), "cba");
+
+      /* The anchor bug the old signature carried: an "after" drop derived its anchor as the tab
+         FOLLOWING the target, which past the last tab is nothing, and a null anchor meant "the
+         end" — so dropping on the last tab's right edge was a silent no-op when the tab was
+         already there, and could anchor on the moved tab itself. Anchoring on the dropped-on tab
+         and splicing into `rest` makes both unreachable. */
+      moveCharacter("c", "a", "after");
+      assertEqual("dropping on the last tab's right edge reaches the end", order(), "bac");
+      assertEqual("a tab dropped on itself does not move", moveCharacter("b", "b", "after"), false);
+      assertEqual("...and the order is untouched by the refusal", order(), "bac");
+
+      /* Dragging LEFT-TO-RIGHT onto a tab that is not the last one — the case that separates
+         "find the target in the list the tab is going back into" from "find it in the list the
+         tab is still in". When the mover sits before the target, the two indices differ by one
+         and only the former lands where the insertion bar was drawn. */
+      ROSTER.chars = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
+      moveCharacter("a", "b", "after");
+      assertEqual("a tab dragged rightward lands immediately after the tab it was dropped on",
+        order(), "bacd");
+
+      // --- setCharacterGroup: membership follows where the tab landed ---
+      ROSTER = { v: 1, activeId: "a", logs: { g1: [{ t: 2, kind: "roll", html: "G2" }] }, chars: [
+        { id: "a", name: "A", group: "g1" }, { id: "b", name: "B", group: "g1" },
+        { id: "c", name: "C", group: "g1" }, { id: "d", name: "D" },
+      ] };
+      assertEqual("landing outside every box leaves the group", setCharacterGroup("c", null), true);
+      assertEqual("...only for the tab that was dragged", ROSTER.chars.map(c => c.group || "-").join(""),
+        "g1g1-" + "-");
+      assert("...which keeps a copy of the shared history", (ROSTER.logs.c || []).length === 1);
+      assert("...and the group it left still has its own", (ROSTER.logs.g1 || []).length === 1);
+
+      ROSTER.logs.d = [{ t: 5, kind: "roll", html: "D5" }];
+      assertEqual("landing inside a box joins that group", setCharacterGroup("d", "g1"), true);
+      assertEqual("...and the joiner's own history folds into the shared stream, newest first",
+        (ROSTER.logs.g1 || []).map(e => e.html).join(","), "D5,G2");
+      assert("...leaving nothing filed under the joiner's own id", !ROSTER.logs.d);
+      assertEqual("landing where it already was changes nothing", setCharacterGroup("d", "g1"), false);
+
+      /* --- the geometry the drop handler decides on ---
+         "Outside the group" is answered against the dashed box as it is actually drawn, so it is
+         worth asserting against a real laid-out tab bar rather than trusting the arithmetic. This
+         page has a live #char-tabs, so the rects below are the same ones a drag would measure. */
+      ROSTER = { v: 1, activeId: "a", logs: {}, chars: [
+        { id: "a", name: "A", group: "g1" }, { id: "b", name: "B", group: "g1" },
+        { id: "c", name: "C" },
+      ] };
+      renderCharacterTabs();
+      const rectOf = id => document.querySelector(`.char-tab[data-charid="${id}"]`).getBoundingClientRect();
+      const boxRect = document.querySelector("#char-tabs .char-group").getBoundingClientRect();
+      const mid = r => r.top + r.height / 2;
+
+      assertEqual("a point over a grouped tab is inside that group's box",
+        groupBoxAt(rectOf("a").left + rectOf("a").width / 2, mid(rectOf("a"))), "g1");
+      assertEqual("...as is the box's own padding, past the last tab in it",
+        groupBoxAt(boxRect.right - 1, mid(boxRect)), "g1");
+      assertEqual("a point over an ungrouped tab is in no group",
+        groupBoxAt(rectOf("c").left + rectOf("c").width / 2, mid(rectOf("c"))), null);
+      assertEqual("...and so is empty bar past the end of every tab",
+        groupBoxAt(boxRect.right + 400, mid(boxRect)), null);
+
+      /* The gap between two tabs is over the container and over no tab at all — the most natural
+         place to aim when dropping BETWEEN them. It has to resolve to a real tab and a side, or a
+         drop there falls through to "no target". */
+      const gapX = (rectOf("b").right + rectOf("c").left) / 2;
+      const gapHit = dropTargetAt({ target: document.body, clientX: gapX, clientY: mid(rectOf("b")) });
+      assert("a drop in the gap between two tabs still resolves to a tab", !!gapHit);
+      assert("...to whichever of the two it is nearer, on the side it is on",
+        gapHit && (gapHit.id === "b" ? gapHit.intent === "after" : gapHit.intent === "before"));
+      assertEqual("...and never to \"group\", which only the middle of a tab means",
+        gapHit && gapHit.intent === "group", false);
     }
   }
 
