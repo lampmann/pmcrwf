@@ -236,14 +236,23 @@ function groupCharacters(movedId, targetId) {
   target.group = gid;
   ROSTER.logs[gid] = merged;
 
-  // Keep a group contiguous on the bar, so it reads as one thing.
-  const first = ROSTER.chars.findIndex(c => c.group === gid);
-  const members = ROSTER.chars.filter(c => c.group === gid);
-  ROSTER.chars = ROSTER.chars.filter(c => c.group !== gid);
-  ROSTER.chars.splice(first, 0, ...members);
+  keepGroupContiguous(gid);
 
   persistRoster(); repaintEventLog(); renderCharacterTabs();
   logEvent("info", `<b>${escapeHtml(charDisplayName(moved))}</b> and <b>${escapeHtml(charDisplayName(target))}</b> now share an Event Log`);
+}
+
+/* Re-splice the roster so every member of `gid` sits together, at the position of whichever
+   one of them comes first. A group that is not contiguous cannot be drawn as one thing —
+   renderCharacterTabs boxes each contiguous run of one group id — so a group split across a
+   non-member renders as two boxes claiming to be the same group. */
+function keepGroupContiguous(gid) {
+  if (!gid) return;
+  const first = ROSTER.chars.findIndex(c => c.group === gid);
+  if (first < 0) return;                     // dissolved, or never existed
+  const members = ROSTER.chars.filter(c => c.group === gid);
+  ROSTER.chars = ROSTER.chars.filter(c => c.group !== gid);
+  ROSTER.chars.splice(first, 0, ...members);
 }
 
 /* Move ONE character in or out of a group, carrying its history with it.
@@ -299,7 +308,13 @@ function setCharacterGroup(id, gid) {
    what invokes it, and "left the group" is worth one line in the log either way. */
 function ungroupCharacter(id) {
   const c = ROSTER.chars.find(x => x.id === id); if (!c || !c.group) return;
+  const was = c.group;
   if (!setCharacterGroup(id, null)) return;
+  /* AND CLOSE THE HOLE BEHIND IT. A character taken out of the MIDDLE of a run leaves its
+     old group split across it — same group, two runs, drawn as two boxes. Harmless when the
+     leaver was at an end, or when the drag already moved it to a boundary, since the
+     re-splice is then a no-op; essential when it left in place from the middle. */
+  keepGroupContiguous(was);
   persistRoster(); repaintEventLog(); renderCharacterTabs();
   logEvent("info", `<b>${escapeHtml(charDisplayName(c))}</b> left the group and has its own Event Log again`);
 }
@@ -419,11 +434,20 @@ function groupBoxAt(x, y) {
    So a miss resolves to the nearest tab by edge distance, and to the side of it the cursor is on.
    Grouping is unreachable from a gap, which is right: a gap means "put it here" unambiguously,
    and only the middle of a tab means "put it with this one". */
-function dropTargetAt(e) {
+/* `ignoreId` is passed in rather than read off TAB_DRAG_ID, because the drop handler clears
+   that before it resolves the target — reading the module state here would exclude nothing at
+   exactly the moment it matters, and only the hover feedback would benefit. */
+function dropTargetAt(e, ignoreId) {
   const el = e.target.closest && e.target.closest("[data-charid]");
   if (el) return { id: el.dataset.charid, intent: tabDropIntent(el, e.clientX) };
 
-  const tabs = [...document.querySelectorAll("#char-tabs .char-tab")];
+  /* THE DRAGGED TAB IS NOT A CANDIDATE. It stays in the bar at its old place while you drag
+     it, so pulling the FIRST or LAST tab of a group out past its own end makes it the tab
+     nearest the cursor — which resolves to "you dropped on yourself" and is discarded. That
+     is why pulling an end tab out towards its own side did nothing, while hauling it across
+     to the far side worked: some other tab was then nearest. */
+  const tabs = [...document.querySelectorAll("#char-tabs .char-tab")]
+    .filter(t => t.dataset.charid !== ignoreId);
   if (!tabs.length) return null;
   let best = null, bestDist = Infinity;
   tabs.forEach(t => {
@@ -470,11 +494,42 @@ document.addEventListener("DOMContentLoaded", () => {
      gaps included. The extra mark is on the BOX: while a grouped tab is being dragged somewhere
      that would take it out, its group is outlined as losing a member — the one piece of feedback
      the ⛓ button used to provide for free by being a visible control. */
-  el.addEventListener("dragover", e => {
+  /* Marks the box a drop would take a character out of. Leaving has no button, so the box
+     has to say so before the release rather than after. */
+  function markLosing(id) {
+    const dragged = ROSTER.chars.find(c => c.id === id);
+    const from = dragged && dragged.group;
+    if (!from) return;
+    const box = el.querySelector(`.char-group[data-group="${CSS.escape(from)}"]`);
+    if (box) box.classList.add("losing");
+  }
+
+  /* ON THE DOCUMENT, NOT THE BAR.
+
+     Leaving a group means dropping outside every box, and vertically there was nowhere to
+     do it: #char-tabs is padded `.25rem .5rem 0`, so its bottom edge IS the box's bottom
+     edge — a band of exactly zero pixels. Dragging a tab straight down, which is what
+     anyone does when they mean "get this out", missed the bar entirely at every depth and
+     no drop handler ever ran.
+
+     Listening on the document makes the rest of the page the way out. The rule is one
+     sentence — on the bar you are rearranging or regrouping, anywhere else you are leaving
+     — and the target is the size of the window rather than a sliver. Both handlers return
+     immediately unless a tab drag is in progress, so nothing else on the page is affected. */
+  const overStrip = e => {
+    const r = el.getBoundingClientRect();
+    return e.clientX >= r.left && e.clientX <= r.right
+        && e.clientY >= r.top && e.clientY <= r.bottom;
+  };
+
+  document.addEventListener("dragover", e => {
     if (!TAB_DRAG_ID) return;
     e.preventDefault(); e.dataTransfer.dropEffect = "move";
     clearTabDropMarks();
-    const hit = dropTargetAt(e);
+
+    if (!overStrip(e)) { markLosing(TAB_DRAG_ID); return; }
+
+    const hit = dropTargetAt(e, TAB_DRAG_ID);
     if (!hit || hit.id === TAB_DRAG_ID) return;
     const tab = el.querySelector(`.char-tab[data-charid="${CSS.escape(hit.id)}"]`);
     if (!tab) return;
@@ -483,18 +538,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const dragged = ROSTER.chars.find(c => c.id === TAB_DRAG_ID);
     const from = dragged && dragged.group;
-    if (from && hit.intent !== "group" && groupBoxAt(e.clientX, e.clientY) !== from) {
-      const box = el.querySelector(`.char-group[data-group="${CSS.escape(from)}"]`);
-      if (box) box.classList.add("losing");
-    }
+    if (from && hit.intent !== "group" && groupBoxAt(e.clientX, e.clientY) !== from) markLosing(TAB_DRAG_ID);
   });
-  el.addEventListener("drop", e => {
+  document.addEventListener("drop", e => {
     if (!TAB_DRAG_ID) return;
     e.preventDefault();
     const moved = TAB_DRAG_ID;
     TAB_DRAG_ID = null;
 
-    const hit = dropTargetAt(e);
+    /* Dropped off the bar: leave the group, and stay where you are in the order. There is
+       no sensible position to read out of a point nowhere near the bar, and the gesture was
+       never about position — it was about getting out. ungroupCharacter re-splices the group
+       left behind, so leaving from the middle of a run does not split it in two. */
+    if (!overStrip(e)) { clearTabDropMarks(); ungroupCharacter(moved); return; }
+
+    const hit = dropTargetAt(e, moved);
     /* Read the box under the cursor BEFORE anything re-renders the bar — after that the
        rectangles these coordinates were measured against no longer exist. */
     const landing = hit && hit.intent !== "group" ? groupBoxAt(e.clientX, e.clientY) : null;
