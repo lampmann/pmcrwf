@@ -1339,7 +1339,18 @@ document.addEventListener("DOMContentLoaded", () => {
       assert("every die face is its own element", /class="die"/.test(r1.display));
       assert("...carrying the die it came off", /data-sides="20"/.test(r1.display));
       assert("...and the number it settled on", /data-final="\d+"/.test(r1.display));
-      assert("a modifier is not a die and gets no markup", !/class="die"[^>]*>5</.test(r1.display));
+      /* COUNTED OFF THE DOM, not pattern-matched on the digit.
+
+         This read `!/class="die"[^>]*>5</`, which matches the d20's OWN face whenever it lands
+         on a 5 — so the assertion went red about one run in twenty because the die did exactly
+         what a d20 should. The claim being made has nothing to do with which number came up:
+         one die in the expression means one die element, and the +5 is text beside it. */
+      const marked = entry(r1.display);
+      const faces1 = [...marked.querySelectorAll(".die")];
+      assertEqual("a modifier is not a die and gets no markup", faces1.length, 1);
+      assertEqual("...and the one marked-up face is the d20", faces1[0].dataset.sides, "20");
+      faces1.forEach(d => d.remove());
+      assert("...leaving the modifier as plain text beside it", /\+\s*5$/.test(marked.textContent.trim()));
       assertEqual("the total's coefficient for a plain +N roll is 1", r1.coeffs.join(","), "1");
       assertEqual("...and -1 when the die is subtracted", evalExpr("20-1d6").coeffs.join(","), "-1");
       assertEqual("...and 2 when it's doubled", evalExpr("2*1d6").coeffs.join(","), "2");
