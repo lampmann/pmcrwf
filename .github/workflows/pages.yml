@@ -1,0 +1,64 @@
+# Publishes pmcrwf to GitHub Pages.
+#
+# There is no build. The repository IS the site: plain HTML, plain scripts, plain CSS. The only
+# thing this workflow does beyond copying files is stamp the commit SHA into sw.js, because a
+# service worker updates when its own bytes change and a hard-coded version string would mean the
+# cache never refreshed (see sw.js's header).
+#
+# What does NOT go up: data/ and characters/, which .gitignore keeps out of the repository in the
+# first place — game data is the user's own and this project never redistributes it. The exclusions
+# below are belt-and-braces in case someone force-adds a file some day; if you find yourself
+# wondering why the hosted site has no spells, that is the reason and it is deliberate.
+#
+# Enable it once under Settings → Pages → Build and deployment → Source: GitHub Actions.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let a newer commit finish rather than cancelling it mid-upload.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stamp the build into the service worker
+        run: |
+          set -euo pipefail
+          grep -q '__BUILD__' sw.js   # fail loudly if the placeholder was renamed or removed
+          sed -i "s/__BUILD__/${GITHUB_SHA}/" sw.js
+          grep -q "${GITHUB_SHA}" sw.js
+
+      - name: Assemble the site
+        run: |
+          set -euo pipefail
+          mkdir _site
+          # Everything tracked by git, minus the repository's own plumbing and the test harnesses.
+          rsync -a --exclude='_site' --exclude='.git' --exclude='.github' --exclude='tools' \
+                   --exclude='data' --exclude='characters' \
+                   ./ _site/
+          # A last check rather than a comment: if game data ever reaches this point, stop.
+          if [ -e _site/data ]; then echo "data/ must never be published"; exit 1; fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

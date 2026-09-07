@@ -322,7 +322,8 @@ function loadClassFiles(files) {
   });
 }
 /* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
-   Only works when served over http(s) — browsers block fetch() of local files opened via file://. */
+   Only works when served over http(s) — browsers block fetch() of local files opened via file://.
+   dataFetch, not fetch, so a connected data/ folder answers these too (see src/data-folder.js). */
 // 5e.tools' data/class/ has no index.json, so we probe the known 2014-class filenames directly.
 const CLASS_DATA_FILES = ["artificer", "barbarian", "bard", "cleric", "druid", "fighter", "monk", "mystic",
   "paladin", "ranger", "rogue", "sidekick", "sorcerer", "warlock", "wizard"].map(n => "data/class/class-" + n + ".json");
@@ -330,7 +331,7 @@ async function autoLoadClasses() {
   let found = false, blocked = false, filesLoaded = 0;
   for (const url of CLASS_DATA_FILES) {
     try {
-      const res = await fetch(url);
+      const res = await dataFetch(url);
       if (!res.ok) continue;
       found = true;
       parseClassFile(await res.json());
@@ -342,7 +343,7 @@ async function autoLoadClasses() {
 }
 async function autoLoadOne(url, parseFn, save) {
   try {
-    const res = await fetch(url);
+    const res = await dataFetch(url);
     if (!res.ok) return { found: false, blocked: false, filesLoaded: 0, filesTotal: 1 };
     parseFn(await res.json());
     save();
@@ -662,7 +663,8 @@ function toggleFeatDetail(link) {
 }
 function runClassAutoLoad() {
   $("class-lib-autostatus").textContent = "loading from data/ …";
-  Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats(), autoLoadBackgrounds()]).then(([cls, race, feat, bg]) => {
+  // Returns the promise so reloadAllLibraries can actually wait on it — see runSpellAutoLoad's note.
+  return Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats(), autoLoadBackgrounds()]).then(([cls, race, feat, bg]) => {
     renderClassLibrary();
     const parts = [
       cls.filesLoaded ? `${cls.filesLoaded}/${cls.filesTotal} class file(s)` : (cls.blocked ? "classes blocked" : "no class data"),

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pmcrwf</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<!-- A web server hands out index.html for "/", and this sheet's file has always been called
+     character-sheet.html — a name worth keeping, since it is what the launcher opens and what a
+     decade of muscle memory and every path in DOCS.md refers to. So: three lines of redirect rather
+     than a rename, or a second copy of a 700-line page to keep in step.
+
+     Belt and braces on purpose. The meta refresh works with JavaScript off, the script replaces the
+     history entry so Back doesn't bounce you here again, and the link works if a browser somehow
+     honours neither. It costs one extra request, once, and only when arriving at the bare URL. -->
+<meta http-equiv="refresh" content="0; url=character-sheet.html">
+<script>location.replace("character-sheet.html");</script>
+<style>body { font-family: system-ui, sans-serif; margin: 3rem; }</style>
+</head>
+<body>
+<p><a href="character-sheet.html">Open the character sheet →</a></p>
+</body>
+</html>

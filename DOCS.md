@@ -8,6 +8,7 @@ An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized
 
 ## Contents
 - [Where game data comes from](#where-game-data-comes-from)
+- [Running pmcrwf as a website](#running-pmcrwf-as-a-website)
 - [Characters (tabs, creation, levelling up)](#characters-tabs-creation-levelling-up)
 - [Number boxes (math input)](#number-boxes-math-input)
 - [Modules](#modules)
@@ -40,6 +41,36 @@ The sheet draws a line between two kinds of game data:
 - **Bulk or descriptive content is user-supplied.** Anything that's a lot of data (the full spell list, the equipment list, every class/race/feat's actual description text) is never bundled — you supply it yourself by dropping 5e.tools' own `data/` directory next to `character-sheet.html` (see [Spell library](#spell-library-5etools-import) / [Features](#features-5etools-import-race--class--feats) / [Equipment library](#equipment-library-5etools-import)). This is also why `data/` is gitignored rather than committed.
 
 When adding a new auto-calculated feature, ask which bucket it falls into: a short, fixed, prose-free table → hardcode it with an override box (see Max HP and Spell Slots below, or the effects database); anything bigger, descriptive, or that reproduces sourcebook text → make it an import, not a bundled dataset.
+
+## Running pmcrwf as a website
+The sheet is a static site — no build step, no server-side code, and every path in it is relative — so it can be hosted as-is and reached from a URL instead of a local server. `.github/workflows/pages.yml` publishes it to GitHub Pages on every push to `main`; enable it once under **Settings → Pages → Build and deployment → Source: GitHub Actions**. Nothing about the local workflow changes: `pmcrwf.cmd` still works exactly as before, and everything in this section is inert when the sheet is opened from a local server.
+
+Hosting does not add a backend. There is still no account, no sync and no telemetry; your characters live in your browser's storage and never leave your machine. What hosting gives you is a bookmark instead of a command prompt.
+
+**The hosted copy carries no game data, on purpose.** `data/` is gitignored because it is 5e.tools' content and this project does not redistribute it (see [above](#where-game-data-comes-from)) — the deploy workflow refuses to publish it even if someone force-adds it. So a hosted visitor opens a working sheet with empty spell, equipment, feature and monster libraries, and a bar at the top saying so.
+
+### Connecting your data folder
+Instead of re-importing files every session, point the sheet at your own `data/` folder once:
+
+1. Click **Connect data folder** in the bar at the top.
+2. Pick your `data/` directory — or the folder that contains it; both work.
+3. Every library reloads from it immediately.
+
+The folder is read-only and nothing is uploaded: the files are read directly off your disk and never touch the network. The browser remembers which folder you chose, so on a later visit you get a one-click **Reconnect data folder** rather than having to find it again — the handle survives, but browsers drop read permission on restart and will only restore it inside a click, so the click is not something the sheet can skip.
+
+The bestiary stays lazy and uncached here as everywhere else (it is ~9 MB), but with a folder connected that no longer means re-importing it — it just loads from your disk the first time you open a monster.
+
+This needs **Chrome or Edge**. Firefox and Safari have no folder-picking API; there, the per-library **import files manually** pickers still work, they just forget between sessions. Implementation is in [src/data-folder.js](src/data-folder.js), which is one `dataFetch()` shim in front of `fetch()` — with no folder connected it is a plain fetch, so the local and hosted paths run the same loader code.
+
+### Offline
+The hosted copy registers a service worker ([sw.js](sw.js)) that precaches the whole app — HTML, scripts, styles, themes, icons; about a megabyte — so after the first visit it opens and rolls with the network off, and can be installed to a home screen or desktop from the browser's own install button. It never caches anything under `data/`: on a hosted copy that data comes off your disk and never goes through the network at all.
+
+Updates are deliberately all-or-nothing. This sheet is forty-odd plain scripts sharing globals in a fixed load order, so half of one version and half of another is not a stale app but a broken one — a new build installs completely alongside the old one and waits, and a small **A new version of pmcrwf is ready** line in the corner does the swap when you take it.
+
+The service worker is **not** registered on `localhost`. It serves cache-first, which on the machine you are editing on would hand you yesterday's code and quietly ignore your changes; a local server is already offline in the only sense that matters.
+
+### Two copies, two sets of characters
+Browser storage is per origin. `localhost:8931` and a hosted URL are different origins, so they keep entirely separate rosters, layouts, themes and house rules — characters made in one do not appear in the other. Move them across with **Export JSON** and **Import**, the same as between two machines.
 
 ## Characters (tabs, creation, levelling up)
 One sheet holds **several characters**, each on its own tab in the strip above the modules. The tab shows the character's name and total level; clicking another tab switches to it, clicking the **active** tab renames it, and **×** deletes it (with a confirmation — and never the last one, so you're never left with no character at all). Switching commits whatever is on screen first, so an in-progress edit isn't lost by clicking away from it.
@@ -502,8 +533,9 @@ Browser harnesses under `tests/` — open one through the local server (e.g. `ht
 - **[tests/derived.html](tests/derived.html)** — the pure math: proficiency bonus, max HP (including the first-class-only maximum at level 1 and negative CON), the multiclass caster-level and slot table (Pact Magic excluded), known/prepared/cantrip allowances, unarmored AC, save/skill totals with proficiency and expertise, `parseBonus`'s flat/dice split, and the number boxes' arithmetic and clamping.
 - **[tests/effects.html](tests/effects.html)** — the feature-effects engine and the roster/grouping logic.
 - **[tests/filters.html](tests/filters.html)** — the shared filter engine behind the Spell and Equipment libraries.
+- **[tests/hosting.html](tests/hosting.html)** — the parts that only matter when the sheet is [served from a website](#running-pmcrwf-as-a-website): which paths `dataFetch` claims and how it resolves them against a connected folder, which folder a user's click actually meant, and — the one that will save somebody an offline-only bug one day — that the service worker's precache extraction still finds every tag in the real `character-sheet.html`, checked against the browser's own parser.
 
-The effects file loads the real effects database; the other two are self-contained and need no `data/` folder.
+The effects file loads the real effects database; the others are self-contained and need no `data/` folder.
 
 ## Roadmap / known limits
 Only what is still outstanding. Anything finished has been removed from this list and is described in

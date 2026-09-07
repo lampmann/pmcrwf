@@ -19,7 +19,7 @@ let RULES_CONDITIONS = {}; // { "blinded": {source, page, text} }
 
 async function loadRulesRef() {
   try {
-    const res = await fetch("data/conditionsdiseases.json");
+    const res = await dataFetch("data/conditionsdiseases.json");
     if (!res.ok) return;
     const j = await res.json();
     (j.condition || []).forEach(c => {

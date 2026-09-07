@@ -198,6 +198,26 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 #effects-strip { display: none; margin: -.25rem 0 1rem; padding: .3rem .5rem; border: 1px solid var(--border-soft); border-radius: var(--radius); font-size: .85rem; }
 #effects-strip.has-content { display: block; }
 .eff-strip-counter { float: right; }
+/* ----- data folder bar (src/data-folder.js) -----
+   Sits where the effects strip does and is styled to match it: this is a statement about the sheet's
+   surroundings, not part of any module. Themed off --danger only in the "nothing loaded" state,
+   which is the one that needs a click before the sheet is much use. */
+#data-bar { margin: -.25rem 0 1rem; padding: .35rem .55rem; border: 1px solid var(--danger); border-radius: var(--radius); font-size: .85rem; }
+#data-bar button { font: inherit; font-size: .8rem; margin-left: .4rem; }
+#data-bar code { font-family: var(--font-mono); }
+#data-bar .hint { margin-left: .4rem; }
+#data-bar:has(.data-bar-ok) { border-color: var(--border-soft); }
+/* ----- "a new version is ready" line (src/offline.js) -----
+   Bottom-LEFT: the roll mirror owns the bottom-right, and this must never sit on top of the thing
+   you are in the middle of using. */
+#update-note {
+  position: fixed; left: .6rem; bottom: .6rem; z-index: 1002;
+  padding: .35rem .6rem; font-size: .8rem;
+  background: var(--menu-bg); color: var(--fg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 2px 2px 4px var(--menu-shadow);
+}
+#update-note button { font: inherit; font-size: .78rem; margin-left: .35rem; }
 /* ----- concentration indicator (src/spellcasting.js) ----- */
 .conc-banner { margin: -.1rem 0 .5rem; padding: .3rem .5rem; border: 1px solid var(--link-border); border-radius: var(--radius); font-size: .85rem; }
 .sp2-conc { font: inherit; font-size: .8rem; margin-left: .4rem; padding: 0 .3rem; border: 1px solid var(--btn-border); border-radius: var(--radius); background: var(--btn-bg); color: var(--btn-fg); cursor: pointer; }
