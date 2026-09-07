@@ -198,24 +198,26 @@ function loadSpellFiles(files) {
   });
 }
 /* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
-   Only works when served over http(s) — browsers block fetch() of local files opened via file://. */
+   Only works when served over http(s) — browsers block fetch() of local files opened via file://.
+   Goes through dataFetch rather than fetch so a data/ folder the user connected off their own disk
+   answers these paths too, unchanged, when the sheet is hosted (see src/data-folder.js). */
 const SPELL_DATA_INDEX = "data/spells/index.json";
 const SPELL_SOURCES_URL = "data/spells/sources.json";
 async function autoLoadSpells() {
   let idx;
   try {
-    const res = await fetch(SPELL_DATA_INDEX);
+    const res = await dataFetch(SPELL_DATA_INDEX);
     if (!res.ok) return { found: false, blocked: false };
     idx = await res.json();
   } catch (e) { return { found: false, blocked: true }; }
   const files = Object.values(idx);
   const results = await Promise.allSettled(
-    files.map(f => fetch("data/spells/" + f).then(r => r.ok ? r.json() : Promise.reject(r.status)))
+    files.map(f => dataFetch("data/spells/" + f).then(r => r.ok ? r.json() : Promise.reject(r.status)))
   );
   let filesLoaded = 0;
   results.forEach(r => { if (r.status === "fulfilled") { mergeSpells((r.value.spell || []).map(parseSpell)); filesLoaded++; } });
   try {
-    const res = await fetch(SPELL_SOURCES_URL);
+    const res = await dataFetch(SPELL_SOURCES_URL);
     if (res.ok) applySpellClasses(await res.json());
   } catch (e) { /* class filter just stays empty if this one file is missing/unreadable */ }
   if (filesLoaded) saveSpellLib();

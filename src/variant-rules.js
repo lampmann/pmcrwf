@@ -56,7 +56,7 @@ function loadVariantRuleLib() {
 }
 async function autoLoadVariantRules() {
   try {
-    const res = await fetch("data/variantrules.json");
+    const res = await dataFetch("data/variantrules.json");
     if (!res.ok) return { found: false, blocked: false };
     const j = await res.json();
     mergeVariantRules((j.variantrule || []).map(parseVariantRule));

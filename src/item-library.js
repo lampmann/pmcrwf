@@ -223,13 +223,14 @@ function loadItemFiles(files) {
   });
 }
 /* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
-   Only works when served over http(s) — browsers block fetch() of local files opened via file://. */
+   Only works when served over http(s) — browsers block fetch() of local files opened via file://.
+   dataFetch, not fetch, so a connected data/ folder answers these too (see src/data-folder.js). */
 const ITEM_DATA_FILES = ["data/items-base.json", "data/items.json"];
 async function autoLoadItems() {
   let found = false, blocked = false, filesLoaded = 0;
   for (const url of ITEM_DATA_FILES) {
     try {
-      const res = await fetch(url);
+      const res = await dataFetch(url);
       if (!res.ok) continue;
       found = true;
       const j = await res.json();

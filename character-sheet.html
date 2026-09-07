@@ -3,11 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Modular Character Sheet — Prototype (unstyled)</title>
+<!-- The tab name, and now also the bookmark and home-screen name on a hosted copy — so it says what
+     this is rather than what it was ("Prototype (unstyled)", from before there were themes). -->
+<title>pmcrwf — D&D 5e character sheet</title>
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/print.css" media="print">
 <link rel="stylesheet" id="theme-css" href="">
+<!-- Hosting (see DOCS.md, "Running pmcrwf as a website"). All four are inert when the sheet is
+     opened from a local server: the manifest is only read on an install prompt, and src/offline.js
+     deliberately doesn't register the service worker on localhost. -->
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1a1a1f">
 </head>
 <body>
 
@@ -21,6 +30,10 @@
     <span id="save-status" class="hint"></span>
   </span>
 </div>
+
+<!-- Where game data comes from, but only when that's a live question: hidden entirely when the sheet
+     is served next to its own data/ folder, which is the local case. See src/data-folder.js. -->
+<div id="data-bar" style="display:none"></div>
 
 <!-- Character tabs: one per character in the roster (src/characters.js). -->
 <div id="char-tabs"></div>
@@ -499,6 +512,8 @@
 <script src="src/errors.js"></script>
 <script src="src/data.js"></script>
 <script src="src/text-utils.js"></script>
+<!-- Before every library: they call dataFetch() instead of fetch() for data/ paths. -->
+<script src="src/data-folder.js"></script>
 <script src="src/typeahead.js"></script>
 <script src="src/math-fields.js"></script>
 <script src="src/rows.js"></script>
@@ -563,6 +578,7 @@
 <script src="src/roll-anim.js"></script>
 <script src="src/roll-mirror.js"></script>
 <script src="src/theme.js"></script>
+<script src="src/offline.js"></script>
 <script src="src/app.js"></script>
 <script src="src/conditions-apply.js"></script>
 <script src="src/status.js"></script>

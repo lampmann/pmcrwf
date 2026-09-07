@@ -376,13 +376,13 @@
   async function autoLoad() {
     let idx;
     try {
-      const res = await fetch(BESTIARY_INDEX);
+      const res = await dataFetch(BESTIARY_INDEX);
       if (!res.ok) return { found: false, blocked: false };
       idx = await res.json();
     } catch (e) { return { found: false, blocked: true }; }
     const files = Object.values(idx);
     const results = await Promise.allSettled(
-      files.map(f => fetch("data/bestiary/" + f).then(r => (r.ok ? r.json() : Promise.reject(r.status))))
+      files.map(f => dataFetch("data/bestiary/" + f).then(r => (r.ok ? r.json() : Promise.reject(r.status))))
     );
     const lists = []; let filesLoaded = 0;
     results.forEach(r => { if (r.status === "fulfilled") { lists.push(r.value.monster || []); filesLoaded++; } });
@@ -434,6 +434,18 @@
     return _loadPromise;
   }
   function setStatus(txt) { const el = $("mon-lib-autostatus"); if (el) el.textContent = txt; }
+
+  /* Connecting a data/ folder mid-session invalidates whatever this module concluded earlier —
+     usually "there is no bestiary here". Throw away the memoised load and the parsed monsters and
+     go back to idle, so the next thing that needs a monster loads from the new folder. Deliberately
+     does NOT start that load: the bestiary is ~9 MB and stays lazy for the same reason it always
+     was — someone who never opens the module shouldn't pay for it. */
+  function resetBestiary() {
+    MON_LIB = []; LOAD_STATE = "idle"; _loadPromise = null;
+    setStatus("");
+    render();
+    if (typeof renderCompanions === "function") renderCompanions();
+  }
 
   /* ============================================================
      Filters — mirrors 5e.tools' own bestiary filter panel, minus the facets
@@ -661,5 +673,6 @@
   window.monsterLibCount = () => MON_LIB.length;
   window.monsterLibLoaded = () => LOAD_STATE === "loaded";
   window.ensureBestiary = ensureBestiary;
+  window.resetBestiary = resetBestiary;
   window.renderMonsterLibrary = render;
 })();

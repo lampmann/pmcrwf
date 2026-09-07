@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>hosting tests</title>
+<style>body{font-family:monospace;white-space:pre-wrap}.pass{color:#070}.fail{color:#c00;font-weight:bold}</style>
+</head>
+<body>
+<!-- Covers the two pieces that only matter when pmcrwf is served from a website rather than from a
+     folder with data/ next to it: src/data-folder.js (reading the user's own data/ off disk through
+     the File System Access API) and sw.js (precaching the app shell for offline use).
+
+     Neither can be exercised end to end in a test page — showDirectoryPicker needs a real click and
+     a real folder, and a service worker's install event needs a real registration. What CAN be
+     tested is everything either one decides on its own: which paths resolve where, what a miss
+     looks like, which folder a user's click actually means, and — the one that will save somebody
+     one day — that the service worker's precache list still matches every tag in the real page.
+
+     sw.js is loaded here as an ordinary script. Its event listeners land on window and never fire,
+     which is harmless; the functions are what's under test. -->
+<div id="results">running…</div>
+
+<!-- data-folder.js renders into #data-bar and calls escapeHtml; both are stubbed just enough. -->
+<div id="data-bar" style="display:none"></div>
+<script>
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+</script>
+<script src="../src/data-folder.js"></script>
+<script src="../src/offline.js"></script>
+<script src="../sw.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const lines = []; let pass = 0, fail = 0;
+  function assertEqual(what, got, want) {
+    const ok = String(got) === String(want);
+    ok ? pass++ : fail++;
+    lines.push(`${ok ? "ok  " : "FAIL"} ${what}${ok ? "" : `  (got ${got}, want ${want})`}`);
+  }
+  function assert(what, cond) { assertEqual(what, !!cond, true); }
+
+  /* A stand-in for a FileSystemDirectoryHandle. An object value is a subdirectory, a string value is
+     a file with that content, and anything missing throws NotFoundError — which is the only part of
+     the real API's behaviour dataDirFile depends on. */
+  function fakeDir(name, tree) {
+    const miss = () => { throw new DOMException("no such entry", "NotFoundError"); };
+    return {
+      name,
+      async getDirectoryHandle(k) {
+        const v = tree[k];
+        if (!v || typeof v !== "object") miss();
+        return fakeDir(k, v);
+      },
+      async getFileHandle(k) {
+        const v = tree[k];
+        if (typeof v !== "string") miss();
+        return { async getFile() { return { async text() { return v; } }; } };
+      },
+    };
+  }
+
+  // ---------- dataRelPath: which URLs the shim claims ----------
+  {
+    assertEqual("a data/ path becomes its segments", (dataRelPath("data/spells/index.json") || []).join("|"), "spells|index.json");
+    assertEqual("a leading ./ is tolerated", (dataRelPath("./data/races.json") || []).join("|"), "races.json");
+    assertEqual("a query string is dropped", (dataRelPath("data/feats.json?v=2") || []).join("|"), "feats.json");
+    assertEqual("a fragment is dropped", (dataRelPath("data/feats.json#x") || []).join("|"), "feats.json");
+    assert("a non-data path is not claimed", dataRelPath("css/base.css") === null);
+    assert("an absolute URL is not claimed", dataRelPath("https://example.com/data/x.json") === null);
+    assert("bare data/ with no file is not claimed", dataRelPath("data/") === null);
+    // The connected folder is the user's disk. A loader has no business walking out of it, and the
+    // check is cheaper than arguing about whether one could.
+    assert("a path escaping the folder is refused", dataRelPath("data/../../etc/passwd") === null);
+    assert("...including one buried mid-path", dataRelPath("data/spells/../../x.json") === null);
+  }
+
+  // ---------- dataFetch against a connected folder ----------
+  {
+    const saved = DATA_DIR;
+    DATA_DIR = fakeDir("data", {
+      "spells": { "index.json": '{"phb":"spells-phb.json"}', "spells-phb.json": '{"spell":[{"name":"Fireball"}]}' },
+      "items.json": '{"item":[]}',
+    });
+
+    const idx = await dataFetch("data/spells/index.json");
+    assert("a file in the connected folder answers ok", idx.ok);
+    assertEqual("...with its parsed contents", (await idx.json()).phb, "spells-phb.json");
+
+    const nested = await dataFetch("data/spells/spells-phb.json");
+    assertEqual("...and nested directories resolve", (await nested.json()).spell[0].name, "Fireball");
+
+    const miss = await dataFetch("data/bestiary/index.json");
+    assert("a file the folder doesn't have reads as not-found, not an error", !miss.ok);
+    assertEqual("...with a 404, which is what every loader already handles", miss.status, 404);
+
+    // The shim only ever intercepts data/. Everything else is the network, untouched — this is what
+    // lets the same loaders run identically hosted and local.
+    const css = await dataFetch("../css/base.css");
+    assert("a non-data path still goes to the network", css.ok);
+    assert("...and comes back as a real Response", typeof css.headers === "object");
+
+    DATA_DIR = saved;
+  }
+
+  // ---------- dataFetch with nothing connected ----------
+  {
+    const saved = DATA_DIR;
+    DATA_DIR = null;
+    const res = await dataFetch("data/spells/index.json");
+    assert("with no folder connected, a data/ path is a plain fetch", res instanceof Response);
+    assert("...which 404s here, exactly as it does in the app with no data/ folder", !res.ok);
+    DATA_DIR = saved;
+  }
+
+  // ---------- resolveDataRoot: the folder the user meant ----------
+  {
+    const asData = fakeDir("data", { "spells": {} });
+    assertEqual("a folder holding spells/ is the data folder", (await resolveDataRoot(asData)).name, "data");
+
+    const byFile = fakeDir("5etools-data", { "items.json": "{}" });
+    assertEqual("...so is one holding items.json", (await resolveDataRoot(byFile)).name, "5etools-data");
+
+    const parent = fakeDir("pmcrwf", { "data": { "bestiary": {} }, "src": {} });
+    assertEqual("a folder CONTAINING data/ resolves into it", (await resolveDataRoot(parent)).name, "data");
+
+    const neither = fakeDir("Downloads", { "cat.jpg": "" });
+    assertEqual("a folder that is neither is used as-is, and will simply find nothing",
+      (await resolveDataRoot(neither)).name, "Downloads");
+  }
+
+  // ---------- reloadAllLibraries actually waits ----------
+  {
+    /* Connecting a folder is only useful if the libraries have reloaded by the time the click is
+       finished. They hadn't: the three runners in app.js and class-library.js kicked off a promise
+       chain and returned undefined, so awaiting them awaited nothing and the status lines still read
+       "loading from data/ …" after connectDataFolder had resolved. Two assertions, because the bug
+       needed both halves to be right. */
+    const done = [];
+    const slow = name => () => new Promise(r => setTimeout(() => { done.push(name); r(); }, 30));
+    window.runSpellAutoLoad = slow("spells");
+    window.runItemAutoLoad = slow("items");
+    window.runClassAutoLoad = slow("classes");
+    window.loadRulesRef = slow("rules");
+    window.autoLoadVariantRules = () => new Promise(r => setTimeout(() => { done.push("variant"); r({}); }, 30));
+    window.resetBestiary = () => done.push("bestiary");
+
+    await reloadAllLibraries();
+    assertEqual("connecting a folder reloads every library", done.slice().sort().join(","),
+      "bestiary,classes,items,rules,spells,variant");
+
+    delete window.runSpellAutoLoad; delete window.runItemAutoLoad; delete window.runClassAutoLoad;
+    delete window.loadRulesRef; delete window.autoLoadVariantRules; delete window.resetBestiary;
+  }
+
+  // ---------- ...and the runners give it something to wait ON ----------
+  {
+    /* The other half, and a source check rather than a behavioural one: these three live in files
+       this harness can't load (app.js wires the whole sheet on DOMContentLoaded). A missing `return`
+       is invisible at runtime — the load still happens, just after everyone stopped waiting — so
+       pinning the keyword is worth more here than elegance. */
+    const app = await (await fetch("../src/app.js")).text();
+    const cls = await (await fetch("../src/class-library.js")).text();
+    assert("runSpellAutoLoad returns its promise", /return autoLoadSpells\(\)/.test(app));
+    assert("runItemAutoLoad returns its promise", /return autoLoadItems\(\)/.test(app));
+    assert("runClassAutoLoad returns its promise", /return Promise\.all\(\[autoLoadClasses\(\)/.test(cls));
+  }
+
+  // ---------- offline.js: where the service worker is allowed to run ----------
+  {
+    // Registering a cache-first worker on the machine someone is editing on would serve them
+    // yesterday's code and ignore their changes. This test runs on localhost, so it asserts the
+    // guard from the inside.
+    assert("the service worker is not registered on localhost", offlineEligible() === false);
+  }
+
+  // ---------- sw.js: the precache list still matches the real page ----------
+  {
+    const html = await (await fetch("../character-sheet.html")).text();
+    const found = shellUrlsFromHtml(html);
+
+    /* The assertion that earns this file's keep. The extractor is a regex over the raw HTML; the
+       reference is the browser's own parser over the same bytes, filtered by the same rules. If
+       someone adds a script tag in a shape the regex misses — single quotes, an odd line break —
+       these two disagree here rather than leaving one file out of the offline cache, which is a
+       bug that only shows up on a plane. */
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const want = [...new Set([...doc.querySelectorAll("[src],[href]")]
+      .map(el => (el.getAttribute("src") || el.getAttribute("href") || "").trim())
+      .filter(u => u && !/^[a-z]+:/i.test(u) && !u.startsWith("//") && !u.startsWith("#") && !u.startsWith("data/"))
+      .map(u => u.replace(/^\.\//, "")))];
+
+    const missing = want.filter(u => !found.includes(u));
+    const extra = found.filter(u => !want.includes(u));
+    assertEqual("every script and stylesheet the page names is precached", missing.join(", "), "");
+    assertEqual("...and nothing else is invented", extra.join(", "), "");
+    assert("the list is not trivially empty", found.length > 40);
+
+    assert("the empty theme-css href is skipped", !found.includes(""));
+    assert("no data/ path is ever precached", !found.some(u => u.startsWith("data/")));
+    assert("the sheet's own scripts are in it", found.includes("src/data-folder.js"));
+    assert("so are its stylesheets", found.includes("css/base.css"));
+    assert("so is the manifest link", found.includes("manifest.webmanifest"));
+  }
+
+  // ---------- sw.js: what the fetch handler refuses to cache ----------
+  {
+    // Mirrors the test in sw.js's fetch listener. data/ is the user's own game data: on a hosted
+    // copy it is read off their disk and never reaches the network at all, and on a local server it
+    // is already on the machine. Either way, storing it would mean this project keeping a copy of
+    // somebody's sourcebooks.
+    const isData = p => /(^|\/)data\//.test(p);
+    assert("a data/ path at the site root is passed through, never cached", isData("/data/spells/index.json"));
+    assert("...and under a project subpath too", isData("/pmcrwf/data/bestiary/index.json"));
+    assert("an ordinary script is cached", !isData("/pmcrwf/src/dice.js"));
+    // The one that would bite: a file whose name merely starts with "data".
+    assert("a file named like data is not mistaken for the folder", !isData("/src/data.js"));
+    assert("...nor is a folder named data-folder", !isData("/src/data-folder.js"));
+  }
+
+  // ---------- sw.js: the build stamp ----------
+  {
+    const src = await (await fetch("../sw.js")).text();
+    /* The workflow rewrites this placeholder to the deploying commit, because a service worker only
+       updates when its own bytes change. If it is ever renamed, the deploy step's grep fails loudly
+       — and so does this, which is the earlier of the two warnings. */
+    assert("sw.js still carries the placeholder the deploy stamps", src.includes("__BUILD__"));
+    assert("...and the cache name is derived from it", /const CACHE = "pmcrwf-" \+ SW_BUILD/.test(src));
+  }
+
+  lines.push("", `${pass} passed, ${fail} failed`);
+  const el = document.getElementById("results");
+  el.textContent = lines.join("\n");
+  el.className = fail ? "fail" : "pass";
+});
+</script>
+</body>
+</html>

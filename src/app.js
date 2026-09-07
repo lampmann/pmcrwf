@@ -7,16 +7,22 @@ function autoStatusText(res, what) {
 /* Both loaders report failure into their own status line. Without a .catch, a throw anywhere in the
    load or the render that follows it leaves "loading from data/ …" on screen for good, with nothing
    in the error bar either (errors.js listens for `error`, and a rejected promise is not one) — the
-   silent failure the visible-error-surface rule exists to prevent. */
+   silent failure the visible-error-surface rule exists to prevent.
+
+   Both RETURN the promise. Nothing needed that while these only ran once at startup, but connecting
+   a data/ folder mid-session re-runs every loader and waits for them (reloadAllLibraries in
+   src/data-folder.js) — and a runner that returns undefined is awaited instantly, so the wait
+   silently did nothing and the status line was still reading "loading …" when the caller believed
+   it was finished. */
 function runSpellAutoLoad() {
   $("spell-lib-autostatus").textContent = "loading from data/ …";
-  autoLoadSpells()
+  return autoLoadSpells()
     .then(res => { renderSpellLibrary(); $("spell-lib-autostatus").textContent = autoStatusText(res, "spells"); })
     .catch(err => { console.error("Spell auto-load failed", err); $("spell-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " — import manually below"; });
 }
 function runItemAutoLoad() {
   $("item-lib-autostatus").textContent = "loading from data/ …";
-  autoLoadItems()
+  return autoLoadItems()
     .then(res => { renderItemLibrary(); $("item-lib-autostatus").textContent = autoStatusText(res, "equipment"); })
     .catch(err => { console.error("Equipment auto-load failed", err); $("item-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " — import manually below"; });
 }
