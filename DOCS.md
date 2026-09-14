@@ -521,6 +521,8 @@ A folded module remembers **its own height, separately from its open one**. Drag
 - **Autosave** to the browser (localStorage) on every change, into the **active character's** slot in the roster (see [Characters](#characters-tabs-creation-levelling-up)). The save indicator reports what actually happened: if the write fails — localStorage quota, which a large roster with long Event Logs can reach — it says **NOT SAVED** in red rather than claiming success, because at that point the character exists only in memory and closing the tab loses it. Export it to a file, then free space by deleting characters you no longer need or clearing old logs.
 - **Export JSON** downloads the character you're looking at. **Import** loads one back into it. **Reset** blanks it — the character you're looking at, back to an empty sheet; your other tabs and the pre-roster backup (`charsheet-v0`) are untouched. All three work on a single character, not the whole roster.
 - The spell library and equipment library are stored separately from your character (and are shared by all of them).
+- Pending character edits and Event Log writes are flushed when the page becomes hidden or is left, without waiting for the autosave delay. An abrupt browser or device crash can still prevent a save.
+- Imports check the character's structure before changing the sheet and restore the previous character if rendering fails. If you switch characters while a file is being read, import stops and asks you to select the intended character again. Older exports may omit newer fields. Reset restores the sheet's starting defaults, including ability scores of 10, Medium size, and speed 30.
 
 ## Keyboard
 - **Enter** in a number box commits the math and moves on.
@@ -531,11 +533,25 @@ A folded module remembers **its own height, separately from its open one**. Drag
 Browser harnesses under `tests/` — open one through the local server (e.g. `http://localhost:8931/tests/derived.html`) and it prints `N passed, M failed`. No build step and no test framework: each file is a minimal copy of `character-sheet.html`'s DOM with the real `src/*.js` loaded on top, so what runs is the app's own code rather than a reimplementation of it.
 
 - **[tests/derived.html](tests/derived.html)** — the pure math: proficiency bonus, max HP (including the first-class-only maximum at level 1 and negative CON), the multiclass caster-level and slot table (Pact Magic excluded), known/prepared/cantrip allowances, unarmored AC, save/skill totals with proficiency and expertise, `parseBonus`'s flat/dice split, and the number boxes' arithmetic and clamping.
-- **[tests/effects.html](tests/effects.html)** — the feature-effects engine and the roster/grouping logic.
+- **[tests/effects.html](tests/effects.html)** — the feature-effects engine and the roster/grouping logic, plus character reset defaults, import validation and rollback, literal class text, and saving pending edits and logs on page exit.
 - **[tests/filters.html](tests/filters.html)** — the shared filter engine behind the Spell and Equipment libraries.
 - **[tests/hosting.html](tests/hosting.html)** — the parts that only matter when the sheet is [served from a website](#running-pmcrwf-as-a-website): which paths `dataFetch` claims and how it resolves them against a connected folder, which folder a user's click actually meant, and — the one that will save somebody an offline-only bug one day — that the service worker's precache extraction still finds every tag in the real `character-sheet.html`, checked against the browser's own parser.
 
 The effects file loads the real effects database; the others are self-contained and need no `data/` folder.
+
+### Automated browser checks
+
+The optional runner starts its own local server, runs all four harnesses in separate browser contexts, and exercises import, export, reset, and save/reload in the full sheet. It exits with a nonzero status on an assertion failure or browser script error. Its temporary browser storage is separate from your normal characters; no game data is required.
+
+With Node.js installed, run these commands from the repository directory:
+
+```sh
+npm install --no-save --package-lock=false playwright
+npx playwright install chromium
+node tools/run-browser-tests.cjs
+```
+
+To use an installed Chrome or Edge instead of downloading Chromium, skip the second command and set `PMCRWF_TEST_CHANNEL` to `chrome` or `msedge`. For example, in PowerShell: `$env:PMCRWF_TEST_CHANNEL = 'msedge'`. Playwright is only used for development checks; running the sheet still requires no JavaScript dependencies or build step.
 
 ## Roadmap / known limits
 Only what is still outstanding. Anything finished has been removed from this list and is described in

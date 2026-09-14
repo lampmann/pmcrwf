@@ -40,6 +40,8 @@ function activeChar() { return ROSTER.chars.find(c => c.id === ROSTER.activeId) 
    status used to say "saved <time>" unconditionally while a quota failure was being swallowed here,
    which told the user their work was safe at exactly the moment it stopped being. */
 function persistRoster() {
+  clearTimeout(rosterSaveTimer);
+  rosterSaveTimer = null;
   try { localStorage.setItem(ROSTER_KEY, JSON.stringify(ROSTER)); return true; }
   catch (e) { console.warn("Roster too large for localStorage; kept in memory for this session only.", e); return false; }
 }
@@ -147,18 +149,9 @@ function deleteCharacter(id) {
 /* A blank sheet, without going through location.reload() — used by "+" when there's no wizard, and
    by Reset. Mirrors the markup's own initial state: one empty class row, everything else default. */
 function resetSheetToBlank() {
-  /* Every persisted field has to be named explicitly. applyState() only writes the fields its state
-     object mentions, so an EMPTY `fields` map leaves the previous character's name, race, scores and
-     everything else sitting on screen — which made "+ New character" (with no wizard) look like it
-     had cloned whoever you were just looking at. */
-  const fields = {};
-  document.querySelectorAll("[data-persist]").forEach(el => { fields[el.id] = el.type === "checkbox" ? false : ""; });
-  applyState({ v: 1, fields, classes: [{ name: "", sub: "", lvl: 1 }], spells: [], items: [],
-    attacks: [], routines: [], featChoices: {}, asiChoices: {}, usesState: {}, hdState: {},
-    // An empty skillOrder means alphabetical: a new character shouldn't inherit the row order of
-    // whoever happened to be on screen when you pressed "+", any more than it inherits their name.
-    skillOrder: [],
-    effectChoices: {}, effectToggles: {}, proficiencies: { weapons: [], tools: [], languages: [] } });
+  // applyState restores omitted fields and collections to their defaults, including scores of 10,
+  // Medium size, and speed 30. Explicit empty strings would overwrite those defaults again.
+  applyState({ v: 1, fields: {} });
 }
 
 /* ============================================================

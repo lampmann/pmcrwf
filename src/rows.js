@@ -178,13 +178,17 @@ function addClassRow(data = {}) {
   const hdOpts = HIT_DICE.map(([v, lab]) => `<option value="${v}" ${hd === v ? "selected" : ""}>${lab}</option>`).join("");
   const castOpts = CASTING_TYPES.map(([v, lab]) => `<option value="${v}" ${cast === v ? "selected" : ""}>${lab}</option>`).join("");
   tr.innerHTML = `
-    <td><input type="text" class="cls-name" value="${data.name || ""}" style="width:8rem"></td>
-    <td><input type="text" class="cls-sub" value="${data.sub || ""}" style="width:8rem"></td>
-    <td><input type="text" inputmode="numeric" class="tiny cls-lvl" data-math data-min="1" data-max="20" value="${data.lvl || 1}"></td>
+    <td><input type="text" class="cls-name" style="width:8rem"></td>
+    <td><input type="text" class="cls-sub" style="width:8rem"></td>
+    <td><input type="text" inputmode="numeric" class="tiny cls-lvl" data-math data-min="1" data-max="20"></td>
     <td><select class="cls-hd">${hdOpts}</select></td>
     <td><select class="cls-cast">${castOpts}</select></td>
     <td><button class="rowbtn cls-del">x</button></td>`;
-  const lvl = tr.querySelector(".cls-lvl"); lvl.dataset.prev = String(data.lvl || 1);
+  tr.querySelector(".cls-name").defaultValue = data.name || "";
+  tr.querySelector(".cls-sub").defaultValue = data.sub || "";
+  const lvl = tr.querySelector(".cls-lvl");
+  lvl.defaultValue = data.lvl || 1;
+  lvl.dataset.prev = String(data.lvl || 1);
   tr.querySelector(".cls-del").addEventListener("click", () => { tr.remove(); recompute(); scheduleSave(); });
   tr.querySelectorAll("input, select").forEach(i => {
     i.addEventListener("input", () => { recompute(); scheduleSave(); });
