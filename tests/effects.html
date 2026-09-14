@@ -40,9 +40,9 @@
     <span id="passive-perc">10</span>
   </section>
   <section class="module" data-module="hp">
-    <input type="text" id="hp-cur" data-math data-min="0" data-max-from="hp-max" data-allow-empty><span id="hp-max">0</span><input type="number" id="hp-max-override">
+    <input type="text" id="hp-cur" data-persist data-math data-min="0" data-max-from="hp-max" data-allow-empty><span id="hp-max">0</span><input type="number" data-persist id="hp-max-override">
     <div id="boons-row"></div>
-    <input type="text" id="hp-temp" data-math data-min="0" data-allow-empty><div id="hit-dice-pools"></div>
+    <input type="text" id="hp-temp" data-persist data-math data-min="0" data-allow-empty><div id="hit-dice-pools"></div>
     <span id="ac">10</span><input type="text" id="ac-misc"><input type="number" id="ac-override">
     <!-- value/data-autospeed mirror the app's own markup: a blank Speed is what made Movement read
          0/0, so the field ships with a default and applyState restores it (see syncRaceSpeed). -->
@@ -2891,6 +2891,90 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...and defaulting what it lacked", spellLimitFor("Planar Binding"), null);
 
     HOUSE_RULES = savedHR;
+  }
+
+  // ----- character persistence: defaults, safe imports, and pending saves -----
+  {
+    const original = JSON.parse(JSON.stringify(collectState()));
+    resetSheetToBlank();
+    assertEqual("reset restores base STR to 10", $("score-str").value, "10");
+    assertEqual("reset restores base CON to 10", $("score-con").value, "10");
+    assertEqual("reset restores Medium size", $("char-size").value, "M");
+    assertEqual("reset restores speed 30", $("speed").value, "30");
+    assertEqual("reset keeps one starting class row", getClasses().length, 1);
+    assertEqual("reset clears the character name", $("char-name").value, "");
+
+    const checked = document.createElement("input");
+    checked.type = "checkbox"; checked.id = "test-default-checked";
+    checked.dataset.persist = ""; checked.defaultChecked = true;
+    document.body.appendChild(checked);
+    checked.checked = false;
+    applyState({ fields: {} });
+    assert("omitted checkboxes restore their markup default", checked.checked);
+    checked.remove();
+
+    importCharacterState(JSON.stringify({ fields: { "char-name": "Safe import" }, proficiencies: { tools: ["Flute"] } }));
+    assertEqual("old exports can omit newer fields", $("char-name").value, "Safe import");
+    assertEqual("partial proficiency data retains supplied names", PROFICIENCIES.tools[0], "Flute");
+    assertEqual("partial proficiency data defaults missing categories", PROFICIENCIES.weapons.length, 0);
+    const before = JSON.stringify(collectState());
+    const storedBefore = localStorage.getItem(ROSTER_KEY);
+    for (const invalid of ["{", "null", "[]", "42", "{}", '{"spell":[]}',
+      '{"fields":{},"classes":{}}', '{"fields":{},"items":[null]}',
+      '{"fields":{},"spells":["Fireball"]}', '{"fields":{},"skillOrder":{}}',
+      '{"fields":{"char-name":{}}}', '{"fields":{"cond-prone":"false"}}',
+      '{"fields":{},"proficiencies":{"tools":"Flute"}}']) {
+      let rejected = false;
+      try { importCharacterState(invalid); } catch (e) { rejected = true; }
+      assert(`invalid import is rejected: ${invalid}`, rejected);
+      assertEqual("rejected import leaves the sheet intact", JSON.stringify(collectState()), before);
+      assertEqual("rejected import leaves saved data intact", localStorage.getItem(ROSTER_KEY), storedBefore);
+    }
+
+    // A renderer can discover a deeper problem after fields have already changed.
+    const renderBefore = renderClassFeatures;
+    let failOnce = true;
+    renderClassFeatures = () => {
+      if (failOnce) { failOnce = false; throw new Error("test render failure"); }
+      return renderBefore();
+    };
+    let rolledBack = false;
+    try { importCharacterState('{"fields":{"char-name":"Should not survive"}}'); }
+    catch (e) { rolledBack = e.message === "test render failure"; }
+    finally { renderClassFeatures = renderBefore; }
+    assert("a renderer failure is reported", rolledBack);
+    assertEqual("a renderer failure restores the previous character", JSON.stringify(collectState()), before);
+    assertEqual("a renderer failure does not overwrite storage", localStorage.getItem(ROSTER_KEY), storedBefore);
+
+    $("cmd-input").value = "keep this command";
+    importCharacterState('{"fields":{"char-name":"Only persisted fields","cmd-input":"unexpected"}}');
+    assertEqual("imports cannot overwrite unrelated controls", $("cmd-input").value, "keep this command");
+    const quoted = 'A "quoted" <class> & subclass';
+    addClassRow({ name: quoted, sub: quoted, lvl: '1\"><span id="injected-class">bad</span>' });
+    const last = $("class-rows").lastElementChild;
+    assertEqual("class names preserve literal quotes and markup", last.querySelector(".cls-name").value, quoted);
+    assertEqual("subclass names preserve literal quotes and markup", last.querySelector(".cls-sub").value, quoted);
+    assert("class data does not create HTML elements", !$("injected-class"));
+    last.remove();
+
+    $("char-name").value = "Saved on pagehide";
+    scheduleSave();
+    recordLogEntry("info", "Last event before leaving");
+    window.dispatchEvent(new Event("pagehide"));
+    const stored = JSON.parse(localStorage.getItem(ROSTER_KEY));
+    assertEqual("pagehide flushes pending character edits", stored.chars.find(c => c.id === stored.activeId).state.fields["char-name"], "Saved on pagehide");
+    assertEqual("pagehide flushes the pending event log", stored.logs[activeLogKey()][0].html, "Last event before leaving");
+    assertEqual("flushing clears the character debounce", saveTimer, null);
+    assertEqual("flushing clears the roster debounce", rosterSaveTimer, null);
+    recordLogEntry("info", "Only a roll pending");
+    window.dispatchEvent(new Event("pagehide"));
+    assertEqual("a log-only debounce is flushed", JSON.parse(localStorage.getItem(ROSTER_KEY)).logs[activeLogKey()][0].html, "Only a roll pending");
+    $("char-name").value = "Unscheduled test change";
+    window.dispatchEvent(new Event("pagehide"));
+    assertEqual("pagehide without pending work does not write", JSON.parse(localStorage.getItem(ROSTER_KEY)).chars.find(c => c.id === stored.activeId).state.fields["char-name"], "Saved on pagehide");
+    scheduleSave(); saveState();
+    assertEqual("an explicit save cancels its queued duplicate", saveTimer, null);
+    applyState(original); saveState();
   }
 
   lines.push("", `${pass} passed, ${fail} failed`);

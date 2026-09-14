@@ -112,11 +112,23 @@ function init() {
     const blob = new Blob([JSON.stringify(collectState(), null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     a.download = ($("char-name").value || "character") + ".json"; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 0);
   });
+  let importRequest = 0;
   $("file-import").addEventListener("change", e => {
     const file = e.target.files[0]; if (!file) return;
+    const request = ++importRequest;
+    const targetId = typeof activeChar === "function" ? activeChar()?.id : null;
     const reader = new FileReader();
-    reader.onload = () => { try { applyState(JSON.parse(reader.result)); saveState(); } catch (err) { alert("Bad JSON: " + err); } };
+    reader.onload = () => {
+      if (request !== importRequest) return;
+      if (targetId !== (typeof activeChar === "function" ? activeChar()?.id : null)) {
+        alert("The active character changed while reading the file. Select the intended character and import again.");
+        return;
+      }
+      try { importCharacterState(reader.result); }
+      catch (err) { alert("Could not import character: " + err.message); }
+    };
     reader.onerror = () => alert("Could not read that file: " + (reader.error && reader.error.message || "unknown error"));
     reader.readAsText(file);
     e.target.value = "";   // so re-picking the SAME file fires `change` again (mirrors spell/item import)

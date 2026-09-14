@@ -1,6 +1,52 @@
 /* ---------- Persistence ---------- */
-let saveTimer;
+let saveTimer = null;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 300); }
+
+// Browsers can suspend a background tab before either debounce fires. Flush only pending work,
+// so visiting a fresh sheet or returning from the back/forward cache does not create a save.
+function flushPendingSaves() {
+  if (saveTimer !== null || (typeof rosterSaveTimer !== "undefined" && rosterSaveTimer !== null)) saveState();
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") flushPendingSaves();
+});
+window.addEventListener("pagehide", flushPendingSaves);
+
+/* Validate the file before touching the live sheet. Older exports may omit newer collections,
+   but a library, layout, or roster file is not a character. Renderers still own the details of
+   their records; the rollback below also protects against malformed nested values. */
+function validateCharacterState(state) {
+  const isRecord = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  const invalid = field => { throw new Error(`Invalid character data: ${field}.`); };
+  if (!isRecord(state) || !isRecord(state.fields)) invalid("expected a character with a fields object");
+  for (const [id, value] of Object.entries(state.fields)) {
+    if (!["string", "number", "boolean"].includes(typeof value)) invalid(`fields.${id} must be text, a number, or a checkbox value`);
+    const el = $(id);
+    if (el && el.matches("[data-persist]") && el.type === "checkbox" && typeof value !== "boolean") invalid(`fields.${id} must be true or false`);
+  }
+  for (const key of ["classes", "spells", "items", "attacks", "routines", "companions"]) {
+    if (state[key] == null) continue;
+    if (!Array.isArray(state[key]) || !state[key].every(isRecord)) invalid(`${key} must be a list of objects`);
+  }
+  for (const key of ["featChoices", "asiChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
+    if (state[key] != null && !isRecord(state[key])) invalid(`${key} must be an object`);
+  }
+  for (const key of ["weapons", "tools", "languages"]) {
+    const list = state.proficiencies && state.proficiencies[key];
+    if (list != null && (!Array.isArray(list) || !list.every(value => typeof value === "string"))) invalid(`proficiencies.${key} must be a list of names`);
+  }
+  if (state.skillOrder != null && (!Array.isArray(state.skillOrder) || !state.skillOrder.every(value => typeof value === "string"))) invalid("skillOrder must be a list of skill names");
+  return state;
+}
+
+function importCharacterState(text) {
+  const incoming = validateCharacterState(JSON.parse(text));
+  // The live collections are mutable; a shallow snapshot would be changed by a failed render.
+  const previous = JSON.parse(JSON.stringify(collectState()));
+  try { applyState(incoming); }
+  catch (error) { applyState(previous); throw error; }
+  saveState();
+}
 function collectState() {
   const state = {
     v: 1, effectsSv: 1,
@@ -25,7 +71,11 @@ function applyState(state) {
   CHARACTER_SPELLS = state.spells || [];
   CONCENTRATING = state.concentrating || null;
   CHARACTER_ITEMS = state.items || [];
-  PROFICIENCIES = state.proficiencies || { weapons: [], tools: [], languages: [] };
+  PROFICIENCIES = {
+    weapons: state.proficiencies?.weapons || [],
+    tools: state.proficiencies?.tools || [],
+    languages: state.proficiencies?.languages || [],
+  };
   FEAT_CHOICES = state.featChoices || {};
   ASI_CHOICES = state.asiChoices || {};
   // The row order is the character's, so it follows a tab switch and an export (see rows.js).
@@ -43,12 +93,12 @@ function applyState(state) {
      carry-over is hardest to spot. `defaultValue` is the markup's own `value` attribute, so a field
      that ships with a sensible starting number (Speed's 30) gets it back rather than going blank. */
   document.querySelectorAll("[data-persist]").forEach(el => {
-    if (el.type === "checkbox") el.checked = false;
+    if (el.type === "checkbox") el.checked = el.defaultChecked;
     else if (el.tagName === "SELECT") el.selectedIndex = Math.max(0, [...el.options].findIndex(o => o.defaultSelected));
     else el.value = el.defaultValue;
   });
   Object.entries(state.fields || {}).forEach(([id, val]) => {
-    const el = $(id); if (!el) return;
+    const el = $(id); if (!el || !el.matches("[data-persist]")) return;
     if (el.type === "checkbox") el.checked = val; else el.value = val;
   });
   // A character saved with an empty Speed (every one made before the box had a default) would leave
@@ -83,12 +133,14 @@ function applyState(state) {
    every character on the tab bar keeps its own state. The entry's cached `name` is refreshed from the
    live field on the way through — that cache is only ever used to label tabs. */
 function saveState() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
   const state = collectState();
   const entry = (typeof activeChar === "function") ? activeChar() : null;
   let ok = true;
   if (entry) {
     entry.state = state;
-    entry.name = ((state.fields && state.fields["char-name"]) || "").trim() || "unnamed";
+    entry.name = String((state.fields && state.fields["char-name"]) || "").trim() || "unnamed";
     ok = persistRoster();
     if (typeof renderCharacterTabs === "function") renderCharacterTabs();
   } else {
