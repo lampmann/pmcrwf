@@ -50,17 +50,23 @@ Hosting does not add a backend. There is still no account, no sync and no teleme
 **The hosted copy carries no game data, on purpose.** `data/` is gitignored because it is 5e.tools' content and this project does not redistribute it (see [above](#where-game-data-comes-from)) — the deploy workflow refuses to publish it even if someone force-adds it. So a hosted visitor opens a working sheet with empty spell, equipment, feature and monster libraries, and a bar at the top saying so.
 
 ### Connecting your data folder
-Instead of re-importing files every session, point the sheet at your own `data/` folder once:
+Instead of re-importing files every session, point the sheet at your own `data/` folder once. There are two ways to do that, and which one you get depends on the browser.
 
-1. Click **Connect data folder** in the bar at the top.
-2. Pick your `data/` directory — or the folder that contains it; both work.
-3. Every library reloads from it immediately.
+**Connect a live folder (Chrome, Edge).** Click **Connect data folder**, pick your `data/` directory — or the folder that contains it; both work — and every library reloads from it immediately. The sheet holds a handle to the folder and reads files off your disk as it needs them, so editing a JSON file shows up on the next reload. The browser remembers the folder, so a later visit is a one-click **Reconnect data folder** rather than finding it again: the handle survives a restart but its read permission doesn't, and browsers only restore that inside a click, so the click isn't something the sheet can skip.
 
-The folder is read-only and nothing is uploaded: the files are read directly off your disk and never touch the network. The browser remembers which folder you chose, so on a later visit you get a one-click **Reconnect data folder** rather than having to find it again — the handle survives, but browsers drop read permission on restart and will only restore it inside a click, so the click is not something the sheet can skip.
+**Store a copy (any browser).** Click **Choose data folder** — or **store a copy instead**, on a browser that also offers the live option — and pick the same directory. The sheet reads it once, keeps the files this sheet actually uses in the browser's own storage, and answers from there afterwards. No handle, nothing to re-grant, nothing to re-pick. This is the only option in Firefox, which has never implemented the folder-picking API (its only filesystem API is OPFS, a private sandbox that cannot see your disk).
 
-The bestiary stays lazy and uncached here as everywhere else (it is ~9 MB), but with a folder connected that no longer means re-importing it — it just loads from your disk the first time you open a monster.
+Either way the folder is read-only and nothing is uploaded — the files are read on your machine and never touch the network.
 
-This needs **Chrome or Edge**. Firefox and Safari have no folder-picking API; there, the per-library **import files manually** pickers still work, they just forget between sessions. Implementation is in [src/data-folder.js](src/data-folder.js), which is one `dataFetch()` shim in front of `fetch()` — with no folder connected it is a plain fetch, so the local and hosted paths run the same loader code.
+**A stored copy is a copy, and that is the whole difference.** A live folder re-reads the disk; a copy doesn't know the disk exists. Nothing in the sheet can detect that your data has changed underneath it, so instead of pretending to, the bar always names the copy it's serving and when it was taken, says so plainly once the copy is over three months old, and reports exactly what changed when you re-pick — including "nothing had changed", which is worth knowing too. Change detection compares file **contents**, not timestamps: copying a folder or re-downloading 5e.tools' zip rewrites every modification time, so a timestamp check would claim your whole library changed every single time and the one useful sentence would become noise.
+
+**A folder is a statement about what your data is.** Connecting or re-picking one empties the libraries before reloading, so a re-pick can take entries away as well as add them — pick a folder without Halflings and the Halflings go. The cost is that anything you imported by hand through a library's own file picker goes too. That's the intended trade: "this folder is the truth" is a rule you can hold in your head; "this folder plus whatever I imported in some earlier session" isn't.
+
+**Where the sheet looks, in order.** A live folder handle wins if one is connected. Otherwise a `data/` folder served next to the sheet wins — somebody running `pmcrwf.cmd` has the real files right there and should never be handed a month-old copy of them. A stored copy is used when neither of those applies, which is the hosted case it exists for.
+
+The bestiary stays lazy everywhere (it is ~9 MB), but with a folder connected or a copy stored that no longer means re-importing it by hand — it loads the first time you open a monster.
+
+Implementation is [src/data-folder.js](src/data-folder.js) and [src/data-snapshot.js](src/data-snapshot.js). Between them they are one `dataFetch()` shim in front of `fetch()`: with nothing connected or stored it *is* `fetch`, byte for byte, so every loader runs identical code in all three cases and the local path is untouched.
 
 ### Offline
 The hosted copy registers a service worker ([sw.js](sw.js)) that precaches the whole app — HTML, scripts, styles, themes, icons; about a megabyte — so after the first visit it opens and rolls with the network off, and can be installed to a home screen or desktop from the browser's own install button. It never caches anything under `data/`: on a hosted copy that data comes off your disk and never goes through the network at all.
@@ -533,7 +539,7 @@ Browser harnesses under `tests/` — open one through the local server (e.g. `ht
 - **[tests/derived.html](tests/derived.html)** — the pure math: proficiency bonus, max HP (including the first-class-only maximum at level 1 and negative CON), the multiclass caster-level and slot table (Pact Magic excluded), known/prepared/cantrip allowances, unarmored AC, save/skill totals with proficiency and expertise, `parseBonus`'s flat/dice split, and the number boxes' arithmetic and clamping.
 - **[tests/effects.html](tests/effects.html)** — the feature-effects engine and the roster/grouping logic.
 - **[tests/filters.html](tests/filters.html)** — the shared filter engine behind the Spell and Equipment libraries.
-- **[tests/hosting.html](tests/hosting.html)** — the parts that only matter when the sheet is [served from a website](#running-pmcrwf-as-a-website): which paths `dataFetch` claims and how it resolves them against a connected folder, which folder a user's click actually meant, and — the one that will save somebody an offline-only bug one day — that the service worker's precache extraction still finds every tag in the real `character-sheet.html`, checked against the browser's own parser.
+- **[tests/hosting.html](tests/hosting.html)** — the parts that only matter when the sheet is [served from a website](#running-pmcrwf-as-a-website): which paths `dataFetch` claims, which of its three sources answers one, which folder a user's click actually meant, what a re-pick reports as changed, and two drift checks that will each save somebody a silent bug one day — that the service worker's precache extraction still finds every tag in the real `character-sheet.html` (checked against the browser's own parser), and that every `data/` path the loaders fetch is one a stored copy would actually keep (checked against the loaders' own source).
 
 The effects file loads the real effects database; the others are self-contained and need no `data/` folder.
 

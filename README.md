@@ -12,13 +12,13 @@ pmcrwf is an offline, single-page HTML character sheet for **D&D 5e (2014 rules)
 - **Free-form layout** — drag, resize, and snap modules wherever you want them; save the arrangement to a file.
 - **Themes** — swappable CSS themes; add your own by dropping a file in `css/themes/`.
 - **Your data stays yours** — autosaves to your browser, with JSON export/import for the whole character.
-- **Runs local or hosted** — start the local server, or open the hosted copy, point it at your own `data/` folder once, and it remembers. Either way it works offline and there's no account, no sync and no telemetry.
+- **Runs local or hosted** — start the local server, or open the hosted copy, point it at your own `data/` folder once, and it remembers (a live link in Chrome/Edge, a stored copy in Firefox). Either way it works offline and there's no account, no sync and no telemetry.
 
 ## Getting started
 
 Two ways in. **Running it locally** is the original one and is described below: you need the sheet's files and a way to serve them (a tiny web server — opening the `.html` file directly won't work, because browsers block local file loading).
 
-**Or use the hosted copy**, if this repository has GitHub Pages turned on: open the URL, click **Connect data folder**, pick your 5e.tools `data/` directory once, and you're set — the browser remembers it, and after the first visit the sheet works with the network off and can be installed like an app. Same code, same sheet, no server to start. Two things are worth knowing: the hosted copy carries no game data (that's what the folder is for — 5e.tools' content is never redistributed here), and connecting a folder needs Chrome or Edge. Browser storage is per site, so characters made locally don't appear on the hosted copy or vice versa; move them with **Export JSON** / **Import**. Full details in [DOCS.md](DOCS.md#running-pmcrwf-as-a-website).
+**Or use the hosted copy**, if this repository has GitHub Pages turned on: open the URL, point it at your 5e.tools `data/` directory once, and you're set — the browser remembers it, and after the first visit the sheet works with the network off and can be installed like an app. Same code, same sheet, no server to start. Chrome and Edge can hold a live link to the folder; Firefox stores a copy of it instead, which needs no re-picking either. The one thing to know is that the hosted copy carries no game data of its own — that's what the folder is for; 5e.tools' content is never redistributed here. Browser storage is per site, so characters made locally don't appear on the hosted copy or vice versa; move them with **Export JSON** / **Import**. Full details in [DOCS.md](DOCS.md#running-pmcrwf-as-a-website).
 
 ### 1. Get the files
 Download this repository (green **Code** button → **Download ZIP**, then unzip it) or `git clone` it. You'll end up with a folder containing `character-sheet.html`, `src/`, `css/`, etc.

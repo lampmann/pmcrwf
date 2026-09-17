@@ -27,6 +27,7 @@
     return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 </script>
+<script src="../src/data-snapshot.js"></script>
 <script src="../src/data-folder.js"></script>
 <script src="../src/offline.js"></script>
 <script src="../sw.js"></script>
@@ -164,6 +165,184 @@ document.addEventListener("DOMContentLoaded", async () => {
     assert("runSpellAutoLoad returns its promise", /return autoLoadSpells\(\)/.test(app));
     assert("runItemAutoLoad returns its promise", /return autoLoadItems\(\)/.test(app));
     assert("runClassAutoLoad returns its promise", /return Promise\.all\(\[autoLoadClasses\(\)/.test(cls));
+  }
+
+  // ---------- wantedDataPath: which of 5e.tools' data/ is worth keeping ----------
+  {
+    const yes = ["races.json", "feats.json", "backgrounds.json", "items.json", "items-base.json",
+                 "conditionsdiseases.json", "variantrules.json",
+                 "spells/index.json", "spells/spells-phb.json", "spells/sources.json",
+                 "bestiary/index.json", "bestiary/bestiary-mm.json", "class/class-wizard.json"];
+    yes.forEach(r => assert("stored: " + r, wantedDataPath(r)));
+
+    // 5e.tools' data/ is mostly things this sheet never opens. Copying them would spend the user's
+    // disk on adventure prose and art manifests to ignore them.
+    const no = ["adventure/adventure-lmop.json", "book/book-phb.json", "generated/gendata-tables.json",
+                "img/covers/phb.png", "spells/index.json.bak", "makebrew-creature.json/x.txt"];
+    no.forEach(r => assert("skipped: " + r, !wantedDataPath(r)));
+    assert("a path escaping the folder is refused", !wantedDataPath("../secrets.json"));
+    assert("so is one buried mid-path", !wantedDataPath("spells/../../secrets.json"));
+    assert("and an empty one", !wantedDataPath(""));
+  }
+
+  // ---------- ...and it still covers every path the loaders ask for ----------
+  {
+    /* The drift catcher. wantedDataPath decides what gets copied; the loaders decide what gets read.
+       If those two ever disagree, the symptom is a library that is silently empty for exactly the
+       people who can't use a live folder — so the list is checked against the source rather than
+       against my memory of the source. Every "data/…" literal in src/ has to survive the predicate. */
+    const files = ["spell-library", "item-library", "class-library", "monster-library",
+                   "rules-ref", "variant-rules"];
+    const missed = [];
+    for (const f of files) {
+      const src = await (await fetch("../src/" + f + ".js")).text();
+      // Two shapes appear: a whole path ("data/races.json") and a directory prefix that gets a
+      // filename appended at runtime ("data/spells/" + f). Both have to pass.
+      const whole = src.match(/"data\/[^"]*\.json"/g) || [];
+      whole.forEach(m => {
+        const rel = m.slice(1, -1).replace(/^data\//, "");
+        if (!wantedDataPath(rel)) missed.push(f + ": " + rel);
+      });
+      const prefixes = src.match(/"data\/[a-z-]+\/"/gi) || [];
+      prefixes.forEach(m => {
+        const rel = m.slice(1, -1).replace(/^data\//, "") + "probe.json";
+        if (!wantedDataPath(rel)) missed.push(f + ": " + rel);
+      });
+    }
+    assertEqual("every data/ path the loaders fetch would be stored", missed.join(", "), "");
+    // The class files are built from a name list rather than written out, so check that shape too.
+    assert("the probed class filenames are stored", wantedDataPath("class/class-barbarian.json"));
+  }
+
+  // ---------- relFromPickedPath: the folder the user meant ----------
+  {
+    assertEqual("picking data/ itself", relFromPickedPath("data/spells/index.json"), "spells/index.json");
+    assertEqual("picking the folder that holds it", relFromPickedPath("pmcrwf/data/races.json"), "races.json");
+    assertEqual("a differently named data folder", relFromPickedPath("5etools-data/spells/index.json"), "spells/index.json");
+    assertEqual("nested deeper", relFromPickedPath("data/bestiary/sub/x.json"), "bestiary/sub/x.json");
+    // A folder that merely CONTAINS a directory called data isn't stripped twice — "data" only goes
+    // when it's the first thing after the picked folder's own name.
+    assertEqual("a second data/ deeper down survives", relFromPickedPath("x/spells/data/y.json"), "spells/data/y.json");
+    assert("a loose file with no folder is refused", relFromPickedPath("races.json") === null);
+    assert("and so is nothing at all", relFromPickedPath("") === null);
+  }
+
+  // ---------- snapHash: content, not timestamps ----------
+  {
+    const a = '{"race":[{"name":"Dwarf"}]}';
+    assertEqual("the same text hashes the same", snapHash(a), snapHash(a));
+    assert("different text hashes differently", snapHash(a) !== snapHash(a.replace("Dwarf", "Elf")));
+    // The reason this exists at all: copying or re-downloading a folder rewrites every mtime, so a
+    // timestamp comparison would report the whole library as changed every single time.
+    assert("a one-character change is caught", snapHash("abcd") !== snapHash("abce"));
+  }
+
+  // ---------- diffSnapshotPaths ----------
+  {
+    const before = { "a.json": [10, "h1"], "b.json": [20, "h2"], "c.json": [30, "h3"] };
+    const same = diffSnapshotPaths(before, { "a.json": [10, "h1"], "b.json": [20, "h2"], "c.json": [30, "h3"] });
+    assertEqual("an identical folder reports nothing", same.total, 0);
+
+    const d = diffSnapshotPaths(before, {
+      "a.json": [10, "h1"],          // untouched
+      "b.json": [21, "hX"],          // edited
+      "d.json": [40, "h4"],          // new
+    });                              // c.json gone
+    assertEqual("...an edited file is counted once", d.changed.join(","), "b.json");
+    assertEqual("...a new file is added", d.added.join(","), "d.json");
+    assertEqual("...a vanished file is removed", d.removed.join(","), "c.json");
+    assertEqual("...and that's the whole story", d.total, 3);
+
+    // Same bytes, different hash — the size alone would have missed this.
+    const h = diffSnapshotPaths({ "a.json": [10, "h1"] }, { "a.json": [10, "h2"] });
+    assertEqual("a same-size edit still counts as changed", h.changed.join(","), "a.json");
+  }
+
+  // ---------- storing and reading a folder ----------
+  {
+    /* Real import, real IndexedDB, real read-back. The File objects are hand-built because a test
+       can't open a file dialog — importFolderFiles only ever touches webkitRelativePath, size and
+       text(), so these are the whole contract. */
+    const mk = (path, text) => ({
+      webkitRelativePath: path, size: text.length, name: path.split("/").pop(),
+      async text() { return text; },
+    });
+    const folder = [
+      mk("data/races.json", '{"race":[{"name":"Dwarf"}]}'),
+      mk("data/spells/index.json", '{"PHB":"spells-phb.json"}'),
+      mk("data/bestiary/index.json", '{"MM":"bestiary-mm.json"}'),
+      mk("data/adventure/lmop.json", '{"adventure":[]}'),      // not ours
+      mk("data/img/cover.png", "PNG"),                          // not ours
+    ];
+
+    const seen = [];
+    const res = await importFolderFiles(folder, p => seen.push(p.done));
+    assertEqual("only the files this sheet reads are stored", res.stored, 3);
+    assertEqual("...and the rest are skipped, not failed", res.skipped, 2);
+    assert("progress is reported while it runs", seen.length > 0);
+    assert("a first pick reports no diff — nothing existed to change", res.diff === null);
+
+    assertEqual("a stored file reads back byte for byte",
+      await snapshotFileText("races.json"), '{"race":[{"name":"Dwarf"}]}');
+    assertEqual("...including one in a subdirectory",
+      await snapshotFileText("spells/index.json"), '{"PHB":"spells-phb.json"}');
+    assert("a file that was skipped is simply not there", (await snapshotFileText("adventure/lmop.json")) === null);
+    assert("nor is one that never existed", (await snapshotFileText("nope.json")) === null);
+
+    // Re-import with one file edited: the diff has to name it and only it.
+    const again = await importFolderFiles([
+      mk("data/races.json", '{"race":[{"name":"Elf"}]}'),
+      mk("data/spells/index.json", '{"PHB":"spells-phb.json"}'),
+      mk("data/bestiary/index.json", '{"MM":"bestiary-mm.json"}'),
+    ], () => {});
+    assertEqual("a re-pick names the file that changed", again.diff.changed.join(","), "races.json");
+    assertEqual("...and nothing else", again.diff.total, 1);
+    assertEqual("the new contents replaced the old",
+      await snapshotFileText("races.json"), '{"race":[{"name":"Elf"}]}');
+
+    // A folder with nothing of ours in it must leave the existing copy alone rather than wiping it.
+    const junk = await importFolderFiles([mk("Downloads/cat.jpg", "x")], () => {});
+    assert("a folder with no game data is refused", junk.empty);
+    assertEqual("...and the copy already stored is untouched",
+      await snapshotFileText("races.json"), '{"race":[{"name":"Elf"}]}');
+  }
+
+  // ---------- dataFetch: which source answers ----------
+  {
+    const savedDir = DATA_DIR, savedServed = DATA_SERVED;
+
+    // A stored copy answers data/ paths when nothing better is available.
+    DATA_DIR = null; DATA_SERVED = false;
+    const fromSnap = await dataFetch("data/races.json");
+    assert("with only a stored copy, it answers", fromSnap.ok);
+    assertEqual("...with the stored contents", (await fromSnap.json()).race[0].name, "Elf");
+
+    const missing = await dataFetch("data/feats.json");
+    assert("a path the copy lacks is a plain miss", !missing.ok);
+    assertEqual("...reported as 404, like every other miss", missing.status, 404);
+
+    // A live server outranks the copy: somebody running pmcrwf.cmd has the real files right there,
+    // and should never be handed a month-old snapshot of them.
+    DATA_SERVED = true;
+    const served = await dataFetch("data/races.json");
+    assert("a served data/ folder wins over the stored copy", served instanceof Response);
+
+    // And a live handle outranks everything.
+    DATA_SERVED = false;
+    DATA_DIR = {
+      name: "data",
+      async getDirectoryHandle() { throw new DOMException("no", "NotFoundError"); },
+      async getFileHandle(k) {
+        if (k !== "races.json") throw new DOMException("no", "NotFoundError");
+        return { async getFile() { return { async text() { return '{"race":[{"name":"Gnome"}]}'; } }; } };
+      },
+    };
+    const live = await dataFetch("data/races.json");
+    assertEqual("a live folder outranks the stored copy", (await live.json()).race[0].name, "Gnome");
+
+    DATA_DIR = savedDir; DATA_SERVED = savedServed;
+    await clearSnapshot();
+    assert("clearing the copy leaves nothing behind", (await snapshotFileText("races.json")) === null);
   }
 
   // ---------- offline.js: where the service worker is allowed to run ----------

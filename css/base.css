@@ -202,11 +202,17 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
    Sits where the effects strip does and is styled to match it: this is a statement about the sheet's
    surroundings, not part of any module. Themed off --danger only in the "nothing loaded" state,
    which is the one that needs a click before the sheet is much use. */
-#data-bar { margin: -.25rem 0 1rem; padding: .35rem .55rem; border: 1px solid var(--danger); border-radius: var(--radius); font-size: .85rem; }
+#data-bar { margin: -.25rem 0 1rem; padding: .35rem .55rem; border: 1px solid var(--border-soft); border-radius: var(--radius); font-size: .85rem; }
 #data-bar button { font: inherit; font-size: .8rem; margin-left: .4rem; }
 #data-bar code { font-family: var(--font-mono); }
 #data-bar .hint { margin-left: .4rem; }
-#data-bar:has(.data-bar-ok) { border-color: var(--border-soft); }
+/* Red only while there is genuinely nothing to read from — a stored copy or a live folder is a
+   working state, not a warning. Set by renderDataBar rather than inferred from the content. */
+#data-bar.data-bar-warn { border-color: var(--danger); }
+/* The lesser of two offers ("store a copy instead"), kept visibly secondary to the live connect. */
+#data-bar .data-bar-alt { font-size: .75rem; opacity: .85; }
+#data-bar .data-bar-err { margin-top: .3rem; color: var(--danger); }
+#data-bar .data-bar-stale { margin-top: .3rem; color: var(--danger); }
 /* ----- "a new version is ready" line (src/offline.js) -----
    Bottom-LEFT: the roll mirror owns the bottom-right, and this must never sit on top of the thing
    you are in the middle of using. */
