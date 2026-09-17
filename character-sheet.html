@@ -32,8 +32,11 @@
 </div>
 
 <!-- Where game data comes from, but only when that's a live question: hidden entirely when the sheet
-     is served next to its own data/ folder, which is the local case. See src/data-folder.js. -->
+     is served next to its own data/ folder, which is the local case. See src/data-folder.js.
+     The input is the only way Firefox can offer a folder at all (it has no showDirectoryPicker), and
+     it's a fallback in Chromium too; hidden because the bar's own button drives it. -->
 <div id="data-bar" style="display:none"></div>
+<input type="file" id="data-folder-input" webkitdirectory multiple hidden>
 
 <!-- Character tabs: one per character in the roster (src/characters.js). -->
 <div id="char-tabs"></div>
@@ -512,7 +515,9 @@
 <script src="src/errors.js"></script>
 <script src="src/data.js"></script>
 <script src="src/text-utils.js"></script>
-<!-- Before every library: they call dataFetch() instead of fetch() for data/ paths. -->
+<!-- Before every library: they call dataFetch() instead of fetch() for data/ paths.
+     data-snapshot.js first — data-folder.js's shim reads the stored copy through it. -->
+<script src="src/data-snapshot.js"></script>
 <script src="src/data-folder.js"></script>
 <script src="src/typeahead.js"></script>
 <script src="src/math-fields.js"></script>
