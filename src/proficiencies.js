@@ -23,7 +23,7 @@ function renderProficiencyList(cat) {
   if (!list.length) { el.innerHTML = "<div class='hint'>none yet</div>"; return; }
   el.innerHTML = list.map((name, i) => `<div>
       ${escapeHtml(name)}
-      <button class="rowbtn prof-del" data-cat="${cat}" data-idx="${i}" title="remove">x</button>
+      <button class="rowbtn prof-del" data-cat="${cat}" data-idx="${i}" aria-label="remove">x</button>
     </div>`).join("");
 }
 function renderAllProficiencyLists() { ["weapons", "tools", "languages"].forEach(renderProficiencyList); }

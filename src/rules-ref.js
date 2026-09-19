@@ -35,12 +35,12 @@ function toggleRulesRefDetail(btn) {
   const ref = rulesRefFor(btn.dataset.rulesRef);
   const d = document.createElement("div"); d.className = "rules-ref-detail hint";
   d.innerHTML = ref
-    ? `<div>${escapeHtml(ref.text).replace(/\n/g, "<br>")}</div><div>&mdash; ${escapeHtml(ref.source)}, p.${ref.page}</div>`
-    : "no rules text loaded for this — see data/conditionsdiseases.json";
+    ? `<div>${escapeHtml(ref.text).replace(/\n/g, "<br>")}</div><div>- ${escapeHtml(ref.source)}, p.${ref.page}</div>`
+    : "no rules text loaded for this - see data/conditionsdiseases.json";
   btn.after(d);
 }
 function rulesRefBtnHtml(name) {
-  return `<button type="button" class="rules-ref-btn" data-rules-ref="${name}" title="show rules text">&#9432;</button>`;
+  return `<button type="button" class="rules-ref-btn" data-rules-ref="${name}" aria-label="show rules text">&#9432;</button>`;
 }
 // Adds a ⓘ button after each condition checkbox's label (derived from its own id, "cond-blinded"
 // -> "blinded" — no extra markup needed) and shows/hides the one static Exhaustion button.

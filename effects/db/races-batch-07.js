@@ -60,7 +60,7 @@ registerEffects({
   },
   "race|satyr|ram": {
     name: "Ram", sv: 1,
-    unsupported: [{ reason: "custom unarmed strike damage (1d6 + STR bludgeoning); an effect can't create an attack row — add one by hand", tags: ["attack"] }],
+    unsupported: [{ reason: "custom unarmed strike damage (1d6 + STR bludgeoning); an effect can't create an attack row - add one by hand", tags: ["attack"] }],
   },
   "race|satyr|reveler": {
     name: "Reveler", sv: 1,

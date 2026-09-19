@@ -112,7 +112,7 @@ registerEffects({
     // and the note says so.
     effects: [
       { target: "attack-ability", op: "useability", value: "int" },
-      { target: "attack-hit", op: "note", text: "magic weapons only — untick fx on a row this shouldn't apply to" },
+      { target: "attack-hit", op: "note", text: "magic weapons only - untick fx on a row this shouldn't apply to" },
     ],
   },
   "subclass|artificer|battle smith|steel defender": {

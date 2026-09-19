@@ -212,7 +212,7 @@ function enterCombat(reason) {
   COMBAT = blankCombat();
   COMBAT.active = true; COMBAT.round = 1;
   renderCombat(); scheduleSave();
-  combatLog(`<b>Combat</b> — round 1${reason ? ` (${escapeHtml(reason)})` : ""}`);
+  combatLog(`<b>Combat</b> - round 1${reason ? ` (${escapeHtml(reason)})` : ""}`);
 }
 function leaveCombat() {
   if (!COMBAT.active) return;
@@ -230,7 +230,7 @@ function endRound() {
   COMBAT.moveUsed = 0; COMBAT.moveBonus = 0; COMBAT.swings = 0; COMBAT.attacked = false;
   COMBAT.history = [];   // last round's spends don't apply to this round's freshly-refreshed pools
   renderCombat(); scheduleSave();
-  combatLog(`<b>Round ${COMBAT.round}</b> — everything refreshed` +
+  combatLog(`<b>Round ${COMBAT.round}</b> - everything refreshed` +
     (spent.length || moved ? ` <span class="hint">(last round: ${[...spent, moved ? moved + " ft moved" : ""].filter(Boolean).join(", ")})</span>` : ""));
 }
 
@@ -295,7 +295,7 @@ function setPcInitiative(name, value) {
   else { e.name = name || e.name; e.init = value; }
   sortOrder();
   renderCombat(); saveInitiative();
-  combatLog(`<b>Initiative</b> — ${escapeHtml(e.name)}: ${value}`);
+  combatLog(`<b>Initiative</b> - ${escapeHtml(e.name)}: ${value}`);
 }
 
 /* Keeps this character's own row labelled with their current name. Rename Alice to Alicia and the
@@ -323,8 +323,8 @@ function nextTurn() {
   const wrapped = curIdx !== -1 && nextIdx === 0;
   INITIATIVE.turnId = INITIATIVE.order[nextIdx].id;
   renderCombat(); saveInitiative();
-  if (wrapped) combatLog(`<span class="hint">— back to the top of the order —</span>`);
-  combatLog(`<b>Turn</b> — ${escapeHtml(INITIATIVE.order[nextIdx].name)}`);
+  if (wrapped) combatLog(`<span class="hint">- back to the top of the order -</span>`);
+  combatLog(`<b>Turn</b> - ${escapeHtml(INITIATIVE.order[nextIdx].name)}`);
 }
 
 /* Spend one of a resource. Never refuses — see this file's header — but says when you'd be over. */
@@ -333,8 +333,8 @@ function spendResource(kind, what) {
   const over = leftOf(kind) <= 0;
   COMBAT.used[kind]++;
   renderCombat(); scheduleSave();
-  combatLog(`${escapeHtml(what || COMBAT_LABEL[kind])} — <b>${COMBAT_LABEL[kind]}</b>` +
-    (over ? ` <span class="cr-over">(none left — over your limit)</span>` : ` <span class="hint">(${leftOf(kind)}/${COMBAT_MAX[kind]} left)</span>`));
+  combatLog(`${escapeHtml(what || COMBAT_LABEL[kind])} - <b>${COMBAT_LABEL[kind]}</b>` +
+    (over ? ` <span class="cr-over">(none left - over your limit)</span>` : ` <span class="hint">(${leftOf(kind)}/${COMBAT_MAX[kind]} left)</span>`));
 }
 function spendMovement(ft, what) {
   if (!COMBAT.active) enterCombat();
@@ -343,7 +343,7 @@ function spendMovement(ft, what) {
   COMBAT.moveUsed = Math.max(0, COMBAT.moveUsed + ft);
   const over = COMBAT.moveUsed > moveMax();
   renderCombat(); scheduleSave();
-  combatLog(`${escapeHtml(what || "Move")} ${Math.abs(ft)} ft — <b>Movement</b> ` +
+  combatLog(`${escapeHtml(what || "Move")} ${Math.abs(ft)} ft - <b>Movement</b> ` +
     (over ? `<span class="cr-over">${COMBAT.moveUsed}/${moveMax()} ft (over)</span>` : `<span class="hint">${moveLeft()}/${moveMax()} ft left</span>`));
 }
 
@@ -375,7 +375,7 @@ function undoLast() {
   COMBAT.used = entry.used; COMBAT.moveUsed = entry.moveUsed; COMBAT.moveBonus = entry.moveBonus;
   COMBAT.swings = entry.swings; COMBAT.attacked = entry.attacked;
   renderCombat(); scheduleSave();
-  combatLog(`<span class="hint">Undo</span> — ${escapeHtml(entry.label)}`);
+  combatLog(`<span class="hint">Undo</span> - ${escapeHtml(entry.label)}`);
 }
 
 /* An attack roll landed. Spends a banked swing, or takes the Attack action first if there are none —
@@ -390,7 +390,7 @@ function useAttackSwing(name) {
   }
   COMBAT.swings--;
   renderCombat(); scheduleSave();
-  if (COMBAT.swings > 0) combatLog(`<span class="hint">${escapeHtml(name || "Attack")} — ${COMBAT.swings} attack${COMBAT.swings === 1 ? "" : "s"} left in this Attack action</span>`);
+  if (COMBAT.swings > 0) combatLog(`<span class="hint">${escapeHtml(name || "Attack")} - ${COMBAT.swings} attack${COMBAT.swings === 1 ? "" : "s"} left in this Attack action</span>`);
 }
 
 /* ----- the resource menus -----
@@ -412,7 +412,7 @@ function attackEntries(spend) {
     label: a.name, hint: `${a.bonus >= 0 ? "+" : ""}${a.bonus} to hit${a.dmg ? ` · ${a.dmg}` : ""}`,
     run: () => {
       const res = (typeof rollAttackById === "function") ? rollAttackById(a.id, "normal") : null;
-      if (res) log(`<b>${res.name}</b> — ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
+      if (res) log(`<b>${res.name}</b> - ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
       spend(a.name);
     },
   }));
@@ -442,7 +442,7 @@ function actionMenu() {
   out.push({ label: "Help", hint: "give an ally advantage, or aid an attack against a creature within 5 ft", run: () => spend("Help") });
   out.push({ label: "Hide", hint: "rolls Stealth", run: () => { rollNamedSkill("Stealth"); spend("Hide"); } });
   out.push({ label: "Search", hint: "rolls Perception", run: () => { rollNamedSkill("Perception"); spend("Search"); } });
-  out.push({ label: "Ready", hint: "hold an action for a trigger — it costs your reaction when it fires", run: () => spend("Ready") });
+  out.push({ label: "Ready", hint: "hold an action for a trigger - it costs your reaction when it fires", run: () => spend("Ready") });
   out.push({ label: "Use an Object", hint: "a second object interaction this turn, or one that needs an action", run: () => spend("Use an Object") });
   return out;
 }
@@ -474,7 +474,7 @@ function bonusMenu() {
   const spells = spellEntries("bonus", "bonus");
   const baSpent = (typeof hrSetting !== "function" || hrSetting("bonusActionSpellStrict") !== false) && leftOf("bonus") <= 0;
   out.push({ label: "Cast a Spell",
-    hint: baSpent ? "your bonus action is spent — a bonus-action spell can't be cast at all this turn (R47)"
+    hint: baSpent ? "your bonus action is spent - a bonus-action spell can't be cast at all this turn (R47)"
       : (spells.length ? `${spells.length} with a bonus-action casting time` : "no bonus-action spells on your list"),
     disabled: baSpent,
     submenu: (!baSpent && spells.length) ? spells : null,
@@ -529,7 +529,7 @@ function objectMenu() {
    fresh fight, since blankCombat() rebuilds the whole state. */
 const TERRAIN_COSTS = [
   { mult: 1, label: "Normal", hint: "each foot of movement costs 1 foot" },
-  { mult: 2, label: "Difficult terrain", hint: "PHB p182 — also crawling, or standing in a creature's space; each foot costs 1 extra" },
+  { mult: 2, label: "Difficult terrain", hint: "PHB p182 - also crawling, or standing in a creature's space; each foot costs 1 extra" },
   { mult: 3, label: "Difficult + crawling", hint: "two 1-extra-foot effects stacked" },
   { mult: 4, label: "Plant Growth", hint: "each foot of movement costs 4 feet" },
 ];
@@ -557,7 +557,7 @@ function moveLabel(actualFt, note) {
   return terrainMult() > 1 ? `${note || "Move"} ${actualFt} ft (${terrainLabel().toLowerCase()}, ${cost} ft spent)` : `${note || "Move"} ${actualFt} ft`;
 }
 function moveQuickHint(actualFt) {
-  return terrainMult() > 1 ? `${actualFt} ft of distance — ${moveCostFt(actualFt)} ft of movement at ×${terrainMult()}` : undefined;
+  return terrainMult() > 1 ? `${actualFt} ft of distance - ${moveCostFt(actualFt)} ft of movement at ×${terrainMult()}` : undefined;
 }
 function moveMenu() {
   const sp = speedTotal();
@@ -596,10 +596,10 @@ function rollNamedSkill(name) {
 function orderRowHtml(e) {
   const active = e.id === INITIATIVE.turnId;
   return `<li class="cbt-order-row${active ? " active" : ""}" data-oid="${e.id}">
-    <input type="text" inputmode="numeric" class="tiny cbt-order-init" value="${e.init}" title="initiative">
-    <input type="text" class="cbt-order-name" value="${escapeHtml(e.name)}"${e.charId ? ` readonly title="named after the character on your roster \u2014 rename them and this follows"` : ""}>
-    ${e.charId ? `<span class="hint" title="${e.charId === activeCharId() ? "rolled from your own Initiative button" : "another character on your roster"}">${e.charId === activeCharId() ? "(you)" : "(pc)"}</span>` : ""}
-    <button type="button" class="cbt-order-del" title="remove from the order">&times;</button>
+    <input type="text" inputmode="numeric" class="tiny cbt-order-init" value="${e.init}" aria-label="initiative">
+    <input type="text" class="cbt-order-name" value="${escapeHtml(e.name)}"${e.charId ? ` readonly` : ""}>
+    ${e.charId ? `<span class="hint">${e.charId === activeCharId() ? "(you)" : "(pc)"}</span>` : ""}
+    <button type="button" class="cbt-order-del" aria-label="remove from the order">&times;</button>
   </li>`;
 }
 /* Shown whether or not combat is active — a table can build its initiative order before the first
@@ -608,9 +608,9 @@ function orderHtml() {
   const rows = INITIATIVE.order.map(orderRowHtml).join("");
   return `<div class="cbt-order">
     <div class="cbt-order-head"><b>Initiative order</b>
-      ${INITIATIVE.order.length ? `<button type="button" id="cbt-order-next" title="advance to the next combatant's turn">Next turn</button>` : ""}
+      ${INITIATIVE.order.length ? `<button type="button" id="cbt-order-next" aria-label="advance to the next combatant's turn">Next turn</button>` : ""}
     </div>
-    <ol class="cbt-order-list">${rows || `<li class="hint">Nobody yet — roll your own Initiative (HP &amp; Defenses), or add a combatant below.</li>`}</ol>
+    <ol class="cbt-order-list">${rows || `<li class="hint">No combatants.</li>`}</ol>
     <div class="cbt-order-add">
       <input type="text" inputmode="numeric" class="tiny" id="cbt-order-add-init" placeholder="init">
       <input type="text" id="cbt-order-add-name" placeholder="name (monster, ally, …)">
@@ -623,7 +623,7 @@ function combatChipHtml(kind) {
   const left = leftOf(kind), max = COMBAT_MAX[kind];
   const pips = Array.from({ length: max }, (_, i) => i < left ? "●" : "○").join("");
   return `<button type="button" class="cbt-chip${left ? "" : " spent"}" data-cbt="${kind}"
-    title="${COMBAT_LABEL[kind]} — click for what you can spend it on, double-click to just spend it">${COMBAT_LABEL[kind]} <b>${pips}</b></button>`;
+    aria-label="${COMBAT_LABEL[kind]}">${COMBAT_LABEL[kind]} <b>${pips}</b></button>`;
 }
 
 function renderCombat() {
@@ -632,7 +632,7 @@ function renderCombat() {
 
   if (!COMBAT.active) {
     if (status) status.textContent = "";
-    el.innerHTML = `<div class="hint">Not in combat. <b>Roll Initiative</b> (HP &amp; Defenses) starts a fight and this module starts tracking your turn — or press Start below.</div>
+    el.innerHTML = `
       <div style="margin-top:.3rem"><button type="button" id="cbt-start">Start combat</button></div>
       ${orderHtml()}`;
     return;
@@ -646,22 +646,21 @@ function renderCombat() {
      <div class="cbt-chips">${COMBAT_KINDS.map(combatChipHtml).join("")}</div>
      <div class="cbt-move-row">
        <span class="hint">move</span>
-       <button type="button" class="cbt-mv" data-mv="-5" title="move 5 ft of distance">&minus;5</button>
-       <button type="button" class="cbt-mv" data-mv="-1" title="move 1 ft of distance">&minus;1</button>
-       <span class="cbt-move-box-wrap" title="feet of movement left this turn — edit to correct">
+       <button type="button" class="cbt-mv" data-mv="-5" aria-label="move 5 ft of distance">&minus;5</button>
+       <button type="button" class="cbt-mv" data-mv="-1" aria-label="move 1 ft of distance">&minus;1</button>
+       <span class="cbt-move-box-wrap" aria-label="feet of movement left this turn - edit to correct">
          <input type="text" inputmode="numeric" class="tiny cbt-move-box" value="${mv}">/<span class="cbt-move-max">${mvMax}</span> ft
        </span>
-       <button type="button" class="cbt-mv" data-mv="1" title="give back 1 ft of distance">+1</button>
-       <button type="button" class="cbt-mv" data-mv="5" title="give back 5 ft of distance">+5</button>
-       <label class="hint" title="${escapeHtml(terrainLabel())} — feet of movement each foot of distance costs">&times;<input type="text" inputmode="numeric" class="tiny cbt-terrain-input" value="${terrainMult()}"></label>
-       <button type="button" class="cbt-move-more" data-cbt="move" title="more movement options — presets, Dash, stand up from prone">&hellip;</button>
+       <button type="button" class="cbt-mv" data-mv="1" aria-label="give back 1 ft of distance">+1</button>
+       <button type="button" class="cbt-mv" data-mv="5" aria-label="give back 5 ft of distance">+5</button>
+       <label class="hint" aria-label="Movement cost multiplier">&times;<input type="text" inputmode="numeric" class="tiny cbt-terrain-input" value="${terrainMult()}"></label>
+       <button type="button" class="cbt-move-more" data-cbt="move" aria-label="more movement options - presets, Dash, stand up from prone">&hellip;</button>
      </div>
      ${COMBAT.swings > 0 ? `<div class="hint">${COMBAT.swings} attack${COMBAT.swings === 1 ? "" : "s"} left in this Attack action.</div>` : ""}
      <div style="margin-top:.4rem">
        <button type="button" id="cbt-end">End Round</button>
-       <button type="button" id="cbt-leave" title="leave combat and clear the tracker">End combat</button>
+       <button type="button" id="cbt-leave" aria-label="leave combat and clear the tracker">End combat</button>
        <button type="button" id="cbt-undo"${undoLabel ? "" : " disabled"} title="${undoLabel ? "undo: " + escapeHtml(undoLabel) : "nothing to undo"}">Undo${undoLabel ? ` (${escapeHtml(undoLabel)})` : ""}</button>
-       <span class="hint">End Round refreshes your action, bonus action, reaction, object interaction and movement.</span>
      </div>
      <div id="cbt-menu-anchor"></div>`;
 }
@@ -693,7 +692,7 @@ function paintCombatMenu(anchor) {
   // explains a number without cluttering the row for it (Attacks' Fx tooltips, roll-button tooltips).
   m.innerHTML = `<div class="cbt-menu-title">${escapeHtml(top.title)}</div>${back}` +
     top.entries.map((e, i) =>
-      `<div class="cbt-item${e.disabled ? " disabled" : ""}" data-cbtidx="${i}"${e.hint ? ` title="${escapeHtml(e.hint)}"` : ""}>
+      `<div class="cbt-item${e.disabled ? " disabled" : ""}" data-cbtidx="${i}"${e.disabled && e.hint ? ` title="${escapeHtml(e.hint)}"` : ""}>
          <span>${escapeHtml(e.label)}${e.submenu ? " ›" : ""}</span>
        </div>`).join("");
   if (anchor) {

@@ -835,7 +835,7 @@ document.addEventListener("DOMContentLoaded", () => {
     log("a roll");
     assert("log() is still the roll shorthand", entries()[0].classList.contains("ev-roll"));
     assertEqual("newest entry goes on top", entries()[0].textContent, "a roll");
-    assertEqual("the header row is never displaced", $("dicelog").children[0].textContent, "— event log —");
+    assertEqual("the header row is never displaced", $("dicelog").children[0].textContent, "- event log -");
 
     // an unregistered kind must still log rather than losing the event
     logEvent("not-a-real-kind", "still recorded");
@@ -1011,7 +1011,7 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("total level sums every class row", creatorTotalLevel(), 8);
     assert("a legal multiclass passes", creatorStepValid());
     CREATOR.classes[1].lvl = 16;
-    assertEqual("...but the 20-level cap is on the total, not the row", creatorStepBlocker(), "Total level is 21 — the cap is 20.");
+    assertEqual("...but the 20-level cap is on the total, not the row", creatorStepBlocker(), "Total level is 21 - the cap is 20.");
     CREATOR.classes[1].lvl = 3;
 
     // --- multiclassing prerequisites, PHB p163 ---
@@ -2975,6 +2975,88 @@ document.addEventListener("DOMContentLoaded", () => {
     scheduleSave(); saveState();
     assertEqual("an explicit save cancels its queued duplicate", saveTimer, null);
     applyState(original); saveState();
+  }
+
+  // Attack criticals follow the kept, currently visible d20, across every log copy.
+  {
+    const savedRandom = Math.random, savedTimeout = window.setTimeout;
+    const savedPref = ROLL_ANIM_PREF, savedLog = log;
+    const pending = [];
+    const entry = html => { const el = document.createElement("div"); el.innerHTML = html; return el; };
+    const message = el => { const badge = el.querySelector(".roll-critical"); return badge && !badge.hidden ? badge.textContent : ""; };
+    const faces = (...values) => { let i = 0; Math.random = () => ((values[i++ % values.length] || 1) - 0.5) / 20; };
+    const settle = () => { let guard = 100; while (pending.length && guard--) pending.shift()(); assert("animation terminates", guard > 0); };
+    try {
+      ROLL_ANIM_PREF = false;
+      let output = "";
+      log = html => { output = html; };
+      for (const face of [1, 20]) {
+        faces(face);
+        for (const label of ["roll", "save", "skill", "initiative", "death save", "Attack"]) {
+          runRoll("1d20+5 " + label);
+          assert("no implicit critical for " + label + " on " + face, !output.includes("roll-critical"));
+        }
+        runRoll("1d20+5 attack", "normal", { attack: true });
+        assertEqual("attack reports natural " + face, message(entry(output)), face === 20 ? "Critical Success!" : "Critical Failure!");
+      }
+      faces(19);
+      runRoll("1d20 attack", "normal", { attack: true, critMin: 19 });
+      assertEqual("expanded attack range applies", message(entry(output)), "Critical Success!");
+      const companion = document.createElement("button"); companion.className = "mon-roll";
+      assert("companion checks are not attacks", !rollInfo(companion).attack);
+      companion.dataset.attack = "true";
+      assert("companion attack is explicitly marked", rollInfo(companion).attack);
+      companion.className = "wpn-roll";
+      assert("weapon attacks are marked", rollInfo(companion).attack);
+      const inline = entry(renderInlineSpellText("{@hit 5}", "Test spell"));
+      assert("inline spell to-hit uses attack-aware roller", inline.querySelector('.mon-roll[data-attack="true"][data-bonus="5"]'));
+
+      window.setTimeout = callback => { pending.push(callback); return pending.length; };
+      ROLL_ANIM_PREF = true;
+      faces(20);
+      const finalCrit = evalExpr("1d20+3");
+      const original = entry(totalHtml(finalCrit) + attackRollDisplay(finalCrit));
+      const mirror = original.cloneNode(true);
+      animateRollCopies([original, mirror]);
+      faces(1); pending.shift()();
+      assertEqual("flashing 1 replaces final success", message(original), "Critical Failure!");
+      assertEqual("mirror flashes the same failure", message(mirror), message(original));
+      faces(7); pending.shift()();
+      assertEqual("ordinary flashing face hides final critical", message(original), "");
+      assertEqual("flashing total follows visible face", original.querySelector(".roll-total").textContent, "10");
+      settle();
+      assertEqual("settling restores final success", message(original), "Critical Success!");
+      assertEqual("mirror settles to same dice and status", mirror.innerHTML, original.innerHTML);
+      assertEqual("animation preserves actual result", finalCrit.value, 23);
+
+      // Two independent advantage/disadvantage expressions share one entry with damage dice.
+      faces(8, 12, 9, 11);
+      const first = evalExpr("2d20kh1+3"), second = evalExpr("2d20kl1+8"), damage = evalExpr("1d6+2");
+      const multi = entry(totalHtml(first) + attackRollDisplay(first, 19) + totalHtml(second) + attackRollDisplay(second) + totalHtml(damage) + damage.display);
+      animateRoll(multi);
+      faces(19, 1, 20, 1, 10); pending.shift()();
+      const attacks = multi.querySelectorAll(".attack-roll");
+      assertEqual("advantage uses flashing kept 19 and expanded range", message(attacks[0]), "Critical Success!");
+      assertEqual("disadvantage uses flashing kept 1", message(attacks[1]), "Critical Failure!");
+      assertEqual("each attack keeps its own die", multi.querySelectorAll('.attack-roll .die:not(.die-dropped)').length, 2);
+      const totals = multi.querySelectorAll(".roll-total");
+      assertEqual("first flashing attack total excludes other rolls", totals[0].textContent, "22");
+      assertEqual("second flashing attack total excludes other rolls", totals[1].textContent, "9");
+      assertEqual("damage has no critical badge", multi.querySelectorAll(".roll-critical").length, 2);
+      settle();
+      assertEqual("noncritical final advantage hides transient success", message(attacks[0]), "");
+      assertEqual("noncritical final disadvantage hides transient failure", message(attacks[1]), "");
+      assertEqual("first total settles", totals[0].textContent, String(first.value));
+      assertEqual("second total settles", totals[1].textContent, String(second.value));
+      assertEqual("damage total settles", totals[2].textContent, String(damage.value));
+      ROLL_ANIM_PREF = false;
+      animateRoll(original);
+      assertEqual("disabled animation schedules nothing", pending.length, 0);
+      assertEqual("disabled animation retains final critical", message(original), "Critical Success!");
+    } finally {
+      Math.random = savedRandom; window.setTimeout = savedTimeout;
+      ROLL_ANIM_PREF = savedPref; log = savedLog;
+    }
   }
 
   lines.push("", `${pass} passed, ${fail} failed`);

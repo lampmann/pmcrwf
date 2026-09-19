@@ -1,8 +1,8 @@
 /* ---------- data/ folder auto-load status ---------- */
 function autoStatusText(res, what) {
-  if (res.blocked) return "auto-load blocked — serve over http(s), not file:// (see DOCS)";
-  if (!res.found) return `no data/ found for ${what} — see DOCS, or import manually below`;
-  return `auto-loaded ${res.filesLoaded}/${res.filesTotal} file(s) from data/`;
+  if (res.blocked) return "Use a local server to load game data.";
+  if (!res.found) return `No ${what} data.`;
+  return `Loaded ${res.filesLoaded}/${res.filesTotal} files`;
 }
 /* Both loaders report failure into their own status line. Without a .catch, a throw anywhere in the
    load or the render that follows it leaves "loading from data/ …" on screen for good, with nothing
@@ -18,13 +18,13 @@ function runSpellAutoLoad() {
   $("spell-lib-autostatus").textContent = "loading from data/ …";
   return autoLoadSpells()
     .then(res => { renderSpellLibrary(); $("spell-lib-autostatus").textContent = autoStatusText(res, "spells"); })
-    .catch(err => { console.error("Spell auto-load failed", err); $("spell-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " — import manually below"; });
+    .catch(err => { console.error("Spell auto-load failed", err); $("spell-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " - import manually below"; });
 }
 function runItemAutoLoad() {
   $("item-lib-autostatus").textContent = "loading from data/ …";
   return autoLoadItems()
     .then(res => { renderItemLibrary(); $("item-lib-autostatus").textContent = autoStatusText(res, "equipment"); })
-    .catch(err => { console.error("Equipment auto-load failed", err); $("item-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " — import manually below"; });
+    .catch(err => { console.error("Equipment auto-load failed", err); $("item-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " - import manually below"; });
 }
 
 /* Containers whose inputs are not character data: the three import libraries (search boxes, filter
@@ -168,7 +168,6 @@ function init() {
   $("spell-lib-toggle").addEventListener("click", () => {
     const open = $("spell-library-body").style.display === "none";
     $("spell-library-body").style.display = open ? "" : "none";
-    $("spell-lib-collapsed-hint").style.display = open ? "none" : "";
     if (open) {
       refreshSpellAddClassSelect();
       $("spell-search").focus();
@@ -200,7 +199,6 @@ function init() {
   $("item-lib-toggle").addEventListener("click", () => {
     const open = $("item-library-body").style.display === "none";
     $("item-library-body").style.display = open ? "" : "none";
-    $("item-lib-collapsed-hint").style.display = open ? "none" : "";
     if (open) {
       $("item-search").focus();
       $("item-library-body").scrollIntoView({ behavior: "smooth", block: "nearest" });

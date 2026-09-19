@@ -21,7 +21,7 @@ function dropConcentration() { CONCENTRATING = null; scheduleSave(); renderSpell
 function concentrationBannerHtml() {
   if (!CONCENTRATING) return "";
   const clsNote = CONCENTRATING.cls ? ` <span class="hint">(${escapeHtml(CONCENTRATING.cls)})</span>` : "";
-  return `<div class="conc-banner">🔒 Concentrating: <b>${escapeHtml(CONCENTRATING.name)}</b>${clsNote} <button type="button" class="rowbtn sp2-conc-drop" title="drop concentration">drop</button></div>`;
+  return `<div class="conc-banner">🔒 Concentrating: <b>${escapeHtml(CONCENTRATING.name)}</b>${clsNote} <button type="button" class="rowbtn sp2-conc-drop" aria-label="drop concentration">drop</button></div>`;
 }
 
 function ordinalLevel(lvl) {
@@ -45,10 +45,10 @@ function addCharacterSpell(cls, lvl, name, opts = {}) {
 let _prepModalCtx = null;
 function openPrepClassModal(name, lvl, header) {
   const classes = getClasses().map(c => c.name.trim()).filter(Boolean);
-  if (!classes.length) { alert("Add a class in the Character module first — this spell needs to be prepared under one."); return; }
+  if (!classes.length) { alert("Add a class in the Character module first - this spell needs to be prepared under one."); return; }
   _prepModalCtx = { name, lvl, header };
   $("prep-modal-spell").textContent = name;
-  $("prep-modal-hint").textContent = `Added to your spell list by ${header} — still needs to be prepared/known normally.`;
+  $("prep-modal-hint").textContent = `Added to your spell list by ${header} - still needs to be prepared/known normally.`;
   $("prep-modal-select").innerHTML = classes.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
   $("prep-class-modal").style.display = "flex";
 }
@@ -72,7 +72,7 @@ function refreshSpellAddClassSelect() {
   const sel = $("spell-add-class"); if (!sel) return;
   const names = getClasses().map(c => c.name.trim()).filter(Boolean);
   const cur = sel.value;
-  sel.innerHTML = `<option value="">—</option>` + names.map(n =>
+  sel.innerHTML = `<option value="">-</option>` + names.map(n =>
     `<option value="${escapeHtml(n)}" ${n === cur ? "selected" : ""}>${escapeHtml(n)}</option>`).join("");
   if (!names.includes(cur)) sel.value = names[0] || "";
 }
@@ -81,11 +81,11 @@ function spellLineHtml(s, prepBox) {
   const note = s.note ? ` <span class="hint">(${escapeHtml(s.note)})</span>` : "";
   const concBtn = (lib && lib.conc)
     ? (isConcentratingOn(s)
-        ? ` <button type="button" class="rowbtn sp2-conc on" data-idx="${s.i}" title="concentrating — click to drop">◉ conc</button>`
-        : ` <button type="button" class="rowbtn sp2-conc" data-idx="${s.i}" title="click to start concentrating (drops any other spell you're concentrating on)">○ conc</button>`)
+        ? ` <button type="button" class="rowbtn sp2-conc on" data-idx="${s.i}" aria-label="concentrating - click to drop">◉ conc</button>`
+        : ` <button type="button" class="rowbtn sp2-conc" data-idx="${s.i}">○ conc</button>`)
     : "";
   return `<div><a class="feat-link sp2-link" data-idx="${s.i}"><b>${ordinalLevel(s.lvl)}</b> ${escapeHtml(s.name)}</a>${note} <span class="hint">${src}</span>${concBtn}${prepBox || ""}
-    <button class="rowbtn sp2-del" data-idx="${s.i}" title="remove">x</button></div>`;
+    <button class="rowbtn sp2-del" data-idx="${s.i}" aria-label="remove">x</button></div>`;
 }
 function renderSpellList() {
   const el = $("spell-feat-results"); if (!el) return;
@@ -118,7 +118,7 @@ function renderSpellList() {
         ? `<label class="hint" style="margin-left:.4rem"><input type="checkbox" class="sp2-prep" data-idx="${s.i}" ${s.prep ? "checked" : ""}> prepared</label>` : "";
       return spellLineHtml(s, prepBox);
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no spells added yet</div>";
-    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${c.lvl}</b>${subNote} <span class="hint">&mdash; ${notes.join(" &middot; ")}</span></div>${items}`;
+    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${c.lvl}</b>${subNote} <span class="hint">- ${notes.join(" &middot; ")}</span></div>${items}`;
   }).join("");
   // Granted spells (Cleric domain, Mark of X, etc. — see class-library.js's .gsp-link) are grouped by
   // their own source name instead of by class, and are always-available so they never show a "prepared"
@@ -128,13 +128,13 @@ function renderSpellList() {
     const rows = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => s.grantSrc === src)
       .sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
     const items = rows.map(s => spellLineHtml(s)).join("");
-    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(src)}</b> <span class="hint">&mdash; granted spells</span></div>${items}`;
+    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(src)}</b> <span class="hint">- granted spells</span></div>${items}`;
   }).join("");
   const orphans = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => !s.grantSrc && !assigned.has(s.cls));
-  const orphanHtml = orphans.length ? `<div style="margin:.5rem 0 .1rem"><b>Unassigned</b> <span class="hint">— class removed or not set</span></div>` +
+  const orphanHtml = orphans.length ? `<div style="margin:.5rem 0 .1rem"><b>Unassigned</b> <span class="hint">- class removed or not set</span></div>` +
     orphans.map(s => spellLineHtml(s)).join("") : "";
   if (!casterHtml && !grantedHtml && !orphanHtml) {
-    el.innerHTML = concentrationBannerHtml() || "<div class='hint'>Add a spellcasting class in the Character module to track spells here.</div>";
+    el.innerHTML = concentrationBannerHtml() || "<div class='hint'>No spellcasting classes.</div>";
     return;
   }
   el.innerHTML = concentrationBannerHtml() + casterHtml + grantedHtml + orphanHtml;
@@ -150,9 +150,9 @@ function toggleSpell2Detail(link) {
   const lib = findLibSpellByName(s.name);
   const d = document.createElement("div"); d.className = "feat-detail";
   if (!lib) {
-    d.innerHTML = `<div class="hint">No spell named "${escapeHtml(s.name)}" found in the Spell Library — load/import it above to see its description.</div>`;
+    d.innerHTML = `<div class="hint">No spell named "${escapeHtml(s.name)}" found in the Spell Library.</div>`;
   } else {
-    const comp = ["v", "s", "m"].filter(k => lib.comp && lib.comp[k]).map(k => k.toUpperCase()).join("") || "—";
+    const comp = ["v", "s", "m"].filter(k => lib.comp && lib.comp[k]).map(k => k.toUpperCase()).join("") || "-";
     const meta = ["Level " + lib.level, lib.school, lib.cast ? ("Cast: " + lib.cast) : "", "Comp: " + comp,
       lib.conc ? "Concentration" : "", lib.ritual ? "Ritual" : "", lib.save ? (lib.save + " save") : "", lib.attack ? "spell attack" : ""].filter(Boolean).join(" · ");
     d.innerHTML = `<div class="hint">${meta}</div><div>${renderInlineSpellText(lib.rawText, lib.name)}</div>` +
@@ -200,7 +200,7 @@ function renderInlineSpellText(raw, spellName) {
   const nodes = expandAtkPhrases(splitSpellTags(raw));
   return nodes.map(n => {
     if (n.type === "dice") return `<a class="dice-roll" data-dice="${escapeHtml(n.value)}" data-rolllabel="${escapeHtml(spellName)} damage">${escapeHtml(n.value)}</a>`;
-    if (n.type === "hit") { const b = Number(n.value) || 0; return `<a class="dice-roll" data-dice="1d20${b >= 0 ? "+" + b : b}" data-rolllabel="${escapeHtml(spellName)} attack">${b >= 0 ? "+" + b : b} to hit</a>`; }
+    if (n.type === "hit") { const b = Number(n.value) || 0; return `<a class="roll mon-roll" data-attack="true" data-bonus="${b}" data-rolllabel="${escapeHtml(spellName)} attack">${b >= 0 ? "+" + b : b} to hit</a>`; }
     if (n.type === "atk") return `<a class="atk-roll" data-rolllabel="${escapeHtml(spellName)} attack">${escapeHtml(n.value)}</a>`;
     return escapeHtml(n.value).replace(/\n/g, "<br>");
   }).join("");

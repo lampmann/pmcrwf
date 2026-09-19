@@ -352,7 +352,7 @@ registerEffects({
     ],
     "unsupported": [
       {
-        "reason": "each spell can also be cast once without a slot, recharging on a long rest — at-will/daily casting not modeled here",
+        "reason": "each spell can also be cast once without a slot, recharging on a long rest - at-will/daily casting not modeled here",
         "tags": ["spellcasting", "resource"]
       }
     ]
@@ -1181,7 +1181,7 @@ registerEffects({
     "uses": { "max": 1, "per": "lr" },
     "unsupported": [
       {
-        "reason": "telepathic communication with any creature you can see within 60 feet — no telepathy/communication model",
+        "reason": "telepathic communication with any creature you can see within 60 feet - no telepathy/communication model",
         "tags": ["telepathy", "communication"]
       }
     ]

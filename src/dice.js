@@ -3,6 +3,7 @@
    ============================================================ */
 function rollDie(sides) { return 1 + Math.floor(Math.random() * sides); }
 let _d20kept = []; // kept d20 faces from the last evalExpr — used for crit detection (only the d20 crits)
+let rollSequence = 0; // distinguishes expressions inside a routine or companion stack
 
 function parseSel(s) {
   if (!s) return { type: "=", n: NaN };
@@ -56,7 +57,7 @@ function dropFlagsFor(values, ops, sides) {
   return dice.map(d => d.dropped);
 }
 
-function evalDice(tok, termIdx) {
+function evalDice(tok, termIdx, rollId) {
   const mm = tok.match(/^(\d*)d(\d+)(.*)$/i);
   const count = mm[1] === "" ? 1 : +mm[1], sides = +mm[2], rest = mm[3] || "";
   // Hard cap on dice per term, so a typo ("1000d6") can't lock the tab up. It is reported in the
@@ -84,7 +85,7 @@ function evalDice(tok, termIdx) {
   const selOps = (rest.match(/(kh|kl|ph|pl|k|p)([<>]?\d+|h\d+|l\d+)?/gi) || []).join("");
   const face = d => {
     const cls = "die" + (d.dropped ? " die-dropped" : "") + (d.rer || d.exp ? " die-note" : "");
-    const inner = `<span class="${cls}" data-sides="${sides}" data-final="${d.v}" data-term="${termIdx == null ? "" : termIdx}"${selOps ? ` data-ops="${escapeHtml(selOps)}"` : ""}>${d.v}</span>`;
+    const inner = `<span class="${cls}" data-sides="${sides}" data-final="${d.v}" data-term="${termIdx == null ? "" : termIdx}"${rollId ? ` data-roll="${rollId}"` : ""}${selOps ? ` data-ops="${escapeHtml(selOps)}"` : ""}>${d.v}</span>`;
     return (d.rer || d.exp) ? "<b>" + inner + "</b>" : inner;
   };
   const render = escapeHtml(tok) + " (" + dice.map(face).join(", ") + ")"
@@ -93,6 +94,7 @@ function evalDice(tok, termIdx) {
 }
 function evalExpr(expr) {
   _d20kept = [];
+  const rollId = ++rollSequence;
   const annotations = [];
   expr = expr.replace(/\[[^\]]*\]/g, m => { annotations.push(m.slice(1, -1)); return ""; });
   const re = /(\d*d\d+[hlkproaeim<>\d]*|\d+|[+\-*()])/gi;
@@ -105,7 +107,7 @@ function evalExpr(expr) {
       ops.push(t); display.push(" " + t + " ");
     } else if (t === "(") { ops.push(t); display.push("("); }
     else if (t === ")") { while (ops.length && ops[ops.length - 1] !== "(") out.push(ops.pop()); ops.pop(); display.push(")"); }
-    else if (/d/i.test(t)) { const r = evalDice(t, termIdx++); out.push(r); display.push(r.render); }
+    else if (/d/i.test(t)) { const r = evalDice(t, termIdx++, rollId); out.push(r); display.push(r.render); }
     else { out.push({ value: Number(t) }); display.push(t); }
   }
   while (ops.length) out.push(ops.pop());
@@ -130,7 +132,7 @@ function evalExpr(expr) {
     t.coeff = run() - value;
     t.value = was;
   });
-  return { value, display: display.join(""), annotations, terms, coeffs: terms.map(t => t.coeff) };
+  return { value, display: display.join(""), annotations, terms, coeffs: terms.map(t => t.coeff), d20: _d20kept.slice(), rollId };
 }
 
 /* split "1d20+5 adv Attack!" -> {expr, mode, label} (space at bracket-depth 0 ends the expression) */
@@ -168,11 +170,26 @@ function fmtAnns(anns) { return anns.length ? " <i>[" + anns.map(escapeHtml).joi
    than faked — see animateRoll in roll-anim.js. */
 function totalHtml(rolled) {
   const coeffs = (rolled.coeffs || []).join(",");
-  return `<b class="roll-total" data-final="${rolled.value}"${coeffs ? ` data-coeffs="${coeffs}"` : ""}>${rolled.value}</b>`;
+  return `<b class="roll-total" data-final="${rolled.value}"${rolled.rollId ? ` data-roll="${rolled.rollId}"` : ""}${coeffs ? ` data-coeffs="${coeffs}"` : ""}>${rolled.value}</b>`;
 }
 function fmtLabel(label, fallback) { return escapeHtml(label || fallback); }
 
-/* `opts` carries what a feature effect can change about a d20 roll itself rather than its total:
+function criticalMessage(d20, min = 20) {
+  if (d20.length !== 1) return "";
+  if (d20[0] >= min) return "Critical Success!";
+  if (d20[0] === 1) return "Critical Failure!";
+  return "";
+}
+// Scope each attack's dice and badge together, including separate attacks in a routine or stack.
+// Noncritical attacks still carry a hidden badge so a tumbling 20 can show its current status.
+function attackRollDisplay(rolled, min = 20) {
+  const threshold = Number(min) || 20;
+  const message = criticalMessage(rolled.d20 || [], threshold);
+  return `<span class="attack-roll" data-critmin="${threshold}">${rolled.display} <b class="roll-critical"${message ? "" : " hidden"}>${message}</b></span>`;
+}
+
+/* `opts` marks attack rolls and carries changes to the d20 itself rather than its total:
+     attack   - only attacks show critical success/failure messages.
      dieFloor — "treat a roll of N or lower as N" (Reliable Talent). Expressed with the roller's own
                 `mi` operator so it shows in the displayed dice rather than silently adjusting a total.
      critMin  — a widened crit range (Improved Critical's 19-20).
@@ -184,10 +201,8 @@ function runRoll(s, forceMode, opts) {
   if (floor > 1) expr = expr.replace(/\b(\d*)d20\b/i, (m0, n) => `${n || 1}d20mi${floor}`);
   const rolled = evalExpr(applyMode(expr, mode));
   const modeTag = mode === "normal" ? "" : ` <i>(${mode})</i>`;
-  const critMin = (opts && opts.critMin) || 20;
-  let crit = "";  // only the kept d20 can crit (deviates from 5eCrawler, which crits off any die's max/min)
-  if (_d20kept.length === 1) { if (_d20kept[0] >= critMin) crit = "  <b>Critical Success!</b>"; else if (_d20kept[0] === 1) crit = "  <b>Critical Failure!</b>"; }
-  log(`${totalHtml(rolled)} &larr; ${fmtLabel(label, "roll")}${modeTag}: ${rolled.display}${fmtAnns(rolled.annotations)}${crit}`);
+  const display = opts && opts.attack ? attackRollDisplay(rolled, opts.critMin) : rolled.display;
+  log(`${totalHtml(rolled)} &larr; ${fmtLabel(label, "roll")}${modeTag}: ${display}${fmtAnns(rolled.annotations)}`);
   return rolled.value;
 }
 function runMultiroll(n, s) {
@@ -250,20 +265,20 @@ function rollInfo(btn) {
   }
   // inline "spell attack" phrase inside an expanded spell description (see renderInlineSpellText)
   if (btn.classList.contains("atk-roll")) {
-    return { bonus: spellAttackBonus(), dice: spellAttackDice(), label: (btn.dataset.rolllabel || "spell attack") + effAnnotations("spellatk"),
+    return { attack: true, bonus: spellAttackBonus(), dice: spellAttackDice(), label: (btn.dataset.rolllabel || "spell attack") + effAnnotations("spellatk"),
       mode: (typeof conditionMode === "function") ? combineModes(effMode("spellatk"), conditionMode("spellatk")) : effMode("spellatk") };
   }
   // weapon attack to-hit button (Attacks module) — bonus/dice/label/mode are all set on the button by
   // attacks.js, which is what already folds that row's feature effects (attack-hit) into them
   if (btn.classList.contains("wpn-roll")) {
-    return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack",
+    return { attack: true, bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack",
       mode: btn.dataset.mode || null, critMin: Number(btn.dataset.critmin) || 20 };
   }
   // a companion/summon's own d20 roll — attack, save, skill or initiative (companions.js). Same
   // button contract as .wpn-roll above, but the numbers come from a monster statblock rather than
   // from your sheet, so no feature effects apply and there's never a forced mode.
   if (btn.classList.contains("mon-roll")) {
-    return { bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "roll", mode: null };
+    return { attack: btn.dataset.attack === "true", bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "roll", mode: null };
   }
   return null;
 }
@@ -274,7 +289,7 @@ function fireRoll(btn, mode) {
   // advantage); an effect wins only when the user didn't ask for anything ("normal" from a plain click).
   const forced = (mode && mode !== "normal") ? mode : (info.mode || undefined);
   const value = runRoll(`1d20${info.bonus >= 0 ? "+" + info.bonus : info.bonus}${info.dice || ""} ${info.label}`, forced,
-    { dieFloor: info.dieFloor, critMin: info.critMin });
+    { dieFloor: info.dieFloor, critMin: info.critMin, attack: info.attack });
   LAST_D20_ROLL = { key: btn.dataset.rollCheck || null, value };
   // Guidance/Resistance are one-shot: the dice were already folded into the expression above (via
   // checkDice), so this only marks them used. Here rather than in rollInfo() because that also runs
