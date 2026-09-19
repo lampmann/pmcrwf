@@ -5,10 +5,10 @@ function buildAbilities() {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${a.name}</td>
       <td><input type="text" inputmode="numeric" class="num" data-persist readonly id="score-${a.key}" value="10"
-            title="your base score, set at character creation and by level-up \u2014 everything since goes in Misc"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
+            aria-label="${a.name} base score"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
       <td><input type="text" data-persist class="score-misc" id="scoremisc-${a.key}"
             placeholder="+2 belt, -1 curse"
-            title="signed terms, each optionally labelled with what it's from \u2014 e.g. &quot;+4-1&quot; or &quot;+2 belt, -1 curse&quot;"></td>
+            aria-label="${a.name} modifiers"></td>
       <td class="derived" id="mod-${a.key}">+0</td>`;
     tb.appendChild(tr);
   });
@@ -131,7 +131,7 @@ function buildSkills() {
     const slug = name.toLowerCase().replace(/[^a-z]/g, "");
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td class="skill-grip" title="drag to reorder">&#8942;&#8942;</td>
+      <td class="skill-grip" aria-label="drag to reorder">&#8942;&#8942;</td>
       <td><input type="checkbox" data-persist id="skillprof-${slug}"></td>
       <td><input type="checkbox" data-persist id="skillexp-${slug}"></td>
       <td>${name} <span class="hint">(${ab})</span></td>

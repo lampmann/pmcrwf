@@ -161,11 +161,11 @@ function slotCellHtml(slot) {
   const filled = !!it;
   const twoH = filled && isTwoHanded(it.name);
   return `<div class="eq-slot${filled ? " filled" : ""}" data-slot="${slot.key}" tabindex="0"
-      title="${filled ? `${escapeHtml(it.name)} — click to change, × to remove` : `${slot.label} — click to equip something`}">
+      role="button" aria-label="${escapeHtml(slot.label)}: ${filled ? escapeHtml(it.name) : "empty"}">
     <div class="eq-slot-label hint">${escapeHtml(slot.label)}${slot.kind === "hand-lesser" ? " <span title=\"can hold objects, but not weapons or shields\">*</span>" : ""}</div>
     <div class="eq-slot-item">${filled ? escapeHtml(it.name) : "<span class='hint'>empty</span>"}</div>
     ${twoH ? `<div class="hint">two-handed</div>` : ""}
-    ${filled ? `<button type="button" class="eq-slot-x" data-unslot="${slot.key}" title="unequip">×</button>` : ""}
+    ${filled ? `<button type="button" class="eq-slot-x" data-unslot="${slot.key}" aria-label="unequip">×</button>` : ""}
   </div>`;
 }
 
@@ -175,10 +175,7 @@ function renderEquipSlots() {
   const slots = activeSlots();
   el.innerHTML =
     `<div class="eq-doll">${slots.map(slotCellHtml).join("")}</div>
-     <div class="hint">Drag an item from the list below onto a slot, or click a slot to pick one.
-       One of each per PHB p141 — but every picker has a <b>show everything</b> toggle, because the same
-       page says to use common sense and allow exceptions.
-       <label style="margin-left:.5rem"><input type="checkbox" id="eq-extra-arms"${extraArmsEnabled() ? " checked" : ""}${/thri-?kreen/i.test((($("char-race")||{}).value||"")) ? " disabled" : ""}> extra arms</label></div>`;
+     <div class="hint"><label style="margin-left:.5rem"><input type="checkbox" id="eq-extra-arms"${extraArmsEnabled() ? " checked" : ""}${/thri-?kreen/i.test((($("char-race")||{}).value||"")) ? " disabled" : ""}> extra arms</label></div>`;
 }
 
 /* The picker. Same popup idiom as the combat tracker's menus. */
@@ -221,7 +218,7 @@ function paintEquipPicker(anchor) {
        </div>`).join("")
       : `<div class="cbt-item disabled"><span class="hint">${EQ_PICKER.showAll ? "nothing in your inventory" : "nothing in your inventory fits this slot"}</span></div>`) +
     `<div class="cbt-item" data-eqall="1"><span>${EQ_PICKER.showAll ? "☑" : "☐"} show everything</span>
-       <span class="hint">PHB p141 allows exceptions</span></div>`;
+       </div>`;
 
   if (anchor) {
     const r = anchor.getBoundingClientRect();

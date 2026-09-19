@@ -379,9 +379,9 @@ function renderItemResults() {
     const ban = (typeof banNote === "function") ? banNote("item", it.name, it.source) : null;
     const val = itemValueGp(it), ruled = itemValueRuled(it);
     const valTitle = ruled ? "priced by this campaign's House Rules"
-      : (it.valueDefaulted ? "estimated by rarity — no official price in the source data" : "");
+      : (it.valueDefaulted ? "estimated by rarity - no official price in the source data" : "");
     return `<tr${ban ? ' class="lib-banned"' : ""}>
-      <td><button class="itm-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` title="${isGroup ? `${it.name} is a category — pick which one you actually have` : "add to inventory"}"`}>${isGroup ? "&hellip;" : "+"}</button></td>
+      <td><button class="itm-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` aria-label="${isGroup ? "Choose item" : "Add to inventory"}"`}>${isGroup ? "&hellip;" : "+"}</button></td>
       <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
@@ -390,7 +390,7 @@ function renderItemResults() {
       <td class="hint">${it.source}</td>
     </tr>`;
   }).join("");
-  el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more — narrow your search</div>` : "");
+  el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
 }
 function toggleItemDetail(link) {
   const tr = link.closest("tr"), next = tr.nextElementSibling;
@@ -404,7 +404,7 @@ function toggleItemDetail(link) {
 /* A parsed item's group members, defensively.
 
    ITEM_LIB_SCHEMA guards the cache against exactly this — a library parsed by an older build won't
-   have `groupItems` at all — but a version bump only takes effect once the page reloads and
+   have `groupItems` at all - but a version bump only takes effect once the page reloads and
    re-imports, and reading the field directly meant a stale cache didn't degrade, it threw out of
    renderItemResults() and took the whole Equipment Library UI with it. A missing field should cost
    you the category-expansion button, not the panel. */
@@ -428,7 +428,7 @@ function addItemFromLib(key, btn) {
     return { name: n, key: rec ? (rec.name + "|" + rec.source) : "", known: !!rec };
   });
   const row = document.createElement("tr"); row.className = "itm-group-row";
-  row.innerHTML = `<td></td><td colspan="6"><div class="hint">${escapeHtml(it.name)} is a category — add the specific item you have:</div>
-    <div>${members.map(m => `<button class="itm-group-pick" data-name="${escapeHtml(m.name)}"${m.known ? "" : ` title="not in the loaded library — added by name only"`}>${escapeHtml(m.name)}${m.known ? "" : " *"}</button>`).join(" ")}</div></td>`;
+  row.innerHTML = `<td></td><td colspan="6"><div class="hint">${escapeHtml(it.name)}:</div>
+    <div>${members.map(m => `<button class="itm-group-pick" data-name="${escapeHtml(m.name)}"${m.known ? "" : ` aria-label="not in the loaded library - added by name only"`}>${escapeHtml(m.name)}${m.known ? "" : " *"}</button>`).join(" ")}</div></td>`;
   tr.after(row);
 }

@@ -193,7 +193,7 @@ function recompute() {
     $("spell-dc").textContent = spellSaveDC();
     const ad = spellAttackDice();
     $("spell-atk").textContent = sign(spellAttackBonus()) + (ad ? " " + ad : "");
-  } else { $("spell-dc").textContent = "—"; $("spell-atk").textContent = "—"; }
+  } else { $("spell-dc").textContent = "-"; $("spell-atk").textContent = "-"; }
 
   $("hp-max").textContent = String(maxHP());
   /* Current HP is deliberately NOT clamped here. recompute() runs on every keystroke, so a max that

@@ -82,7 +82,7 @@
     const on = !!state.collapsed[key(m)];
     m.classList.toggle("lay-collapsed", on);
     const btn = m.querySelector(":scope > h2 > .lay-collapse-btn");
-    if (btn) { btn.textContent = on ? "▸" : "▾"; btn.title = on ? "expand" : "collapse"; btn.setAttribute("aria-expanded", String(!on)); }
+    if (btn) { btn.textContent = on ? "▸" : "▾"; btn.setAttribute("aria-label", on ? "Expand module" : "Collapse module"); btn.setAttribute("aria-expanded", String(!on)); }
     /* A collapsed module's height comes from its (now-hidden) content normally; if it was ever
        manually resized in Free mode it also carries an explicit inline height that content-hiding
        alone can't shrink. So each state gets its own remembered height: folding drops to `hc` (or
@@ -359,7 +359,7 @@
     if (byId("lay-edge")) byId("lay-edge").checked = state.snapEdge;
     if (byId("lay-gridsize")) byId("lay-gridsize").value = state.grid;
   }
-  function updateHint() { const el = byId("lay-hint"); if (el) el.textContent = state.free ? "— drag anywhere to move (drag-box to multi-select); edges/corners resize" : (state.activated ? "— arrangement kept; enable Free to edit" : ""); }
+  function updateHint() { const el = byId("lay-hint"); if (el) el.textContent = state.free ? "Editing layout" : ""; }
   function buildBar() {
     if (byId("lay-bar")) return;
     const bar = document.createElement("div"); bar.id = "lay-bar";
@@ -371,8 +371,7 @@
       <button id="lay-reset">reset</button>
       <button id="lay-save">save file</button>
       <label>load <input type="file" id="lay-load" accept="application/json" style="width:8.5rem"></label>
-      <span class="hint" id="lay-hint"></span>
-      <span class="hint">Click the &#9662; next to a module's title to collapse it &mdash; the gap closes up automatically.</span>`;
+      <span class="hint" id="lay-hint"></span>`;
     const c = container(); c.parentNode.insertBefore(bar, c);
     syncControls();
     byId("lay-free").addEventListener("change", e => { state.free = e.target.checked; apply(); save(); updateHint(); });

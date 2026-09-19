@@ -25,7 +25,7 @@ registerEffects({
     // layer's own contribution*, not the combined final AC (add(17) would double
     // up with armorClassAuto()'s already-computed base) — there's no "set/replace
     // the base formula" op yet, so this stays unsupported.
-    unsupported: [{ reason: "base AC 17, no DEX — replaces the whole AC formula rather than adding to it; no override/replace op exists yet", tags: ["ac"] }],
+    unsupported: [{ reason: "base AC 17, no DEX - replaces the whole AC formula rather than adding to it; no override/replace op exists yet", tags: ["ac"] }],
   },
 
   "race|tortle|shell defense": {
@@ -36,7 +36,7 @@ registerEffects({
       { target: "save-con", op: "adv", activation: { kind: "toggle", id: "shell", label: "In Shell" } },
       { target: "save-dex", op: "dis", activation: { kind: "toggle", id: "shell", label: "In Shell" } },
     ],
-    unsupported: [{ reason: "while in shell: prone, speed 0, can't take reactions, only a bonus action to emerge — not modeled", tags: ["condition", "speed", "reaction"] }],
+    unsupported: [{ reason: "while in shell: prone, speed 0, can't take reactions, only a bonus action to emerge - not modeled", tags: ["condition", "speed", "reaction"] }],
   },
 
   // ----- Troglodyte -----

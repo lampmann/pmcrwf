@@ -86,8 +86,62 @@ const server = http.createServer((req, res) => {
       delete document.visibilityState;
     });
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('charsheet-roster')).chars.find(c => c.id === ROSTER.activeId).state.fields['char-name']), 'Hidden save');
+
+    await page.waitForFunction(() => document.querySelector('#theme-select').options.length === 5);
+    assert.deepEqual(await page.locator('#theme-select option').allTextContents(),
+      ['Default', 'Solarized Light', 'Solarized Dark', 'Dracula Light', 'Dracula Dark']);
+    const palettes = [
+      ['solarized-light.css', 'rgb(253, 246, 227)', 'light'],
+      ['solarized-dark.css', 'rgb(0, 43, 54)', 'dark'],
+      ['dracula-light.css', 'rgb(255, 251, 235)', 'light'],
+      ['dracula-dark.css', 'rgb(40, 42, 54)', 'dark'],
+      ['', 'rgb(255, 255, 255)', 'light'],
+    ];
+    for (const [theme, background, scheme] of palettes) {
+      await page.locator('#theme-select').selectOption(theme);
+      await page.waitForFunction(bg => getComputedStyle(document.body).backgroundColor === bg, background);
+      assert.equal(await page.evaluate(() => getComputedStyle(document.body).colorScheme), scheme);
+      const shadow = await page.locator('.module').first().evaluate(el => getComputedStyle(el).boxShadow);
+      assert.notEqual(shadow, 'none');
+      assert.equal(await page.locator('.module').first().evaluate(el => {
+        el.parentElement.classList.add('lay-free'); el.classList.add('lay-dragging');
+        const shadow = getComputedStyle(el).boxShadow;
+        el.parentElement.classList.remove('lay-free'); el.classList.remove('lay-dragging'); return shadow;
+      }), shadow);
+    }
+    await page.locator('#theme-select').selectOption('solarized-dark.css');
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#theme-select').value === 'solarized-dark.css');
+    await page.evaluate(() => localStorage.setItem('charsheet-theme', 'blood-moon-gothic.css'));
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#theme-select').options.length === 5);
+    assert.equal(await page.locator('#theme-select').inputValue(), '');
+    assert.equal(await page.evaluate(() => localStorage.getItem('charsheet-theme')), null);
+    await page.emulateMedia({ media: 'print' });
+    assert.equal(await page.locator('.module').first().evaluate(el => getComputedStyle(el).boxShadow), 'none');
+    await page.emulateMedia({ media: 'screen' });
+    assert(!await page.locator('body').innerText().then(text => text.includes('\u2014')));
+
+    await page.addInitScript(() => {
+      for (const method of ['getItem', 'setItem', 'removeItem']) {
+        const original = Storage.prototype[method];
+        Storage.prototype[method] = function(key, ...args) {
+          if (key === 'charsheet-theme') throw new Error('Storage unavailable for test');
+          return original.call(this, key, ...args);
+        };
+      }
+    });
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#theme-select').options.length === 5);
+    await page.locator('#theme-select').selectOption('dracula-dark.css');
+    await page.waitForFunction(() => getComputedStyle(document.body).backgroundColor === 'rgb(40, 42, 54)');
+    await page.route('**/css/themes/index.json', route => route.fulfill({ status: 503, body: '' }));
+    await page.reload();
+    assert.equal(await page.locator('#theme-select').inputValue(), '');
+    assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(255, 255, 255)');
     assert.deepEqual(errors, []);
     console.log('Full app: import/rejection, reload persistence, export download, reset, delayed import switching, and hidden-tab save passed; no browser errors.');
+    console.log('Themes: all palettes, persistent and print shadows, saved selection, removed-theme fallback, unavailable storage, and manifest failure passed.');
     await context.close();
   } finally { await browser?.close(); server.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

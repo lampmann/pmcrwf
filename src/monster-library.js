@@ -419,7 +419,7 @@
     if (LOAD_STATE === "loaded") return Promise.resolve({ cached: true });
     if (_loadPromise) return _loadPromise;
     LOAD_STATE = "loading";
-    setStatus("loading the bestiary from data/ … (this one is big — ~9 MB)");
+    setStatus("loading the bestiary from data/ … (this one is big - ~9 MB)");
     _loadPromise = autoLoad().then(res => {
       LOAD_STATE = "loaded";
       setStatus(typeof autoStatusText === "function" ? autoStatusText(res, "monsters") : "");
@@ -428,7 +428,7 @@
       return res;
     }).catch(e => {
       LOAD_STATE = "idle"; _loadPromise = null;
-      setStatus("bestiary load failed — see the console, or import files manually below");
+      setStatus("bestiary load failed - see the console, or import files manually below");
       throw e;
     });
     return _loadPromise;
@@ -515,20 +515,20 @@
     if (!MON_LIB.length) {
       el.innerHTML = LOAD_STATE === "loading"
         ? "<div class='hint'>loading…</div>"
-        : "<div class='hint'>No bestiary loaded — click \"load from data/ folder\" above, or import files manually.</div>";
+        : "<div class='hint'>No bestiary loaded.</div>";
       return;
     }
     if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
     el.innerHTML = `<table class="spell-table"><tbody>${rows.map(rowHtml).join("")}</tbody></table>` +
-      (more ? `<div class='hint'>…and ${more} more — narrow your search</div>` : "");
+      (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
   }
   function rowHtml(m) {
     const key = escapeHtml(keyOf(m)).replace(/"/g, "&quot;");
     const size = (m.size || []).join("/");
     return `<tr>
-      <td><button class="mon-lib-add" data-key="${key}" title="add as a companion / summon">+</button></td>
-      <td class="c"><b>${escapeHtml(m.cr || "—")}</b></td>
-      <td class="nm"><a class="mon-name-link" data-key="${key}">${escapeHtml(m.name)}</a>${m.partial ? ` <span class="hint" title="this entry is a 5e.tools _copy whose template/spell-list modifications aren't applied — the base statblock is correct, but check the book for what the variant adds">*</span>` : ""}</td>
+      <td><button class="mon-lib-add" data-key="${key}" aria-label="add as a companion / summon">+</button></td>
+      <td class="c"><b>${escapeHtml(m.cr || "-")}</b></td>
+      <td class="nm"><a class="mon-name-link" data-key="${key}">${escapeHtml(m.name)}</a>${m.partial ? ` <span class="hint">*</span>` : ""}</td>
       <td class="hint">${escapeHtml(size)} ${escapeHtml(m.type)}</td>
       <td class="c hint">${m.ac == null ? "" : m.ac}</td>
       <td class="c hint">${m.hpAvg == null ? "" : m.hpAvg}</td>
@@ -547,7 +547,7 @@
       .replace(/\{@atk ([^}]+)\}/gi, (m, k) => k.split(",").map(x => ATK_KIND[x.trim()] || x.trim()).join(" or ") + ":")
       .replace(/\{@h\}/gi, "Hit: ")
       // renderInlineSpellText turns {@hit 4} into the link text "+4 to hit", and a statblock's own
-      // sentence already continues "… to hit, reach 5 ft." — drop the duplicate rather than the tag,
+      // sentence already continues "… to hit, reach 5 ft." - drop the duplicate rather than the tag,
       // so the number stays clickable.
       .replace(/\{@hit ([^}|]+)\}\s+to hit\b/gi, "{@hit $1}")
       // {@dc 11} is only the number; without this it reads "a 11 Strength saving throw"
@@ -583,19 +583,19 @@
   function entryBlock(title, list, m, ctx) {
     if (!list || !list.length) return "";
     return `<div style="margin-top:.3rem"><b><i>${title}</i></b></div>` + list.map(a =>
-      `<div><b>${escapeHtml(a.name)}${a.name ? "." : ""}</b> ${inlineText(a.raw, m.name + " — " + (a.name || title), ctx)}</div>`).join("");
+      `<div><b>${escapeHtml(a.name)}${a.name ? "." : ""}</b> ${inlineText(a.raw, m.name + " - " + (a.name || title), ctx)}</div>`).join("");
   }
   function statblockHtml(m, ctx) {
     const meta = [(m.size || []).join("/"), m.type + ((m.typeTags || []).length ? " (" + m.typeTags.join(", ") + ")" : ""), m.alignment].filter(Boolean).join(" ");
-    const hp = m.hpSpecial ? m.hpSpecial : (m.hpAvg == null ? "—" : m.hpAvg + (m.hpFormula ? ` (${m.hpFormula})` : ""));
+    const hp = m.hpSpecial ? m.hpSpecial : (m.hpAvg == null ? "-" : m.hpAvg + (m.hpFormula ? ` (${m.hpFormula})` : ""));
     const saves = Object.entries(m.save || {}).map(([k, v]) => capWord(k) + " " + v).join(", ");
     const skills = Object.entries(m.skill || {}).map(([k, v]) => capWord(k) + " " + v).join(", ");
     const senses = (m.senses || []).concat(m.passive != null ? ["passive Perception " + m.passive] : []).join(", ");
     const spellBlocks = (m.spellcasting || []).map(sc =>
-      `<div style="margin-top:.3rem"><b>${escapeHtml(sc.name)}.</b> ${inlineText(sc.raw, m.name + " — " + sc.name, ctx)}` +
+      `<div style="margin-top:.3rem"><b>${escapeHtml(sc.name)}.</b> ${inlineText(sc.raw, m.name + " - " + sc.name, ctx)}` +
       sc.lists.map(l => `<div><i>${escapeHtml(l.label)}:</i> ${escapeHtml(l.spells.join(", "))}</div>`).join("") + `</div>`).join("");
     return `<div class="hint">${escapeHtml(meta)}${m.page ? " · p." + m.page : ""}${m.source ? " · " + escapeHtml(m.source) : ""}</div>` +
-      (m.partial ? `<div class="hint" style="color:var(--danger)">Derived from ${escapeHtml(m.copiedFrom)} via a 5e.tools _copy whose template/spell-list changes this sheet doesn't apply — the base statblock below is right, but check the book for what this variant adds.</div>` : "") +
+      (m.partial ? `<div class="hint" style="color:var(--danger)">Derived from ${escapeHtml(m.copiedFrom)} via a 5e.tools _copy whose template/spell-list changes this sheet doesn't apply - the base statblock below is right, but check the book for what this variant adds.</div>` : "") +
       blockLine("Armor Class", escapeHtml(m.acText)) +
       blockLine("Hit Points", escapeHtml(String(hp))) +
       blockLine("Speed", escapeHtml(m.speedText)) +
@@ -608,14 +608,14 @@
       blockLine("Condition Immunities", escapeHtml((m.conditionImmune || []).join(", "))) +
       blockLine("Senses", escapeHtml(senses)) +
       blockLine("Languages", escapeHtml((m.languages || []).join(", "))) +
-      blockLine("Challenge", escapeHtml(m.cr || "—") + (m.xp != null ? ` (${m.xp.toLocaleString()} XP)` : "")) +
+      blockLine("Challenge", escapeHtml(m.cr || "-") + (m.xp != null ? ` (${m.xp.toLocaleString()} XP)` : "")) +
       entryBlock("Traits", m.traits, m, ctx) + spellBlocks +
       entryBlock("Actions", m.actions, m, ctx) +
       entryBlock("Bonus Actions", m.bonusActions, m, ctx) +
       entryBlock("Reactions", m.reactions, m, ctx) +
       (m.legendary && m.legendary.length ? `<div style="margin-top:.3rem"><b><i>Legendary Actions</i></b></div>` +
         (m.legendaryHeader ? `<div class="hint">${escapeHtml(m.legendaryHeader)}</div>` : "") +
-        m.legendary.map(a => `<div><b>${escapeHtml(a.name)}.</b> ${inlineText(a.raw, m.name + " — " + a.name, ctx)}</div>`).join("") : "");
+        m.legendary.map(a => `<div><b>${escapeHtml(a.name)}.</b> ${inlineText(a.raw, m.name + " - " + a.name, ctx)}</div>`).join("") : "");
   }
   function toggleDetail(link) {
     const tr = link.closest("tr"), next = tr.nextElementSibling;
@@ -655,7 +655,6 @@
     $("mon-lib-toggle").addEventListener("click", () => {
       const open = $("mon-library-body").style.display === "none";
       $("mon-library-body").style.display = open ? "" : "none";
-      $("mon-lib-collapsed-hint").style.display = open ? "none" : "";
       if (open) {
         ensureBestiary();
         $("mon-search").focus();

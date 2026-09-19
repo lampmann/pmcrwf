@@ -70,7 +70,7 @@
   function attackLabel(atkId) {
     const a = attackChoices().find(x => x.id === atkId);
     return a ? { name: a.name, detail: `to hit ${a.bonus >= 0 ? "+" + a.bonus : a.bonus}${a.dice || ""}${a.dmg ? ", dmg " + a.dmg : ""}` }
-             : { name: "(deleted attack)", detail: "this attack no longer exists — remove the step or re-add it" };
+             : { name: "(deleted attack)", detail: "this attack no longer exists - remove the step or re-add it" };
   }
 
   /* ---------- rendering ---------- */
@@ -90,7 +90,7 @@
         <select class="rt-sv-abil" data-rid="${rt.id}" data-i="${i}">
           ${ABILS.map(([v, l]) => `<option value="${v}"${st.abil === v ? " selected" : ""}>${l}</option>`).join("")}
         </select> save
-        <label class="hint" title="use the sheet's own spell save DC, so it follows your stats">
+        <label class="hint" aria-label="use the sheet's own spell save DC, so it follows your stats">
           <input type="checkbox" class="rt-sv-auto" data-rid="${rt.id}" data-i="${i}"${dcAuto ? " checked" : ""}> auto DC
         </label>
         <input type="number" class="tiny rt-sv-dc" data-rid="${rt.id}" data-i="${i}" value="${dcNow}"${dcAuto ? " disabled" : ""}>
@@ -105,12 +105,12 @@
     const opts = attackChoices().map(a => `<option value="${esc(a.id)}">${escapeHtml(a.name)}</option>`).join("");
     const steps = rt.steps.length
       ? `<table><tbody>${rt.steps.map((st, i) => stepRowHtml(rt, st, i)).join("")}</tbody></table>`
-      : `<div class="hint">No steps yet — add an attack or a save-based effect below.</div>`;
+      : `<div class="hint">No steps.</div>`;
     return `<fieldset data-rid="${rt.id}">
       <legend>
         <input type="text" class="rt-name" data-rid="${rt.id}" value="${esc(rt.name)}" placeholder="Routine name" style="width:12rem">
-        <button class="roll rt-run" data-rid="${rt.id}" title="roll every step (Shift = advantage, Ctrl = disadvantage on all attacks)">▶ run</button>
-        <button class="rowbtn rt-del" data-rid="${rt.id}" title="delete this routine">x</button>
+        <button class="roll rt-run" data-rid="${rt.id}">▶ run</button>
+        <button class="rowbtn rt-del" data-rid="${rt.id}" aria-label="delete this routine">x</button>
       </legend>
       ${steps}
       <div style="margin-top:.3rem">
@@ -124,12 +124,12 @@
   function renderRoutines() {
     const host = $("routines-list"); if (!host) return;
     host.innerHTML = ROUTINES.length ? ROUTINES.map(routineHtml).join("")
-      : `<div class="hint">No routines yet. Click <b>+ add routine</b>, then add steps — e.g. 2× Halberd plus 1× Halberd (Polearm Master bonus action).</div>`;
+      : `<div class="hint">No routines.</div>`;
   }
 
   /* ---------- running ---------- */
   function runRoutine(rt, mode) {
-    const detailLines = [];      // individual swing/save rolls — shown collapsed
+    const detailLines = [];      // individual swing/save rolls - shown collapsed
     const hits = [];             // {total, damage} per attack swing, for the AC-range table
     let saveFailDamage = 0, anySave = false;
 
@@ -138,8 +138,8 @@
         const n = Math.max(1, Math.min(20, Number(st.count) || 1));
         for (let i = 0; i < n; i++) {
           const res = (typeof rollAttackForRoutineById === "function") ? rollAttackForRoutineById(st.atkId, mode) : null;
-          if (!res) { detailLines.push(`  <i>(skipped a step — its attack no longer exists)</i>`); break; }
-          detailLines.push(`  <b>${escapeHtml(res.name)}</b>${n > 1 ? ` #${i + 1}` : ""} — ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
+          if (!res) { detailLines.push(`  <i>(skipped a step - its attack no longer exists)</i>`); break; }
+          detailLines.push(`  <b>${escapeHtml(res.name)}</b>${n > 1 ? ` #${i + 1}` : ""} - ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
           hits.push({ total: res.hitTotal, damage: res.damage });
         }
       } else {
@@ -147,7 +147,7 @@
         const dc = st.dcMode === "custom" ? (Number(st.dc) || 0) : (typeof spellSaveDC === "function" ? spellSaveDC() : 0);
         const name = st.name || "Save effect";
         const roll = (typeof diceRollExpr === "function") ? diceRollExpr("1d20", "normal") : { value: 0, display: "" };
-        const threshold = dc - roll.value;   // succeed if bonus >= threshold — same math as bonus+roll >= dc
+        const threshold = dc - roll.value;   // succeed if bonus >= threshold - same math as bonus+roll >= dc
         let failDmg = 0, succDmg = 0, dmgTxt = "";
         if (st.dmg && st.dmg.trim() && typeof diceRollExpr === "function") {
           const dm = diceRollExpr(st.dmg.trim(), "normal");
@@ -156,12 +156,12 @@
           dmgTxt = ` · ${totalHtml(dm)} damage ← ${dm.display}`;
         }
         saveFailDamage += failDmg;
-        detailLines.push(`  <b>${escapeHtml(name)}</b> — target rolls <b>${roll.value}</b> ← ${roll.display} (DC ${dc} ${abilLabel(st.abil || "dex")} save)${dmgTxt}`);
-        detailLines.push(`    → <b>fail</b> at bonus ${signed(threshold - 1)} or lower, <b>succeed</b> at ${signed(threshold)} or greater — damage: <b>${failDmg}</b> on fail, <b>${succDmg}</b> on success`);
+        detailLines.push(`  <b>${escapeHtml(name)}</b> - target rolls <b>${roll.value}</b> ← ${roll.display} (DC ${dc} ${abilLabel(st.abil || "dex")} save)${dmgTxt}`);
+        detailLines.push(`    → <b>fail</b> at bonus ${signed(threshold - 1)} or lower, <b>succeed</b> at ${signed(threshold)} or greater - damage: <b>${failDmg}</b> on fail, <b>${succDmg}</b> on success`);
       }
     });
 
-    if (!hits.length && !detailLines.length) { log(`<b>${escapeHtml(rt.name || "Routine")}</b> — no steps to roll.`); return; }
+    if (!hits.length && !detailLines.length) { log(`<b>${escapeHtml(rt.name || "Routine")}</b> - no steps to roll.`); return; }
 
     const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
     let summaryHtml;

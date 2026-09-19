@@ -51,7 +51,7 @@
   // the former and not for the latter, and one attack name feeds both.
   const esc = v => escapeHtml(v || "");
   const signed = n => (n >= 0 ? "+" + n : "" + n);
-  const ABILS = [["str", "Str"], ["dex", "Dex"], ["con", "Con"], ["int", "Int"], ["wis", "Wis"], ["cha", "Cha"], ["fin", "Finesse"], ["", "—"]];
+  const ABILS = [["str", "Str"], ["dex", "Dex"], ["con", "Con"], ["int", "Int"], ["wis", "Wis"], ["cha", "Cha"], ["fin", "Finesse"], ["", "-"]];
   let idSeq = 0;
   const newId = () => "a" + (Date.now().toString(36)) + (++idSeq);
 
@@ -163,13 +163,13 @@
     tr.classList.toggle("atk-oversized", !!(over && over.disadvantage));
     tr.classList.toggle("atk-unusable", !!(over && over.unusable));
     const sizeSel = tr.querySelector(".atk-size");
-    if (sizeSel) sizeSel.title = (over && over.note) || "the size this weapon is made for — only set it for an oversized weapon";
+    if (sizeSel) sizeSel.title = (over && over.note) || "";
     const dmg = damageExpr(d), dmgBtn = tr.querySelector(".wpn-dmg");
     dmgBtn.dataset.expr = dmg;
     // Savage Attacks / Brutal Critical: dice added only on a crit. Carried on the button so the
     // crit path can pick them up without recomputing the row.
     dmgBtn.dataset.critdice = (d.fx && typeof effDice === "function") ? effDice("damage-crit") : "";
-    dmgBtn.textContent = dmg ? "dmg " + dmg : "dmg —";
+    dmgBtn.textContent = dmg ? "dmg " + dmg : "dmg -";
     dmgBtn.disabled = !dmg;
     paintFx(dmgBtn, d, "damage-bonus", "Damage");
     const cm = Number(hitBtn.dataset.critmin) || 20;
@@ -186,19 +186,13 @@
      how to present the result: a single attack logs one line, a routine collects many into one block. */
   function rollExpr(expr, mode) {
     const r = evalExpr(applyMode(expr, mode || "normal"));
-    return { value: r.value, display: r.display, coeffs: r.coeffs,
-             d20: (typeof _d20kept !== "undefined" ? _d20kept.slice() : []) };
+    return { value: r.value, display: r.display, coeffs: r.coeffs, rollId: r.rollId,
+             d20: r.d20 };
   }
   /* The crit threshold for this row. Improved Critical / Superior Critical widen it to 19 or 18; the
      engine keeps the lowest, and the row's fx flag gates it like every other effect read. */
   function critMinFor(d) { return (d.fx && typeof effCritMin === "function") ? effCritMin("attack-crit-range") : 20; }
   function isCrit(d20, min) { return d20.length === 1 && d20[0] >= (min || 20); }
-  function critNote(d20, min) {
-    if (d20.length !== 1) return "";
-    if (isCrit(d20, min)) return (min || 20) < 20 ? `  <b>Critical Success!</b> <i>(${min}-20)</i>` : "  <b>Critical Success!</b>";
-    if (d20[0] === 1) return "  <b>Critical Failure!</b>";
-    return "";
-  }
   /* Crit damage: double every dice term (the standard rule), then add whatever `damage-crit` grants —
      Savage Attacks and Brutal Critical add dice ONLY on a crit, which is why they can't live in the
      ordinary damage expression. Those extra dice are added once, not doubled: the feature already
@@ -219,7 +213,7 @@
     const hit = rollExpr(`1d20${signed(th.bonus)}${th.dice || ""}`, mode);
     const modeTag = (mode && mode !== "normal") ? ` <i>(${mode})</i>` : "";
     const crit = isCrit(hit.d20, cm);
-    const out = { hitText: `${totalHtml(hit)} to hit${modeTag} ← ${hit.display}${critNote(hit.d20, cm)}`, dmgText: "", damage: 0, crit };
+    const out = { hitText: `${totalHtml(hit)} to hit${modeTag} ← ${attackRollDisplay(hit, cm)}`, dmgText: "", damage: 0, crit };
     const de = damageExpr(d);
     if (de) {
       const expr = crit ? critDamageExpr(d, de) : de;
@@ -234,7 +228,7 @@
     const d = rowData(tr), res = rollAttackOnce(d, mode);
     // res.name is a user-typed field; the log stores its HTML and re-injects it on every load, so it
     // has to be escaped here (hitText/dmgText are engine-built markup and are already safe).
-    log(`<b>${esc(res.name)}</b> — ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
+    log(`<b>${esc(res.name)}</b> - ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
   }
 
   // doubles each dice term in a damage expression (e.g. "1d8+3" -> "(1d8+1d8)+3") for crit damage,
@@ -252,7 +246,7 @@
     // damage-crit dice reach a routine's swings too.
     const cm = critMinFor(d);
     const crit = isCrit(hit.d20, cm);
-    const out = { name, hitTotal: hit.value, isCrit: crit, hitText: `${totalHtml(hit)} to hit${modeTag} ← ${hit.display}${critNote(hit.d20, cm)}`, dmgText: "", damage: 0 };
+    const out = { name, hitTotal: hit.value, isCrit: crit, hitText: `${totalHtml(hit)} to hit${modeTag} ← ${attackRollDisplay(hit, cm)}`, dmgText: "", damage: 0 };
     const de = damageExpr(d);
     if (de) {
       const dm = rollExpr(crit ? critDamageExpr(d, de) : de, "normal");
@@ -270,9 +264,9 @@
       `<td><input type="text" class="atk-name" value="${esc(data.name)}" style="width:8rem" placeholder="Longsword"></td>
        <td><select class="atk-abil">${opts}</select></td>
        <td style="text-align:center"><input type="checkbox" class="atk-prof"${data.prof ? " checked" : ""}></td>
-       <td style="text-align:center"><input type="checkbox" class="atk-fx"${data.fx !== false ? " checked" : ""} title="apply feature effects (Sharpshooter, Rage, Divine Strike, …) to this attack"></td>
-       <td><select class="atk-size" title="the size this weapon is made for — only set it for an oversized weapon">${
-         [["", "—"], ["T", "T"], ["S", "S"], ["M", "M"], ["L", "L"], ["H", "H"], ["G", "G"]]
+       <td style="text-align:center"><input type="checkbox" class="atk-fx"${data.fx !== false ? " checked" : ""}></td>
+       <td><select class="atk-size">${
+         [["", "-"], ["T", "T"], ["S", "S"], ["M", "M"], ["L", "L"], ["H", "H"], ["G", "G"]]
            .map(([v, l]) => `<option value="${v}"${(data.size || "") === v ? " selected" : ""}>${l}</option>`).join("")}</select></td>
        <td><input type="text" class="atk-misc tiny" value="${esc(data.atkMisc)}" placeholder="+0"></td>
        <td><button class="roll wpn-roll">to hit</button></td>
@@ -280,7 +274,7 @@
        <td style="text-align:center"><input type="checkbox" class="atk-moddmg"${data.modDmg !== false ? " checked" : ""}></td>
        <td><input type="text" class="atk-dmgmisc tiny" value="${esc(data.dmgMisc)}" placeholder="+0"></td>
        <td><button class="roll wpn-dmg">dmg</button></td>
-       <td><button class="roll wpn-both" title="roll the attack and its damage together (Shift = advantage, Ctrl = disadvantage)">atk+dmg</button></td>
+       <td><button class="roll wpn-both">atk+dmg</button></td>
        <td><button class="rowbtn atk-del">x</button></td>`;
     $("attack-rows").appendChild(tr);
     updateRowDerived(tr);

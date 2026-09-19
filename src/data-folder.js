@@ -282,25 +282,17 @@ function renderDataBar() {
   const name = DATA_DIR ? (DATA_DIR.name || "your folder") : "";
   let html;
   if (DATA_DIR) {
-    html = `<span class="data-bar-ok">Game data: <b>${escapeHtml(name)}/</b> on your computer.</span>
-      <button type="button" id="data-bar-reload">reload it</button>
-      <button type="button" id="data-bar-forget">disconnect</button>`;
+    html = `<span class="data-bar-ok">Data: <b>${escapeHtml(name)}/</b></span>
+      <button type="button" id="data-bar-reload">Reload</button>
+      <button type="button" id="data-bar-forget">Disconnect</button>`;
   } else if (DATA_DIR_STATE === "needs-permission" || DATA_DIR_STATE === "denied") {
-    html = `<b>No game data loaded.</b> Your data folder is remembered, but the browser drops read
-      permission when it restarts.
-      <button type="button" id="data-bar-connect">Reconnect data folder</button>
-      <span class="hint">One click — you don't have to find it again.</span>`;
+    html = `<button type="button" id="data-bar-connect">Reconnect data folder</button>`;
   } else if (DATA_DIR_STATE === "unsupported") {
-    html = `<b>No game data loaded.</b> Spells, equipment, class features and monsters come from your
-      own copy of 5e.tools' <code>data/</code> folder, which this site does not host
-      (<a href="DOCS.md">why</a>). This browser can't connect a folder — that needs Chrome or Edge.
-      Until then, import files by hand from the picker inside each library.`;
+    html = `Import game data in each library, or connect a folder in Chrome or Edge.
+      <a href="DOCS.md#connecting-your-data-folder">Setup</a>`;
   } else {
-    html = `<b>No game data loaded.</b> Spells, equipment, class features and monsters come from your
-      own copy of 5e.tools' <code>data/</code> folder, which this site does not host
-      (<a href="DOCS.md">why</a>).
-      <button type="button" id="data-bar-connect">Connect data folder</button>
-      <span class="hint">Read-only, stays on your computer, remembered next time.</span>`;
+    html = `<button type="button" id="data-bar-connect">Connect data folder</button>
+      <a href="DOCS.md#connecting-your-data-folder">Setup</a>`;
   }
   el.innerHTML = html;
 }

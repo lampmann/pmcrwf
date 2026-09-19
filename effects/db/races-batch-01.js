@@ -66,7 +66,7 @@ registerEffects({
   // ===== UNSUPPORTED MECHANICS =====
   "race|aarakocra|talons": {
     name: "Talons", sv: 1,
-    unsupported: [{ reason: "natural unarmed strike damage die (1d6 + STR); an effect can't create an attack row — add one by hand", tags: ["attack", "damage"] }],
+    unsupported: [{ reason: "natural unarmed strike damage die (1d6 + STR); an effect can't create an attack row - add one by hand", tags: ["attack", "damage"] }],
   },
 
   "race|aarakocra|wind caller": {
@@ -123,7 +123,7 @@ registerEffects({
 
   "race|centaur|hooves": {
     name: "Hooves", sv: 1,
-    unsupported: [{ reason: "natural unarmed strike damage die (1d6 + STR); an effect can't create an attack row — add one by hand", tags: ["attack", "damage"] }],
+    unsupported: [{ reason: "natural unarmed strike damage die (1d6 + STR); an effect can't create an attack row - add one by hand", tags: ["attack", "damage"] }],
   },
 
   "race|deep gnome|gift of the svirfneblin": {

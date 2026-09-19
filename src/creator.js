@@ -244,7 +244,7 @@ function sourceFilterHtml(kind, lib) {
     <div>${chips}</div>
     <div><button type="button" class="cr-src-all" data-crsrc="${kind}">all</button>
       <button type="button" class="cr-src-none" data-crsrc="${kind}">none</button>
-      <span class="hint">click a book to hide its entries from the list below</span></div></details>`;
+      </div></details>`;
 }
 /* Names from `lib`, minus anything from a book that's been switched off. The currently-selected
    value always survives the filter — hiding a book shouldn't silently blank a choice already made. */
@@ -277,12 +277,12 @@ function racialAsiHtml() {
   const hasFixed = Object.keys(bonus.fixed).length > 0;
   const fixedTxt = Object.entries(bonus.fixed).map(([k, v]) => `${k.toUpperCase()} ${sign(v)}`).join(", ");
 
-  const customToggle = hasFixed ? `<label class="hint" style="margin-left:.6rem" title="Tasha's Cauldron of Everything p8: apply each of your race's ability score increases to an ability of your choice instead.">
+  const customToggle = hasFixed ? `<label class="hint" style="margin-left:.6rem">
       <input type="checkbox" id="cr-custom-origin"${CREATOR.customOrigin ? " checked" : ""}> customise (TCE p8)</label>` : "";
 
   if (!hasFixed && !slots.length) {
     return CREATOR.race
-      ? `<div class="hint">No ability increase in your data for this race. Several races (mostly Monsters of the Multiverse reprints) use the floating "+2 and +1 to any" rule instead, which isn't stored as a fixed increase &mdash; set the scores yourself in step 3.</div>`
+      ? ""
       : `<div class="hint">Pick a race to see its ability increases.</div>`;
   }
 
@@ -294,7 +294,7 @@ function racialAsiHtml() {
       return `<option value="${ab}"${chosen === ab ? " selected" : ""}${disabled ? " disabled" : ""}>${ab.toUpperCase()}</option>`;
     }).join("");
     return `<label class="cr-racial-slot">${sign(s.amount)} to
-      <select class="cr-racial" data-crslot="${s.key}" data-crstore="${s.store}"><option value="">— choose —</option>${opts}</select>${s.was && CREATOR.customOrigin ? ` <span class="hint">(was ${s.was.toUpperCase()})</span>` : ""}</label>`;
+      <select class="cr-racial" data-crslot="${s.key}" data-crstore="${s.store}"><option value="">- choose -</option>${opts}</select>${s.was && CREATOR.customOrigin ? ` <span class="hint">(was ${s.was.toUpperCase()})</span>` : ""}</label>`;
   }).join(" ");
 
   const fixedPart = (hasFixed && !CREATOR.customOrigin) ? `<b>${fixedTxt}</b>` : "";
@@ -317,14 +317,11 @@ function raceTraitsHtml() {
   ((sub && sub.entries) || []).forEach(e => byName.set(e.name, e));
   const traits = [...byName.values()].filter(e => !/^(Age|Alignment|Languages|Size)$/i.test(e.name));
   if (!traits.length) return "";
-  const withChoice = traits.filter(e => CHOICE_CUE.test(e.text || ""));
   return `<div style="margin-top:.5rem"><b>Traits</b>
     <div class="hint">${traits.map(e => CHOICE_CUE.test(e.text || "")
-      ? `<b class="cr-choice-trait" title="${escapeHtml((e.text || "").slice(0, 400))}">${escapeHtml(e.name)} &#9998;</b>`
-      : `<span title="${escapeHtml((e.text || "").slice(0, 400))}">${escapeHtml(e.name)}</span>`).join(" &middot; ")}</div>
-    ${withChoice.length ? `<div class="hint">Marked traits (&#9998;) involve a choice you make yourself &mdash;
-      the full text is in the Features module once the character exists, and anything mechanical goes in the
-      Proficiencies, Skills or Spellcasting modules. The sheet doesn't guess these for you.</div>` : ""}</div>`;
+      ? `<b class="cr-choice-trait">${escapeHtml(e.name)} &#9998;</b>`
+      : `<span>${escapeHtml(e.name)}</span>`).join(" &middot; ")}</div>
+    </div>`;
 }
 
 /* Size. Most races are one size; a few (Dhampir, Fairy, and the other MPMM "Small or Medium" races)
@@ -429,7 +426,7 @@ function creatorStep2Hint() {
   const hd = first.name ? classHitDie(first.name) : "";
   return (hd ? `At 1st level you start with your first class's Hit Die (<b>${hd}</b>) at its maximum + your CON modifier.`
              : "Pick a class to see its hit die.")
-    + (creatorTotalLevel() > 1 ? ` You're starting above 1st level, so you'll also want to set XP (Character module) and pick anything your classes grant on the way up &mdash; the Features panel lists it all once you're in.` : "");
+    + (creatorTotalLevel() > 1 ? ` You're starting above 1st level, so you'll also want to set XP (Character module) and pick anything your classes grant on the way up - the Features panel lists it all once you're in.` : "");
 }
 function creatorFinalCell(ab) {
   const final = creatorFinalScore(ab);
@@ -444,12 +441,10 @@ function creatorStepHtml() {
     const rec = ciFindRace(c.race);
     const subs = subNames(rec);
     return `<div class="cr-step"><b>Step 1 &middot; Choose a Race</b> <span class="hint">PHB p11</span>
-      <div class="hint">Your race sets your general appearance, natural talents, and one or more ability score increases.</div>
       ${sourceFilterHtml("race", RACE_LIB)}
-      <label>Race ${creatorCombo("cr-race", c.race, races, races.length ? "type to search" : "no race data — type freely", "", "", "race")}</label>
+      <label>Race ${creatorCombo("cr-race", c.race, races, races.length ? "type to search" : "no race data - type freely", "", "", "race")}</label>
       ${subs.length || c.subrace ? `<label style="margin-left:.6rem">Subrace ${creatorCombo("cr-subrace", c.subrace, subs, "none", "", "", "race")}</label>` : ""}
-      ${subs.includes(BASE_SUBRACE) ? `<div class="hint"><b>(base)</b> is this race's default version, the one with no subrace of its own &mdash; for a PHB Human that's the +1-to-everything build, as opposed to Variant.</div>` : ""}
-      <div style="margin-top:.4rem"><b>Ability increases</b> <span class="hint">applied to your scores in step 3</span></div>
+      <div style="margin-top:.4rem"><b>Ability increases</b></div>
       ${racialAsiHtml()}
       ${raceSizeHtml()}
       ${raceTraitsHtml()}
@@ -466,12 +461,12 @@ function creatorStepHtml() {
         <td>${creatorRowCombo("cr-sub", i, row.sub, subNames(rec), "no subclass", "subclass", rec ? rec.name + ": " : "")}</td>
         <td><input type="number" class="tiny cr-lvl" data-crrow="${i}" min="1" max="20" value="${row.lvl}"></td>
         <td class="hint">${hd || ""}</td>
-        <td>${c.classes.length > 1 ? `<button type="button" class="cr-cls-del" data-crrow="${i}" title="remove this class">&times;</button>` : ""}</td>
+        <td>${c.classes.length > 1 ? `<button type="button" class="cr-cls-del" data-crrow="${i}" aria-label="remove this class">&times;</button>` : ""}</td>
       </tr>`;
     }).join("");
     const fails = mcFailures(c.classes, creatorFinalScore);
     return `<div class="cr-step"><b>Step 2 &middot; Choose a Class</b> <span class="hint">PHB p11</span>
-      <div class="hint">Your class sets your hit die, proficiencies, and the features you gain. <b>Level</b> starts at 1 &mdash; raise it if you're joining an existing campaign above 1st level (PHB p11). Add a second class to start multiclassed.</div>
+
       ${sourceFilterHtml("class", CLASS_LIB)}
       <table class="cr-classes"><tr class="hint"><td>Class</td><td>Subclass</td><td>Level</td><td>Hit Die</td><td></td></tr>${rows}</table>
       <div style="margin-top:.3rem">${
@@ -483,7 +478,7 @@ function creatorStepHtml() {
           : `<button type="button" id="cr-add-class">+ add a class</button>`}
         <span class="hint" style="margin-left:.6rem">Total level <b id="cr-total-level" class="${total > 20 ? "cr-over" : ""}">${total}</b> / 20</span></div>
       ${c.classes.filter(r => r.name.trim()).length > 1 ? `<div class="hint" style="margin-top:.4rem">
-        <b>Multiclassing prerequisites (PHB p163)</b> &mdash; you need the listed scores in <i>every</i> class you're combining, checked against your step-3 scores:
+        <b>Multiclassing prerequisites</b>
         <div>${c.classes.filter(r => r.name.trim()).map(r => {
           const rec = ciFindClass(r.name);
           if (!rec || !rec.mcReq) return `${escapeHtml(r.name)}: <span class="hint">not in your data</span>`;
@@ -496,7 +491,7 @@ function creatorStepHtml() {
 
   if (c.step === 3) {
     const methodBtn = (id, label, title) =>
-      `<button type="button" class="cr-method${c.method === id ? " active" : ""}" data-crmethod="${id}" title="${title}">${label}</button>`;
+      `<button type="button" class="cr-method${c.method === id ? " active" : ""}" data-crmethod="${id}">${label}</button>`;
     let poolHtml = "";
     if (c.method === "standard" || c.method === "roll") {
       const pool = c.method === "standard" ? STANDARD_ARRAY : c.rolled;
@@ -515,7 +510,7 @@ function creatorStepHtml() {
       if (c.method === "standard" || c.method === "roll") {
         const chosen = c.assign[ab];
         const taken = new Set(Object.entries(c.assign).filter(([k, v]) => k !== ab && v != null).map(([, v]) => v));
-        control = `<select class="cr-assign" data-ab="${ab}"><option value="">—</option>` +
+        control = `<select class="cr-assign" data-ab="${ab}"><option value="">-</option>` +
           pool.map((n, i) => `<option value="${i}"${chosen === i ? " selected" : ""}${taken.has(i) ? " disabled" : ""}>${n}</option>`).join("") + `</select>`;
       } else if (c.method === "pointbuy") {
         control = `<select class="cr-points" data-ab="${ab}">` +
@@ -538,7 +533,7 @@ function creatorStepHtml() {
       </div>
       ${poolHtml}
       <table class="cr-scores">${rows}</table>
-      <div style="margin-top:.5rem"><b>Racial increases</b> <span class="hint">from step 1 &mdash; the same control, so changing it here changes it there</span></div>
+      <div style="margin-top:.5rem"><b>Racial increases</b> </div>
       ${racialAsiHtml()}
     </div>`;
   }
@@ -547,14 +542,13 @@ function creatorStepHtml() {
     const bgs = filteredNames("background", BACKGROUND_LIB, c.background);
     const rec = !c.customBg ? ciFindBackground(c.background) : null;
     return `<div class="cr-step"><b>Step 4 &middot; Describe Your Character</b> <span class="hint">PHB p13, p125</span>
-      <div class="hint">A background grants two skill proficiencies, often tools or languages, a feature, and its own equipment.</div>
+
       ${sourceFilterHtml("background", BACKGROUND_LIB)}
       <label>Name <input type="text" id="cr-name" value="${escapeHtml(c.name)}" style="width:14rem"></label>
-      <label style="margin-left:.6rem">Background ${creatorCombo("cr-background", c.background, bgs, bgs.length ? "type to search" : "no background data — type freely", "", "", "background")}</label>
+      <label style="margin-left:.6rem">Background ${creatorCombo("cr-background", c.background, bgs, bgs.length ? "type to search" : "no background data - type freely", "", "", "background")}</label>
       <label style="margin-left:.6rem"><input type="checkbox" id="cr-custom-bg"${c.customBg ? " checked" : ""}> custom background</label>
-      ${!bgs.length ? `<div class="hint">No <code>data/backgrounds.json</code> loaded, so there's nothing to look up &mdash; the name is recorded and its proficiencies are yours to add. Drop that file next to the sheet (see the Features module) to get the full list.</div>` : ""}
       ${c.customBg ? customBackgroundHtml() : backgroundSummaryHtml(rec)}
-      <div class="hint" style="margin-top:.4rem">Personality traits, ideals, bonds, flaws, backstory and appearance are deliberately not tracked on this sheet (see DOCS' roadmap) &mdash; it targets optimised play, so that material belongs in your own notes.</div>
+
     </div>`;
   }
 
@@ -616,7 +610,7 @@ function bgChooseHtml(rec, kind) {
       const idx = slot++;
       const cur = picked[idx] || "";
       sels.push(`<select class="cr-bgchoose" data-bgkind="${kind}" data-bgslot="${idx}">` +
-        `<option value=""${cur ? "" : " selected"}>&mdash; choose &mdash;</option>` +
+        `<option value=""${cur ? "" : " selected"}>- choose -</option>` +
         b.from.map(o => `<option value="${escapeHtml(o)}"${o === cur ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") +
         `</select>`);
     }
@@ -635,7 +629,7 @@ function backgroundSummaryHtml(rec) {
   return `<div class="hint" style="margin-top:.4rem">${parts.join(" &middot; ") || "No mechanical details in your data for this background."}
     ${bgChooseHtml(rec, "skills")}${bgChooseHtml(rec, "tools")}${bgChooseHtml(rec, "languages")}
     ${rec.equipmentText ? `<div><b>Equipment</b> ${escapeHtml(rec.equipmentText)}</div>` : ""}
-    <div>Skill proficiencies are applied to the Skills module; tools and languages to Proficiencies. Anything listed as a choice is yours to make there.</div></div>`;
+    </div>`;
 }
 
 /* Custom background, PHB p125: any two skills, any two tool proficiencies or languages, and one
@@ -647,7 +641,7 @@ function customBackgroundHtml() {
   const pick = (arr, i, cls, list, ph) =>
     `${creatorCombo(`cr-${cls}-${i}`, arr[i] || "", list, ph, cls, "11rem")}`;
   return `<div style="margin-top:.4rem" class="cr-custom-bg">
-    <div class="hint">PHB p125: replace one feature with any other, choose any two skills, and choose two tool proficiencies or languages in total.</div>
+
     <div style="margin-top:.3rem">Skills ${pick(CREATOR.bgSkills, 0, "cr-bgskill", skillNames, "any skill")} ${pick(CREATOR.bgSkills, 1, "cr-bgskill", skillNames, "any skill")}</div>
     <div style="margin-top:.3rem">Tools / languages ${pick(CREATOR.bgTools, 0, "cr-bgtool", [], "tool or language")} ${pick(CREATOR.bgTools, 1, "cr-bgtool", [], "tool or language")}</div>
     <div style="margin-top:.3rem">Feature ${creatorCombo("cr-bgfeature", CREATOR.bgFeature, features, features.length ? "any background's feature" : "name your feature", "", "16rem")}</div>
@@ -673,29 +667,29 @@ function creatorStep5Html() {
     const opt = (k) => line[k] ? `<label style="margin-right:.8rem"><input type="radio" name="cr-eq-${i}" value="${k}" data-creq="${i}"${picked === k ? " checked" : ""}>
       (${k}) ${escapeHtml(line[k].map(eqLeafLabel).join(", "))}</label>` : "";
     return `<div style="margin:.15rem 0">${opt("a")}${opt("b")}</div>`;
-  }).join("") : `<div class="hint">No starting-equipment data for this class &mdash; add what you need from the Equipment Library.</div>`;
+  }).join("") : `<div class="hint">No starting-equipment data for this class - add what you need from the Equipment Library.</div>`;
 
   return `<div class="cr-step"><b>Step 5 &middot; Choose Equipment</b> <span class="hint">PHB p14</span>
-    <div class="hint">Take your class's starting equipment package, or its starting gold and buy your own (PHB p143). Items are added to Inventory by name from the Equipment Library, so weight, value and armour class come from the library entry &mdash; anything the data leaves as "any martial weapon" is a pick you make there yourself.${
+    <div class="hint">${
       // R35: the open-ended picks are exactly where this ruling bites, so it's stated here rather
-      // than left in the rules reference. The sheet can't police it — it never learns which
-      // inventory line filled which slot — so this is a statement at the point of choice.
+      // than left in the rules reference. The sheet can't police it - it never learns which
+      // inventory line filled which slot - so this is a statement at the point of choice.
       (typeof hrSetting === "function" && hrSetting("mundaneEquipment"))
-        ? ` <b>This campaign's House Rules:</b> unless a line says otherwise, an open-ended equipment choice must be a <b>mundane</b> item.`
+        ? `Open equipment choices: <b>mundane items only</b>.`
         : ""}</div>
     <div style="margin:.4rem 0">
       <button type="button" class="cr-method${c.equipMode === "package" ? " active" : ""}" data-creqmode="package">Equipment package</button>
-      <button type="button" class="cr-method${c.equipMode === "gold" ? " active" : ""}" data-creqmode="gold"${goldDice ? "" : " disabled"}>Starting gold${goldDice ? ` (${escapeHtml(goldDice)})` : " — no data"}</button>
+      <button type="button" class="cr-method${c.equipMode === "gold" ? " active" : ""}" data-creqmode="gold"${goldDice ? "" : " disabled"}>Starting gold${goldDice ? ` (${escapeHtml(goldDice)})` : " - no data"}</button>
     </div>
     ${c.equipMode === "package" ? pkgHtml : `<div>
       <button type="button" id="cr-roll-gold">${c.startGold == null ? "roll" : "re-roll"} ${escapeHtml(goldDice || "")}</button>
-      <button type="button" id="cr-avg-gold" title="the average of ${escapeHtml(goldDice || "")}, rounded down — the same 'take the fixed value' option the rules give for hit points">take the average${averageGold() != null ? ` (${averageGold()} gp)` : ""}</button>
+      <button type="button" id="cr-avg-gold">take the average${averageGold() != null ? ` (${averageGold()} gp)` : ""}</button>
       ${c.startGold != null ? ` &rarr; <b>${c.startGold} gp</b>${c.goldAveraged ? ` <span class="hint">(average)</span>` : ""}` : ` <span class="hint">roll, or take the average</span>`}
       <div class="hint">Taking gold instead of the package means you also skip your background's equipment (PHB p125).</div>
     </div>`}
 
     <div style="margin-top:.6rem"><label><input type="checkbox" id="cr-higher"${c.higherLevel ? " checked" : ""}>
-      <b>Starting at Higher Level</b></label> <span class="hint">DMG p38 &mdash; extra gear for a character who doesn't begin at 1st level</span></div>
+      <b>Starting at Higher Level</b></label> </div>
     ${c.higherLevel ? `<div style="margin-top:.3rem">
       <label>Campaign <select id="cr-magic">
         <option value="low"${c.campaignMagic === "low" ? " selected" : ""}>Low magic</option>
@@ -707,15 +701,15 @@ function creatorStep5Html() {
         ? `<button type="button" id="cr-roll-higher">${c.higherGold == null ? "roll" : "re-roll"} ${band.gp} gp + 1d10 × ${band.mult} gp</button>
            ${c.higherGold != null ? ` &rarr; <b>${c.higherGold} gp</b> <span class="hint">(1d10 rolled ${c.higherRoll})</span>` : ""}`
         : `<span class="hint">Levels 1&ndash;4 get normal starting equipment and no extra gold.</span>`}</div>
-      ${band.items[c.campaignMagic] ? `<div class="hint" style="margin-top:.3rem">Your DM also gives you <b>${band.items[c.campaignMagic]}</b>. The sheet has no random magic-item table, so add those from the Equipment Library yourself &mdash; it says what you're owed rather than inventing it.</div>` : ""}
-      <div class="hint">This is on top of normal starting equipment, and is "entirely at your discretion" per the DMG &mdash; check with your DM.</div>
+      ${band.items[c.campaignMagic] ? `<div class="hint" style="margin-top:.3rem">Additional items: <b>${band.items[c.campaignMagic]}</b></div>` : ""}
+
     </div>` : ""}
 
     <div style="margin-top:.6rem">Ready to create:
       <b>${escapeHtml(c.name || "unnamed")}</b>, ${escapeHtml(c.race || "no race")}${c.subrace ? ` (${escapeHtml(c.subrace)})` : ""},
       ${classTxt}${c.background ? `, ${escapeHtml(c.background)}${c.customBg ? " (custom)" : ""}` : ""}</div>
     <div class="hint">${CREATOR_ABILITIES.map(ab => `${ab.toUpperCase()} ${creatorFinalScore(ab)}`).join(" &middot; ")}</div>
-    ${hp != null ? `<div class="hint">Starting HP at 1st level would be ${HIT_DIE_MAX[hd]} (${hd} max) ${sign(conMod)} CON = <b>${Math.max(1, hp)}</b>; the sheet computes Max HP for your actual level automatically.</div>` : ""}
+    ${hp != null ? `<div class="hint">Level 1 HP: ${HIT_DIE_MAX[hd]} ${sign(conMod)} CON = <b>${Math.max(1, hp)}</b></div>` : ""}
   </div>`;
 }
 
@@ -732,7 +726,7 @@ function creatorStepBlockerFor(step) {
   if (step === 2) {
     const total = creatorTotalLevel();
     if (c.classes.some(r => (Number(r.lvl) || 0) < 1)) return "Every class needs at least 1 level.";
-    if (total > 20) return `Total level is ${total} — the cap is 20.`;
+    if (total > 20) return `Total level is ${total} - the cap is 20.`;
     const fails = mcFailures(c.classes, creatorFinalScore);
     if (fails.length) return `Multiclassing needs ${fails.map(f => `${f.need} for ${f.name}`).join("; ")} (PHB p163).`;
   }
@@ -760,7 +754,7 @@ function creatorStepperHtml() {
   return CREATOR_STEPS.map((label, i) => {
     const n = i + 1, bad = creatorStepBlockerFor(n);
     return `<button type="button" class="cr-tab${CREATOR.step === n ? " active" : ""}${bad ? " cr-tab-bad" : ""}" data-crstep="${n}"
-      title="${bad ? escapeHtml(bad) : `go to step ${n}`}"><span class="hint">${n}</span> ${escapeHtml(label)}</button>`;
+      ${bad ? `title="${escapeHtml(bad)}"` : ""}><span class="hint">${n}</span> ${escapeHtml(label)}</button>`;
   }).join("");
 }
 
@@ -856,7 +850,7 @@ function creatorAverageGold() {
   const avg = averageGold(); if (avg == null) return;
   CREATOR.startGold = avg;
   CREATOR.goldAveraged = true;
-  logEvent("info", `Starting gold: <b>${avg} gp</b> &mdash; average of ${escapeHtml(startingGoldDice() || "")}, taken instead of rolling`);
+  logEvent("info", `Starting gold: <b>${avg} gp</b> - average of ${escapeHtml(startingGoldDice() || "")}, taken instead of rolling`);
 }
 function creatorRollHigherGold() {
   const band = higherLevelBand(creatorTotalLevel());
@@ -984,7 +978,7 @@ function creatorFinish() {
   recompute(); saveState();
 
   const classTxt = c.classes.filter(r => r.name.trim()).map(r => `${escapeHtml(r.name)} ${r.lvl}`).join(" / ") || "no class";
-  logEvent("info", `<b>${escapeHtml(name)}</b> created &mdash; ${escapeHtml(c.race || "no race")} ${classTxt}`);
+  logEvent("info", `<b>${escapeHtml(name)}</b> created - ${escapeHtml(c.race || "no race")} ${classTxt}`);
   const gp = (c.equipMode === "gold" ? (c.startGold || 0) : 0) + (c.higherLevel ? (c.higherGold || 0) : 0);
   const bits = [];
   if (state.items.length) bits.push(`${state.items.length} starting item(s)`);
@@ -1172,9 +1166,9 @@ function luMcHtml() {
     const ok = meetsMcRequirement(rec.mcReq, scoreOf);
     return `${escapeHtml(rec.name)} needs ${escapeHtml(mcRequirementText(rec.mcReq))} <b class="${ok ? "cr-ok" : "cr-over"}">${ok ? "✓" : "✗"}</b>`;
   }).filter(Boolean).join(" &middot; ");
-  if (!listed) return `<div class="hint">Multiclassing has ability-score prerequisites (PHB p163); none are in your loaded data for these classes.</div>`;
-  return `<div class="hint"><b>Multiclassing prerequisites (PHB p163)</b> — you need these for every class you're combining.<div>${listed}</div>
-    ${fails.length ? `<div class="cr-over">Not met yet. The sheet will still let you take the level — check with your DM.</div>` : ""}</div>`;
+  if (!listed) return "";
+  return `<div class="hint"><b>Multiclassing prerequisites</b><div>${listed}</div>
+    ${fails.length ? `<div class="cr-over">Not met yet. The sheet will still let you take the level - check with your DM.</div>` : ""}</div>`;
 }
 
 function renderLevelUp() {
@@ -1202,7 +1196,6 @@ function renderLevelUp() {
                 : (LEVELUP.newClass ? featuresAtLevel(LEVELUP.newClass, "", 1) : []);
 
   $("lu-body").innerHTML = `
-    <div class="hint">Each level gives 1 additional Hit Die and increases your hit point maximum (PHB p15).</div>
     <div style="margin-top:.4rem"><label>Level up <select id="lu-target">${opts}</select></label></div>
     ${newClassHtml}
     <div style="margin-top:.5rem"><b>Hit points</b> <span class="hint">${hitDie ? `${hitDie} + CON ${sign(conMod)}` : "pick a class first"}</span>
@@ -1213,7 +1206,7 @@ function renderLevelUp() {
           Roll the Hit Die${LEVELUP.rolled != null ? `: rolled <b>${LEVELUP.rolled}</b> ${sign(conMod)} = <b>${Math.max(1, LEVELUP.rolled + conMod)}</b>` : ""}</label>
         ${LEVELUP.hpMode === "roll" ? ` <button type="button" id="lu-roll"${hitDie ? "" : " disabled"}>${LEVELUP.rolled == null ? "roll" : "re-roll"}</button>` : ""}
       </div>
-      <div class="hint" style="margin-top:.3rem">Max HP is calculated from your classes and CON, and already assumes the fixed average — so taking the average needs no adjustment. A <i>rolled</i> result is written into the <b>Max HP override</b> box instead, since a computed value has nowhere else to keep it.</div>
+
     </div>
     ${gained.length ? `<div style="margin-top:.5rem"><b>Gained at level ${newLevel}:</b> <span class="hint">${gained.map(escapeHtml).join(", ")}</span></div>`
       : `<div class="hint" style="margin-top:.5rem">No class features listed at that level in your loaded data.</div>`}`;
@@ -1292,7 +1285,7 @@ function levelUpConfirm() {
   $("hp-cur").value = String(num($("hp-cur")) + Math.max(0, gainedHp)); commitMath($("hp-cur"));
 
   const gained = featuresAtLevel(cur.name, isNew ? "" : cur.sub, newLevel);
-  logEvent("info", `<b>Level up</b> &mdash; ${escapeHtml(cur.name || "class")} ${newLevel}` +
+  logEvent("info", `<b>Level up</b> - ${escapeHtml(cur.name || "class")} ${newLevel}` +
     ` &middot; max HP ${hpBefore} &rarr; ${maxHP()}` +
     (gained.length ? ` &middot; gained ${gained.map(escapeHtml).join(", ")}` : ""));
   closeLevelUp();

@@ -40,9 +40,9 @@ function xpForLevel(lvl) { return XP_THRESHOLDS[Math.max(1, Math.min(20, lvl)) -
 function xpNextText() {
   const xp = num($("char-xp"));
   const lvl = totalLevel();
-  if (lvl >= 20) return "level 20 — no further advancement";
+  if (lvl >= 20) return "level 20 - no further advancement";
   const need = xpForLevel(lvl + 1) - xp;
-  if (need <= 0) return `enough XP for level ${lvl + 1} — set Level to ${lvl + 1} to take it`;
+  if (need <= 0) return `enough XP for level ${lvl + 1} - set Level to ${lvl + 1} to take it`;
   return `${need.toLocaleString()} XP to level ${lvl + 1} (at ${xpForLevel(lvl + 1).toLocaleString()})`;
 }
 
@@ -109,7 +109,7 @@ function levelBoxChanged() {
   if (typeof renderHitDice === "function") renderHitDice();
   const cur = $("hp-cur");
   if (cur && num(cur) > maxHP()) { cur.value = String(maxHP()); commitMath(cur); }
-  logEvent("info", `<b>Level down</b> &mdash; ${have} &rarr; ${totalLevel()}${dropped.length ? ` (${escapeHtml(dropped.join(", "))})` : ""} &middot; XP set to ${xpForLevel(want).toLocaleString()}`);
+  logEvent("info", `<b>Level down</b> - ${have} &rarr; ${totalLevel()}${dropped.length ? ` (${escapeHtml(dropped.join(", "))})` : ""} &middot; XP set to ${xpForLevel(want).toLocaleString()}`);
   renderXp(); saveState();
 }
 

@@ -40,7 +40,7 @@ function attachTypeahead(input, getOptions, banInfo) {
     const ban = banInfo ? banInfo() : null;
     list.innerHTML = matches.map((m, i) => {
       const bad = ban && typeof isBannedOption === "function" && isBannedOption(ban.kind, m, ban.prefix);
-      return `<div class="typeahead-item${bad ? " banned-opt" : ""}" data-idx="${i}"${bad ? ` title="banned by house rule"` : ""}>` +
+      return `<div class="typeahead-item${bad ? " banned-opt" : ""}" data-idx="${i}"${bad ? ` aria-label="banned by house rule"` : ""}>` +
         `${escapeHtml(m)}${bad ? ` <span class="banned-flag">banned</span>` : ""}</div>`;
     }).join("");
     document.body.appendChild(list);

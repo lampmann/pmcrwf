@@ -51,7 +51,7 @@
     if (c.maxHpOverride !== "" && c.maxHpOverride != null && !isNaN(Number(c.maxHpOverride))) return Number(c.maxHpOverride);
     return m && m.hpAvg != null ? m.hpAvg : 0;
   }
-  // A token's hp is null when the statblock has no computable maximum — a scaling summon's HP is
+  // A token's hp is null when the statblock has no computable maximum - a scaling summon's HP is
   // prose ("20 + 5 per level above 2nd"), not a number. Unknown is NOT dead: the creature is up
   // until someone actually writes a number in, otherwise a freshly cast summon would arrive at 0.
   const aliveTokens = c => (c.tokens || []).filter(t => t.hp == null || Number(t.hp) > 0);
@@ -70,7 +70,7 @@
   // Damage expression with the summon placeholders substituted (see the header note).
   // Whitespace is stripped, not just trimmed: 5e.tools writes damage as "2d4 + 2", and runRoll()
   // splits a command at its first space, so a spaced expression would roll as bare "2d4" and treat
-  // "+ 2 …" as the label — silently dropping the modifier.
+  // "+ 2 …" as the label - silently dropping the modifier.
   function actionDamage(act, c, m) {
     const lvl = castLevel(c, m), pb = typeof profBonus === "function" ? profBonus() : 2;
     return act.dmg.map(d => d
@@ -113,10 +113,9 @@
   function tokenHtml(c, i, t, max) {
     const unknown = t.hp == null;
     const dead = !unknown && Number(t.hp) <= 0;
-    return `<span class="cmp-token${dead ? " dead" : ""}" title="${dead ? "down" : unknown ? "no computable max — set one, or just track current HP here" : "current hit points"}">
+    return `<span class="cmp-token${dead ? " dead" : ""}" aria-label="${dead ? "Down" : unknown ? "HP (maximum unknown)" : "Hit points"}">
       <input type="text" inputmode="numeric" class="tiny cmp-hp" data-cid="${c.id}" data-i="${i}" value="${unknown ? "" : Number(t.hp)}"
-        data-prev="${unknown ? 0 : Number(t.hp)}" data-min="0"${max ? ` data-max="${max}"` : ""} data-allow-empty
-        title="type -7 to take 7 damage, +3 to heal 3">
+        data-prev="${unknown ? 0 : Number(t.hp)}" data-min="0"${max ? ` data-max="${max}"` : ""} data-allow-empty aria-label="type -7 to take 7 damage, +3 to heal 3">
       <span class="hint">/${max || "?"}</span></span>`;
   }
   function actionHtml(c, m, act, ai, group) {
@@ -124,50 +123,50 @@
     const label = escapeHtml(act.name || "Attack");
     if (!act.isAttack) {
       const dc = act.dc != null ? ` <span class="hint">(DC ${act.dc}${act.saveAbil ? " " + act.saveAbil : ""})</span>` : "";
-      return `<div class="cmp-act"><b>${label}.</b>${dc} <span class="cmp-act-text">${monsterInlineText(act.raw, m.name + " — " + act.name, ctxOf(c, m))}</span></div>`;
+      return `<div class="cmp-act"><b>${label}.</b>${dc} <span class="cmp-act-text">${monsterInlineText(act.raw, m.name + " - " + act.name, ctxOf(c, m))}</span></div>`;
     }
     const hit = actionToHit(act), dmg = actionDamage(act, c, m);
     const reach = act.reach ? `reach ${act.reach} ft.` : act.range ? `range ${act.range} ft.` : "";
     return `<div class="cmp-act"><b>${label}</b> <span class="hint">${escapeHtml(reach)}</span>
-      <button class="roll mon-roll" data-bonus="${hit}" data-rolllabel="${esc(m.name + " — " + act.name)}">to hit ${signed(hit)}</button>
-      ${dmg ? `<button class="roll cmp-dmg" data-expr="${esc(dmg)}" data-rolllabel="${esc(m.name + " — " + act.name)}">dmg ${escapeHtml(dmg)}</button>` : ""}
+      <button class="roll mon-roll" data-attack="true" data-bonus="${hit}" data-rolllabel="${esc(m.name + " - " + act.name)}">to hit ${signed(hit)}</button>
+      ${dmg ? `<button class="roll cmp-dmg" data-expr="${esc(dmg)}" data-rolllabel="${esc(m.name + " - " + act.name)}">dmg ${escapeHtml(dmg)}</button>` : ""}
       ${alive > 1 ? `<button class="roll cmp-mass" data-cid="${c.id}" data-grp="${group}" data-ai="${ai}"
-        title="roll this attack once for every living ${escapeHtml(m.name)}, with a damage-by-AC summary (Shift = advantage, Ctrl = disadvantage)">&times;${alive} all</button>` : ""}
+        aria-label="Roll all ${escapeHtml(m.name)} attacks">&times;${alive} all</button>` : ""}
     </div>`;
   }
   function companionHtml(c) {
     const m = statOf(c);
     if (!m) {
       return `<fieldset data-cid="${c.id}"><legend>${escapeHtml(c.key.split("|")[0])}
-        <button class="rowbtn cmp-del" data-cid="${c.id}" title="remove">x</button></legend>
-        <div class="hint">Statblock not loaded — open the Bestiary Library above (or click "load from data/ folder") and this fills in automatically.</div>
+        <button class="rowbtn cmp-del" data-cid="${c.id}" aria-label="remove">x</button></legend>
+
       </fieldset>`;
     }
     const max = maxHp(c, m), alive = aliveTokens(c).length, n = (c.tokens || []).length;
     const isSummon = m.summonSpellLevel != null || !!m.summonedBySpell || !!m.summonedByClass;
-    const meta = [(m.size || []).join("/") + " " + m.type, "AC " + (m.acText || "—"), "CR " + (m.cr || "—"), m.speedText].filter(Boolean).join(" · ");
+    const meta = [(m.size || []).join("/") + " " + m.type, "AC " + (m.acText || "-"), "CR " + (m.cr || "-"), m.speedText].filter(Boolean).join(" · ");
     const traitNames = (m.traits || []).map(t => t.name).filter(Boolean);
     const acts = (m.actions || []).map((a, i) => actionHtml(c, m, a, i, "actions")).join("") +
       (m.bonusActions || []).map((a, i) => actionHtml(c, m, a, i, "bonusActions")).join("") +
       (m.reactions || []).map((a, i) => actionHtml(c, m, a, i, "reactions")).join("");
     return `<fieldset data-cid="${c.id}">
       <legend>
-        <input type="number" class="tiny cmp-count" data-cid="${c.id}" min="0" max="50" value="${n}" title="how many of them">&times;
+        <input type="number" class="tiny cmp-count" data-cid="${c.id}" min="0" max="50" value="${n}" aria-label="how many of them">&times;
         <a class="feat-link cmp-link" data-cid="${c.id}"><b>${escapeHtml(m.name)}</b></a>
         <span class="hint">${escapeHtml(m.source)}</span>
         <input type="text" class="cmp-note" data-cid="${c.id}" value="${esc(c.note)}" placeholder="note (Conjure Animals…)" style="width:11rem">
-        ${isSummon ? `<label class="hint" title="the spell slot level you cast this summon with — scales its to-hit, damage and HP">
+        ${isSummon ? `<label class="hint">
           cast at level <input type="number" class="tiny cmp-lvl" data-cid="${c.id}" min="1" max="9" value="${c.spellLevel === "" ? "" : c.spellLevel}"></label>` : ""}
         <button class="roll mon-roll" data-bonus="${monMod(m.dex) + 0}" data-rolllabel="${esc(m.name)} initiative">init ${signed(monMod(m.dex))}</button>
-        <button class="rowbtn cmp-del" data-cid="${c.id}" title="remove">x</button>
+        <button class="rowbtn cmp-del" data-cid="${c.id}" aria-label="remove">x</button>
       </legend>
       <div class="hint">${escapeHtml(meta)}${traitNames.length ? " · traits: " + escapeHtml(traitNames.join(", ")) : ""}</div>
       <div class="cmp-hp-row">
         HP <span class="hint">(each)</span>
         ${(c.tokens || []).map((t, i) => tokenHtml(c, i, t, max)).join("")}
-        <label class="hint" title="the statblock's average HP is used unless you set this — a scaling summon's HP formula (&quot;20 + 5 per level above 2nd&quot;) can't be computed, so type it here">
+        <label class="hint">
           max <input type="number" class="tiny cmp-maxhp" data-cid="${c.id}" value="${c.maxHpOverride}" placeholder="${m.hpAvg == null ? "?" : m.hpAvg}"></label>
-        <button class="cmp-heal" data-cid="${c.id}" title="restore every token to full HP">full</button>
+        <button class="cmp-heal" data-cid="${c.id}" aria-label="restore every token to full HP">full</button>
         <span class="hint">${alive}/${n} up${m.hpSpecial ? " · " + escapeHtml(m.hpSpecial) : ""}</span>
       </div>
       <div class="cmp-checks">
@@ -182,7 +181,7 @@
   function renderCompanions() {
     const host = $("companions-list"); if (!host) return;
     host.innerHTML = COMPANIONS.length ? COMPANIONS.map(companionHtml).join("")
-      : `<div class="hint">No companions yet. Click <b>+ Add Creature</b> to open the Bestiary Library — familiars, steeds, wild shapes, Tasha's summons, and everything Conjure Animals can hand you.</div>`;
+      : ``;
   }
   function toggleDetail(link) {
     const fs = link.closest("fieldset");
@@ -200,7 +199,7 @@
   // eight lines of arithmetic.
   function rollMass(c, act, m, mode) {
     const alive = aliveTokens(c).length;
-    if (!alive) { log(`<b>${escapeHtml(m.name)}</b> — none are still up.`); return; }
+    if (!alive) { log(`<b>${escapeHtml(m.name)}</b> - none are still up.`); return; }
     const bonus = actionToHit(act), expr = actionDamage(act, c, m);
     const lines = [], hits = [];
     for (let i = 0; i < alive; i++) {
@@ -212,13 +211,13 @@
         dmg = dm.value;
         dmgText = ` · ${totalHtml(dm)} damage ← ${dm.display}${isCrit ? " <i>(crit, dice doubled)</i>" : ""}`;
       }
-      lines.push(`  #${i + 1} — ${totalHtml(hit)} to hit ← ${hit.display}${isCrit ? " <b>Critical!</b>" : ""}${dmgText}`);
+      lines.push(`  #${i + 1} - ${totalHtml(hit)} to hit ← ${attackRollDisplay(hit)}${dmgText}`);
       hits.push({ total: hit.value, damage: dmg });
     }
     const modeTag = mode && mode !== "normal" ? ` <i>(${mode})</i>` : "";
     const table = (typeof acRangeRows === "function" && typeof fmtAcRow === "function")
       ? acRangeRows(hits).map(r => "  " + fmtAcRow(r, 0)).join("\n") : "";
-    log(`&times;${alive} <b>${escapeHtml(m.name)} — ${escapeHtml(act.name)}</b>${modeTag}\n${table}\n` +
+    log(`&times;${alive} <b>${escapeHtml(m.name)} - ${escapeHtml(act.name)}</b>${modeTag}\n${table}\n` +
       `<details><summary class="hint">individual rolls</summary>\n${lines.join("\n")}\n</details>`);
   }
   // same rule as the Attacks module: damage dice roll twice on a crit, flat modifiers once
@@ -289,7 +288,7 @@
     });
 
     renderCompanions();
-    // If the character already has companions, their statblocks have to resolve on load — that's the
+    // If the character already has companions, their statblocks have to resolve on load - that's the
     // other trigger for the bestiary's lazy auto-load (see monster-library.js).
     if (COMPANIONS.length && typeof ensureBestiary === "function") ensureBestiary();
   });

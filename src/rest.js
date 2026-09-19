@@ -41,9 +41,9 @@ function hitDicePools() {
 function hitDicePoolHtml(p) {
   return `<span class="hd-pool" style="white-space:nowrap;margin-right:.7rem">
       <b>${p.hitDie}</b>
-      <input type="text" inputmode="numeric" class="tiny hd-remaining" data-hdkey="${p.key}" value="${p.remaining}" title="Hit Dice remaining — edit to correct, or use roll to spend one and heal">
+      <input type="text" inputmode="numeric" class="tiny hd-remaining" data-hdkey="${p.key}" value="${p.remaining}">
       / ${p.max}
-      <button type="button" class="roll" data-hdkey="${p.key}"${p.remaining <= 0 ? " disabled" : ""} title="spend one Hit Die: roll ${p.hitDie} + CON mod, heal (min 0), mark it spent">roll</button>
+      <button type="button" class="roll" data-hdkey="${p.key}"${p.remaining <= 0 ? " disabled" : ""} aria-label="Spend ${p.hitDie} Hit Die">roll</button>
       <span class="hint">${escapeHtml(p.className || "class")}</span>
     </span>`;
 }
@@ -102,8 +102,8 @@ function renderRestButtons() {
   if (!times) return;
   const std = times.short === "1 hour" && times.long === "8 hours";
   const sr = $("btn-short-rest"), lr = $("btn-long-rest");
-  if (sr) { sr.textContent = std ? "Short Rest" : `Short Rest (${times.short})`; sr.title = `a short rest is ${times.short}`; }
-  if (lr) { lr.textContent = std ? "Long Rest" : `Long Rest (${times.long})`; lr.title = `a long rest is ${times.long}`; }
+  if (sr) { sr.textContent = std ? "Short Rest" : `Short Rest (${times.short})`; }
+  if (lr) { lr.textContent = std ? "Long Rest" : `Long Rest (${times.long})`; }
 }
 
 /* Clears a math-field-style HP box (data-allow-empty) the same way a user emptying it by hand would,
@@ -125,7 +125,7 @@ function performRest(kind) {
   if (kind === "lr") {
     const raw = ($("hp-cur").value || "").trim();
     if (raw !== "" && Number(raw) <= 0) {
-      const ok = confirm("This character is at 0 HP or below. Per PHB p186, a long rest grants no benefit unless you have at least 1 hit point at the start of it — nothing will be restored. Apply it anyway?");
+      const ok = confirm("This character is at 0 HP or below. Per PHB p186, a long rest grants no benefit unless you have at least 1 hit point at the start of it - nothing will be restored. Apply it anyway?");
       if (!ok) return;
     }
   }
@@ -179,7 +179,7 @@ function performRest(kind) {
   const recovered = applyRest(kind);   // feature-effect uses trackers (class-library.js) — also renders the Features panel
   if (recovered) notes.push(`${recovered} feature${recovered === 1 ? "" : "s"} recovered`);
   logEvent("rest", `<b>${kind === "lr" ? "Long Rest" : "Short Rest"}</b>` +
-    (notes.length ? " &mdash; " + notes.join(" &middot; ") : " &mdash; nothing to restore"));
+    (notes.length ? " - " + notes.join(" &middot; ") : " - nothing to restore"));
   recompute(); renderHitDice(); scheduleSave();
 }
 
@@ -200,7 +200,7 @@ function renderShortRestModal() {
   if (poolsEl) {
     poolsEl.innerHTML = pools.length
       ? pools.map(hitDicePoolHtml).join("")
-      : `<span class="hint">no Hit Dice — add a class in the Character module</span>`;
+      : `<span class="hint">no Hit Dice - add a class in the Character module</span>`;
   }
 }
 function openShortRestModal() {

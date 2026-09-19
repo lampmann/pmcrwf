@@ -116,9 +116,9 @@ function createFilterSet(cfg) {
     const el = filterEl(fs.areaId); if (!el) return;
     fs.ensureStates();
     const modBar = `<div class="modbar">
-      <button data-fmod="combine" title="how filter categories combine">Combine as ${fs.combine.toUpperCase()}</button>
+      <button data-fmod="combine" aria-label="how filter categories combine">Combine as ${fs.combine.toUpperCase()}</button>
       <button data-fmod="showall">Show All</button><button data-fmod="hideall">Hide All</button>
-      <button data-fmod="reset">Reset</button><button data-fmod="savedefault" title="save current filters as the default that Reset restores">Manage Defaults</button>
+      <button data-fmod="reset">Reset</button><button data-fmod="savedefault" aria-label="save current filters as the default that Reset restores">Manage Defaults</button>
     </div>`;
     const groups = fs.groups.map(g => {
       const st = fs.state[g.key];
@@ -137,8 +137,8 @@ function createFilterSet(cfg) {
         `<button class="fctrl-btn" data-fctrl="all" data-fg="${g.key}">All</button>` +
         `<button class="fctrl-btn" data-fctrl="clear" data-fg="${g.key}">Clear</button>` +
         `<button class="fctrl-btn" data-fctrl="none" data-fg="${g.key}">None</button>` +
-        `<button class="fctrl-btn blue fmode" data-fctrl="bluemode" data-fg="${g.key}" title="how INCLUDE (blue) options combine">${st.blueMode.toUpperCase()}</button>` +
-        `<button class="fctrl-btn red fmode" data-fctrl="redmode" data-fg="${g.key}" title="how EXCLUDE (red) options combine">${st.redMode.toUpperCase()}</button>` +
+        `<button class="fctrl-btn blue fmode" data-fctrl="bluemode" data-fg="${g.key}" aria-label="how INCLUDE (blue) options combine">${st.blueMode.toUpperCase()}</button>` +
+        `<button class="fctrl-btn red fmode" data-fctrl="redmode" data-fg="${g.key}" aria-label="how EXCLUDE (red) options combine">${st.redMode.toUpperCase()}</button>` +
         `<button class="fctrl-btn" data-fctrl="hide" data-fg="${g.key}">${st.hidden ? "Show" : "Hide"}</button></span>`;
       const opts = st.hidden ? "" : fs.opts(g).map(([v, lab, title]) => {
         const s = st.states[v] || "ignore", cls = s === "include" ? "inc" : s === "exclude" ? "exc" : "";
@@ -151,7 +151,7 @@ function createFilterSet(cfg) {
     el.innerHTML = modBar + groups;
   };
 
-  // Range-group number inputs fire on "input", not click — kept separate so typing a bound
+  // Range-group number inputs fire on "input", not click - kept separate so typing a bound
   // doesn't re-render the whole filter area (and steal focus) on every keystroke.
   fs.handleInput = e => {
     const inp = e.target.closest(".frange"); if (!inp) return false;

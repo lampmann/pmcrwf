@@ -59,8 +59,7 @@ function renderEffectControls(feature) {
       }
       if (!name) return;
       const expanded = effect.op === "grant-list";
-      const title = expanded ? ` title="added to your spell list — still needs to be prepared/known normally, via a class"` : "";
-      html += ` <a class="feat-link gsp-link${expanded ? " gsp-expanded" : ""}" data-name="${escapeHtml(name)}" data-cls="" data-header="${escapeHtml(feature.name)}" data-expanded="${expanded ? "1" : "0"}"${title}>${escapeHtml(name)}${expanded ? "*" : ""}</a>`;
+      html += ` <a class="feat-link gsp-link${expanded ? " gsp-expanded" : ""}" data-name="${escapeHtml(name)}" data-cls="" data-header="${escapeHtml(feature.name)}" data-expanded="${expanded ? "1" : "0"}">${escapeHtml(name)}${expanded ? "*" : ""}</a>`;
       return;
     }
     const act = effect.activation || { kind: "always" };
@@ -69,7 +68,7 @@ function renderEffectControls(feature) {
     if (act.kind === "toggle") {
       if (seenToggle.has(act.id)) return; seenToggle.add(act.id);
       const key = feature.fkey + "|" + act.id, on = !!EFFECT_TOGGLES[key];
-      html += ` <button type="button" class="eff-toggle${on ? " on" : ""}" data-fkey="${feature.fkey}" data-toggle="${act.id}"${reserved ? " disabled" : ""} title="${reserved ? "serialized; nothing on the sheet reads this target yet" : "click to toggle"}">${on ? "◉" : "○"} ${escapeHtml(act.label || act.id)}</button>`;
+      html += ` <button type="button" class="eff-toggle${on ? " on" : ""}" data-fkey="${feature.fkey}" data-toggle="${act.id}"${reserved ? " disabled" : ""}${reserved ? ' title="Not automated"' : ""}>${on ? "◉" : "○"} ${escapeHtml(act.label || act.id)}</button>`;
     } else if (act.kind === "always" && !reserved && effect.op !== "note") {
       html += ` <span class="eff-chip" title="${escapeHtml(effect.op + " " + target)}">⚙ ${escapeHtml(target)}</span>`;
     }
@@ -78,7 +77,7 @@ function renderEffectControls(feature) {
     if (c.kind === "ability") {
       const cur = choiceValue(feature, c.id) || "";
       const opts = ABILITIES.map(a => `<option value="${a.key}"${cur === a.key ? " selected" : ""}>${a.name}</option>`).join("");
-      html += ` <label class="hint">${escapeHtml(c.label || "choice")}: <select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"><option value="">—</option>${opts}</select></label>`;
+      html += ` <label class="hint">${escapeHtml(c.label || "choice")}: <select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"><option value="">-</option>${opts}</select></label>`;
     } else if (c.kind === "pick") {
       // n > 1 ("pick 2 of these skills") renders one <select> per slot, each excluding whatever
       // the other slots already picked, so the same option can't be chosen twice — see resolveTargetsAll
@@ -90,7 +89,7 @@ function renderEffectControls(feature) {
         const cur = curArr[i] || "";
         const others = curArr.filter((v, j) => j !== i && v);
         const opts = (c.options || []).filter(o => !others.includes(o)).map(o => `<option value="${o}"${cur === o ? " selected" : ""}>${escapeHtml(String(o))}</option>`).join("");
-        selects += `<select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"${n > 1 ? ` data-slot="${i}"` : ""}><option value="">—</option>${opts}</select> `;
+        selects += `<select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"${n > 1 ? ` data-slot="${i}"` : ""}><option value="">-</option>${opts}</select> `;
       }
       html += ` <label class="hint">${escapeHtml(c.label || "choice")}: ${selects}</label>`;
     } else if (c.kind === "spellfilter") {
@@ -106,8 +105,8 @@ function renderEffectControls(feature) {
         const v = sp.name.toLowerCase();
         return `<option value="${escapeHtml(v)}"${cur === v ? " selected" : ""}>${escapeHtml(sp.name)}${sp.source ? " (" + escapeHtml(sp.source) + ")" : ""}</option>`;
       }).join("");
-      const hint = lib.length ? "" : ` <span class="hint">(Spell Library empty — import it first)</span>`;
-      html += ` <label class="hint">${escapeHtml(c.label || "choose a spell")}: <select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"><option value="">—</option>${opts}</select></label>${hint}`;
+      const hint = lib.length ? "" : ` <span class="hint">(Spell Library empty - import it first)</span>`;
+      html += ` <label class="hint">${escapeHtml(c.label || "choose a spell")}: <select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"><option value="">-</option>${opts}</select></label>${hint}`;
     }   // "skill" choice kind: deferred, none of the shipped entries use it yet
   });
   (entry.unsupported || []).forEach(u => { html += ` <span class="eff-unsup" title="${escapeHtml(u.reason)}">⚠ not automated</span>`; });
@@ -142,7 +141,7 @@ function renderEffectsStrip() {
     `<button type="button" class="eff-strip-toggle${t.on ? " on" : ""}" data-fkey="${t.fkey}" data-toggle="${t.id}"${t.reserved ? " disabled" : ""} title="${t.reserved ? t.source + ": serialized, not automated yet" : t.source}">${t.on ? "◉" : "○"} ${escapeHtml(t.label)}</button>`
   ).join(" ");
   const counter = snap.unapplied.length
-    ? `<span class="hint eff-strip-counter" title="${escapeHtml(snap.unapplied.map(u => u.source + (u.reason ? " — " + u.reason : "")).join("\n"))}">${snap.unapplied.length} feature effect(s) not automated</span>`
+    ? `<span class="hint eff-strip-counter" title="${escapeHtml(snap.unapplied.map(u => u.source + (u.reason ? " - " + u.reason : "")).join("\n"))}">${snap.unapplied.length} feature effect(s) not automated</span>`
     : `<span class="hint eff-strip-counter">all detected effects automated</span>`;
   el.innerHTML = chips + counter;
 }
@@ -158,7 +157,7 @@ function contribTitle(label, key) {
   const contribs = effContribs(key);
   if (!contribs.length) return "";
   const parts = contribs.map(c => `${c.source} ${typeof c.n === "number" ? sign(c.n) : c.n}`);
-  const warn = hasMiscConflict(key) ? "\n⚠ misc field also set — check for double-counting" : "";
+  const warn = hasMiscConflict(key) ? "\n⚠ misc field also set - check for double-counting" : "";
   return `${label}: ${parts.join(", ")}${warn}`;
 }
 function paintEffectSpan(el, key, label) {
