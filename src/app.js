@@ -1,8 +1,8 @@
 /* ---------- data/ folder auto-load status ---------- */
 function autoStatusText(res, what) {
-  if (res.blocked) return "auto-load blocked — serve over http(s), not file:// (see DOCS)";
-  if (!res.found) return `no data/ found for ${what} — see DOCS, or import manually below`;
-  return `auto-loaded ${res.filesLoaded}/${res.filesTotal} file(s) from data/`;
+  if (res.blocked) return "Use a local server to load game data.";
+  if (!res.found) return `No ${what} data.`;
+  return `Loaded ${res.filesLoaded}/${res.filesTotal} files`;
 }
 /* Both loaders report failure into their own status line. Without a .catch, a throw anywhere in the
    load or the render that follows it leaves "loading from data/ …" on screen for good, with nothing
@@ -18,13 +18,13 @@ function runSpellAutoLoad() {
   $("spell-lib-autostatus").textContent = "loading from data/ …";
   return autoLoadSpells()
     .then(res => { renderSpellLibrary(); $("spell-lib-autostatus").textContent = autoStatusText(res, "spells"); })
-    .catch(err => { console.error("Spell auto-load failed", err); $("spell-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " — import manually below"; });
+    .catch(err => { console.error("Spell auto-load failed", err); $("spell-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " - import manually below"; });
 }
 function runItemAutoLoad() {
   $("item-lib-autostatus").textContent = "loading from data/ …";
   return autoLoadItems()
     .then(res => { renderItemLibrary(); $("item-lib-autostatus").textContent = autoStatusText(res, "equipment"); })
-    .catch(err => { console.error("Equipment auto-load failed", err); $("item-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " — import manually below"; });
+    .catch(err => { console.error("Equipment auto-load failed", err); $("item-lib-autostatus").textContent = "auto-load failed: " + (err && err.message || err) + " - import manually below"; });
 }
 
 /* Containers whose inputs are not character data: the three import libraries (search boxes, filter
@@ -112,11 +112,23 @@ function init() {
     const blob = new Blob([JSON.stringify(collectState(), null, 2)], { type: "application/json" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     a.download = ($("char-name").value || "character") + ".json"; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 0);
   });
+  let importRequest = 0;
   $("file-import").addEventListener("change", e => {
     const file = e.target.files[0]; if (!file) return;
+    const request = ++importRequest;
+    const targetId = typeof activeChar === "function" ? activeChar()?.id : null;
     const reader = new FileReader();
-    reader.onload = () => { try { applyState(JSON.parse(reader.result)); saveState(); } catch (err) { alert("Bad JSON: " + err); } };
+    reader.onload = () => {
+      if (request !== importRequest) return;
+      if (targetId !== (typeof activeChar === "function" ? activeChar()?.id : null)) {
+        alert("The active character changed while reading the file. Select the intended character and import again.");
+        return;
+      }
+      try { importCharacterState(reader.result); }
+      catch (err) { alert("Could not import character: " + err.message); }
+    };
     reader.onerror = () => alert("Could not read that file: " + (reader.error && reader.error.message || "unknown error"));
     reader.readAsText(file);
     e.target.value = "";   // so re-picking the SAME file fires `change` again (mirrors spell/item import)
@@ -156,7 +168,6 @@ function init() {
   $("spell-lib-toggle").addEventListener("click", () => {
     const open = $("spell-library-body").style.display === "none";
     $("spell-library-body").style.display = open ? "" : "none";
-    $("spell-lib-collapsed-hint").style.display = open ? "none" : "";
     if (open) {
       refreshSpellAddClassSelect();
       $("spell-search").focus();
@@ -188,7 +199,6 @@ function init() {
   $("item-lib-toggle").addEventListener("click", () => {
     const open = $("item-library-body").style.display === "none";
     $("item-library-body").style.display = open ? "" : "none";
-    $("item-lib-collapsed-hint").style.display = open ? "none" : "";
     if (open) {
       $("item-search").focus();
       $("item-library-body").scrollIntoView({ behavior: "smooth", block: "nearest" });

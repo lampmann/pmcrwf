@@ -191,6 +191,6 @@ function renderConditionEffects() {
 
   const notes = conditionNotes();
   manual.innerHTML = notes.length
-    ? `<span title="the sheet can't apply these — they depend on someone else's roll, or on a judgement per check">Yours to apply: ${notes.join(" &middot; ")}</span>`
+    ? `<span>Yours to apply: ${notes.join(" &middot; ")}</span>`
     : "";
 }

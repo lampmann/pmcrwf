@@ -11,7 +11,7 @@ registerEffects({
   // ===== Warlock (base class) =====
   "class|warlock|eldritch invocations": {
     name: "Eldritch Invocations", sv: 1,
-    unsupported: [{ reason: "invocations live in 5e.tools' optional-features file, which isn't imported yet — several of them (Agonizing Blast, Devil's Sight, ...) would otherwise be automatable", tags: ["optional-features"] }],
+    unsupported: [{ reason: "invocations live in 5e.tools' optional-features file, which isn't imported yet - several of them (Agonizing Blast, Devil's Sight, ...) would otherwise be automatable", tags: ["optional-features"] }],
   },
 
   "class|warlock|mystic arcanum (6th level)": {

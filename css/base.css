@@ -23,21 +23,24 @@
   --menu-bg: #fff;
   --menu-hover-bg: #def;
   --menu-shadow: rgba(0,0,0,.3);
+  --module-shadow: 0 3px 14px rgba(0,0,0,.18);
+  --color-scheme: light;
   --radius: 0px;
-  /* Interaction feedback. Kept as variables so the eight themes in css/themes.css can retune them
+  /* Interaction feedback. Kept as variables so themes can retune them
      without redefining every :hover rule — a dark theme needs a lighter hover than a light one. */
   --hover-bg: #ececec;
   --active-bg: #d6d6d6;
   --focus-ring: #1a56c4;
 }
 * { box-sizing: border-box; }
-body { font-family: var(--font-body); margin: 1rem; line-height: 1.35; background: var(--bg); color: var(--fg); }
+body { font-family: var(--font-body); margin: 1rem; line-height: 1.35; background: var(--bg); color: var(--fg); color-scheme: var(--color-scheme); }
+a { color: var(--link); }
 h1 { font-size: 1.2rem; margin: 0 0 .25rem; }
 h2 { font-size: 1rem; margin: 0 0 .5rem; }
 .toolbar { margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 2px solid var(--border); }
 .toolbar button, .toolbar label { margin-right: .5rem; }
 .modules { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
-.module { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem .75rem; min-width: 240px; background: var(--bg); }
+.module { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem .75rem; min-width: 240px; background: var(--bg); box-shadow: var(--module-shadow); }
 .module.wide { flex-basis: 100%; }
 table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 th, td { text-align: left; padding: 1px 4px; }
@@ -105,11 +108,11 @@ button:focus-visible, .fbtn:focus-visible, .fctrl-btn:focus-visible, .char-tab:f
    anchors and spans rather than buttons, so they need their own hover; underlining on hover is the
    convention they already half-follow (they're dotted-underlined when they carry a tooltip). */
 .sp-name-link:hover, .itm-name-link:hover, .feat-link:hover, .inv-link:hover, .gsp-link:hover,
-.dice-roll:hover, .atk-roll:hover, .use-pip:hover, .rules-ref:hover {
+.dice-roll:hover, .atk-roll:hover, a.mon-roll:hover, .use-pip:hover, .rules-ref:hover {
   text-decoration: underline;
   filter: brightness(1.25);
 }
-.dice-roll:active, .atk-roll:active, .use-pip:active, .sp-name-link:active,
+.dice-roll:active, .atk-roll:active, a.mon-roll:active, .use-pip:active, .sp-name-link:active,
 .itm-name-link:active, .feat-link:active, .inv-link:active {
   filter: brightness(.8);
 }
@@ -169,8 +172,8 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .sp-name-link:hover { text-decoration: underline; }
 .sp-detail td { white-space: normal; padding: 2px 5px 7px; }
 /* inline click-to-roll text inside an expanded spell description (5e.tools-style) */
-.dice-roll, .atk-roll { color: var(--link); font-weight: bold; text-decoration: none; cursor: pointer; border-bottom: 1px dotted var(--link-border); }
-.dice-roll:hover, .atk-roll:hover { text-decoration: none; background: var(--menu-hover-bg); }
+.dice-roll, .atk-roll, a.mon-roll { color: var(--link); font-weight: bold; text-decoration: none; cursor: pointer; border-bottom: 1px dotted var(--link-border); }
+.dice-roll:hover, .atk-roll:hover, a.mon-roll:hover { text-decoration: none; background: var(--menu-hover-bg); }
 /* ----- class features ----- */
 .feat-link { color: var(--link); cursor: pointer; text-decoration: none; }
 .feat-link:hover { text-decoration: underline; }

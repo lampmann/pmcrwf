@@ -254,28 +254,28 @@ function renderSpellResults() {
     rows.push(s);
   }
   const el = $("spell-results");
-  if (!SPELL_LIB.length) { el.innerHTML = "<div class='hint'>Load some spell files above to get started.</div>"; return; }
+  if (!SPELL_LIB.length) { el.innerHTML = "<div class='hint'>No spells loaded.</div>"; return; }
   if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
   const body = rows.map(s => {
     const key = (s.name + "|" + s.source).replace(/"/g, "&quot;");
     const sv = s.attack ? "atk" : s.save ? (s.save.slice(0, 3) + " sv") : "";
     const ban = (typeof banNote === "function") ? banNote("spell", s.name, s.source) : null;
     return `<tr${ban ? ' class="lib-banned"' : ""}>
-      <td><button class="sp-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ' title="add to sheet"'}>+</button></td>
+      <td><button class="sp-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ' aria-label="add to sheet"'}>+</button></td>
       <td class="c"><b>${s.level}</b></td>
       <td class="nm"><a class="sp-name-link" data-key="${key}">${s.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${s.school}</td>
       <td class="hint">${sv}</td>
       <td class="hint">${s.dmg || ""}</td>
-      <td class="c hint" title="concentration">${s.conc ? "conc" : ""}</td>
-      <td class="c hint" title="ritual">${s.ritual ? "R" : ""}</td>
+      <td class="c hint" aria-label="concentration">${s.conc ? "conc" : ""}</td>
+      <td class="c hint" aria-label="ritual">${s.ritual ? "R" : ""}</td>
       <td class="hint">${s.source}</td>
     </tr>`;
   }).join("");
-  el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more — narrow your search</div>` : "");
+  el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
 }
 // escapeHtml now lives in src/text-utils.js (loaded first), alongside the other shared string
-// helpers — it is used by the roster, inventory, event log and creator, not just by this library.
+// helpers - it is used by the roster, inventory, event log and creator, not just by this library.
 // Its String() coercion still matters here: callers pass values straight out of imported 5e.tools
 // JSON, which is not always the string the surrounding code assumes (see collectNames in
 // class-library.js). A malformed value should render oddly, never throw and kill the whole render.
@@ -283,7 +283,7 @@ function toggleSpellDetail(link) {
   const tr = link.closest("tr"), next = tr.nextElementSibling;
   if (next && next.classList.contains("sp-detail")) { next.remove(); return; }  // toggle off
   const s = SPELL_LIB.find(x => (x.name + "|" + x.source) === link.dataset.key); if (!s) return;
-  const comp = ["v", "s", "m"].filter(k => s.comp && s.comp[k]).map(k => k.toUpperCase()).join("") || "—";
+  const comp = ["v", "s", "m"].filter(k => s.comp && s.comp[k]).map(k => k.toUpperCase()).join("") || "-";
   const meta = ["Level " + s.level, s.school, s.cast ? ("Cast: " + s.cast) : "", "Comp: " + comp,
     s.conc ? "Concentration" : "", s.ritual ? "Ritual" : "", s.save ? (s.save + " save") : "", s.attack ? "spell attack" : ""].filter(Boolean).join(" · ");
   const det = document.createElement("tr"); det.className = "sp-detail";

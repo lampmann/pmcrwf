@@ -105,7 +105,7 @@ const VR_EFFECTS = {
   "Encumbrance|PHB": { does: "your Speed drops as carried weight passes 5× and 10× your Strength score" },
   "Hero Points|DMG": { does: "a Hero Points counter beside your HP, with the level-scaled maximum" },
   "Proficiency Dice|DMG": { does: "skills, saving throws and attack to-hit roll a die in place of the flat proficiency bonus" },
-  "Rest Variants|DMG": { does: "choose Gritty Realism or Epic Heroism in Settings — the rest buttons then state their durations" },
+  "Rest Variants|DMG": { does: "choose Gritty Realism or Epic Heroism in Settings - the rest buttons then state their durations" },
   "Feats|PHB": { elsewhere: "House Rules → Settings → Feats allowed" },
   "Multiclassing|PHB": { elsewhere: "House Rules → Settings → Multiclassing allowed" },
   "Optional Class Features|TCE": { elsewhere: "House Rules → Settings → Optional class features" },
@@ -126,10 +126,10 @@ function encumbranceState() {
   const str = abilityScore("str"), carried = itemsTotalWeight();
   if (carried > str * 10) {
     return { level: "heavily encumbered", speedPenalty: 20, carried, str,
-      note: "carrying more than 10× your Strength — speed −20 ft, and disadvantage on Strength, Dexterity and Constitution checks, attack rolls and saving throws" };
+      note: "carrying more than 10× your Strength - speed −20 ft, and disadvantage on Strength, Dexterity and Constitution checks, attack rolls and saving throws" };
   }
   if (carried > str * 5) {
-    return { level: "encumbered", speedPenalty: 10, carried, str, note: "carrying more than 5× your Strength — speed −10 ft" };
+    return { level: "encumbered", speedPenalty: 10, carried, str, note: "carrying more than 5× your Strength - speed −10 ft" };
   }
   return { ...off, carried, str };
 }
@@ -198,31 +198,26 @@ function vrRowHtml(r) {
       <b>${escapeHtml(r.name)}</b></label>
     <span class="hint">${escapeHtml(r.source)}${r.page ? " p" + r.page : ""}${r.ruleType ? " &middot; " + (VR_TYPE_NAMES[r.ruleType] || r.ruleType) : ""}</span>
     ${badge}
-    <button type="button" class="vr-more" data-vrtext="${attr}" title="show the rule text">&hellip;</button>
+    <button type="button" class="vr-more" data-vrtext="${attr}" aria-label="show the rule text">&hellip;</button>
     ${on && eff && (eff.does || eff.elsewhere) ? `<div class="hint vr-effect">${escapeHtml(eff.does || ("Set at: " + eff.elsewhere))}</div>` : ""}
   </div>`;
 }
 function hrRenderVariants() {
   if (!VARIANT_RULES.length) {
-    return `<div class="hint">No optional-rule catalogue loaded. It comes from 5e.tools' own
-      <code>data/variantrules.json</code>, auto-loaded like the spell and equipment libraries &mdash; drop that file in
-      your <code>data/</code> folder, or
-      <label style="display:inline">import it here <input type="file" id="vr-import" accept="application/json"></label>.</div>`;
+    return `<div class="hint">No optional rules loaded.
+      <label>Import rules <input type="file" id="vr-import" accept="application/json"></label></div>`;
   }
   const shown = VARIANT_RULES.filter(vrMatches);
   const on = enabledVariants().length;
-  const typeBtn = (v, label, title) =>
-    `<button type="button" class="fbtn${VR_TYPE_FILTER === v ? " inc" : ""}" data-vrtype="${v}" title="${escapeHtml(title)}">${label}</button>`;
+  const typeBtn = (v, label) =>
+    `<button type="button" class="fbtn${VR_TYPE_FILTER === v ? " inc" : ""}" data-vrtype="${v}">${label}</button>`;
   const srcOpts = ['<option value="">every book</option>']
     .concat(vrSources().map(s => `<option value="${escapeHtml(s)}"${VR_SOURCE_FILTER === s ? " selected" : ""}>${escapeHtml(s)}</option>`)).join("");
-  return `<div class="hint">The books' own optional and variant rules, imported from
-      <code>data/variantrules.json</code> rather than written into the sheet. These are <b>RAW alternatives</b>,
-      not this table's rulings &mdash; switching one on is a campaign choice, and travels in an exported ruleset.
-      <b>${on}</b> switched on of ${VARIANT_RULES.length} catalogued.</div>
+  return `<div class="hint"><b>${on}</b> of ${VARIANT_RULES.length} rules enabled.</div>
     <div class="fbody" style="margin:.4rem 0">
-      ${typeBtn("options", "Options &amp; variants", "only entries the books mark Optional or Variant")}
-      ${typeBtn("all", "Everything", "including the plain reference entries in the same file")}
-      ${typeBtn("on", "Switched on", "only what this campaign uses")}
+      ${typeBtn("options", "Options &amp; variants")}
+      ${typeBtn("all", "Everything")}
+      ${typeBtn("on", "Enabled")}
       <label style="margin-left:.5rem">Book <select id="vr-source">${srcOpts}</select></label>
       <input type="text" id="vr-search" placeholder="search rules…" value="${escapeHtml(VR_QUERY)}" style="width:14rem;margin-left:.4rem" autocomplete="off">
       <span class="hint">${shown.length} shown</span>
@@ -230,7 +225,7 @@ function hrRenderVariants() {
     ${shown.length ? shown.map(vrRowHtml).join("") : `<div class="hint">no matches</div>`}`;
 }
 /* Rule text expands inline under its row, the same click-to-expand the spell and item libraries use
-   rather than a popup — these run to several paragraphs and a tooltip would be unreadable. */
+   rather than a popup - these run to several paragraphs and a tooltip would be unreadable. */
 function toggleVariantText(btn) {
   const row = btn.closest(".vr-rule");
   const open = row.querySelector(".vr-text");
@@ -239,6 +234,6 @@ function toggleVariantText(btn) {
   const d = document.createElement("div");
   d.className = "vr-text";
   d.innerHTML = `${escapeHtml(r.text).replace(/\n/g, "<br>")}` +
-    `<div class="hint">&mdash; ${escapeHtml(r.source)}${r.page ? ", p." + r.page : ""}</div>`;
+    `<div class="hint">- ${escapeHtml(r.source)}${r.page ? ", p." + r.page : ""}</div>`;
   row.appendChild(d);
 }

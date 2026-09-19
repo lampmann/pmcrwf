@@ -29,6 +29,6 @@
     break-inside: avoid;
   }
 
-  .module { border: 1px solid #000; }
+  .module { border: 1px solid #000; box-shadow: none !important; }
   a { color: #000 !important; text-decoration: none !important; }
 }

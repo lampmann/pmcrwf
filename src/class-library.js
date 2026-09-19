@@ -265,17 +265,13 @@ function grantedSpellsHtml(spells, header, cls) {
   const links = spells.map(g => {
     if (g.spec !== undefined) {   // a filter, not a spell: describe it, don't offer click-to-add
       const label = describeSpellFilter(g.spec) + (g.choose && g.count ? ` (choose ${g.count})` : "");
-      return `<i title="${escapeHtml(g.choose ? "choose from these yourself, then add them from the Spell Library" : "all of these are added to your spell list — add the ones you use from the Spell Library")}">${escapeHtml(label)}${g.expanded ? "*" : ""}</i>`;
+      return `<i>${escapeHtml(label)}${g.expanded ? "*" : ""}</i>`;
     }
     const cls2 = "feat-link gsp-link" + (g.expanded ? " gsp-expanded" : "");
-    const title = g.expanded ? ` title="added to your spell list — still needs to be prepared/known normally, via a class"` : "";
-    return `<a class="${cls2}" data-name="${escapeHtml(g.name)}" data-cls="${escapeHtml(cls || "")}" data-header="${escapeHtml(header)}" data-expanded="${g.expanded ? "1" : "0"}"${title}>${escapeHtml(g.name)}${g.expanded ? "*" : ""}</a>`;
+    return `<a class="${cls2}" data-name="${escapeHtml(g.name)}" data-cls="${escapeHtml(cls || "")}" data-header="${escapeHtml(header)}" data-expanded="${g.expanded ? "1" : "0"}">${escapeHtml(g.name)}${g.expanded ? "*" : ""}</a>`;
   }).join(", ");
-  const anyClickable = spells.some(g => g.spec === undefined);
-  const note = anyClickable
-    ? "click to add — <code>*</code> = list expansion, still needs normal preparation"
-    : "added to your spell list — add the ones you use from the Spell Library";
-  return `<div class="hint" style="margin:.15rem 0 .3rem 1.2rem">${escapeHtml(header)} spells (${note}): ${links}</div>`;
+  const note = spells.some(g => g.expanded) ? " (* requires preparation)" : "";
+  return `<div class="hint" style="margin:.15rem 0 .3rem 1.2rem">${escapeHtml(header)} spells${note}: ${links}</div>`;
 }
 function parseFeatFile(j) {
   (j.feat || []).forEach(f => { FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)) }; });
@@ -476,9 +472,9 @@ function asiScoreHtml(e) {
   const opt = (sel, i) => ABILITIES.map(a =>
     `<option value="${a.key}"${sel === a.key ? " selected" : ""}>${a.key.toUpperCase()}</option>`).join("");
   const sel = i => `<select class="asi-score" data-asikey="${e.fkey}" data-slot="${i}"${taken ? " disabled" : ""}>` +
-    `<option value=""${picks[i] ? "" : " selected"}>&mdash;</option>${opt(picks[i], i)}</select>`;
+    `<option value=""${picks[i] ? "" : " selected"}>-</option>${opt(picks[i], i)}</select>`;
   const total = (picks || []).filter(Boolean).length;
-  return ` <span class="hint" title="increase one score by 2 (pick it twice) or two scores by 1${taken ? " — cleared while a feat is chosen" : ""}">` +
+  return ` <span class="hint">` +
     `or +1 ${sel(0)} and +1 ${sel(1)}${total === 2 && picks[0] === picks[1] ? ` <b>(+2 ${escapeHtml(String(picks[0]).toUpperCase())})</b>` : ""}</span>`;
 }
 
@@ -499,7 +495,7 @@ function renderUsesTracker(feature, usesSpec) {
   const used = Math.min(st.used, max);
   const periodLabel = usesSpec.delayed ? `long rest (${usesSpec.delayed.expr} once expended)` : usesSpec.per === "sr" ? "short/long rest" : "long rest";
   const pips = Array.from({ length: max }, (_, i) =>
-    `<button type="button" class="use-pip${i < used ? " used" : ""}" data-useskey="${key}" data-i="${i}" title="click to set uses">${i < used ? "●" : "○"}</button>`
+    `<button type="button" class="use-pip${i < used ? " used" : ""}" data-useskey="${key}" data-i="${i}" aria-label="click to set uses">${i < used ? "●" : "○"}</button>`
   ).join("");
   const pendingHint = (usesSpec.delayed && st.pendingRests != null)
     ? ` <span class="hint">(${st.pendingRests} more long rest${st.pendingRests === 1 ? "" : "s"} to recharge)</span>` : "";
@@ -558,11 +554,11 @@ function renderRaceSection(all) {
   const raceName = ($("char-race") && $("char-race").value || "").trim();
   if (!raceName) return "";
   const rec = ciFindRace(raceName);
-  if (!rec) return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(raceName)}</b> <span class="hint">— not imported (load races.json)</span></div>`;
+  if (!rec) return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(raceName)}</b> <span class="hint">- not imported (load races.json)</span></div>`;
   const subName = ($("char-subrace") && $("char-subrace").value || "").trim();
   const sub = ciFindRaceSub(rec, subName);
   const subNote = sub ? ` <span class="hint">/ ${escapeHtml(sub.name)}</span>`
-    : (subName ? ` <span class="hint">/ ${escapeHtml(subName)} — subrace not found</span>` : "");
+    : (subName ? ` <span class="hint">/ ${escapeHtml(subName)} - subrace not found</span>` : "");
   const entries = all.filter(a => (a.origin.kind === "race" || a.origin.kind === "subrace")
     && a.origin.raceName.toLowerCase() === rec.name.toLowerCase());
   const items = entries.map(e => {
@@ -582,7 +578,7 @@ function renderClassFeatures() {
   const raceName = ($("char-race") && $("char-race").value || "").trim();
   const classes = getClasses().filter(c => c.name.trim());
   if (!Object.keys(CLASS_LIB).length && !Object.keys(RACE_LIB).length) {
-    el.innerHTML = "<div class='hint'>No data loaded — auto-loads from <code>data/</code> (class/race/feat files), or import files above.</div>"; return;
+    el.innerHTML = "<div class='hint'>No class, race, or feat data loaded.</div>"; return;
   }
   if (!raceName && !classes.length) { el.innerHTML = "<div class='hint'>Add a race and/or class name in the Character module to see its features.</div>"; return; }
   FEATURE_TEXT_BY_KEY = {};
@@ -590,10 +586,10 @@ function renderClassFeatures() {
   const raceHtml = renderRaceSection(all);
   const classHtml = classes.map(c => {
     const rec = ciFindClass(c.name), lvl = c.lvl || 0;
-    if (!rec) return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${lvl}</b> <span class="hint">— not imported (load its class-*.json)</span></div>`;
+    if (!rec) return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${lvl}</b> <span class="hint">- not imported (load its class-*.json)</span></div>`;
     const sub = ciFindSub(rec, c.sub);
     const subNote = sub ? ` <span class="hint">/ ${escapeHtml(sub.name)}</span>`
-      : (c.sub.trim() ? ` <span class="hint">/ ${escapeHtml(c.sub)} — subclass not found</span>` : "");
+      : (c.sub.trim() ? ` <span class="hint">/ ${escapeHtml(c.sub)} - subclass not found</span>` : "");
     const entries = all.filter(a => (a.origin.kind === "class" || a.origin.kind === "subclass")
       && a.origin.className.toLowerCase() === rec.name.toLowerCase());
     const items = entries.map(e => {
@@ -614,7 +610,7 @@ function renderClassFeatures() {
       // silently strip a feat off a character who was built under the old ruleset.
       const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
       const picker = (featsOff && !e.asiChosen)
-        ? ` <span class="hint">ASI only &mdash; feats are off in this campaign's House Rules.</span>`
+        ? ` <span class="hint">ASI only - feats are off in this campaign's House Rules.</span>`
         : ` &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${e.fkey}" value="${escapeHtml(e.asiChosen)}" style="width:12rem"></label>`;
       return `<div>${link}${picker}${asiScoreHtml(e)}${tracker}${renderEffectControls(e)}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";

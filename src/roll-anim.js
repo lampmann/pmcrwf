@@ -70,15 +70,28 @@ function renderRollAnimToggle() {
   const on = rollAnimAllowed();
   btn.textContent = on ? "\u2685" : "\u2680";
   btn.classList.toggle("off", !on);
-  btn.title = on ? "dice tumble when they land \u2014 click to switch off"
-                 : "dice land without tumbling \u2014 click to switch on"
-                   + (prefersReducedMotion() ? " (your system asks for reduced motion)" : "");
+  btn.setAttribute("aria-label", "Dice animation");
+  btn.setAttribute("aria-pressed", String(on));
+}
+
+function refreshAnimatedCriticals(entry) {
+  entry.querySelectorAll(".attack-roll").forEach(attack => {
+    const badge = attack.querySelector(".roll-critical");
+    if (!badge) return;
+    const d20 = [...attack.querySelectorAll('.die[data-sides="20"]')]
+      .filter(die => !die.classList.contains("die-dropped"))
+      .map(die => Number(die.textContent));
+    const message = criticalMessage(d20, Number(attack.dataset.critmin) || 20);
+    badge.textContent = message;
+    badge.hidden = !message;
+  });
 }
 
 /* The running total for a set of currently-showing faces. Starts from the value actually rolled and
    moves it by each face's distance from where it will land, scaled by that term's coefficient — so
    this is arithmetic on the real roll rather than a second, invented one. */
 function rollAnimTotal(totalEl, faces) {
+  if (totalEl.dataset.roll) faces = faces.filter(f => f.rollId == null || f.rollId === totalEl.dataset.roll);
   const final = Number(totalEl.dataset.final);
   const coeffs = (totalEl.dataset.coeffs || "").split(",").map(Number);
   /* Per TERM rather than per die: a term's value is the sum of whatever it is currently KEEPING, so
@@ -121,10 +134,12 @@ function animateRollCopies(entries) {
     dropped: el.classList.contains("die-dropped"),
     ops: el.dataset.ops || "",
     term: el.dataset.term || "0",
+    rollId: el.dataset.roll,
     cur: Number(el.dataset.final),
   }));
   // Terms that select between their dice (advantage's kh1, and friends) re-decide every frame.
-  const termsWithOps = [...new Set(faces.filter(f => f.ops).map(f => f.term))];
+  const groupKey = f => `${f.rollId || ""}:${f.term}`;
+  const termsWithOps = [...new Set(faces.filter(f => f.ops).map(groupKey))];
 
   copies.forEach(c => c.entry.classList.add("rolling"));
   let frame = 0;
@@ -136,6 +151,7 @@ function animateRollCopies(entries) {
         el.classList.toggle("die-dropped", f.dropped);
       });
       c.totals.forEach(t => { t.textContent = String(rollAnimTotal(t, faces)); });
+      refreshAnimatedCriticals(c.entry);
     });
   };
   /* Re-run the roller's own keep/drop rule against what the dice are currently showing, so a
@@ -144,7 +160,7 @@ function animateRollCopies(entries) {
   const reselect = () => {
     if (typeof dropFlagsFor !== "function") return;
     termsWithOps.forEach(term => {
-      const group = faces.filter(f => f.term === term);
+      const group = faces.filter(f => groupKey(f) === term);
       if (!group.length) return;
       const flags = dropFlagsFor(group.map(f => f.cur), group[0].ops, group[0].sides);
       group.forEach((f, i) => { f.dropped = !!flags[i]; });
@@ -174,6 +190,7 @@ function animateRollCopies(entries) {
         el.classList.toggle("die-dropped", f.finalDropped);
       });
       c.totals.forEach(t => { t.textContent = t.dataset.final; });
+      refreshAnimatedCriticals(c.entry);
       c.entry.classList.remove("rolling");
       c.entry.classList.add("rolled");
       setTimeout(() => c.entry.classList.remove("rolled"), 600);

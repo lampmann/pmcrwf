@@ -56,7 +56,7 @@ function renderRollMirror() {
   const fold = document.getElementById("roll-mirror-fold");
   if (fold) {
     fold.textContent = MIRROR.folded ? "▲" : "▼";
-    fold.title = MIRROR.folded ? "unfold the roll log" : "fold the roll log up";
+    fold.setAttribute("aria-label", MIRROR.folded ? "Expand roll log" : "Collapse roll log");
   }
 }
 

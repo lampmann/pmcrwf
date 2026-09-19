@@ -142,7 +142,7 @@ registerEffects({
   "subclass|paladin|oath of glory|aura of alacrity": {
     name: "Aura of Alacrity", sv: 1,
     effects: [{ target: "speed", op: "add", value: 10 }],
-    unsupported: [{ reason: "the aura also grants +10 ft speed to nearby allies (self-only when not incapacitated) — no other-creature target", tags: ["speed", "aura"] }],
+    unsupported: [{ reason: "the aura also grants +10 ft speed to nearby allies (self-only when not incapacitated) - no other-creature target", tags: ["speed", "aura"] }],
   },
 
   // ===== Oath of the Watchers =====

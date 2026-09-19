@@ -69,7 +69,7 @@ registerEffects({
     name: "Umbral Form", sv: 1,
     effects: [
       { target: "resist-all damage except force and radiant", op: "tag", value: "all but force/radiant" },
-      { target: "resist-all damage except force and radiant", op: "note", text: "only while transformed — costs 6 sorcery points" },
+      { target: "resist-all damage except force and radiant", op: "note", text: "only while transformed - costs 6 sorcery points" },
     ],
   },
 

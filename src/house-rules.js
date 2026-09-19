@@ -61,7 +61,7 @@ const HR_SETTINGS = [
   { key: "multiclass", label: "Multiclassing allowed", kind: "bool", enforced: true, def: true,
     hint: "off hides the creator's add-a-class control" },
   { key: "feats", label: "Feats allowed", kind: "bool", enforced: true, def: true,
-    hint: "off means ASI only — the feat picker disappears from ASI slots" },
+    hint: "off means ASI only - the feat picker disappears from ASI slots" },
   { key: "optionalFeatures", label: "Optional class features (TCE)", kind: "bool", enforced: false, def: true },
   { key: "oversized", label: "Oversized weapons", kind: "choice", enforced: true, def: "allow",
     opts: [["allow", "Fully allowed"], ["twosize", "Not if sized for 2+ sizes larger"], ["banned", "Banned"]],
@@ -71,21 +71,21 @@ const HR_SETTINGS = [
     hint: "fixed price per rarity, halved for consumables" },
   { key: "hirelings", label: "Hirelings allowed", kind: "bool", enforced: false, def: true },
   { key: "trinketsWorthless", label: "Trinkets are worth 0 gp", kind: "bool", enforced: true,
-    hint: "R9 — overrides any price on a trinket, in the library and in your inventory total" },
+    hint: "R9 - overrides any price on a trinket, in the library and in your inventory total" },
   { key: "mundaneEquipment", label: "Starting equipment must be mundane", kind: "bool", enforced: true,
-    hint: "R35 — stated on the creator's equipment step, where the open-ended picks are made" },
+    hint: "R35 - stated on the creator's equipment step, where the open-ended picks are made" },
   { key: "restVariant", label: "Rest lengths", kind: "choice", enforced: true, def: "",
     opts: [["", "standard (1 hour / 8 hours)"], ["gritty", "Gritty Realism (8 hours / 7 days)"], ["epic", "Epic Heroism (5 minutes / 1 hour)"]],
-    hint: "DMG p267 — takes effect once Rest Variants is switched on under Optional rules" },
+    hint: "DMG p267 - takes effect once Rest Variants is switched on under Optional rules" },
   { key: "bonusActionSpellStrict", label: "A bonus-action spell always costs a bonus action", kind: "bool", enforced: true, def: true,
-    hint: "R47 — with your bonus action spent, such a spell can't be cast at all" },
+    hint: "R47 - with your bonus action spent, such a spell can't be cast at all" },
   /* R21/R22. Default true because that is RAW-as-argued (see boons.js's header), but a table that
      reads Combining Magical Effects the other way switches it off — and then the Guidance and
      Resistance counters go away with it, since counting to N is the only thing they were for.
      Death Ward is deliberately not covered: it isn't a die you stack onto a roll, it's a number of
      times you get saved from 0 HP, which is worth counting under either reading. */
   { key: "boonStacking", label: "Guidance / Resistance stack", kind: "bool", enforced: true, def: true,
-    hint: "R21/R22 — off removes their counters entirely; Death Ward still stacks either way" },
+    hint: "R21/R22 - off removes their counters entirely; Death Ward still stacks either way" },
 ];
 
 /* ----- concurrent casting limits (H4) -----
@@ -284,10 +284,10 @@ function oversizedVerdict(weaponSize, wielderSize) {
   }
   if (rule === "twosize" && steps >= 2) {
     return { steps, disadvantage: true, unusable: true,
-      note: `sized for a creature ${steps} sizes larger — too big to use under this campaign's House Rules` };
+      note: `sized for a creature ${steps} sizes larger - too big to use under this campaign's House Rules` };
   }
   return { steps, disadvantage: true, unusable: false,
-    note: `sized for a creature ${steps} size${steps === 1 ? "" : "s"} larger — disadvantage on attack rolls` };
+    note: `sized for a creature ${steps} size${steps === 1 ? "" : "s"} larger - disadvantage on attack rolls` };
 }
 
 /* Every subclass the class library knows, as "Class: Subclass" — the form a DM bans them in, and
@@ -350,7 +350,7 @@ function loadHousePreset(key) {
   const p = HR_PRESETS[key]; if (!p) return;
   HOUSE_RULES = normalizeHouseRules(p.build());
   saveHouseRules();
-  if (typeof logEvent === "function") logEvent("info", `<b>House rules</b> — loaded ${escapeHtml(p.label)}`);
+  if (typeof logEvent === "function") logEvent("info", `<b>House rules</b> - loaded ${escapeHtml(p.label)}`);
   refreshAfterHouseRules();
 }
 function clearHouseRules() {
@@ -395,7 +395,7 @@ function importHouseRules(text) {
   HOUSE_RULES = normalizeHouseRules(data);
   saveHouseRules();
   if (typeof logEvent === "function") {
-    logEvent("info", `<b>House rules</b> — imported${HOUSE_RULES.preset ? ` ${escapeHtml(HOUSE_RULES.preset)}` : ""}` +
+    logEvent("info", `<b>House rules</b> - imported${HOUSE_RULES.preset ? ` ${escapeHtml(HOUSE_RULES.preset)}` : ""}` +
       ` <span class="hint">(${totalBanCount()} ban(s), ${HOUSE_RULES.sourcesOff.length} source(s) excluded)</span>`);
   }
   refreshAfterHouseRules();
@@ -438,7 +438,7 @@ function hrBanKindHtml(kind) {
   const list = HOUSE_RULES.bans[kind.key] || [];
   const options = kind.lib();
   const chips = list.length
-    ? list.map(n => `<span class="hr-chip">${escapeHtml(n)}<button type="button" class="hr-chip-x" data-hrunban="${kind.key}" data-hrname="${escapeHtml(n).replace(/"/g, "&quot;")}" title="remove this ban">&times;</button></span>`).join("")
+    ? list.map(n => `<span class="hr-chip">${escapeHtml(n)}<button type="button" class="hr-chip-x" data-hrunban="${kind.key}" data-hrname="${escapeHtml(n).replace(/"/g, "&quot;")}" aria-label="remove this ban">&times;</button></span>`).join("")
     : `<span class="hint">nothing banned</span>`;
   return `<div class="hr-ban-kind">
     <div class="flabel">${kind.label} <span class="hint">${list.length || ""}</span></div>
@@ -451,24 +451,20 @@ function hrBanKindHtml(kind) {
 }
 
 function hrRenderBans() {
-  return `<div class="hint">Banned entries stay visible in the libraries, marked and with their Add button disabled &mdash;
-      so a missing option reads as "the DM banned this" rather than as the sheet losing data.
-      Nothing here blocks a character you already have.</div>
+  return `
     ${BAN_KINDS.map(hrBanKindHtml).join("")}`;
 }
 
 function hrRenderSources() {
   const srcs = hrKnownSources();
   const off = HOUSE_RULES.sourcesOff;
-  if (!srcs.length) return `<div class="hint">No sources loaded yet &mdash; import or auto-load some game data and the books will be listed here.</div>`;
+  if (!srcs.length) return `<div class="hint">No sources loaded.</div>`;
   const chips = srcs.map(s => {
     const banned = isBannedSource(s);
     const full = (typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[s]) || s;
     return `<button type="button" class="fbtn${banned ? " exc" : ""}" data-hrsrc="${escapeHtml(s).replace(/"/g, "&quot;")}" title="${escapeHtml(full)}">${escapeHtml(s)}</button>`;
   }).join("");
-  return `<div class="hint">A denylist, not an allowlist: every book starts allowed and you name the exceptions,
-      because "everything official except a few" is how most tables actually run and an allowlist goes stale with every release.
-      A banned book bans everything printed in it. ${off.length ? `<b>${off.length}</b> excluded.` : ""}</div>
+  return `<div class="hint"><b>${off.length}</b> books excluded.</div>
     <div class="fbody" style="margin-top:.35rem">${chips}</div>`;
 }
 
@@ -479,7 +475,7 @@ function hrSettingRowHtml(s) {
     : `<label>${escapeHtml(s.label)} <select class="hr-set" data-hrset="${s.key}">${
         s.opts.map(([val, lab]) => `<option value="${escapeHtml(val)}"${v === val ? " selected" : ""}>${escapeHtml(lab)}</option>`).join("")
       }</select></label>`;
-  const note = [s.hint || "", s.enforced ? "" : "recorded only"].filter(Boolean).join(" &middot; ");
+  const note = s.enforced ? "" : "recorded only";
   return `<div class="hr-setting">${control}${note ? ` <span class="hint">${note}</span>` : ""}</div>`;
 }
 /* Concurrent-casting limits (H4). Its own block rather than an HR_SETTINGS row, because it's a
@@ -490,23 +486,21 @@ function hrRenderSpellLimits() {
   const options = (typeof SPELL_LIB !== "undefined") ? [...new Set(SPELL_LIB.map(s => s.name))].sort() : [];
   const rows = names.length
     ? names.map(n => `<span class="hr-chip">${escapeHtml(n)} <b>&times;${spellLimitFor(n)}</b>
-        <button type="button" class="hr-chip-x" data-hrunlimit="${escapeHtml(n).replace(/"/g, "&quot;")}" title="remove this limit">&times;</button></span>`).join("")
+        <button type="button" class="hr-chip-x" data-hrunlimit="${escapeHtml(n).replace(/"/g, "&quot;")}" aria-label="remove this limit">&times;</button></span>`).join("")
     : `<span class="hint">no limits set</span>`;
   return `<div class="hr-ban-kind" style="margin-top:.6rem">
     <div class="flabel">Concurrent castings</div>
     <div class="fbody">
-      <div class="hint">At most N of a spell running at once, per character &mdash; a counter for each appears beside your HP.
-        Going over is shown, never prevented.</div>
+
       ${comboboxHtml({ options, placeholder: options.length ? "spell name…" : "spell name", extraClass: "hr-limit-name", width: "14rem" })}
-      <input type="text" inputmode="numeric" class="tiny hr-limit-n" value="1" title="how many may be active at once">
+      <input type="text" inputmode="numeric" class="tiny hr-limit-n" value="1" aria-label="how many may be active at once">
       <button type="button" id="hr-limit-add">Limit</button>
       <div class="hr-chips">${rows}</div>
     </div>
   </div>`;
 }
 function hrRenderSettings() {
-  return `<div class="hint">Settings marked <i>recorded only</i> are here so the table has one place to look them up &mdash;
-      nothing in the sheet reads them yet. The rest change how the sheet behaves.</div>
+  return `
     ${HR_SETTINGS.map(hrSettingRowHtml).join("")}
     ${hrRenderSpellLimits()}`;
 }
@@ -527,10 +521,10 @@ function renderHouseRules() {
     status.textContent = bits.join(" · ");
   }
   const presetBar = `<div class="hr-presets">
-    <button type="button" id="hr-export" title="save this whole ruleset — bans, sources, settings, limits and rulings — as one file">Export ruleset</button>
+    <button type="button" id="hr-export">Export ruleset</button>
     <label style="margin-right:.5rem">Import <input type="file" id="hr-import" accept="application/json" style="width:11rem"></label>
-    ${Object.entries(HR_PRESETS).map(([k, p]) => `<button type="button" data-hrpreset="${k}" title="${escapeHtml(p.hint)}">Load ${escapeHtml(p.label)}</button>`).join("")}
-    <button type="button" id="hr-clear" title="clear every ban, source exclusion and setting">Clear all</button>
+    ${Object.entries(HR_PRESETS).map(([k, p]) => `<button type="button" data-hrpreset="${k}">Load ${escapeHtml(p.label)}</button>`).join("")}
+    <button type="button" id="hr-clear" aria-label="clear every ban, source exclusion and setting">Clear all</button>
   </div>`;
   const body = HR_TAB === "sources" ? hrRenderSources()
     : HR_TAB === "settings" ? hrRenderSettings()
@@ -632,7 +626,7 @@ document.addEventListener("DOMContentLoaded", () => {
       imp.value = "";                                  // so re-picking the same file fires again
       if (!file) return;
       const rd = new FileReader();
-      rd.onload = () => { const err = importHouseRules(rd.result); if (err) alert("Could not import that ruleset — " + err); };
+      rd.onload = () => { const err = importHouseRules(rd.result); if (err) alert("Could not import that ruleset - " + err); };
       rd.onerror = () => alert("Could not read that file: " + ((rd.error && rd.error.message) || "unknown error"));
       rd.readAsText(file);
       return;

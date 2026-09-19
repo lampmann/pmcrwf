@@ -10,7 +10,7 @@ pmcrwf is an offline, single-page HTML character sheet for **D&D 5e (2014 rules)
 - **Companions & summons** — add any statblock from the bestiary to your own sheet: familiars, steeds, wild shapes, and summons. Tracked as a stack (one entry, eight wolves, each with its own HP) with an **×N all** button that rolls the whole stack's attacks into one damage-by-AC table, and Tasha's-style summons that scale off *your* spell attack bonus and cast level.
 - **Trackers** — conditions, exhaustion, death saves, and limited-use features with short/long-rest recovery.
 - **Free-form layout** — drag, resize, and snap modules wherever you want them; save the arrangement to a file.
-- **Themes** — swappable CSS themes; add your own by dropping a file in `css/themes/`.
+- **Themes** — Default, Solarized Light/Dark, and Dracula Light/Dark. Add CSS files and register them in `css/themes/index.json`.
 - **Your data stays yours** — autosaves to your browser, with JSON export/import for the whole character.
 - **Runs local or hosted** — start the local server, or open the hosted copy, point it at your own `data/` folder once, and it remembers (a live link in Chrome/Edge, a stored copy in Firefox). Either way it works offline and there's no account, no sync and no telemetry.
 

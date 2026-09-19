@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- The tab name, and now also the bookmark and home-screen name on a hosted copy — so it says what
      this is rather than what it was ("Prototype (unstyled)", from before there were themes). -->
-<title>pmcrwf — D&D 5e character sheet</title>
+<title>pmcrwf - D&D 5e character sheet</title>
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/print.css" media="print">
@@ -21,7 +21,7 @@
 <body>
 
 <div class="toolbar">
-  <strong>pmcrwf</strong> &mdash; prototype v0.12
+  <strong>pmcrwf</strong>
   <span style="float:right">
     <label>Theme <select id="theme-select"></select></label>
     <button id="btn-export">Export JSON</button>
@@ -45,18 +45,17 @@
      scrolling back to the module. See src/roll-mirror.js. -->
 <div id="roll-mirror">
   <div id="roll-mirror-head">
-    <span id="roll-mirror-grip" title="drag to resize"></span>
+    <span id="roll-mirror-grip" aria-label="drag to resize"></span>
     <b>Rolls</b>
     <span class="spacer"></span>
-    <button type="button" id="roll-anim-toggle" title="dice tumble when they land">&#9861;</button>
-    <button type="button" id="roll-mirror-fold" title="fold the roll log up">&#9660;</button>
-    <button type="button" id="roll-mirror-close" title="hide the roll log">&times;</button>
+    <button type="button" id="roll-anim-toggle" aria-label="dice tumble when they land">&#9861;</button>
+    <button type="button" id="roll-mirror-fold" aria-label="fold the roll log up">&#9660;</button>
+    <button type="button" id="roll-mirror-close" aria-label="hide the roll log">&times;</button>
   </div>
-  <input type="text" id="roll-mirror-cmd" placeholder="1d20+5 adv Perception   ·   /rr 4 1d6"
-         title="same commands as the Event Log: an expression, optionally adv/dis and a label; /rr N and /rrr N DC for multi- and iterative rolls; /clear empties the log">
+  <input type="text" id="roll-mirror-cmd" placeholder="1d20+5 adv Perception   ·   /rr 4 1d6">
   <div id="roll-mirror-body"></div>
 </div>
-<button type="button" id="roll-mirror-tab" title="show the roll log" style="display:none">Rolls</button>
+<button type="button" id="roll-mirror-tab" aria-label="show the roll log" style="display:none">Rolls</button>
 
 <div id="effects-strip"></div>
 
@@ -69,7 +68,7 @@
     <label>Race <input type="text" data-persist id="char-race" style="width:9rem"></label>
     <label>Subrace <input type="text" data-persist id="char-subrace" style="width:9rem"></label>
     <label>Background <input type="text" data-persist id="char-bg" style="width:9rem"></label>
-    <label title="your creature size — sets the penalty for wielding a weapon sized for something bigger (see House Rules)">Size
+    <label>Size
       <select data-persist id="char-size">
         <option value="T">Tiny</option><option value="S">Small</option>
         <option value="M" selected>Medium</option><option value="L">Large</option>
@@ -78,7 +77,7 @@
     <!-- XP and Level are two views of the same number (PHB p15's Character Advancement table);
          xp.js keeps them in step. See DOCS' "Levelling up". -->
     <label>XP <input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="char-xp" style="width:6rem"></label>
-    <label title="your total character level — type a level to jump to its XP threshold, or type XP to find the level">Level
+    <label>Level
       <input type="text" inputmode="numeric" class="tiny" id="char-level" style="width:3rem"></label>
     <span class="hint" id="xp-next"></span>
     <fieldset>
@@ -88,7 +87,7 @@
         <tbody id="class-rows"></tbody>
       </table>
       <button id="btn-add-class">+ add class</button>
-      <div class="hint">Hit Die &amp; Casting default to "auto" — looked up from the SRD class (and subclass, for Eldritch Knight/Arcane Trickster) name you type. Pick an explicit value to override.</div>
+
       <span class="hint">Total level: <span class="derived" id="total-level">0</span>
         &nbsp;|&nbsp; Proficiency bonus: <span class="derived" id="pb">+2</span>
         (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
@@ -98,10 +97,10 @@
   <!-- ===== ABILITY SCORES ===== -->
   <section class="module" data-module="abilities">
     <h2>Ability Scores</h2>
-    <table><thead><tr><th>Ability</th><th title="set at character creation and by level-up">Base</th><th title="everything since: items, curses, feats you applied by hand">Misc</th><th>Mod</th></tr></thead>
+    <table><thead><tr><th>Ability</th><th>Base</th><th>Misc</th><th>Mod</th></tr></thead>
       <tbody id="ability-rows"></tbody>
     </table>
-    <div class="hint">Base is set by the creator and level-up, not typed over. Put everything since in <b>Misc</b>: signed terms, each optionally labelled &mdash; <code>+4-1</code>, or <code>+2 belt, -1 curse</code>. Hover a score for the breakdown.</div>
+
   </section>
 
   <!-- ===== SAVING THROWS ===== -->
@@ -118,9 +117,9 @@
     <table><thead><tr><th></th><th>Pr</th><th>Ex</th><th>Skill</th><th>Misc</th><th>Bonus</th><th></th></tr></thead>
       <tbody id="skill-rows"></tbody>
     </table>
-    <div class="hint">Drag a row by its <b>&#8942;&#8942;</b> grip to reorder &mdash; most skills never come up, so put the ones you use on top. The order is saved with the character. <button type="button" id="btn-skill-reset-order" class="linkish">reset to alphabetical</button></div>
+    <div class="hint"><button type="button" id="btn-skill-reset-order" class="linkish">reset to alphabetical</button></div>
     <div class="hint">Passive Perception: <span class="derived" id="passive-perc">10</span></div>
-    <div class="hint">Misc accepts dice, e.g. <code>10+1d4</code> (Pass Without Trace + Guidance) — the die is appended when you roll.</div>
+
   </section>
 
   <!-- ===== HP / DEFENSES ===== -->
@@ -144,9 +143,9 @@
     <div class="hint def-manual">Resist <input type="text" data-persist id="def-resist" placeholder="fire, cold">
       &middot; Immune <input type="text" data-persist id="def-immune" placeholder="poison">
       &middot; Vulnerable <input type="text" data-persist id="def-vuln" placeholder="radiant">
-      <span class="hint">&mdash; comma-separated; these join whatever your features already grant</span></div>
+      </div>
     <div id="defenses-row" class="hint"></div>
-    <div class="hint">Max HP assumes the fixed/"consistent" hit point value per level (4/5/6/7 for d6/d8/d10/d12) rather than rolling, using each class's Hit Die and level from the Classes table above.</div>
+
   </section>
 
   <!-- ===== COMBAT ROUND TRACKER (src/combat.js) ===== -->
@@ -159,20 +158,20 @@
   <section class="module" data-module="conditions">
     <h2>Conditions</h2>
     <div id="conditions-list" style="display:flex;flex-direction:column;gap:.1rem">
-      <label title="Can't see; auto-fail any check requiring sight.&#10;Attack rolls against you have advantage.&#10;Your attack rolls have disadvantage."><input type="checkbox" data-persist id="cond-blinded"> Blinded</label>
-      <label title="Can't attack the charmer or target them with a harmful effect.&#10;The charmer has advantage on social ability checks with you."><input type="checkbox" data-persist id="cond-charmed"> Charmed</label>
-      <label title="Can't hear; auto-fail any check requiring hearing."><input type="checkbox" data-persist id="cond-deafened"> Deafened</label>
-      <label title="Disadvantage on ability checks and attack rolls while the source of fear is in line of sight.&#10;Can't willingly move closer to the source."><input type="checkbox" data-persist id="cond-frightened"> Frightened</label>
-      <label title="Speed becomes 0; can't benefit from any bonus to speed.&#10;Ends if the grappler is incapacitated or moved out of reach."><input type="checkbox" data-persist id="cond-grappled"> Grappled</label>
-      <label title="Can't take actions or reactions."><input type="checkbox" data-persist id="cond-incapacitated"> Incapacitated</label>
-      <label title="Impossible to see without a special sense; heavily obscured for hiding.&#10;Attack rolls against you have disadvantage.&#10;Your attack rolls have advantage."><input type="checkbox" data-persist id="cond-invisible"> Invisible</label>
-      <label title="Incapacitated; can't move or speak.&#10;Auto-fail Strength and Dexterity saving throws.&#10;Attack rolls against you have advantage.&#10;Any attack that hits you from within 5 ft is a critical hit."><input type="checkbox" data-persist id="cond-paralyzed"> Paralyzed</label>
-      <label title="Turned to stone; incapacitated, unaware, weight ×10, aging halted.&#10;Auto-fail Strength and Dexterity saving throws.&#10;Attack rolls against you have advantage.&#10;Resistance to all damage; immune to poison and disease."><input type="checkbox" data-persist id="cond-petrified"> Petrified</label>
-      <label title="Disadvantage on attack rolls and ability checks."><input type="checkbox" data-persist id="cond-poisoned"> Poisoned</label>
-      <label title="Your only movement is crawling, or standing up (costs half your speed).&#10;Disadvantage on attack rolls.&#10;Melee attacks against you have advantage; ranged attacks have disadvantage."><input type="checkbox" data-persist id="cond-prone"> Prone</label>
-      <label title="Speed becomes 0; can't benefit from any bonus to speed.&#10;Attack rolls against you have advantage; your attack rolls have disadvantage.&#10;Disadvantage on Dexterity saving throws."><input type="checkbox" data-persist id="cond-restrained"> Restrained</label>
-      <label title="Incapacitated; can't move, can speak only falteringly.&#10;Auto-fail Strength and Dexterity saving throws.&#10;Attack rolls against you have advantage."><input type="checkbox" data-persist id="cond-stunned"> Stunned</label>
-      <label title="Incapacitated; can't move or speak, unaware of surroundings.&#10;Drop what you're holding and fall prone.&#10;Auto-fail Strength and Dexterity saving throws.&#10;Attack rolls against you have advantage; hits from within 5 ft are critical hits."><input type="checkbox" data-persist id="cond-unconscious"> Unconscious</label>
+      <label><input type="checkbox" data-persist id="cond-blinded"> Blinded</label>
+      <label><input type="checkbox" data-persist id="cond-charmed"> Charmed</label>
+      <label><input type="checkbox" data-persist id="cond-deafened"> Deafened</label>
+      <label><input type="checkbox" data-persist id="cond-frightened"> Frightened</label>
+      <label><input type="checkbox" data-persist id="cond-grappled"> Grappled</label>
+      <label><input type="checkbox" data-persist id="cond-incapacitated"> Incapacitated</label>
+      <label><input type="checkbox" data-persist id="cond-invisible"> Invisible</label>
+      <label><input type="checkbox" data-persist id="cond-paralyzed"> Paralyzed</label>
+      <label><input type="checkbox" data-persist id="cond-petrified"> Petrified</label>
+      <label><input type="checkbox" data-persist id="cond-poisoned"> Poisoned</label>
+      <label><input type="checkbox" data-persist id="cond-prone"> Prone</label>
+      <label><input type="checkbox" data-persist id="cond-restrained"> Restrained</label>
+      <label><input type="checkbox" data-persist id="cond-stunned"> Stunned</label>
+      <label><input type="checkbox" data-persist id="cond-unconscious"> Unconscious</label>
       </div>
     <div id="cond-applied" class="hint"></div>
     <div id="cond-manual" class="hint"></div>
@@ -180,9 +179,9 @@
 
   <!-- ===== EXHAUSTION ===== -->
   <section class="module" data-module="exhaustion">
-    <h2>Exhaustion <button type="button" id="exhaustion-rules-ref" class="rules-ref-btn" data-rules-ref="exhaustion" title="show rules text" style="display:none">&#9432;</button></h2>
+    <h2>Exhaustion <button type="button" id="exhaustion-rules-ref" class="rules-ref-btn" data-rules-ref="exhaustion" aria-label="show rules text" style="display:none">&#9432;</button></h2>
     <input type="hidden" data-persist id="exhaustion-level" value="0">
-    <div class="hint">Click a level to set it; click your current level to step down. Rows up to your level are highlighted (effects are cumulative).</div>
+
     <div id="exhaustion-effect"></div>
   </section>
 
@@ -201,7 +200,7 @@
     </div>
     <button class="roll" id="btn-death-roll">Roll Death Save</button>
     <button id="btn-death-reset">reset</button>
-    <div class="hint">Rolls 1d20 to the Event Log and marks a box (10+ success, &lt;10 failure, nat 20 = regain 1 HP, nat 1 = two failures).</div>
+
   </section>
 
   <!-- ===== PROFICIENCIES ===== -->
@@ -218,7 +217,7 @@
       <legend>Weapons</legend>
       <label><input type="checkbox" data-persist id="prof-weapon-simple"> Simple</label>
       <label><input type="checkbox" data-persist id="prof-weapon-martial"> Martial</label>
-      <div class="hint">Specific weapons (e.g. a Monk's shortsword, or one granted by a feat):</div>
+
       <div id="prof-weapons-list" style="margin:.2rem 0"></div>
       <input type="text" id="prof-weapons-input" placeholder="add weapon…" style="width:12rem">
       <button class="prof-add-btn" data-cat="weapons">+ add</button>
@@ -239,22 +238,22 @@
 
   <!-- ===== ATTACKS / WEAPONS ===== -->
   <section class="module wide" data-module="attacks">
-    <h2>Attacks <span class="hint">(draft)</span></h2>
+    <h2>Attacks</h2>
     <table>
       <thead><tr>
-        <th>Name</th><th>Ability</th><th title="proficient">Pr</th><th title="apply feature effects (Sharpshooter, Rage, Divine Strike, …) to this attack">Fx</th><th title="the size this weapon is made for — leave blank unless it's an oversized weapon (see House Rules)">Size</th><th title="extra to-hit (flat or dice, e.g. +1 or +1d4)">Hit+</th><th>To&nbsp;Hit</th>
-        <th>Damage</th><th title="add the ability modifier to damage">+mod</th><th title="extra damage (flat or dice, e.g. +2 or +1d6)">Dmg+</th><th>Roll</th><th></th>
+        <th>Name</th><th>Ability</th><th>Prof.</th><th>Effects</th><th>Size</th><th aria-label="extra to-hit (flat or dice, e.g. +1 or +1d4)">Hit+</th><th>To&nbsp;Hit</th>
+        <th>Damage</th><th aria-label="add the ability modifier to damage">+mod</th><th aria-label="extra damage (flat or dice, e.g. +2 or +1d6)">Dmg+</th><th>Roll</th><th></th>
       </tr></thead>
       <tbody id="attack-rows"></tbody>
     </table>
     <button id="btn-add-attack">+ add attack</button>
-    <div class="hint">Ability sets the modifier for to-hit and (with <b>+mod</b>) damage; <b>Finesse</b> uses the higher of Str/Dex. Hit+/Dmg+ take flat numbers or dice (e.g. <code>+1d6</code>). Shift-click <b>to hit</b> for advantage, Ctrl for disadvantage, right-click for a menu. <b>Fx</b> folds in your feature effects (Sharpshooter, Rage, Divine Strike, …) — untick it on a weapon a bonus doesn't apply to; a button whose number includes one is underlined, hover it for the breakdown.</div>
+
   </section>
 
   <!-- ===== OFFENSIVE ROUTINES ===== -->
   <section class="module wide" data-module="routines">
-    <h2>Offensive Routines <span class="hint">(draft)</span></h2>
-    <div class="hint">Program a turn once, then fire it with one click — e.g. <i>2× Halberd</i> (Extra Attack) plus <i>1× Halberd</i> (Polearm Master bonus action). Attack steps come from the Attacks module; <b>save steps</b> cover save-based effects like Toll the Dead, showing the DC and which save the target makes. Shift-click <b>run</b> for advantage on every attack, Ctrl for disadvantage.</div>
+    <h2>Offensive Routines </h2>
+
     <div id="routines-list" style="margin-top:.35rem"></div>
     <button id="btn-add-routine">+ add routine</button>
   </section>
@@ -277,17 +276,16 @@
       &nbsp;=&nbsp;<span class="derived" id="coin-total-gp">0</span> gp
     </div>
     <fieldset>
-      <legend>Equipment Library <span class="hint">(auto-loads from <code>data/items-base.json</code> / <code>data/items.json</code>)</span></legend>
-      <div class="hint" id="item-lib-collapsed-hint">Hidden until you click "+ Add Item" below.</div>
+      <legend>Equipment Library </legend>
+
       <div id="item-library-body" style="display:none">
         <div>
-          <button id="item-lib-reload">reload from data/ folder</button>
-          <button id="item-lib-clear">clear library</button>
+          <button id="item-lib-reload">Reload</button>
+          <button id="item-lib-clear">Clear</button>
           <span class="hint" id="item-lib-count">no equipment loaded</span>
           <span class="hint" id="item-lib-autostatus"></span>
         </div>
-        <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
-          <label style="display:inline">import files manually <input type="file" id="item-import" accept="application/json" multiple></label>.
+        <div class="hint"><label style="display:inline">Import JSON <input type="file" id="item-import" accept="application/json" multiple></label>
         </div>
         <div id="item-filter-area"></div>
         <div style="margin:.35rem 0">
@@ -299,8 +297,7 @@
     <fieldset>
       <legend>Items</legend>
       <button id="item-lib-toggle">+ Add Item</button>
-      <div class="hint">Click an item's name to show/hide its description (looked up from the Equipment Library by name).
-        Attunement: <span class="derived" id="attuned-count">0</span>/3.</div>
+      <div class="hint">Attunement: <span class="derived" id="attuned-count">0</span>/3.</div>
       <div id="char-item-list" style="margin-top:.35rem"></div>
       <div class="hint" style="margin-top:.35rem">
         Total weight: <span class="derived" id="items-weight-total">0</span> lb
@@ -314,18 +311,16 @@
   <section class="module wide" data-module="companions">
     <h2>Companions &amp; Summons</h2>
     <fieldset>
-      <legend>Bestiary Library <span class="hint">(loads from <code>data/bestiary/</code> the first time you open it)</span></legend>
-      <div class="hint" id="mon-lib-collapsed-hint">Hidden until you click "+ Add Creature" below.</div>
+      <legend>Bestiary Library</legend>
+
       <div id="mon-library-body" style="display:none">
         <div>
-          <button id="mon-lib-reload">load / reload from data/ folder</button>
-          <button id="mon-lib-clear">clear library</button>
+          <button id="mon-lib-reload">Reload</button>
+          <button id="mon-lib-clear">Clear</button>
           <span class="hint" id="mon-lib-count">no bestiary loaded</span>
           <span class="hint" id="mon-lib-autostatus"></span>
         </div>
-        <div class="hint">Unlike the spell and equipment libraries this one is <b>not</b> loaded on every page load &mdash; the bestiary is ~9&nbsp;MB across ~96 files, so it loads the first time you open this panel (or automatically, if your character already has companions), and isn't cached between sessions.
-          No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
-          <label style="display:inline">import files manually <input type="file" id="mon-import" accept="application/json" multiple></label>.
+        <div class="hint"><label style="display:inline">Import JSON <input type="file" id="mon-import" accept="application/json" multiple></label>
         </div>
         <div id="mon-filter-area"></div>
         <div style="margin:.35rem 0">
@@ -337,9 +332,7 @@
     <fieldset>
       <legend>Your creatures</legend>
       <button id="mon-lib-toggle">+ Add Creature</button>
-      <div class="hint">Familiars, steeds, wild shapes, animal companions, and summons &mdash; anything with a statblock, tracked as a <b>stack</b>: set the count and each one keeps its own HP.
-        Type <code>-7</code> in an HP box to take 7 damage, <code>+3</code> to heal. A stack of more than one gets an <b>&times;N all</b> button per attack that rolls every creature's swing and reports the total as a damage-by-AC table.
-        Tasha's-style summons scale off <i>your</i> sheet &mdash; set the level you cast at and their to-hit, damage and save DC follow your spell attack bonus and proficiency.</div>
+
       <div id="companions-list" style="margin-top:.35rem"></div>
     </fieldset>
   </section>
@@ -348,35 +341,28 @@
        data-module stays "dice": layout.js keys saved module positions off it, so renaming
        the key would orphan every saved arrangement. See src/event-log.js. -->
   <section class="module wide" data-module="dice">
-    <h2>Event Log <span class="hint">(rolls, rests, and other notable events &mdash; the box below doubles as a dice-roller command line)</span></h2>
+    <h2>Event Log </h2>
     <input type="text" id="cmd-input" style="width:100%" autocomplete="off"
-      placeholder="/r 1d20+5 adv Attack   ·   4d6kh3   ·   /rr 6 4d6kh3   ·   /rrr 5 10 2d20kh1   ·   clear">
-    <div class="hint">
-      Enter = roll. Commands: <code>/r</code>/<code>/roll</code>, <code>/rr</code>/<code>/multiroll N</code>,
-      <code>/rrr</code>/<code>/iterroll N DC</code>, <code>clear</code>.
-      Operators: <code>k</code>/<code>p</code>, <code>kh/kl/ph/pl</code>, <code>ro/rr/ra</code>, <code>e</code>, <code>mi/ma</code>;
-      selectors <code>&gt;X</code>/<code>&lt;X</code>/<code>hX</code>/<code>lX</code>.
-      On roll-buttons: <b>Shift</b> = advantage, <b>Ctrl</b> = disadvantage.
-    </div>
-    <div id="dicelog"><div>— event log —</div></div>
+      placeholder="/r 1d20+5" aria-label="Dice command">
+
+    <div id="dicelog"><div>- event log -</div></div>
   </section>
 
   <!-- ===== FEATURES (5e.tools import: race + class + feats) ===== -->
   <section class="module wide" data-module="class-features">
-    <h2>Features <span class="hint">(auto-loads race/class/feat data from <code>data/</code>; shows features for your race and the classes/levels in your Character module)</span></h2>
+    <h2>Features </h2>
     <div>
-      <button id="class-lib-reload">reload from data/ folder</button>
+      <button id="class-lib-reload">Reload</button>
       <button id="class-lib-clear">clear</button>
       <span class="hint" id="class-lib-count">nothing loaded</span>
       <span class="hint" id="class-lib-autostatus"></span>
     </div>
-    <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
-      <label style="display:inline">import files manually (class/race/feat json) <input type="file" id="class-import" accept="application/json" multiple></label>.
+    <div class="hint"><label style="display:inline">Import JSON <input type="file" id="class-import" accept="application/json" multiple></label>
     </div>
     <div>
       <button id="btn-short-rest">Short Rest</button>
       <button id="btn-long-rest">Long Rest</button>
-      <span class="hint">Full PHB'14 p186 automation (see DOCS) &mdash; <b>Short Rest</b> opens a dialog to spend Hit Dice one at a time, then clears Temp HP and recovers short-rest features on finish. <b>Long Rest</b> applies at once: Temp HP, full HP, Hit Dice back up to half your total, used spell slots, and every recovering feature (Short Rest also covers anything that recovers on a Long Rest). Both are recorded in the Event Log.</span>
+
     </div>
     <div id="class-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
   </section>
@@ -384,8 +370,7 @@
   <!-- ===== HOUSE RULES ===== -->
   <section class="module wide" data-module="house-rules">
     <h2>House Rules <span class="hint" id="hr-status"></span></h2>
-    <div class="hint">The table's ruleset, not this character's &mdash; it is shared by every character tab and is not
-      carried along when you export a character.</div>
+
     <div id="hr-tabs"></div>
     <div id="hr-body"></div>
   </section>
@@ -396,7 +381,7 @@
     <div>
       Spellcasting ability:
       <select data-persist id="spell-ability">
-        <option value="">—</option>
+        <option value="">-</option>
         <option value="str">Strength</option>
         <option value="dex">Dexterity</option>
         <option value="con">Constitution</option>
@@ -404,9 +389,9 @@
         <option value="wis">Wisdom</option>
         <option value="cha">Charisma</option>
       </select>
-      &nbsp; Spell Save DC: <span class="derived" id="spell-dc">—</span>
+      &nbsp; Spell Save DC: <span class="derived" id="spell-dc">-</span>
       (misc <input type="number" class="tiny" data-persist id="spell-dc-misc">)
-      &nbsp; Spell Attack: <span class="derived" id="spell-atk">—</span>
+      &nbsp; Spell Attack: <span class="derived" id="spell-atk">-</span>
       (misc <input type="text" data-persist id="spell-atk-misc" style="width:4.5rem;text-align:right">)
     </div>
     <fieldset>
@@ -414,20 +399,19 @@
       <table><thead><tr id="slot-head"></tr></thead>
         <tbody><tr id="slot-total"></tr><tr id="slot-override"></tr><tr id="slot-used"></tr></tbody>
       </table>
-      <div class="hint">Total is calculated from each class's Casting type &amp; level (per the multiclass spellcaster table). Fill in "override" for any level to lock in a specific number of slots.</div>
+
     </fieldset>
     <fieldset>
-      <legend>Spell Library <span class="hint">(auto-loads from <code>data/spells/</code> — 2014 sources only, e.g. spells-phb.json, not spells-<b>x</b>phb.json)</span></legend>
-      <div class="hint" id="spell-lib-collapsed-hint">Hidden until you click "+ Add Spell" below.</div>
+      <legend>Spell Library </legend>
+
       <div id="spell-library-body" style="display:none">
         <div>
-          <button id="spell-lib-reload">reload from data/ folder</button>
-          <button id="spell-lib-clear">clear library</button>
+          <button id="spell-lib-reload">Reload</button>
+          <button id="spell-lib-clear">Clear</button>
           <span class="hint" id="spell-lib-count">no spells loaded</span>
           <span class="hint" id="spell-lib-autostatus"></span>
         </div>
-        <div class="hint">No <code>data/</code> folder? Drop 5e.tools' own <code>data/</code> directory next to this file (see DOCS), or
-          <label style="display:inline">import files manually <input type="file" id="spell-import" accept="application/json" multiple></label>.
+        <div class="hint"><label style="display:inline">Import JSON <input type="file" id="spell-import" accept="application/json" multiple></label>
         </div>
         <div>
           <label class="hint">Add to class: <select id="spell-add-class"></select></label>
@@ -442,8 +426,7 @@
     <fieldset>
       <legend>Spells</legend>
       <button id="spell-lib-toggle">+ Add Spell</button>
-      <div class="hint">Known/Prepared counts (shown per class above its spells) are informational only and never stop you from adding more.
-        Click a spell's name to show/hide its description (looked up from the Spell Library by name).</div>
+
       <div id="spell-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
     </fieldset>
   </section>
@@ -488,9 +471,8 @@
 <div id="short-rest-modal" class="modal-overlay" style="display:none">
   <div class="modal-box" style="max-width:34rem">
     <div class="modal-title">Short Rest</div>
-    <div class="hint">Spend Hit Dice to heal &mdash; roll one at a time and decide after each, per PHB p186.
-      Each roll takes effect <b>immediately</b> (it heals you and spends the die), so closing without
-      finishing still leaves any dice you already rolled spent.</div>
+    <div class="hint">Hit Dice rolls apply immediately.</div>
+
     <div id="sr-modal-hp" style="margin:.5rem 0"></div>
     <div id="sr-modal-pools"></div>
     <div class="modal-actions">
