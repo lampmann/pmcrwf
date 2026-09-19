@@ -5,10 +5,10 @@ function buildAbilities() {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${a.name}</td>
       <td><input type="text" inputmode="numeric" class="num" data-persist readonly id="score-${a.key}" value="10"
-            title="your base score, set at character creation and by level-up \u2014 everything since goes in Misc"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
+            aria-label="${a.name} base score"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
       <td><input type="text" data-persist class="score-misc" id="scoremisc-${a.key}"
             placeholder="+2 belt, -1 curse"
-            title="signed terms, each optionally labelled with what it's from \u2014 e.g. &quot;+4-1&quot; or &quot;+2 belt, -1 curse&quot;"></td>
+            aria-label="${a.name} modifiers"></td>
       <td class="derived" id="mod-${a.key}">+0</td>`;
     tb.appendChild(tr);
   });
@@ -131,7 +131,7 @@ function buildSkills() {
     const slug = name.toLowerCase().replace(/[^a-z]/g, "");
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td class="skill-grip" title="drag to reorder">&#8942;&#8942;</td>
+      <td class="skill-grip" aria-label="drag to reorder">&#8942;&#8942;</td>
       <td><input type="checkbox" data-persist id="skillprof-${slug}"></td>
       <td><input type="checkbox" data-persist id="skillexp-${slug}"></td>
       <td>${name} <span class="hint">(${ab})</span></td>
@@ -178,13 +178,17 @@ function addClassRow(data = {}) {
   const hdOpts = HIT_DICE.map(([v, lab]) => `<option value="${v}" ${hd === v ? "selected" : ""}>${lab}</option>`).join("");
   const castOpts = CASTING_TYPES.map(([v, lab]) => `<option value="${v}" ${cast === v ? "selected" : ""}>${lab}</option>`).join("");
   tr.innerHTML = `
-    <td><input type="text" class="cls-name" value="${data.name || ""}" style="width:8rem"></td>
-    <td><input type="text" class="cls-sub" value="${data.sub || ""}" style="width:8rem"></td>
-    <td><input type="text" inputmode="numeric" class="tiny cls-lvl" data-math data-min="1" data-max="20" value="${data.lvl || 1}"></td>
+    <td><input type="text" class="cls-name" style="width:8rem"></td>
+    <td><input type="text" class="cls-sub" style="width:8rem"></td>
+    <td><input type="text" inputmode="numeric" class="tiny cls-lvl" data-math data-min="1" data-max="20"></td>
     <td><select class="cls-hd">${hdOpts}</select></td>
     <td><select class="cls-cast">${castOpts}</select></td>
     <td><button class="rowbtn cls-del">x</button></td>`;
-  const lvl = tr.querySelector(".cls-lvl"); lvl.dataset.prev = String(data.lvl || 1);
+  tr.querySelector(".cls-name").defaultValue = data.name || "";
+  tr.querySelector(".cls-sub").defaultValue = data.sub || "";
+  const lvl = tr.querySelector(".cls-lvl");
+  lvl.defaultValue = data.lvl || 1;
+  lvl.dataset.prev = String(data.lvl || 1);
   tr.querySelector(".cls-del").addEventListener("click", () => { tr.remove(); recompute(); scheduleSave(); });
   tr.querySelectorAll("input, select").forEach(i => {
     i.addEventListener("input", () => { recompute(); scheduleSave(); });

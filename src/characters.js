@@ -40,6 +40,8 @@ function activeChar() { return ROSTER.chars.find(c => c.id === ROSTER.activeId) 
    status used to say "saved <time>" unconditionally while a quota failure was being swallowed here,
    which told the user their work was safe at exactly the moment it stopped being. */
 function persistRoster() {
+  clearTimeout(rosterSaveTimer);
+  rosterSaveTimer = null;
   try { localStorage.setItem(ROSTER_KEY, JSON.stringify(ROSTER)); return true; }
   catch (e) { console.warn("Roster too large for localStorage; kept in memory for this session only.", e); return false; }
 }
@@ -126,7 +128,7 @@ function renameCharacter(id) {
 
 function deleteCharacter(id) {
   const c = ROSTER.chars.find(x => x.id === id); if (!c) return;
-  if (ROSTER.chars.length === 1) { alert("This is your only character — add another before deleting this one."); return; }
+  if (ROSTER.chars.length === 1) { alert("This is your only character - add another before deleting this one."); return; }
   if (!confirm(`Delete "${charDisplayName(c)}"? This can't be undone.`)) return;
   const wasActive = id === ROSTER.activeId;
   const idx = ROSTER.chars.indexOf(c);
@@ -147,18 +149,9 @@ function deleteCharacter(id) {
 /* A blank sheet, without going through location.reload() — used by "+" when there's no wizard, and
    by Reset. Mirrors the markup's own initial state: one empty class row, everything else default. */
 function resetSheetToBlank() {
-  /* Every persisted field has to be named explicitly. applyState() only writes the fields its state
-     object mentions, so an EMPTY `fields` map leaves the previous character's name, race, scores and
-     everything else sitting on screen — which made "+ New character" (with no wizard) look like it
-     had cloned whoever you were just looking at. */
-  const fields = {};
-  document.querySelectorAll("[data-persist]").forEach(el => { fields[el.id] = el.type === "checkbox" ? false : ""; });
-  applyState({ v: 1, fields, classes: [{ name: "", sub: "", lvl: 1 }], spells: [], items: [],
-    attacks: [], routines: [], featChoices: {}, asiChoices: {}, usesState: {}, hdState: {},
-    // An empty skillOrder means alphabetical: a new character shouldn't inherit the row order of
-    // whoever happened to be on screen when you pressed "+", any more than it inherits their name.
-    skillOrder: [],
-    effectChoices: {}, effectToggles: {}, proficiencies: { weapons: [], tools: [], languages: [] } });
+  // applyState restores omitted fields and collections to their defaults, including scores of 10,
+  // Medium size, and speed 30. Explicit empty strings would overwrite those defaults again.
+  applyState({ v: 1, fields: {} });
 }
 
 /* ============================================================
@@ -202,7 +195,7 @@ function recordLogEntry(kind, html) {
 function repaintEventLog() {
   const el = $("dicelog"); if (!el) return;
   const entries = (ROSTER.logs && ROSTER.logs[activeLogKey()]) || [];
-  const header = el.firstElementChild ? el.firstElementChild.outerHTML : "<div>— event log —</div>";
+  const header = el.firstElementChild ? el.firstElementChild.outerHTML : "<div>- event log -</div>";
   el.innerHTML = header + entries.map(e => `<div class="ev ev-${e.kind}">${e.html}</div>`).join("");
   if (typeof repaintRollMirror === "function") repaintRollMirror();
 }
@@ -347,14 +340,9 @@ function moveCharacter(movedId, dropId, intent) {
 function charTabHtml(c) {
   const active = c.id === ROSTER.activeId;
   const lvl = totalLevelOfState(c);
-  /* The hint names the gesture that applies to THIS tab: a grouped one already shares a log, so
-     what it needs to be told is how to get out, which is no longer a button anywhere. */
-  const hint = ROSTER.chars.length < 2 ? ""
-    : c.group ? " · drag out of the box to leave the group"
-    : " · drag onto another tab to share an Event Log";
   return `<button type="button" class="char-tab${active ? " active" : ""}" data-charid="${c.id}" draggable="true"
-    title="${active ? "current character — click to rename" : "switch to this character"}${hint}">${escapeHtml(charDisplayName(c))}${lvl ? ` <span class="hint">lv ${lvl}</span>` : ""}` +
-    (ROSTER.chars.length > 1 ? `<span class="char-tab-x" data-delid="${c.id}" title="delete this character">×</span>` : "") +
+    aria-current="${active}">${escapeHtml(charDisplayName(c))}${lvl ? ` <span class="hint">lv ${lvl}</span>` : ""}` +
+    (ROSTER.chars.length > 1 ? `<span class="char-tab-x" data-delid="${c.id}" aria-label="delete this character">×</span>` : "") +
     `</button>`;
 }
 
@@ -370,10 +358,10 @@ function renderCharacterTabs() {
     /* `data-group` is what the drop handler reads to answer "which box is the cursor in", which
        is the whole basis of joining and leaving now — see groupBoxAt. */
     html += `<span class="char-group" data-group="${c.group}" ` +
-      `title="these characters share one Event Log — drag a tab out of this box to remove it">` +
+      `role="group" aria-label="Shared event log">` +
       run.map(charTabHtml).join("") + `</span>`;
   }
-  el.innerHTML = html + `<button type="button" id="char-tab-add" title="create a new character">+ New character</button>`;
+  el.innerHTML = html + `<button type="button" id="char-tab-add" aria-label="create a new character">+ New character</button>`;
 }
 
 /* Level shown on a tab. The active character's classes live in the DOM (they may be mid-edit and not

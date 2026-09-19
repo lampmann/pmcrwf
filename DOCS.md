@@ -2,7 +2,7 @@
 
 An offline HTML character sheet for **D&D 5e (2014 rules)**, built for optimized play. The page (`character-sheet.html`) loads its logic from small modules in `src/`. **Serve the folder** rather than opening the file directly — there's a ready `static` config in `.claude/launch.json` (`python3 -m http.server`) — this is required for the spell/equipment libraries to auto-load (see below); browsers block `fetch()` of local files opened via `file://`. No install, no accounts; game data is user-supplied (see below).
 
-> **Status:** prototype (v0.12). Cosmetics/theming exist (8 selectable themes) but the layout itself is still "function over form."
+> **Status:** prototype (v0.12). Cosmetics/theming exist (5 selectable themes) but the layout itself is still "function over form."
 
 ---
 
@@ -201,7 +201,7 @@ The Event Log is the sheet's running history: dice rolls land here, and so do ac
 - A single term is capped at **500 dice**, so a mistyped `1000d6` can't lock the tab up. Hitting the cap is stated in the roll's own log line (`[capped at 500 of 1000 dice]`) rather than silently returning a smaller number — a truncated roll presented as a correct one is exactly the kind of quiet wrongness the rest of the sheet avoids.
 - Labels and `[annotations]` are escaped before they reach the log. They can carry a weapon or spell name typed by you or read from an import, and the log stores its markup and replays it on every load, so text that happens to look like HTML is shown as text.
 
-**Crits:** only the kept **d20** triggers *Critical Success* (nat 20) / *Critical Failure* (nat 1) — other dice never do. (This deliberately fixes a 5eCrawler bug.)
+**Crits:** attack rolls show **Critical Success!** on a kept natural 20 (or an expanded critical range) and **Critical Failure!** on a kept natural 1. Checks, saves, initiative, and generic dice rolls do not show these messages. During tumbling, each attack’s message follows its currently displayed kept die, then returns to the actual result when the animation settles. This also applies to spell attacks, companions, and routines, with matching messages in the Event Log and roll mirror.
 
 ### Roll mirror (the corner panel)
 
@@ -481,21 +481,16 @@ Filters mirror 5e.tools' own bestiary panel — Source, Source Group, Type, Size
 ## Interaction feedback
 Every button, filter chip, tab and clickable name answers the same two questions: *is this clickable?* and *did my click land?* Hovering tints the control; pressing it darkens it further and nudges it down a pixel, so a click reads as distinct from a hover rather than as a flash. Clickable text underlines and brightens on hover. Disabled controls opt out of all of it and take a `not-allowed` cursor, so a greyed-out **Next** reads as refusing the click rather than as a dead button. Keyboard focus draws a ring (`:focus-visible`, so mouse clicks don't leave one behind).
 
-It's one block in [css/base.css](css/base.css) covering every kind of button at once rather than per-component rules, and the colours are theme variables (`--hover-bg`, `--active-bg`, `--focus-ring`) that each of the eight themes retunes — a dark theme needs a lighter hover than a light one.
+It's one block in [css/base.css](css/base.css) covering every kind of button at once rather than per-component rules, and the colours are theme variables (`--hover-bg`, `--active-bg`, `--focus-ring`) that each theme retunes — a dark theme needs a lighter hover than a light one.
 
 ## Theme
-The **Theme** dropdown in the toolbar swaps the sheet's look via `css/themes/*.css` (each just redefines the CSS custom properties set on `:root` in `css/base.css` — colors, borders, fonts). Ships with 12 alternates alongside the plain **Default (unstyled)** look; your choice is remembered (localStorage) across reloads. Drop your own `css/themes/your-theme.css` and add it to `css/themes/index.json` to add more.
+The **Theme** dropdown offers **Default**, **Solarized Light**, **Solarized Dark**, **Dracula Light**, and **Dracula Dark**. The choice is saved across reloads. A previously selected, removed theme falls back to Default.
 
-- **Dark Mode** — the default look, inverted for low light. Same serif body font and sharp corners as Default, no gradients or glow; for anyone who just wants the lights off rather than a full re-skin.
-- Five pairs, each an original plus a more ornate pass over the same palette — gradient-bordered module cards, gradient-text headers, a themed dice-log scrollbar, filter pills, tooltips/menus — the same "original, then polished" relationship Blood Moon Gothic has to Crimson Eclipse:
-  - **Illuminated Manuscript** / **Gilded Folio** — aged vellum and gold leaf.
-  - **Cyber Grimoire** / **Neon Codex** — black-and-neon cyberpunk, the polished pass adding scanlines and a glitch-flicker header.
-  - **Blood Moon Gothic** / **Crimson Eclipse** — crimson horror.
-  - **Verdant Feywild** / **Wildwood Court** — a soft fey forest, the polished pass adding dappled light and firefly accents.
-  - **Infernal Bronze** / **Molten Covenant** — forged demonic metal, the polished pass adding a forge-glow backdrop and a pulsing ember header.
-- **Celestial Aurora**, **Deep Sea Leviathan** — ornate from the start; no separate polished pass.
+The palettes follow [Solarized](https://ethanschoonover.com/solarized/) and [Dracula](https://draculatheme.com/spec); Dracula Light uses the Alucard palette. All themes are local CSS files and work offline.
 
-All the ornate themes are CSS-only (gradients, shadows, `background-clip: text`) — no external images or fonts, so they still work fully offline.
+To add a theme, put a CSS file in `css/themes/` overriding the custom properties in `css/base.css`, then add a `"Display name": "filename.css"` entry to `css/themes/index.json`. Both the selector and offline cache read that manifest. Set `--color-scheme` to `light` or `dark` for native controls.
+
+Modules have a persistent shadow in every theme, including while moving. Adjust `--module-shadow` in the base stylesheet or a theme; set it to `none` to turn shadows off. Printing omits shadows.
 
 ## Layout (move / resize / snap)
 By default modules flow down the page. The **Layout** bar (above the modules) turns on free-form arranging:
@@ -527,6 +522,8 @@ A folded module remembers **its own height, separately from its open one**. Drag
 - **Autosave** to the browser (localStorage) on every change, into the **active character's** slot in the roster (see [Characters](#characters-tabs-creation-levelling-up)). The save indicator reports what actually happened: if the write fails — localStorage quota, which a large roster with long Event Logs can reach — it says **NOT SAVED** in red rather than claiming success, because at that point the character exists only in memory and closing the tab loses it. Export it to a file, then free space by deleting characters you no longer need or clearing old logs.
 - **Export JSON** downloads the character you're looking at. **Import** loads one back into it. **Reset** blanks it — the character you're looking at, back to an empty sheet; your other tabs and the pre-roster backup (`charsheet-v0`) are untouched. All three work on a single character, not the whole roster.
 - The spell library and equipment library are stored separately from your character (and are shared by all of them).
+- Pending character edits and Event Log writes are flushed when the page becomes hidden or is left, without waiting for the autosave delay. An abrupt browser or device crash can still prevent a save.
+- Imports check the character's structure before changing the sheet and restore the previous character if rendering fails. If you switch characters while a file is being read, import stops and asks you to select the intended character again. Older exports may omit newer fields. Reset restores the sheet's starting defaults, including ability scores of 10, Medium size, and speed 30.
 
 ## Keyboard
 - **Enter** in a number box commits the math and moves on.
@@ -537,11 +534,25 @@ A folded module remembers **its own height, separately from its open one**. Drag
 Browser harnesses under `tests/` — open one through the local server (e.g. `http://localhost:8931/tests/derived.html`) and it prints `N passed, M failed`. No build step and no test framework: each file is a minimal copy of `character-sheet.html`'s DOM with the real `src/*.js` loaded on top, so what runs is the app's own code rather than a reimplementation of it.
 
 - **[tests/derived.html](tests/derived.html)** — the pure math: proficiency bonus, max HP (including the first-class-only maximum at level 1 and negative CON), the multiclass caster-level and slot table (Pact Magic excluded), known/prepared/cantrip allowances, unarmored AC, save/skill totals with proficiency and expertise, `parseBonus`'s flat/dice split, and the number boxes' arithmetic and clamping.
-- **[tests/effects.html](tests/effects.html)** — the feature-effects engine and the roster/grouping logic.
+- **[tests/effects.html](tests/effects.html)** — the feature-effects engine and the roster/grouping logic, plus character reset defaults, import validation and rollback, literal class text, and saving pending edits and logs on page exit.
 - **[tests/filters.html](tests/filters.html)** — the shared filter engine behind the Spell and Equipment libraries.
 - **[tests/hosting.html](tests/hosting.html)** — the parts that only matter when the sheet is [served from a website](#running-pmcrwf-as-a-website): which paths `dataFetch` claims, which of its three sources answers one, which folder a user's click actually meant, what a re-pick reports as changed, and two drift checks that will each save somebody a silent bug one day — that the service worker's precache extraction still finds every tag in the real `character-sheet.html` (checked against the browser's own parser), and that every `data/` path the loaders fetch is one a stored copy would actually keep (checked against the loaders' own source).
 
 The effects file loads the real effects database; the others are self-contained and need no `data/` folder.
+
+### Automated browser checks
+
+The optional runner starts its own local server, runs all four harnesses in separate browser contexts, and exercises import, export, reset, and save/reload in the full sheet. It exits with a nonzero status on an assertion failure or browser script error. Its temporary browser storage is separate from your normal characters; no game data is required.
+
+With Node.js installed, run these commands from the repository directory:
+
+```sh
+npm install --no-save --package-lock=false playwright
+npx playwright install chromium
+node tools/run-browser-tests.cjs
+```
+
+To use an installed Chrome or Edge instead of downloading Chromium, skip the second command and set `PMCRWF_TEST_CHANNEL` to `chrome` or `msedge`. For example, in PowerShell: `$env:PMCRWF_TEST_CHANNEL = 'msedge'`. Playwright is only used for development checks; running the sheet still requires no JavaScript dependencies or build step.
 
 ## Roadmap / known limits
 Only what is still outstanding. Anything finished has been removed from this list and is described in

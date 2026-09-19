@@ -51,7 +51,7 @@ const EVENT_KINDS = new Set(["roll", "rest", "hp", "resource", "condition", "inf
 
 function logEvent(kind, html) {
   if (!EVENT_KINDS.has(kind)) {
-    console.warn(`logEvent: unregistered kind "${kind}" — add it to EVENT_KINDS in src/event-log.js`);
+    console.warn(`logEvent: unregistered kind "${kind}" - add it to EVENT_KINDS in src/event-log.js`);
     kind = "info";
   }
   const el = $("dicelog"); if (!el) return;
@@ -77,7 +77,7 @@ function log(html) { logEvent("roll", html); }
 /* Clearing empties the stored log too, not just the panel — otherwise the entries would come
    straight back on the next character switch. */
 function clearLog() {
-  $("dicelog").innerHTML = "<div>— event log —</div>";
+  $("dicelog").innerHTML = "<div>- event log -</div>";
   if (typeof ROSTER === "object" && ROSTER.logs && typeof activeLogKey === "function") {
     delete ROSTER.logs[activeLogKey()];
     persistRoster();

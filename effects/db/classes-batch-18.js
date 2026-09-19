@@ -74,7 +74,7 @@ registerEffects({
     effects: [
       { target: "skill-acrobatics", op: "adv",
         activation: { kind: "toggle", id: "bladesong", label: "Bladesong", default: false } },
-      { target: "skill-acrobatics", op: "note", text: "Bladesong also grants +INT to AC, +10 ft speed, and +INT on concentration saves — none of which are effects targets" },
+      { target: "skill-acrobatics", op: "note", text: "Bladesong also grants +INT to AC, +10 ft speed, and +INT on concentration saves - none of which are effects targets" },
     ],
   },
 

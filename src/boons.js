@@ -161,7 +161,7 @@ function spendBoonsFor(key) {
   renderBoons();
   if (typeof scheduleSave === "function") scheduleSave();
   if (typeof log === "function") {
-    log(`<span class="hint">${escapeHtml(def.label)} spent &mdash; ${n}d4 added to that roll` +
+    log(`<span class="hint">${escapeHtml(def.label)} spent - ${n}d4 added to that roll` +
       `${n > 1 ? ` (${n} castings, stacked)` : ""}. None left.</span>`);
   }
 }
@@ -193,7 +193,7 @@ function triggerDeathWard() {
   if (typeof scheduleSave === "function") scheduleSave();
   const left = boonCount("deathward");
   if (typeof log === "function") {
-    log(`<b>Death Ward</b> &mdash; you drop to <b>1 HP</b> instead of 0.` +
+    log(`<b>Death Ward</b> - you drop to <b>1 HP</b> instead of 0.` +
       ` <span class="hint">${left ? `${left} still active.` : "That was the last one."}</span>`);
   }
   return true;
@@ -222,10 +222,10 @@ function clearBoonsForRest(kind) {
 /* ----- rendering ----- */
 function boonRowHtml(def) {
   const n = boonCount(def.key);
-  return `<span class="boon" title="${escapeHtml(def.hint)}">
-    <button type="button" class="boon-step" data-boon="${def.key}" data-delta="-1" title="one fewer">&minus;</button>
+  return `<span class="boon">
+    <button type="button" class="boon-step" data-boon="${def.key}" data-delta="-1" aria-label="one fewer">&minus;</button>
     <input type="text" inputmode="numeric" class="tiny boon-count${n ? " boon-on" : ""}" data-boon="${def.key}" value="${n}">
-    <button type="button" class="boon-step" data-boon="${def.key}" data-delta="1" title="one more">+</button>
+    <button type="button" class="boon-step" data-boon="${def.key}" data-delta="1" aria-label="one more">+</button>
     <span class="boon-label${n ? " boon-on" : ""}">${escapeHtml(def.label)}${n && def.die ? ` <b>+${n}${def.die}</b>` : ""}</span>
   </span>`;
 }
@@ -233,10 +233,10 @@ function boonRowHtml(def) {
    limits sees nothing here at all. */
 function castingRowHtml(name, limit) {
   const n = castingCount(name), over = n > limit;
-  return `<span class="boon" title="${escapeHtml(name)} — this campaign allows ${limit} active at a time">
-    <button type="button" class="boon-step" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" data-delta="-1" title="one fewer">&minus;</button>
+  return `<span class="boon" title="${escapeHtml(name)} - this campaign allows ${limit} active at a time">
+    <button type="button" class="boon-step" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" data-delta="-1" aria-label="one fewer">&minus;</button>
     <input type="text" inputmode="numeric" class="tiny boon-count${n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" value="${n}">
-    <button type="button" class="boon-step" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" data-delta="1" title="one more">+</button>
+    <button type="button" class="boon-step" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" data-delta="1" aria-label="one more">+</button>
     <span class="boon-label${n ? " boon-on" : ""}${over ? " boon-over" : ""}">${escapeHtml(name)} <span class="hint">/${limit}</span>${over ? " <b>over</b>" : ""}</span>
   </span>`;
 }
@@ -247,10 +247,10 @@ function heroPointHtml() {
   const max = (typeof heroPointMax === "function") ? heroPointMax() : null;
   if (max == null) return "";
   const n = boonCount("heroPoints"), over = n > max;
-  return `<span class="boon" title="DMG p264 — spend one after a d20 lands to add 1d6; you get 5 + half your level each time you gain one">
-    <button type="button" class="boon-step" data-boon="heroPoints" data-delta="-1" title="spend one">&minus;</button>
+  return `<span class="boon">
+    <button type="button" class="boon-step" data-boon="heroPoints" data-delta="-1" aria-label="spend one">&minus;</button>
     <input type="text" inputmode="numeric" class="tiny boon-count${n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-boon="heroPoints" value="${n}">
-    <button type="button" class="boon-step" data-boon="heroPoints" data-delta="1" title="one more">+</button>
+    <button type="button" class="boon-step" data-boon="heroPoints" data-delta="1" aria-label="one more">+</button>
     <span class="boon-label${n ? " boon-on" : ""}${over ? " boon-over" : ""}">Hero Points <span class="hint">/${max}</span>${over ? " <b>over</b>" : ""}</span>
   </span>`;
 }
@@ -259,24 +259,24 @@ function encumbranceHtml() {
   const enc = (typeof encumbranceState === "function") ? encumbranceState() : null;
   if (!enc || !enc.level) return "";
   return `<span class="boon boon-over" title="${escapeHtml(enc.note)}"><b>${escapeHtml(enc.level)}</b>
-    <span class="hint">${enc.carried} lb vs Str ${enc.str} &mdash; speed &minus;${enc.speedPenalty} ft</span></span>`;
+    <span class="hint">${enc.carried} lb vs Str ${enc.str} - speed &minus;${enc.speedPenalty} ft</span></span>`;
 }
 /* A counter the player invented. `max` is optional and advisory — over it goes red, nothing stops. */
 function customRowHtml(c) {
   const over = c.max != null && c.n > c.max;
-  return `<span class="boon" title="a counter you added — the &times; removes it">
-    <button type="button" class="boon-step" data-custom="${c.id}" data-delta="-1" title="one fewer">&minus;</button>
+  return `<span class="boon" aria-label="a counter you added - the &times; removes it">
+    <button type="button" class="boon-step" data-custom="${c.id}" data-delta="-1" aria-label="one fewer">&minus;</button>
     <input type="text" inputmode="numeric" class="tiny boon-count${c.n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-custom="${c.id}" value="${c.n}">
-    <button type="button" class="boon-step" data-custom="${c.id}" data-delta="1" title="one more">+</button>
+    <button type="button" class="boon-step" data-custom="${c.id}" data-delta="1" aria-label="one more">+</button>
     <span class="boon-label${c.n ? " boon-on" : ""}${over ? " boon-over" : ""}">${escapeHtml(c.name)}${c.max != null ? ` <span class="hint">/${c.max}</span>` : ""}${over ? " <b>over</b>" : ""}</span>
-    <button type="button" class="boon-del" data-customdel="${c.id}" title="remove this counter">&times;</button>
+    <button type="button" class="boon-del" data-customdel="${c.id}" aria-label="remove this counter">&times;</button>
   </span>`;
 }
 function customAddHtml() {
   return `<span class="boon boon-add">
     <input type="text" id="boon-add-name" class="boon-add-name" placeholder="counter name">
-    <input type="text" inputmode="numeric" id="boon-add-max" class="tiny" placeholder="max" title="optional maximum — shown, never enforced">
-    <button type="button" id="boon-add-btn" title="add a counter of your own">+ Counter</button>
+    <input type="text" inputmode="numeric" id="boon-add-max" class="tiny" placeholder="max" aria-label="optional maximum - shown, never enforced">
+    <button type="button" id="boon-add-btn" aria-label="add a counter of your own">+ Counter</button>
   </span>`;
 }
 function renderBoons() {

@@ -33,10 +33,10 @@
       clearDeath();
       const hp = byId("hp-cur");
       if (hp) { hp.value = "1"; hp.dispatchEvent(new Event("input", { bubbles: true })); hp.dispatchEvent(new Event("change", { bubbles: true })); }
-      note = "NAT 20 — regain 1 HP and are conscious!";
-    } else if (d === 1) { markDeath("fail"); markDeath("fail"); note = "nat 1 — two failures!"; }
-    else if (d >= 10) { markDeath("succ"); note = d + " — success."; }
-    else { markDeath("fail"); note = d + " — failure."; }
+      note = "NAT 20 - regain 1 HP and are conscious!";
+    } else if (d === 1) { markDeath("fail"); markDeath("fail"); note = "nat 1 - two failures!"; }
+    else if (d >= 10) { markDeath("succ"); note = d + " - success."; }
+    else { markDeath("fail"); note = d + " - failure."; }
     let status = "";
     if (countDeath("fail") >= 3) status = " You have died.";
     else if (countDeath("succ") >= 3) status = " You are stable.";

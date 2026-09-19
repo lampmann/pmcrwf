@@ -62,7 +62,7 @@ function comboboxHtml(o) {
   return `<span class="combo" style="width:${o.width || "12rem"}">` +
     `<input type="text" class="${cls}" ${attrs} value="${comboAttr(o.value || "")}"` +
       ` placeholder="${comboAttr(o.placeholder || "")}" autocomplete="off" data-combo-options="${dataOpts}">` +
-    `<button type="button" class="combo-arrow" tabindex="-1" title="show all options">&#9662;</button>` +
+    `<button type="button" class="combo-arrow" tabindex="-1" aria-label="show all options">&#9662;</button>` +
     `</span>`;
 }
 
@@ -83,7 +83,7 @@ function comboMatches(input, q) {
     if (l.startsWith(needle)) starts.push(o);
     else if (l.includes(needle)) contains.push(o);
   });
-  return starts.concat(contains);   // prefix matches first — "elf" should offer Elf before Half-Elf
+  return starts.concat(contains);   // prefix matches first - "elf" should offer Elf before Half-Elf
 }
 
 function comboClose() {
@@ -94,15 +94,15 @@ function comboClose() {
 
 function comboPanelHtml(options, highlight, query, input) {
   if (!options.length) {
-    return `<div class="combo-empty hint">${query ? "no match — what you typed is kept as-is" : "no options loaded"}</div>`;
+    return `<div class="combo-empty hint">${query ? "no match" : "no options loaded"}</div>`;
   }
-  // A banned option is still listed and still pickable — it just says so. See house-rules.js for why
+  // A banned option is still listed and still pickable - it just says so. See house-rules.js for why
   // marking beats removing.
   const ban = (typeof banInfoOf === "function") ? banInfoOf(input) : null;
   return options.map((o, i) => {
     const banned = ban && typeof isBannedOption === "function" && isBannedOption(ban.kind, o, ban.prefix);
     return `<div class="combo-opt${i === highlight ? " hl" : ""}${banned ? " banned-opt" : ""}" data-comboidx="${i}"` +
-      `${banned ? ` title="banned by house rule"` : ""}>${escapeHtml(o)}${banned ? ` <span class="banned-flag">banned</span>` : ""}</div>`;
+      `${banned ? ` aria-label="banned by house rule"` : ""}>${escapeHtml(o)}${banned ? ` <span class="banned-flag">banned</span>` : ""}</div>`;
   }).join("");
 }
 

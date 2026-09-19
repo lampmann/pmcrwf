@@ -387,7 +387,7 @@ function fmtWhen(ts) {
    their copy was already current and the re-pick was unnecessary. */
 function diffLine(d) {
   if (!d) return "";
-  if (!d.total) return `<span class="hint">Nothing had changed — your copy was already current.</span>`;
+  if (!d.total) return `<span class="hint">Copy up to date.</span>`;
   const bits = [];
   if (d.changed.length) bits.push(fmtCount(d.changed.length) + " updated");
   if (d.added.length) bits.push(fmtCount(d.added.length) + " added");
@@ -401,7 +401,7 @@ function diffLine(d) {
 function connectButtonsHtml() {
   if (dataFolderSupported()) {
     return `<button type="button" id="data-bar-connect">Connect data folder</button>
-      <button type="button" id="data-bar-pick" class="data-bar-alt" title="reads the folder once and keeps a copy in this browser instead of re-reading your disk">store a copy instead</button>`;
+      <button type="button" id="data-bar-pick" class="data-bar-alt">Store a copy</button>`;
   }
   return `<button type="button" id="data-bar-pick">Choose data folder</button>`;
 }
@@ -412,8 +412,7 @@ function dataBarHtml() {
   if (DATA_IMPORT) {
     const { done, total } = DATA_IMPORT;
     const pct = total ? Math.round((done / total) * 100) : 0;
-    return `<b>Reading your data folder…</b> ${fmtCount(done)} / ${fmtCount(total)} files (${pct}%)
-      <span class="hint">One time only — after this it's stored in this browser.</span>`;
+    return `<b>Reading data folder…</b> ${fmtCount(done)} / ${fmtCount(total)} files (${pct}%)`;
   }
 
   const err = DATA_IMPORT_ERROR
@@ -421,20 +420,18 @@ function dataBarHtml() {
 
   // 1. A live handle. The best case, and the only one that sees disk edits without being asked.
   if (DATA_DIR) {
-    return `<span class="data-bar-ok">Game data: <b>${escapeHtml(DATA_DIR.name || "your folder")}/</b>
-      on your computer, read live.</span>
-      <button type="button" id="data-bar-reload">reload it</button>
-      <button type="button" id="data-bar-forget">disconnect</button>${err}`;
+    return `<span class="data-bar-ok">Data: <b>${escapeHtml(DATA_DIR.name || "your folder")}/</b> (live)</span>
+      <button type="button" id="data-bar-reload">Reload</button>
+      <button type="button" id="data-bar-forget">Disconnect</button>${err}`;
   }
 
   // 2. A stored copy that is being kept but NOT used, because this sheet is served next to a real
   //    data/ folder and the server is live where a copy is not (see dataFetch). Saying "game data: a
   //    copy" here would be a lie about where the spells on screen came from.
   if (SNAPSHOT && DATA_SERVED) {
-    return `<span class="data-bar-ok">Game data: the <code>data/</code> folder next to this sheet.</span>
-      <span class="hint">A stored copy of <b>${escapeHtml(SNAPSHOT.name)}/</b> is also kept for when
-      you open the sheet somewhere without one.</span>
-      <button type="button" id="data-bar-drop">forget the copy</button>${err}`;
+    return `<span class="data-bar-ok">Data: server <code>data/</code>.</span>
+      <span class="hint">Stored copy: <b>${escapeHtml(SNAPSHOT.name)}/</b> (not in use).</span>
+      <button type="button" id="data-bar-drop">Forget copy</button>${err}`;
   }
 
   // 3. A stored copy, and it is what the sheet is reading. Everything about it that could be stale is
@@ -442,35 +439,25 @@ function dataBarHtml() {
   if (SNAPSHOT) {
     const age = snapshotAgeDays();
     const stale = snapshotIsStale()
-      ? `<div class="data-bar-stale">This copy is about ${Math.round(age / 30)} months old. If you've
-         updated your 5e.tools data since, re-pick the folder.</div>` : "";
+      ? `<div class="data-bar-stale">Copy is ${Math.round(age / 30)} months old. Re-pick to update.</div>` : "";
     const lapsed = (DATA_DIR_STATE === "needs-permission" || DATA_DIR_STATE === "denied")
-      ? ` <button type="button" id="data-bar-connect" class="data-bar-alt">reconnect the live folder</button>` : "";
-    return `<span class="data-bar-ok">Game data: a copy of <b>${escapeHtml(SNAPSHOT.name)}/</b> stored in
-      this browser — ${fmtCount(SNAPSHOT.count)} files, ${fmtBytes(SNAPSHOT.bytes)}, taken
+      ? ` <button type="button" id="data-bar-connect" class="data-bar-alt">Reconnect live folder</button>` : "";
+    return `<span class="data-bar-ok">Stored copy: <b>${escapeHtml(SNAPSHOT.name)}/</b> -
+      ${fmtCount(SNAPSHOT.count)} files, ${fmtBytes(SNAPSHOT.bytes)},
       ${fmtWhen(SNAPSHOT.takenAt)}.</span>
-      <button type="button" id="data-bar-pick">re-pick folder</button>
-      <button type="button" id="data-bar-drop">forget it</button>${lapsed}
+      <button type="button" id="data-bar-pick">Re-pick folder</button>
+      <button type="button" id="data-bar-drop">Forget copy</button>${lapsed}
       ${diffLine(DATA_LAST_DIFF)}${stale}${err}`;
   }
 
   // 4. A handle we remember but may no longer read. One click fixes it; no re-picking.
   if (DATA_DIR_STATE === "needs-permission" || DATA_DIR_STATE === "denied") {
-    return `<b>No game data loaded.</b> Your data folder is remembered, but the browser drops read
-      permission when it restarts.
-      <button type="button" id="data-bar-connect">Reconnect data folder</button>
-      <span class="hint">One click — you don't have to find it again.</span>${err}`;
+    return `<button type="button" id="data-bar-connect">Reconnect data folder</button>${err}`;
   }
 
-  // 5. Nothing yet. The wording of the second sentence is the only part that varies by browser.
-  const how = dataFolderSupported()
-    ? `<span class="hint">Read-only, stays on your computer, remembered next time.</span>`
-    : `<span class="hint">This browser can't hold a live link to a folder, so the files are read once
-       and kept here. Read-only, and nothing is uploaded.</span>`;
-  return `<b>No game data loaded.</b> Spells, equipment, class features and monsters come from your
-    own copy of 5e.tools' <code>data/</code> folder, which this site does not host
-    (<a href="DOCS.md">why</a>).
-    ${connectButtonsHtml()} ${how}${err}`;
+  // 5. Nothing yet. Offer the picker supported by this browser.
+  return `${connectButtonsHtml()}
+    <a href="DOCS.md#connecting-your-data-folder">Setup</a>${err}`;
 }
 
 /* One line under the toolbar, and only when it has something to say. The local case — sheet served

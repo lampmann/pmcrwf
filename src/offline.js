@@ -31,7 +31,7 @@ function showUpdateNote(onTake) {
   const d = document.createElement("div");
   d.id = "update-note";
   d.innerHTML = `A new version of pmcrwf is ready. <button type="button" id="update-note-take">Reload</button>
-    <button type="button" id="update-note-later" title="it will apply next time you open the sheet">later</button>`;
+    <button type="button" id="update-note-later" aria-label="it will apply next time you open the sheet">later</button>`;
   document.body.appendChild(d);
   d.addEventListener("click", e => {
     if (e.target.id === "update-note-take") { d.remove(); onTake(); }

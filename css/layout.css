@@ -28,7 +28,7 @@
 .modules.lay-free > .module select, .modules.lay-free > .module textarea,
 .modules.lay-free > .module a { pointer-events: none; }
 .modules.lay-free > .module .lay-collapse-btn { pointer-events: auto; cursor: pointer; }
-.modules.lay-free > .module.lay-dragging { opacity: .9; box-shadow: 0 3px 14px var(--menu-shadow); }
+.modules.lay-free > .module.lay-dragging { opacity: .9; }
 
 /* --- per-module resize handles (8), inset so overflow:hidden won't clip --- */
 .lay-h { position: absolute; display: none; z-index: 6; }
