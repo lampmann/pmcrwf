@@ -91,6 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const tb = document.getElementById("skill-rows"); if (!tb) return;
 
   tb.addEventListener("dragstart", e => {
+    if (!(e.target instanceof Element)) return;
     const tr = e.target.closest("tr"); if (!tr || !tr.dataset.slug) return;
     SKILL_DRAG_SLUG = tr.dataset.slug;
     e.dataTransfer.effectAllowed = "move";

@@ -456,7 +456,7 @@
   const dynOf = get => () => [...new Set(MON_LIB.flatMap(get).filter(Boolean))].sort();
   const FGROUPS = [
     { key: "source", label: "Source", dynamic: true, get: m => [m.source],
-      dynOpts: () => sources().map(s => [s, s, (typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[s]) || s]) },
+      dynOpts: () => sources().map(s => [s, escapeHtml((typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[s]) || s)]) },
     { key: "srcgroup", label: "Source Group", get: m => [typeof sourceGroupOf === "function" ? sourceGroupOf(m.source) : "supplement"],
       opts: [["core", "Core"], ["supplement", "Supplement"], ["adventure", "Adventure"]] },
     { key: "type", label: "Type", dynamic: true, get: m => (m.type ? [m.type] : []), dynOpts: dynOf(m => [m.type]) },
@@ -497,7 +497,7 @@
 
   function render() {
     const c = $("mon-lib-count"); if (!c) return;
-    c.textContent = MON_LIB.length ? (MON_LIB.length + " creatures · " + sources().length + " source(s)") : "no bestiary loaded";
+    c.textContent = MON_LIB.length ? (MON_LIB.length + " creatures | " + sources().length + " source(s)") : "no bestiary loaded";
     FILTERS.renderArea();
     renderResults();
   }
@@ -594,7 +594,7 @@
     const spellBlocks = (m.spellcasting || []).map(sc =>
       `<div style="margin-top:.3rem"><b>${escapeHtml(sc.name)}.</b> ${inlineText(sc.raw, m.name + " - " + sc.name, ctx)}` +
       sc.lists.map(l => `<div><i>${escapeHtml(l.label)}:</i> ${escapeHtml(l.spells.join(", "))}</div>`).join("") + `</div>`).join("");
-    return `<div class="hint">${escapeHtml(meta)}${m.page ? " · p." + m.page : ""}${m.source ? " · " + escapeHtml(m.source) : ""}</div>` +
+    return `<div class="hint">${escapeHtml(meta)}${m.page ? " | p." + m.page : ""}${m.source ? " | " + escapeHtml(m.source) : ""}</div>` +
       (m.partial ? `<div class="hint" style="color:var(--danger)">Derived from ${escapeHtml(m.copiedFrom)} via a 5e.tools _copy whose template/spell-list changes this sheet doesn't apply - the base statblock below is right, but check the book for what this variant adds.</div>` : "") +
       blockLine("Armor Class", escapeHtml(m.acText)) +
       blockLine("Hit Points", escapeHtml(String(hp))) +

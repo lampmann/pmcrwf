@@ -196,7 +196,7 @@ function vrRowHtml(r) {
   return `<div class="vr-rule${on ? " vr-on" : ""}">
     <label class="vr-head"><input type="checkbox" class="vr-toggle" data-vr="${attr}"${on ? " checked" : ""}>
       <b>${escapeHtml(r.name)}</b></label>
-    <span class="hint">${escapeHtml(r.source)}${r.page ? " p" + r.page : ""}${r.ruleType ? " &middot; " + (VR_TYPE_NAMES[r.ruleType] || r.ruleType) : ""}</span>
+    <span class="hint">${escapeHtml(r.source)}${r.page ? " p" + r.page : ""}${r.ruleType ? " | " + (VR_TYPE_NAMES[r.ruleType] || r.ruleType) : ""}</span>
     ${badge}
     <button type="button" class="vr-more" data-vrtext="${attr}" aria-label="show the rule text">&hellip;</button>
     ${on && eff && (eff.does || eff.elsewhere) ? `<div class="hint vr-effect">${escapeHtml(eff.does || ("Set at: " + eff.elsewhere))}</div>` : ""}

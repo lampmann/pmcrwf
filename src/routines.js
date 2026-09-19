@@ -139,7 +139,7 @@
         for (let i = 0; i < n; i++) {
           const res = (typeof rollAttackForRoutineById === "function") ? rollAttackForRoutineById(st.atkId, mode) : null;
           if (!res) { detailLines.push(`  <i>(skipped a step - its attack no longer exists)</i>`); break; }
-          detailLines.push(`  <b>${escapeHtml(res.name)}</b>${n > 1 ? ` #${i + 1}` : ""} - ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
+          detailLines.push(`  <b>${escapeHtml(res.name)}</b>${n > 1 ? ` #${i + 1}` : ""} - ${res.hitText}${res.dmgText ? " | " + res.dmgText : ""}`);
           hits.push({ total: res.hitTotal, damage: res.damage });
         }
       } else {
@@ -153,7 +153,7 @@
           const dm = diceRollExpr(st.dmg.trim(), "normal");
           failDmg = dm.value;
           succDmg = st.onSave === "half" ? Math.floor(dm.value / 2) : 0;
-          dmgTxt = ` · ${totalHtml(dm)} damage ← ${dm.display}`;
+          dmgTxt = ` | ${totalHtml(dm)} damage ← ${dm.display}`;
         }
         saveFailDamage += failDmg;
         detailLines.push(`  <b>${escapeHtml(name)}</b> - target rolls <b>${roll.value}</b> ← ${roll.display} (DC ${dc} ${abilLabel(st.abil || "dex")} save)${dmgTxt}`);

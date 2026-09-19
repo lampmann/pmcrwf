@@ -64,11 +64,11 @@ function setRollAnim(on) {
 function rollAnimAllowed() {
   return ROLL_ANIM_PREF == null ? !prefersReducedMotion() : ROLL_ANIM_PREF;
 }
-/* The small die button in the roll mirror's title bar, so the switch is somewhere you'd find it. */
+/* Keep the state visible: a die icon alone made disabled animation look broken. */
 function renderRollAnimToggle() {
   const btn = document.getElementById("roll-anim-toggle"); if (!btn) return;
   const on = rollAnimAllowed();
-  btn.textContent = on ? "\u2685" : "\u2680";
+  btn.textContent = on ? "Tumble: On" : "Tumble: Off";
   btn.classList.toggle("off", !on);
   btn.setAttribute("aria-label", "Dice animation");
   btn.setAttribute("aria-pressed", String(on));

@@ -176,7 +176,7 @@
     const cd = dmgBtn.dataset.critdice;
     if (cm < 20 || cd) {
       tr.querySelector(".atk-name").title =
-        [cm < 20 ? `crits on ${cm}-20` : "", cd ? `crit adds ${cd}` : ""].filter(Boolean).join(" · ");
+        [cm < 20 ? `crits on ${cm}-20` : "", cd ? `crit adds ${cd}` : ""].filter(Boolean).join(" | ");
     }
   }
   function updateAllDerived() { allRows().forEach(updateRowDerived); }
@@ -228,7 +228,7 @@
     const d = rowData(tr), res = rollAttackOnce(d, mode);
     // res.name is a user-typed field; the log stores its HTML and re-injects it on every load, so it
     // has to be escaped here (hitText/dmgText are engine-built markup and are already safe).
-    log(`<b>${esc(res.name)}</b> - ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
+    log(`<b>${esc(res.name)}</b> - ${res.hitText}${res.dmgText ? " | " + res.dmgText : ""}`);
   }
 
   // doubles each dice term in a damage expression (e.g. "1d8+3" -> "(1d8+1d8)+3") for crit damage,

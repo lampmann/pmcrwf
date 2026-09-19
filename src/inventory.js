@@ -75,11 +75,11 @@ function renderItemList() {
     </div>`;
   }).join("");
 }
-/* The per-row "x lb ea · y gp ea · totals" readout. Its own function so setItemQty can repaint just
+/* The per-row "x lb ea | y gp ea | totals" readout. Its own function so setItemQty can repaint just
    this span instead of the whole list. */
 function itemRowTotalsHtml(it) {
   const r = resolvedItem(it);
-  return `- ${fmtGP(r.wt)} lb ea &middot; ${fmtGP(r.val)} gp ea &middot; ${fmtGP(it.qty * r.wt)} lb / ${fmtGP(it.qty * r.val)} gp total`;
+  return `- ${fmtGP(r.wt)} lb ea | ${fmtGP(r.val)} gp ea | ${fmtGP(it.qty * r.wt)} lb / ${fmtGP(it.qty * r.val)} gp total`;
 }
 function toggleInvDetail(link) {
   const div = link.closest("div");
@@ -90,7 +90,7 @@ function toggleInvDetail(link) {
   if (!lib) {
     d.innerHTML = `<div class="hint">No item named "${escapeHtml(it.name)}" found in the Equipment Library - load/import it above to see its description.</div>`;
   } else {
-    const meta = [lib.type, lib.rarity, lib.reqAttune].filter(Boolean).join(" · ");
+    const meta = [lib.type, lib.rarity, lib.reqAttune].filter(Boolean).join(" | ");
     d.innerHTML = `<div class="hint">${meta}</div><div>${escapeHtml(lib.text).replace(/\n/g, "<br>")}</div>`;
   }
   div.after(d);

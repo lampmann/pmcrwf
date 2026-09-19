@@ -48,11 +48,11 @@
     <span id="roll-mirror-grip" aria-label="drag to resize"></span>
     <b>Rolls</b>
     <span class="spacer"></span>
-    <button type="button" id="roll-anim-toggle" aria-label="dice tumble when they land">&#9861;</button>
+    <button type="button" id="roll-anim-toggle" aria-label="Dice animation">Tumble</button>
     <button type="button" id="roll-mirror-fold" aria-label="fold the roll log up">&#9660;</button>
     <button type="button" id="roll-mirror-close" aria-label="hide the roll log">&times;</button>
   </div>
-  <input type="text" id="roll-mirror-cmd" placeholder="1d20+5 adv Perception   ·   /rr 4 1d6">
+  <input type="text" id="roll-mirror-cmd" placeholder="1d20+5 adv Perception   |   /rr 4 1d6">
   <div id="roll-mirror-body"></div>
 </div>
 <button type="button" id="roll-mirror-tab" aria-label="show the roll log" style="display:none">Rolls</button>
@@ -64,6 +64,7 @@
   <!-- ===== HEADER / MULTICLASS ===== -->
   <section class="module wide" data-module="header">
     <h2>Character</h2>
+    <div class="character-fields">
     <label>Name <input type="text" class="txt" data-persist id="char-name" style="width:16rem"></label>
     <label>Race <input type="text" data-persist id="char-race" style="width:9rem"></label>
     <label>Subrace <input type="text" data-persist id="char-subrace" style="width:9rem"></label>
@@ -80,17 +81,19 @@
     <label>Level
       <input type="text" inputmode="numeric" class="tiny" id="char-level" style="width:3rem"></label>
     <span class="hint" id="xp-next"></span>
+    </div>
     <fieldset>
       <legend>Classes (multiclass supported)</legend>
       <table id="class-table">
         <thead><tr><th>Class</th><th>Subclass</th><th>Level</th><th>Hit Die</th><th>Casting</th><th></th></tr></thead>
         <tbody id="class-rows"></tbody>
       </table>
-      <button id="btn-add-class">+ add class</button>
-
-      <span class="hint">Total level: <span class="derived" id="total-level">0</span>
-        &nbsp;|&nbsp; Proficiency bonus: <span class="derived" id="pb">+2</span>
-        (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
+      <div class="class-summary">
+        <button id="btn-add-class">+ add class</button>
+        <span class="hint">Total level: <span class="derived" id="total-level">0</span></span>
+        <span class="hint">Proficiency bonus: <span class="derived" id="pb">+2</span>
+          (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
+      </div>
     </fieldset>
   </section>
 
@@ -141,8 +144,8 @@
     <button class="roll" data-roll-check="init" data-label="Initiative">Roll Initiative</button>
     <div id="boons-row" class="boons-row"></div>
     <div class="hint def-manual">Resist <input type="text" data-persist id="def-resist" placeholder="fire, cold">
-      &middot; Immune <input type="text" data-persist id="def-immune" placeholder="poison">
-      &middot; Vulnerable <input type="text" data-persist id="def-vuln" placeholder="radiant">
+      | Immune <input type="text" data-persist id="def-immune" placeholder="poison">
+      | Vulnerable <input type="text" data-persist id="def-vuln" placeholder="radiant">
       </div>
     <div id="defenses-row" class="hint"></div>
 
@@ -437,8 +440,8 @@
      Knight, Divine Soul, Warlock patrons, Wizard subschools, etc. — see spellcasting.js) ===== -->
 <!-- Character creation wizard (PHB'14 p11-15 order). See src/creator.js. -->
 <div id="creator-modal" class="modal-overlay" style="display:none">
-  <div class="modal-box" style="max-width:42rem">
-    <div class="modal-title">New character</div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cr-title">
+    <div class="cr-header"><div class="modal-title" id="cr-title">New character</div><button type="button" id="cr-close" aria-label="Close character creation">×</button></div>
     <div id="cr-stepper"></div>
     <div id="cr-body"></div>
     <div class="hint cr-blocker" id="cr-blocker"></div>

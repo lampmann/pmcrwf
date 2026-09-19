@@ -462,7 +462,7 @@ function hrRenderSources() {
   const chips = srcs.map(s => {
     const banned = isBannedSource(s);
     const full = (typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[s]) || s;
-    return `<button type="button" class="fbtn${banned ? " exc" : ""}" data-hrsrc="${escapeHtml(s).replace(/"/g, "&quot;")}" title="${escapeHtml(full)}">${escapeHtml(s)}</button>`;
+    return `<button type="button" class="fbtn${banned ? " exc" : ""}" data-hrsrc="${escapeHtml(s).replace(/"/g, "&quot;")}">${escapeHtml(full)}</button>`;
   }).join("");
   return `<div class="hint"><b>${off.length}</b> books excluded.</div>
     <div class="fbody" style="margin-top:.35rem">${chips}</div>`;
@@ -518,7 +518,7 @@ function renderHouseRules() {
     const n = totalBanCount();
     if (n) bits.push(`${n} ban${n === 1 ? "" : "s"}`);
     if (HOUSE_RULES.sourcesOff.length) bits.push(`${HOUSE_RULES.sourcesOff.length} source(s) excluded`);
-    status.textContent = bits.join(" · ");
+    status.textContent = bits.join(" | ");
   }
   const presetBar = `<div class="hr-presets">
     <button type="button" id="hr-export">Export ruleset</button>

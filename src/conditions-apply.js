@@ -187,10 +187,10 @@ function renderConditionEffects() {
     bits.push(`<b>speed</b> ${speedNow} ft`);
   }
   if (exh >= 4) bits.push("<b>hit point maximum</b> halved");
-  applied.innerHTML = bits.length ? "Applied: " + bits.join(" &middot; ") : "";
+  applied.innerHTML = bits.length ? "Applied: " + bits.join(" | ") : "";
 
   const notes = conditionNotes();
   manual.innerHTML = notes.length
-    ? `<span>Yours to apply: ${notes.join(" &middot; ")}</span>`
+    ? `<span>Yours to apply: ${notes.join(" | ")}</span>`
     : "";
 }

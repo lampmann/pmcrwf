@@ -275,7 +275,7 @@ function itemNormalRange(i) {
    Spells) are likewise left to the search box. */
 const ITEM_FGROUPS = [
   { key:"source", label:"Source", dynamic:true, get:i=>[i.source],
-    dynOpts:()=>itemSources().map(src=>[src, src, (typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[src]) || src]) },
+    dynOpts:()=>itemSources().map(src=>[src, escapeHtml((typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[src]) || src)]) },
   // Shared with the Spell Library's own "Source Group" filter — see sourceGroupOf() in spell-library.js.
   { key:"srcgroup", label:"Source Group", get:i=>[typeof sourceGroupOf === "function" ? sourceGroupOf(i.source) : "supplement"],
     opts:[["core","Core"],["supplement","Supplement"],["adventure","Adventure"]] },
@@ -356,7 +356,7 @@ function findLibItemByName(name) {
    to be repainted whenever the library itself changes — it is no longer redrawn by recompute(). */
 function renderItemLibrary() {
   if (typeof renderItemList === "function") renderItemList();
-  $("item-lib-count").textContent = ITEM_LIB.length ? (ITEM_LIB.length + " items · " + itemSources().length + " source(s)") : "no equipment loaded";
+  $("item-lib-count").textContent = ITEM_LIB.length ? (ITEM_LIB.length + " items | " + itemSources().length + " source(s)") : "no equipment loaded";
   ITEM_FILTERS.renderArea();
   renderItemResults();
 }
@@ -396,7 +396,7 @@ function toggleItemDetail(link) {
   const tr = link.closest("tr"), next = tr.nextElementSibling;
   if (next && next.classList.contains("sp-detail")) { next.remove(); return; }
   const it = ITEM_LIB.find(x => (x.name + "|" + x.source) === link.dataset.key); if (!it) return;
-  const meta = [it.type, it.rarity, it.reqAttune].filter(Boolean).join(" · ");
+  const meta = [it.type, it.rarity, it.reqAttune].filter(Boolean).join(" | ");
   const det = document.createElement("tr"); det.className = "sp-detail";
   det.innerHTML = `<td></td><td colspan="6"><div class="hint">${meta}</div><div>${escapeHtml(it.text).replace(/\n/g, "<br>")}</div></td>`;
   tr.after(det);

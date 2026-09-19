@@ -262,6 +262,8 @@ document.addEventListener("DOMContentLoaded", () => {
      Inventory row -> slot equips it; slot -> anywhere outside the doll unequips. The drag payload is
      the inventory index, which is stable for the length of a drag. */
   document.addEventListener("dragstart", e => {
+    // Firefox can dispatch native text-selection drags from a Text node.
+    if (!(e.target instanceof Element)) return;
     const row = e.target.closest("[data-invdrag]");
     if (row) { e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", "inv:" + row.dataset.invdrag); } catch (err) {} return; }
     const cell = e.target.closest(".eq-slot.filled");

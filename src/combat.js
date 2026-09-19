@@ -409,10 +409,10 @@ function menuFor(kind) {
 function attackEntries(spend) {
   const atks = (typeof attacksForRoutines === "function") ? attacksForRoutines() : [];
   return atks.map(a => ({
-    label: a.name, hint: `${a.bonus >= 0 ? "+" : ""}${a.bonus} to hit${a.dmg ? ` · ${a.dmg}` : ""}`,
+    label: a.name, hint: `${a.bonus >= 0 ? "+" : ""}${a.bonus} to hit${a.dmg ? ` | ${a.dmg}` : ""}`,
     run: () => {
       const res = (typeof rollAttackById === "function") ? rollAttackById(a.id, "normal") : null;
-      if (res) log(`<b>${res.name}</b> - ${res.hitText}${res.dmgText ? " · " + res.dmgText : ""}`);
+      if (res) log(`<b>${res.name}</b> - ${res.hitText}${res.dmgText ? " | " + res.dmgText : ""}`);
       spend(a.name);
     },
   }));
@@ -420,7 +420,7 @@ function attackEntries(spend) {
 
 function spellEntries(unit, kind) {
   return spellsByCastTime(unit).map(s => ({
-    label: s.name, hint: s.lvl === 0 ? "cantrip" : `level ${s.lvl}${s.cls ? " · " + s.cls : ""}`,
+    label: s.name, hint: s.lvl === 0 ? "cantrip" : `level ${s.lvl}${s.cls ? " | " + s.cls : ""}`,
     run: () => spendResource(kind, `Cast ${s.name}`),
   }));
 }

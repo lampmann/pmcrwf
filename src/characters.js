@@ -468,6 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   el.addEventListener("dragstart", e => {
+    if (!(e.target instanceof Element)) return;
     const tab = e.target.closest("[data-charid]"); if (!tab) return;
     TAB_DRAG_ID = tab.dataset.charid;
     e.dataTransfer.effectAllowed = "move";

@@ -144,7 +144,7 @@
     }
     const max = maxHp(c, m), alive = aliveTokens(c).length, n = (c.tokens || []).length;
     const isSummon = m.summonSpellLevel != null || !!m.summonedBySpell || !!m.summonedByClass;
-    const meta = [(m.size || []).join("/") + " " + m.type, "AC " + (m.acText || "-"), "CR " + (m.cr || "-"), m.speedText].filter(Boolean).join(" · ");
+    const meta = [(m.size || []).join("/") + " " + m.type, "AC " + (m.acText || "-"), "CR " + (m.cr || "-"), m.speedText].filter(Boolean).join(" | ");
     const traitNames = (m.traits || []).map(t => t.name).filter(Boolean);
     const acts = (m.actions || []).map((a, i) => actionHtml(c, m, a, i, "actions")).join("") +
       (m.bonusActions || []).map((a, i) => actionHtml(c, m, a, i, "bonusActions")).join("") +
@@ -160,14 +160,14 @@
         <button class="roll mon-roll" data-bonus="${monMod(m.dex) + 0}" data-rolllabel="${esc(m.name)} initiative">init ${signed(monMod(m.dex))}</button>
         <button class="rowbtn cmp-del" data-cid="${c.id}" aria-label="remove">x</button>
       </legend>
-      <div class="hint">${escapeHtml(meta)}${traitNames.length ? " · traits: " + escapeHtml(traitNames.join(", ")) : ""}</div>
+      <div class="hint">${escapeHtml(meta)}${traitNames.length ? " | traits: " + escapeHtml(traitNames.join(", ")) : ""}</div>
       <div class="cmp-hp-row">
         HP <span class="hint">(each)</span>
         ${(c.tokens || []).map((t, i) => tokenHtml(c, i, t, max)).join("")}
         <label class="hint">
           max <input type="number" class="tiny cmp-maxhp" data-cid="${c.id}" value="${c.maxHpOverride}" placeholder="${m.hpAvg == null ? "?" : m.hpAvg}"></label>
         <button class="cmp-heal" data-cid="${c.id}" aria-label="restore every token to full HP">full</button>
-        <span class="hint">${alive}/${n} up${m.hpSpecial ? " · " + escapeHtml(m.hpSpecial) : ""}</span>
+        <span class="hint">${alive}/${n} up${m.hpSpecial ? " | " + escapeHtml(m.hpSpecial) : ""}</span>
       </div>
       <div class="cmp-checks">
         <span class="hint">saves</span> ${ABILS.map(([k, l]) =>
@@ -209,7 +209,7 @@
       if (expr) {
         const dm = diceRollExpr(isCrit ? doubleDice(expr) : expr, "normal");
         dmg = dm.value;
-        dmgText = ` · ${totalHtml(dm)} damage ← ${dm.display}${isCrit ? " <i>(crit, dice doubled)</i>" : ""}`;
+        dmgText = ` | ${totalHtml(dm)} damage ← ${dm.display}${isCrit ? " <i>(crit, dice doubled)</i>" : ""}`;
       }
       lines.push(`  #${i + 1} - ${totalHtml(hit)} to hit ← ${attackRollDisplay(hit)}${dmgText}`);
       hits.push({ total: hit.value, damage: dmg });

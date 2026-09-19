@@ -160,8 +160,8 @@ function renderDefenses() {
   effTagsByPrefix("situational-").forEach(row => {
     row.items.forEach(i => sit.push(`<b>${escapeHtml(row.kind)}</b> ${escapeHtml(i.label)} <span class="hint">(${escapeHtml(i.source)})</span>`));
   });
-  el.innerHTML = (bits.length ? bits.join(" &middot; ") : "") +
-    (sit.length ? `<div class="hint" style="margin-top:.15rem">Situational: ${sit.join(" &middot; ")}</div>` : "");
+  el.innerHTML = (bits.length ? bits.join(" | ") : "") +
+    (sit.length ? `<div class="hint" style="margin-top:.15rem">Situational: ${sit.join(" | ")}</div>` : "");
 }
 
 function recompute() {

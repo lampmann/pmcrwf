@@ -10,7 +10,7 @@
      2. Choose a Class         p11   classes (multiclass) + LEVEL (default 1)
      3. Determine Ability      p12   standard array / point buy / 4d6kh3 /
         Scores                       manual, then racial increases
-     4. Describe Your          p13   name + background (PHB p125 custom too)
+     4. Describe Your          p13   name + background
         Character
      5. Choose Equipment       p14   package or starting gold, DMG p38 for
                                      characters starting above 1st level
@@ -72,7 +72,7 @@ function blankCreator() {
     assign: {},                                          // ability -> index into STANDARD_ARRAY / rolled
     rolled: [],                                          // 4d6kh3 results, when method === "roll"
     name: "", background: "", customBg: false,
-    bgSkills: ["", ""], bgTools: ["", ""], bgFeature: "",   // custom background (PHB p125)
+    bgSkills: ["", ""], bgTools: ["", ""], bgFeature: "",   // custom background
     /* A listed background's own "choose N of ..." blocks, resolved rather than only displayed:
        { skills: [...], tools: [...], languages: [...] }, one entry per slot the data asks for. */
     bgChoices: { skills: [], tools: [], languages: [] },
@@ -227,7 +227,24 @@ function creatorRowCombo(cls, row, value, options, placeholder, banKind, banPref
    include *and* combine — one flat list of books, all on by default, click to toggle. A tri-state
    chip row would be more machinery than the question needs. Selections are per-wizard-session, not
    persisted, since they're a browsing aid rather than part of the character. */
-function creatorSources(lib) { return [...new Set(Object.values(lib).map(r => r.source).filter(Boolean))].sort(); }
+function creatorSources(lib) {
+  const entries = Object.values(lib);
+  if (lib === RACE_LIB) entries.push(...entries.flatMap(r => Object.values(r.subs || {})).filter(Boolean));
+  return [...new Set(entries.map(r => r.source).filter(Boolean))].sort();
+}
+
+function creatorRaceOptions() {
+  const off = CREATOR.srcOff.race || {};
+  return Object.values(RACE_LIB).filter(r => r && r.name).sort((a, b) => a.name.localeCompare(b.name))
+    .map(race => {
+      const selected = race.name.toLowerCase() === CREATOR.race.trim().toLowerCase();
+      const children = Object.values(race.subs || {}).filter(sub => sub && sub.name &&
+        (!off[sub.source || race.source] || (selected && sub.name === CREATOR.subrace)))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(sub => ({ value: race.name, label: sub.name, subrace: sub.name }));
+      return !off[race.source] || children.length || selected ? { value: race.name, children } : null;
+    }).filter(Boolean);
+}
 
 function sourceFilterHtml(kind, lib) {
   const srcs = creatorSources(lib);
@@ -236,8 +253,7 @@ function sourceFilterHtml(kind, lib) {
   const chips = srcs.map(s => {
     const on = !off[s];
     const full = (typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[s]) || s;
-    return `<button type="button" class="fbtn cr-src${on ? " inc" : ""}" data-crsrc="${kind}" data-src="${escapeHtml(s)}"
-      title="${escapeHtml(full)}">${escapeHtml(s)}</button>`;
+    return `<button type="button" class="fbtn cr-src${on ? " inc" : ""}" data-crsrc="${kind}" data-src="${escapeHtml(s)}">${escapeHtml(full)}</button>`;
   }).join("");
   const anyOff = Object.values(off).some(Boolean);
   return `<details class="cr-sources"${anyOff ? " open" : ""}><summary class="hint">Books (${srcs.length - Object.values(off).filter(Boolean).length}/${srcs.length})</summary>
@@ -283,7 +299,7 @@ function racialAsiHtml() {
   if (!hasFixed && !slots.length) {
     return CREATOR.race
       ? ""
-      : `<div class="hint">Pick a race to see its ability increases.</div>`;
+      : `<div class="hint">No race selected.</div>`;
   }
 
   const taken = new Set(slots.map(slotValue).filter(Boolean));
@@ -298,7 +314,7 @@ function racialAsiHtml() {
   }).join(" ");
 
   const fixedPart = (hasFixed && !CREATOR.customOrigin) ? `<b>${fixedTxt}</b>` : "";
-  return `<div style="margin-top:.3rem">${fixedPart}${fixedPart && slotHtml ? " &middot; " : ""}${slotHtml}${customToggle}</div>`;
+  return `<div style="margin-top:.3rem">${fixedPart}${fixedPart && slotHtml ? " | " : ""}${slotHtml}${customToggle}</div>`;
 }
 
 /* Traits the race and subrace grant. Shown in step 1 so the choices a race makes you responsible for
@@ -320,7 +336,7 @@ function raceTraitsHtml() {
   return `<div style="margin-top:.5rem"><b>Traits</b>
     <div class="hint">${traits.map(e => CHOICE_CUE.test(e.text || "")
       ? `<b class="cr-choice-trait">${escapeHtml(e.name)} &#9998;</b>`
-      : `<span>${escapeHtml(e.name)}</span>`).join(" &middot; ")}</div>
+      : `<span>${escapeHtml(e.name)}</span>`).join(" | ")}</div>
     </div>`;
 }
 
@@ -334,7 +350,7 @@ function raceSizeHtml() {
   }
   return `<div style="margin-top:.3rem"><label>Size
     <select id="cr-size">${sizes.map(s => `<option value="${s}"${CREATOR.size === s ? " selected" : ""}>${SIZE_NAMES[s] || s}</option>`).join("")}</select></label>
-    <span class="hint">this race lets you choose</span></div>`;
+    </div>`;
 }
 
 /* ----- multiclassing prerequisites, PHB p163 -----
@@ -419,15 +435,6 @@ function higherLevelBand(level) { return HIGHER_LEVEL_START.find(b => level >= b
    Each step returns plain HTML; the shell wires the shared Back/Next/Create controls, so a step only
    has to describe its own fields and its own validity (see creatorStepBlockerFor). */
 
-/* Two small readouts that a typed number changes, factored out so the `input` handler can refresh
-   just them without redrawing the step (see this file's header on why that matters). */
-function creatorStep2Hint() {
-  const first = CREATOR.classes[0] || { name: "" };
-  const hd = first.name ? classHitDie(first.name) : "";
-  return (hd ? `At 1st level you start with your first class's Hit Die (<b>${hd}</b>) at its maximum + your CON modifier.`
-             : "Pick a class to see its hit die.")
-    + (creatorTotalLevel() > 1 ? ` You're starting above 1st level, so you'll also want to set XP (Character module) and pick anything your classes grant on the way up - the Features panel lists it all once you're in.` : "");
-}
 function creatorFinalCell(ab) {
   const final = creatorFinalScore(ab);
   return `= <b>${final}</b> <span class="hint">(${sign(mod(final))})</span>`;
@@ -437,10 +444,10 @@ function creatorStepHtml() {
   const c = CREATOR;
 
   if (c.step === 1) {
-    const races = filteredNames("race", RACE_LIB, c.race);
+    const races = creatorRaceOptions();
     const rec = ciFindRace(c.race);
     const subs = subNames(rec);
-    return `<div class="cr-step"><b>Step 1 &middot; Choose a Race</b> <span class="hint">PHB p11</span>
+    return `<div class="cr-step"><b>Step 1 | Choose a Race</b>
       ${sourceFilterHtml("race", RACE_LIB)}
       <label>Race ${creatorCombo("cr-race", c.race, races, races.length ? "type to search" : "no race data - type freely", "", "", "race")}</label>
       ${subs.length || c.subrace ? `<label style="margin-left:.6rem">Subrace ${creatorCombo("cr-subrace", c.subrace, subs, "none", "", "", "race")}</label>` : ""}
@@ -465,7 +472,7 @@ function creatorStepHtml() {
       </tr>`;
     }).join("");
     const fails = mcFailures(c.classes, creatorFinalScore);
-    return `<div class="cr-step"><b>Step 2 &middot; Choose a Class</b> <span class="hint">PHB p11</span>
+    return `<div class="cr-step"><b>Step 2 | Choose a Class</b>
 
       ${sourceFilterHtml("class", CLASS_LIB)}
       <table class="cr-classes"><tr class="hint"><td>Class</td><td>Subclass</td><td>Level</td><td>Hit Die</td><td></td></tr>${rows}</table>
@@ -481,11 +488,11 @@ function creatorStepHtml() {
         <b>Multiclassing prerequisites</b>
         <div>${c.classes.filter(r => r.name.trim()).map(r => {
           const rec = ciFindClass(r.name);
-          if (!rec || !rec.mcReq) return `${escapeHtml(r.name)}: <span class="hint">not in your data</span>`;
+          if (!rec) return `${escapeHtml(r.name)}: <span class="hint">not in your data</span>`;
+          if (!rec.mcReq) return `${escapeHtml(r.name)}: <span class="hint">prerequisites unavailable</span>`;
           const ok = meetsMcRequirement(rec.mcReq, creatorFinalScore);
           return `${escapeHtml(r.name)}: <b class="${ok ? "cr-ok" : "cr-over"}">${escapeHtml(mcRequirementText(rec.mcReq))}</b>`;
-        }).join(" &middot; ")}</div>${fails.length ? "" : `<div>All prerequisites met.</div>`}</div>` : ""}
-      <div class="hint" id="cr-step2-hint" style="margin-top:.4rem">${creatorStep2Hint()}</div>
+        }).join(" | ")}</div>${fails.length ? "" : `<div>All prerequisites met.</div>`}</div>` : ""}
     </div>`;
   }
 
@@ -496,13 +503,13 @@ function creatorStepHtml() {
     if (c.method === "standard" || c.method === "roll") {
       const pool = c.method === "standard" ? STANDARD_ARRAY : c.rolled;
       const used = new Set(Object.values(c.assign).filter(v => v != null));
-      poolHtml = `<div class="hint" style="margin:.3rem 0">Assign each number to an ability:
+      poolHtml = `<div class="hint" style="margin:.3rem 0">Available scores:
         ${pool.map((n, i) => `<span class="cr-pool${used.has(i) ? " used" : ""}">${n}</span>`).join(" ")}
         ${c.method === "roll" ? `<button type="button" id="cr-reroll">roll 4d6, drop lowest &times;6</button>` : ""}</div>`;
     } else if (c.method === "pointbuy") {
       const spent = pointsSpent();
       poolHtml = `<div class="hint" style="margin:.3rem 0">Points spent: <b class="${spent > POINT_BUY_BUDGET ? "cr-over" : ""}">${spent}</b> / ${POINT_BUY_BUDGET}
-        &middot; scores 8&ndash;15 before racial increases (PHB p13)</div>`;
+        | scores 8&ndash;15 before racial increases</div>`;
     }
     const rows = CREATOR_ABILITIES.map(ab => {
       const pool = c.method === "standard" ? STANDARD_ARRAY : c.rolled;
@@ -524,11 +531,11 @@ function creatorStepHtml() {
         <td class="hint">${inc ? `+${inc} racial` : ""}</td>
         <td id="cr-final-${ab}">${creatorFinalCell(ab)}</td></tr>`;
     }).join("");
-    return `<div class="cr-step"><b>Step 3 &middot; Determine Ability Scores</b> <span class="hint">PHB p12&ndash;13</span>
+    return `<div class="cr-step"><b>Step 3 | Determine Ability Scores</b>
       <div style="margin:.3rem 0">
-        ${methodBtn("standard", "Standard array", "15, 14, 13, 12, 10, 8 (PHB p13)")}
-        ${methodBtn("pointbuy", "Point buy", "27 points, scores 8–15 (PHB p13 variant)")}
-        ${methodBtn("roll", "Roll 4d6 drop lowest", "roll six sets of 4d6, keeping the highest three (PHB p12)")}
+        ${methodBtn("standard", "Standard array", "15, 14, 13, 12, 10, 8")}
+        ${methodBtn("pointbuy", "Point buy", "27 points, scores 8–15")}
+        ${methodBtn("roll", "Roll 4d6 drop lowest", "roll six sets of 4d6, keeping the highest three")}
         ${methodBtn("manual", "Enter manually", "type scores straight in")}
       </div>
       ${poolHtml}
@@ -541,7 +548,7 @@ function creatorStepHtml() {
   if (c.step === 4) {
     const bgs = filteredNames("background", BACKGROUND_LIB, c.background);
     const rec = !c.customBg ? ciFindBackground(c.background) : null;
-    return `<div class="cr-step"><b>Step 4 &middot; Describe Your Character</b> <span class="hint">PHB p13, p125</span>
+    return `<div class="cr-step"><b>Step 4 | Describe Your Character</b>
 
       ${sourceFilterHtml("background", BACKGROUND_LIB)}
       <label>Name <input type="text" id="cr-name" value="${escapeHtml(c.name)}" style="width:14rem"></label>
@@ -589,18 +596,36 @@ function flatProfNames(list) {
 /* The `choose` blocks in a background's proficiency data, as actual pickers. The data says "choose
    two from this list of six"; showing that sentence and leaving the character without the
    proficiencies was the gap — this resolves it, one <select> per slot. */
-function chooseBlocks(list) {
+function proficiencyOptions(kind, category = "any") {
+  if (kind === "skills") return SKILLS.map(s => s[0]);
+  if (kind === "languages") return Object.values(LANGUAGE_LIB)
+    .filter(l => category === "anyStandard" ? l.type === "standard" : category === "anyExotic" ? l.type === "exotic" : true)
+    .map(l => l.name).sort((a, b) => a.localeCompare(b));
+  const types = { anyArtisansTool: "Artisan's Tools", anyMusicalInstrument: "Instrument", anyGamingSet: "Gaming Set" };
+  const allowed = types[category] ? [types[category]] : ["Tools", "Artisan's Tools", "Instrument", "Gaming Set"];
+  return [...new Set(ITEM_LIB.filter(i => allowed.includes(i.type) && !i.rarity).map(i => i.name))].sort((a, b) => a.localeCompare(b));
+}
+function chooseBlocks(list, kind) {
   const out = [];
   (Array.isArray(list) ? list : []).forEach(entry => {
     Object.entries(entry || {}).forEach(([k, v]) => {
-      if (k !== "choose" || !v) return;
-      out.push({ count: v.count || 1, from: (v.from || []).map(x => String(x).replace(/\|.*/, "")) });
+      if (!v) return;
+      if (k === "choose") {
+        const categories = { "artisan's tools": "anyArtisansTool", "musical instrument": "anyMusicalInstrument", "gaming set": "anyGamingSet" };
+        const from = (v.from || []).flatMap(x => {
+          const name = String(x).replace(/\|.*/, "");
+          return kind === "tools" && categories[name.toLowerCase()] ? proficiencyOptions(kind, categories[name.toLowerCase()]) : [name];
+        });
+        out.push({ count: v.count || 1, from: [...new Set(from)] });
+      } else if (kind && /^any/.test(k) && Number.isInteger(v) && v > 0) {
+        out.push({ count: v, from: proficiencyOptions(kind, k) });
+      }
     });
   });
   return out;
 }
 function bgChooseHtml(rec, kind) {
-  const blocks = chooseBlocks(rec[kind]);
+  const blocks = chooseBlocks(rec[kind], kind);
   if (!blocks.length) return "";
   const picked = (CREATOR.bgChoices && CREATOR.bgChoices[kind]) || [];
   let slot = 0;
@@ -626,7 +651,7 @@ function backgroundSummaryHtml(rec) {
   const tl = profListText(rec.tools); if (tl) parts.push(`<b>Tools</b> ${escapeHtml(tl)}`);
   const lg = profListText(rec.languages); if (lg) parts.push(`<b>Languages</b> ${escapeHtml(lg)}`);
   if (rec.feature) parts.push(`<b>Feature</b> ${escapeHtml(rec.feature.name)}`);
-  return `<div class="hint" style="margin-top:.4rem">${parts.join(" &middot; ") || "No mechanical details in your data for this background."}
+  return `<div class="hint" style="margin-top:.4rem">${parts.join(" | ") || "No background details loaded."}
     ${bgChooseHtml(rec, "skills")}${bgChooseHtml(rec, "tools")}${bgChooseHtml(rec, "languages")}
     ${rec.equipmentText ? `<div><b>Equipment</b> ${escapeHtml(rec.equipmentText)}</div>` : ""}
     </div>`;
@@ -637,13 +662,14 @@ function backgroundSummaryHtml(rec) {
    flaws, which this sheet doesn't track at all (see the roadmap), so those aren't asked for. */
 function customBackgroundHtml() {
   const skillNames = (typeof SKILLS !== "undefined") ? SKILLS.map(s => s[0]) : [];   // SKILLS is [name, ability] pairs (data.js)
+  const toolLanguages = [...new Set([...proficiencyOptions("tools"), ...proficiencyOptions("languages")])].sort((a, b) => a.localeCompare(b));
   const features = Object.values(BACKGROUND_LIB).filter(b => b.feature).map(b => `${b.feature.name} (${b.name})`).sort();
   const pick = (arr, i, cls, list, ph) =>
     `${creatorCombo(`cr-${cls}-${i}`, arr[i] || "", list, ph, cls, "11rem")}`;
   return `<div style="margin-top:.4rem" class="cr-custom-bg">
 
     <div style="margin-top:.3rem">Skills ${pick(CREATOR.bgSkills, 0, "cr-bgskill", skillNames, "any skill")} ${pick(CREATOR.bgSkills, 1, "cr-bgskill", skillNames, "any skill")}</div>
-    <div style="margin-top:.3rem">Tools / languages ${pick(CREATOR.bgTools, 0, "cr-bgtool", [], "tool or language")} ${pick(CREATOR.bgTools, 1, "cr-bgtool", [], "tool or language")}</div>
+    <div style="margin-top:.3rem">Tools / languages ${pick(CREATOR.bgTools, 0, "cr-bgtool", toolLanguages, "tool or language")} ${pick(CREATOR.bgTools, 1, "cr-bgtool", toolLanguages, "tool or language")}</div>
     <div style="margin-top:.3rem">Feature ${creatorCombo("cr-bgfeature", CREATOR.bgFeature, features, features.length ? "any background's feature" : "name your feature", "", "16rem")}</div>
   </div>`;
 }
@@ -667,9 +693,9 @@ function creatorStep5Html() {
     const opt = (k) => line[k] ? `<label style="margin-right:.8rem"><input type="radio" name="cr-eq-${i}" value="${k}" data-creq="${i}"${picked === k ? " checked" : ""}>
       (${k}) ${escapeHtml(line[k].map(eqLeafLabel).join(", "))}</label>` : "";
     return `<div style="margin:.15rem 0">${opt("a")}${opt("b")}</div>`;
-  }).join("") : `<div class="hint">No starting-equipment data for this class - add what you need from the Equipment Library.</div>`;
+  }).join("") : `<div class="hint">No starting equipment loaded.</div>`;
 
-  return `<div class="cr-step"><b>Step 5 &middot; Choose Equipment</b> <span class="hint">PHB p14</span>
+  return `<div class="cr-step"><b>Step 5 | Choose Equipment</b>
     <div class="hint">${
       // R35: the open-ended picks are exactly where this ruling bites, so it's stated here rather
       // than left in the rules reference. The sheet can't police it - it never learns which
@@ -685,7 +711,7 @@ function creatorStep5Html() {
       <button type="button" id="cr-roll-gold">${c.startGold == null ? "roll" : "re-roll"} ${escapeHtml(goldDice || "")}</button>
       <button type="button" id="cr-avg-gold">take the average${averageGold() != null ? ` (${averageGold()} gp)` : ""}</button>
       ${c.startGold != null ? ` &rarr; <b>${c.startGold} gp</b>${c.goldAveraged ? ` <span class="hint">(average)</span>` : ""}` : ` <span class="hint">roll, or take the average</span>`}
-      <div class="hint">Taking gold instead of the package means you also skip your background's equipment (PHB p125).</div>
+      <div class="hint">Background equipment excluded.</div>
     </div>`}
 
     <div style="margin-top:.6rem"><label><input type="checkbox" id="cr-higher"${c.higherLevel ? " checked" : ""}>
@@ -700,7 +726,7 @@ function creatorStep5Html() {
       <div style="margin-top:.3rem">${band.gp
         ? `<button type="button" id="cr-roll-higher">${c.higherGold == null ? "roll" : "re-roll"} ${band.gp} gp + 1d10 × ${band.mult} gp</button>
            ${c.higherGold != null ? ` &rarr; <b>${c.higherGold} gp</b> <span class="hint">(1d10 rolled ${c.higherRoll})</span>` : ""}`
-        : `<span class="hint">Levels 1&ndash;4 get normal starting equipment and no extra gold.</span>`}</div>
+        : `<span class="hint">No extra gold at this level.</span>`}</div>
       ${band.items[c.campaignMagic] ? `<div class="hint" style="margin-top:.3rem">Additional items: <b>${band.items[c.campaignMagic]}</b></div>` : ""}
 
     </div>` : ""}
@@ -708,7 +734,7 @@ function creatorStep5Html() {
     <div style="margin-top:.6rem">Ready to create:
       <b>${escapeHtml(c.name || "unnamed")}</b>, ${escapeHtml(c.race || "no race")}${c.subrace ? ` (${escapeHtml(c.subrace)})` : ""},
       ${classTxt}${c.background ? `, ${escapeHtml(c.background)}${c.customBg ? " (custom)" : ""}` : ""}</div>
-    <div class="hint">${CREATOR_ABILITIES.map(ab => `${ab.toUpperCase()} ${creatorFinalScore(ab)}`).join(" &middot; ")}</div>
+    <div class="hint">${CREATOR_ABILITIES.map(ab => `${ab.toUpperCase()} ${creatorFinalScore(ab)}`).join(" | ")}</div>
     ${hp != null ? `<div class="hint">Level 1 HP: ${HIT_DIE_MAX[hd]} ${sign(conMod)} CON = <b>${Math.max(1, hp)}</b></div>` : ""}
   </div>`;
 }
@@ -728,7 +754,7 @@ function creatorStepBlockerFor(step) {
     if (c.classes.some(r => (Number(r.lvl) || 0) < 1)) return "Every class needs at least 1 level.";
     if (total > 20) return `Total level is ${total} - the cap is 20.`;
     const fails = mcFailures(c.classes, creatorFinalScore);
-    if (fails.length) return `Multiclassing needs ${fails.map(f => `${f.need} for ${f.name}`).join("; ")} (PHB p163).`;
+    if (fails.length) return `Multiclassing needs ${fails.map(f => `${f.need} for ${f.name}`).join("; ")}.`;
   }
   if (step === 3) {
     if (c.method === "pointbuy" && pointsSpent() > POINT_BUY_BUDGET) return `Over budget by ${pointsSpent() - POINT_BUY_BUDGET} point(s).`;
@@ -810,7 +836,7 @@ function openCreator() {
   modal.style.display = "";
   renderCreator();
 }
-function closeCreator() { const m = $("creator-modal"); if (m) m.style.display = "none"; CREATOR = null; }
+function closeCreator() { comboClose(); const m = $("creator-modal"); if (m) m.style.display = "none"; CREATOR = null; }
 
 /* Roll 4d6-drop-lowest six times, logging each set so the numbers are auditable afterwards rather
    than appearing from nowhere — same principle as every other roll on the sheet. */
@@ -823,7 +849,7 @@ function creatorRollScores() {
   CREATOR.rolled = sets.map(s => s.total);
   CREATOR.assign = {};
   logEvent("roll", `<b>Ability scores</b> &larr; 4d6 drop lowest &times;6: ` +
-    sets.map(s => `<b>${s.total}</b> (${s.dice.join(",")})`).join(" &middot; "));
+    sets.map(s => `<b>${s.total}</b> (${s.dice.join(",")})`).join(" | "));
 }
 
 /* Starting gold, e.g. "5d4 × 10". Parsed rather than hardcoded per class, and logged like any roll. */
@@ -907,15 +933,16 @@ function creatorBuildState() {
 
   /* Background proficiencies. Only what the data states OUTRIGHT is applied — a `choose` block is a
      decision the player still has to make, and silently picking one for them would be worse than
-     leaving it visible in the Skills / Proficiencies modules. A custom background (PHB p125) is all
+     leaving it visible in the Skills / Proficiencies modules. A custom background is all
      outright picks by definition, so all of it applies. */
   const prof = { weapons: [], tools: [], languages: [] };
   const skillProfs = [];
   if (c.customBg) {
     c.bgSkills.filter(Boolean).forEach(s => skillProfs.push(s));
-    // The two tool/language picks aren't distinguishable in the data (PHB lets you take either), so
-    // they go to Proficiencies' tools list, where they're editable either way.
-    c.bgTools.filter(Boolean).forEach(t => prof.tools.push(t));
+    c.bgTools.filter(Boolean).forEach(t => {
+      const kind = ciFind(LANGUAGE_LIB, t) ? "languages" : "tools";
+      prof[kind].push(t);
+    });
   } else {
     const rec = ciFindBackground(c.background);
     if (rec) {
@@ -1001,17 +1028,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   $("cr-create").addEventListener("click", creatorFinish);
   $("cr-cancel").addEventListener("click", closeCreator);
-  modal.addEventListener("click", e => { if (e.target === modal) closeCreator(); });
-  document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && modal.style.display !== "none") closeCreator();
-  });
+  $("cr-close").addEventListener("click", closeCreator);
+  // Closing creation is deliberate: backdrop clicks and Escape retain the draft.
 
   /* Text boxes: redraw (their value feeds the rest of the step) and put the cursor back.
      Number boxes: never redraw — update only the readouts derived from them. See this file's header. */
   $("cr-body").addEventListener("input", e => {
     const t = e.target; if (!CREATOR) return;
 
-    if (t.id === "cr-race") { CREATOR.race = t.value; CREATOR.subrace = ""; CREATOR.racialChoice = {}; CREATOR.size = ""; renderCreatorKeepingFocus(t); return; }
+    if (t.id === "cr-race") {
+      CREATOR.race = t.value;
+      CREATOR.subrace = (e.detail && e.detail.option && e.detail.option.subrace) || "";
+      CREATOR.racialChoice = {}; CREATOR.originChoice = {}; CREATOR.size = "";
+      renderCreatorKeepingFocus(t); return;
+    }
     if (t.id === "cr-subrace") { CREATOR.subrace = t.value; CREATOR.racialChoice = {}; renderCreatorKeepingFocus(t); return; }
     if (t.classList.contains("cr-cls")) {
       const row = CREATOR.classes[Number(t.dataset.crrow)];
@@ -1029,7 +1059,6 @@ document.addEventListener("DOMContentLoaded", () => {
       CREATOR.classes[Number(t.dataset.crrow)].lvl = Math.max(1, Math.min(20, Number(t.value) || 1));
       const total = creatorTotalLevel(), tot = $("cr-total-level");
       if (tot) { tot.textContent = total; tot.className = total > 20 ? "cr-over" : ""; }
-      if ($("cr-step2-hint")) $("cr-step2-hint").innerHTML = creatorStep2Hint();
       renderCreatorChrome(); return;
     }
     if (t.classList.contains("cr-manual")) {
@@ -1153,7 +1182,7 @@ function featuresAtLevel(className, subName, level) {
 }
 
 /* Multiclassing prerequisites for the class you're entering AND every class you already have
-   (PHB p163) — checked against the live sheet's scores rather than the wizard's. Reported, not
+   — checked against the live sheet's scores rather than the wizard's. Reported, not
    enforced: the numbers may legitimately be about to change (an ASI on this very level), and the
    sheet's job here is to tell you what RAW asks for, not to refuse the level. */
 function luMcHtml() {
@@ -1165,10 +1194,10 @@ function luMcHtml() {
     if (!rec || !rec.mcReq) return "";
     const ok = meetsMcRequirement(rec.mcReq, scoreOf);
     return `${escapeHtml(rec.name)} needs ${escapeHtml(mcRequirementText(rec.mcReq))} <b class="${ok ? "cr-ok" : "cr-over"}">${ok ? "✓" : "✗"}</b>`;
-  }).filter(Boolean).join(" &middot; ");
+  }).filter(Boolean).join(" | ");
   if (!listed) return "";
   return `<div class="hint"><b>Multiclassing prerequisites</b><div>${listed}</div>
-    ${fails.length ? `<div class="cr-over">Not met yet. The sheet will still let you take the level - check with your DM.</div>` : ""}</div>`;
+    ${fails.length ? `<div class="cr-over">Prerequisites not met.</div>` : ""}</div>`;
 }
 
 function renderLevelUp() {
@@ -1286,8 +1315,8 @@ function levelUpConfirm() {
 
   const gained = featuresAtLevel(cur.name, isNew ? "" : cur.sub, newLevel);
   logEvent("info", `<b>Level up</b> - ${escapeHtml(cur.name || "class")} ${newLevel}` +
-    ` &middot; max HP ${hpBefore} &rarr; ${maxHP()}` +
-    (gained.length ? ` &middot; gained ${gained.map(escapeHtml).join(", ")}` : ""));
+    ` | max HP ${hpBefore} &rarr; ${maxHP()}` +
+    (gained.length ? ` | gained ${gained.map(escapeHtml).join(", ")}` : ""));
   closeLevelUp();
   recompute(); renderClassFeatures(); if (typeof renderHitDice === "function") renderHitDice();
   saveState(); renderCharacterTabs();

@@ -109,7 +109,7 @@ function renderSpellList() {
     else {
       const prepHave = leveled.filter(s => s.prep).length;
       notes.push(info.spellbookMax != null
-        ? `Spellbook ${leveled.length}/${info.spellbookMax} &middot; Prepared ${prepHave}/${info.max}`
+        ? `Spellbook ${leveled.length}/${info.spellbookMax} | Prepared ${prepHave}/${info.max}`
         : `Prepared ${prepHave}/${info.max}`);
     }
     const items = allRows.map(s => {
@@ -118,7 +118,7 @@ function renderSpellList() {
         ? `<label class="hint" style="margin-left:.4rem"><input type="checkbox" class="sp2-prep" data-idx="${s.i}" ${s.prep ? "checked" : ""}> prepared</label>` : "";
       return spellLineHtml(s, prepBox);
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no spells added yet</div>";
-    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${c.lvl}</b>${subNote} <span class="hint">- ${notes.join(" &middot; ")}</span></div>${items}`;
+    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${c.lvl}</b>${subNote} <span class="hint">- ${notes.join(" | ")}</span></div>${items}`;
   }).join("");
   // Granted spells (Cleric domain, Mark of X, etc. — see class-library.js's .gsp-link) are grouped by
   // their own source name instead of by class, and are always-available so they never show a "prepared"
@@ -154,7 +154,7 @@ function toggleSpell2Detail(link) {
   } else {
     const comp = ["v", "s", "m"].filter(k => lib.comp && lib.comp[k]).map(k => k.toUpperCase()).join("") || "-";
     const meta = ["Level " + lib.level, lib.school, lib.cast ? ("Cast: " + lib.cast) : "", "Comp: " + comp,
-      lib.conc ? "Concentration" : "", lib.ritual ? "Ritual" : "", lib.save ? (lib.save + " save") : "", lib.attack ? "spell attack" : ""].filter(Boolean).join(" · ");
+      lib.conc ? "Concentration" : "", lib.ritual ? "Ritual" : "", lib.save ? (lib.save + " save") : "", lib.attack ? "spell attack" : ""].filter(Boolean).join(" | ");
     d.innerHTML = `<div class="hint">${meta}</div><div>${renderInlineSpellText(lib.rawText, lib.name)}</div>` +
       (lib.rawHigher ? `<div style="margin-top:3px"><b>At Higher Levels:</b> ${renderInlineSpellText(lib.rawHigher, lib.name)}</div>` : "");
   }

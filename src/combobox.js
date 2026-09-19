@@ -46,7 +46,7 @@ let COMBO_OPEN = null;      // { input, panel, options, highlight }
 function comboAttr(s) { return escapeHtml(s).replace(/"/g, "&quot;"); }
 
 function comboboxHtml(o) {
-  const opts = (o.options || []).map(x => String(x));
+  const opts = o.options || [];
   // Options ride along in the markup rather than in a side registry, so a caller that re-renders can
   // never leave the widget pointing at a stale list.
   const dataOpts = comboAttr(JSON.stringify(opts));
@@ -69,6 +69,8 @@ function comboboxHtml(o) {
 function comboOptionsOf(input) {
   try { return JSON.parse(input.dataset.comboOptions || "[]"); } catch (e) { return []; }
 }
+const comboLabel = option => typeof option === "string" ? option : option.label || option.value;
+const comboValue = option => typeof option === "string" ? option : option.value;
 
 /* Matching is "contains", not "starts with": people look for "Half-Elf" by typing "elf", and for
    "Xanathar's Guide" by typing "xanathar". An empty box shows everything, which is what the arrow
@@ -76,14 +78,23 @@ function comboOptionsOf(input) {
 function comboMatches(input, q) {
   const all = comboOptionsOf(input);
   const needle = (q || "").trim().toLowerCase();
-  if (!needle) return all;
-  const starts = [], contains = [];
-  all.forEach(o => {
-    const l = o.toLowerCase();
-    if (l.startsWith(needle)) starts.push(o);
-    else if (l.includes(needle)) contains.push(o);
-  });
-  return starts.concat(contains);   // prefix matches first - "elf" should offer Elf before Half-Elf
+  let expanded = {};
+  try { expanded = JSON.parse(input.dataset.comboExpanded || "{}"); } catch (e) {}
+  const score = text => {
+    const label = text.toLowerCase();
+    return label.startsWith(needle) ? 0 : label.includes(needle) ? 1 : 2;
+  };
+  return all.map(option => {
+    const label = comboLabel(option), rank = score(label);
+    if (!option.children) return { rank, rows: [option] };
+    const children = option.children.filter(child => !needle || rank < 2 ||
+      score(comboLabel(child) + " " + label) < 2 || score(label + " " + comboLabel(child)) < 2);
+    const open = Object.prototype.hasOwnProperty.call(expanded, label) ? expanded[label] : !!needle;
+    return { rank: children.length ? Math.min(rank, ...children.map(child =>
+        Math.min(score(comboLabel(child)), score(comboLabel(child) + " " + label), score(label + " " + comboLabel(child))))) : rank,
+      rows: [{ ...option, expanded: open }, ...(open ? children.map(child => ({ ...child, parent: label })) : [])] };
+  }).filter(group => !needle || group.rank < 2)
+    .sort((a, b) => a.rank - b.rank).flatMap(group => group.rows);
 }
 
 function comboClose() {
@@ -100,9 +111,13 @@ function comboPanelHtml(options, highlight, query, input) {
   // marking beats removing.
   const ban = (typeof banInfoOf === "function") ? banInfoOf(input) : null;
   return options.map((o, i) => {
-    const banned = ban && typeof isBannedOption === "function" && isBannedOption(ban.kind, o, ban.prefix);
-    return `<div class="combo-opt${i === highlight ? " hl" : ""}${banned ? " banned-opt" : ""}" data-comboidx="${i}"` +
-      `${banned ? ` aria-label="banned by house rule"` : ""}>${escapeHtml(o)}${banned ? ` <span class="banned-flag">banned</span>` : ""}</div>`;
+    const banned = ban && typeof isBannedOption === "function" &&
+      (isBannedOption(ban.kind, comboValue(o), ban.prefix) ||
+       (o.subrace && isBannedOption(ban.kind, o.subrace, ban.prefix)));
+    const expand = o.children && o.children.length
+      ? `<button type="button" class="combo-expand" tabindex="-1" data-comboexpand="${i}" aria-label="${o.expanded ? "Collapse" : "Expand"} ${comboAttr(comboLabel(o))}" aria-expanded="${!!o.expanded}">${o.expanded ? "▾" : "▸"}</button> ` : "";
+    return `<div class="combo-opt${o.parent ? " combo-child" : ""}${i === highlight ? " hl" : ""}${banned ? " banned-opt" : ""}" data-comboidx="${i}"` +
+      `${banned ? ` aria-label="banned by house rule"` : ""}>${expand}${escapeHtml(comboLabel(o))}${banned ? ` <span class="banned-flag">banned</span>` : ""}</div>`;
   }).join("");
 }
 
@@ -124,10 +139,11 @@ function comboPlace(input, panel) {
   }
 }
 
-function comboOpen(input, opts) {
-  const options = opts || comboMatches(input, input.value);
+function comboOpen(input, opts, query = input.value) {
+  const options = opts || comboMatches(input, query);
   if (COMBO_OPEN && COMBO_OPEN.input === input) {
     COMBO_OPEN.options = options;
+    COMBO_OPEN.query = query;
     COMBO_OPEN.highlight = Math.min(COMBO_OPEN.highlight, options.length - 1);
     COMBO_OPEN.panel.innerHTML = comboPanelHtml(options, COMBO_OPEN.highlight, input.value, input);
     comboPlace(input, COMBO_OPEN.panel);
@@ -139,19 +155,32 @@ function comboOpen(input, opts) {
   panel.innerHTML = comboPanelHtml(options, -1, input.value, input);
   document.body.appendChild(panel);
   comboPlace(input, panel);
-  COMBO_OPEN = { input, panel, options, highlight: -1 };
+  COMBO_OPEN = { input, panel, options, highlight: -1, query };
 }
 
 function comboPick(value) {
   if (!COMBO_OPEN) return;
   const input = COMBO_OPEN.input;
-  input.value = value;
+  input.value = comboValue(value);
   comboClose();
   // Callers listen for `input` (see this file's header) — dispatch it so picking behaves exactly
   // like typing the value out in full.
-  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new CustomEvent("input", { bubbles: true, detail: { comboSelection: true, option: value } }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
+  const live = input.isConnected ? input : document.getElementById(input.id);
+  if (live) live.focus();
+  comboClose();
+}
+
+function comboExpand(index, open) {
+  if (!COMBO_OPEN) return;
+  const { input, options, query } = COMBO_OPEN, option = options[index];
+  if (!option || !option.children || !option.children.length) return;
+  let expanded = {};
+  try { expanded = JSON.parse(input.dataset.comboExpanded || "{}"); } catch (e) {}
+  input.dataset.comboExpanded = JSON.stringify({ ...expanded, [comboLabel(option)]: open });
   input.focus();
+  comboOpen(input, comboMatches(input, query), query);
 }
 
 function comboHighlight(delta) {
@@ -205,6 +234,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("input", e => {
     const inp = e.target.closest && e.target.closest(".combo-input");
     if (!inp) return;
+    if (e.detail && e.detail.comboSelection) return;
+    delete inp.dataset.comboExpanded;   // a new query reveals matching children again
     /* Deferred a frame, because a caller may re-render inside its OWN input handler — which runs
        first, since it's bound closer to the target — replacing this very element. Acting on `inp`
        directly would then open a panel anchored to a node no longer in the document. Resolving
@@ -226,8 +257,13 @@ document.addEventListener("DOMContentLoaded", () => {
       // The arrow always offers the WHOLE list, not the filtered one: it is the "show me everything"
       // affordance, and filtering it by leftover text would make it useless after a failed search.
       if (COMBO_OPEN && COMBO_OPEN.input === inp) comboClose();
-      else { inp.focus(); comboOpen(inp, comboOptionsOf(inp)); }
+      else { inp.focus(); comboOpen(inp, comboMatches(inp, ""), ""); }
       return;
+    }
+    const expand = e.target.closest(".combo-expand");
+    if (expand && COMBO_OPEN) {
+      const index = Number(expand.dataset.comboexpand);
+      comboExpand(index, !COMBO_OPEN.options[index].expanded); return;
     }
     const opt = e.target.closest(".combo-opt");
     if (opt && COMBO_OPEN) { comboPick(COMBO_OPEN.options[Number(opt.dataset.comboidx)]); return; }
@@ -236,6 +272,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener("keydown", e => {
     if (!COMBO_OPEN || e.target !== COMBO_OPEN.input) return;
+    if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && COMBO_OPEN.highlight >= 0 && COMBO_OPEN.options[COMBO_OPEN.highlight].children) {
+      e.preventDefault(); comboExpand(COMBO_OPEN.highlight, e.key === "ArrowRight"); return;
+    }
     if (e.key === "ArrowDown") { e.preventDefault(); comboHighlight(1); return; }
     if (e.key === "ArrowUp") { e.preventDefault(); comboHighlight(-1); return; }
     if (e.key === "Enter") {

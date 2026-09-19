@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+const { chromium, firefox } = require('playwright');
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -20,7 +20,10 @@ const server = http.createServer((req, res) => {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   let browser;
   try {
-    browser = await chromium.launch({ channel: process.env.PMCRWF_TEST_CHANNEL || undefined, headless: true });
+    const useFirefox = process.env.PMCRWF_TEST_BROWSER === 'firefox';
+    browser = await (useFirefox ? firefox : chromium).launch({
+      channel: useFirefox ? undefined : process.env.PMCRWF_TEST_CHANNEL || undefined, headless: true,
+    });
     for (const suite of ['derived', 'effects', 'filters', 'hosting']) {
       const context = await browser.newContext();
       const page = await context.newPage();
@@ -34,6 +37,7 @@ const server = http.createServer((req, res) => {
       await context.close();
     }
     const context = await browser.newContext({ acceptDownloads: true });
+    if (useFirefox) await context.grantPermissions(["persistent-storage"]);
     const page = await context.newPage();
     const errors = [], dialogs = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -139,9 +143,37 @@ const server = http.createServer((req, res) => {
     await page.reload();
     assert.equal(await page.locator('#theme-select').inputValue(), '');
     assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(255, 255, 255)');
+
+    // Exercise the actual toggle and log, including an explicit choice overriding reduced motion.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.reload();
+    assert.equal(await page.locator('#roll-anim-toggle').innerText(), 'Tumble: Off');
+    await page.locator('#roll-anim-toggle').click();
+    assert.equal(await page.locator('#roll-anim-toggle').getAttribute('aria-pressed'), 'true');
+    await page.evaluate(() => {
+      window.diceFrames = [];
+      const host = document.querySelector('#roll-mirror-body');
+      const observer = new MutationObserver(() => {
+        const entry = host.querySelector('.ev');
+        if (entry) diceFrames.push({ text: entry.textContent, rolling: entry.classList.contains('rolling') });
+      });
+      observer.observe(host, { subtree: true, childList: true, characterData: true });
+    });
+    await page.locator('[data-roll-check="save-str"]').click();
+    await page.waitForFunction(() => diceFrames.some(f => f.rolling) && diceFrames.some(f => !f.rolling));
+    assert(await page.evaluate(() => new Set(diceFrames.map(f => f.text)).size > 1));
+    assert.equal(await page.locator('#dicelog .ev').first().innerText(), await page.locator('#roll-mirror-body .ev').first().innerText());
+    await page.reload();
+    assert.equal(await page.locator('#roll-anim-toggle').innerText(), 'Tumble: On');
+    await page.locator('#roll-anim-toggle').click();
+    await page.reload();
+    assert.equal(await page.locator('#roll-anim-toggle').innerText(), 'Tumble: Off');
+    await require("./creator-browser-checks.cjs")(page);
+    if (process.env.PMCRWF_TEST_DATA) await require("./data-folder-browser-checks.cjs")(page, process.env.PMCRWF_TEST_DATA);
     assert.deepEqual(errors, []);
     console.log('Full app: import/rejection, reload persistence, export download, reset, delayed import switching, and hidden-tab save passed; no browser errors.');
     console.log('Themes: all palettes, persistent and print shadows, saved selection, removed-theme fallback, unavailable storage, and manifest failure passed.');
+    console.log('Dice: visible toggle, reduced-motion override, live frames, mirrored results, and saved on/off preferences passed.');
     await context.close();
   } finally { await browser?.close(); server.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

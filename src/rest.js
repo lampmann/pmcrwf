@@ -78,7 +78,7 @@ function spendHitDie(key) {
   // sheet, which the roll line can't know (overheal clamping, the min-0 floor, remaining dice).
   const gained = num($("hp-cur")) - before;
   logEvent("hp", `<b>${gained >= 0 ? "+" : ""}${gained} HP</b> &larr; Hit Die (${escapeHtml(pool.className || "class")}), ` +
-    `now ${num($("hp-cur"))}/${maxHP()} &middot; ${pool.remaining - 1}/${pool.max} ${pool.hitDie} left`);
+    `now ${num($("hp-cur"))}/${maxHP()} | ${pool.remaining - 1}/${pool.max} ${pool.hitDie} left`);
   recompute(); renderHitDice(); renderShortRestModal(); scheduleSave();
 }
 
@@ -179,7 +179,7 @@ function performRest(kind) {
   const recovered = applyRest(kind);   // feature-effect uses trackers (class-library.js) — also renders the Features panel
   if (recovered) notes.push(`${recovered} feature${recovered === 1 ? "" : "s"} recovered`);
   logEvent("rest", `<b>${kind === "lr" ? "Long Rest" : "Short Rest"}</b>` +
-    (notes.length ? " - " + notes.join(" &middot; ") : " - nothing to restore"));
+    (notes.length ? " - " + notes.join(" | ") : " - nothing to restore"));
   recompute(); renderHitDice(); scheduleSave();
 }
 

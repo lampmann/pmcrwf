@@ -10,23 +10,43 @@
    the character (see persistence.js), not just cached locally, since it's
    a character choice, not imported data.
    ============================================================ */
-const CLASS_SCHEMA = 2;   // 2: multiclassing requirements + startingEquipment retained (character creator)
+const CLASS_SCHEMA = 3;   // 3: prefer 2014 records and keep class features within their edition
 // { className: { name, source, hd, caster, feats:[{name,level,source,text}],
 //                mcReq, startEq, subs:{ shortName:{name,shortName,source,feats:[...]} } } }
 let CLASS_LIB = {};
-const RACE_SCHEMA = 5;   // 2: `ability` (racial ASI); 3: nameless subraces named BASE_SUBRACE; 4: `size` retained; 5: `speed` retained
+const RACE_SCHEMA = 6;   // 6: prefer 2014 records; earlier versions added ability, size, speed and named base subraces
 // { raceName: { name, source, size:["S","M"], speed:30|{walk,fly,...}, entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
-const FEAT_SCHEMA = 1;
+const FEAT_SCHEMA = 2;   // 2: prefer 2014 records
 // { featName: { name, source, text } }
 let FEAT_LIB = {};
-const BACKGROUND_SCHEMA = 1;
+const BACKGROUND_SCHEMA = 2;   // 2: prefer 2014 records
 /* Backgrounds are imported like everything else — 5e.tools' own data/backgrounds.json, which most
    people won't have unless they copied the whole data/ folder. Everything that reads BACKGROUND_LIB
    degrades to free text when it's empty, so the sheet never depends on the file being there.
    { name: { name, source, skills:[..], tools:[..], languages:n|[..], feature:{name,text}, equipment } } */
 let BACKGROUND_LIB = {};
+let LANGUAGE_LIB = {};
+// This sheet uses 2014 rules. Prefer their records when names collide with revised books.
+function preferRulesRecord(existing, incoming) {
+  if (!existing || existing.source === incoming.source) return true;
+  const rank = source => source === "PHB" ? 0 : ["XPHB", "XDMG", "XMM"].includes(source) ? 2 : 1;
+  return rank(incoming.source) < rank(existing.source);
+}
+function parseLanguageFile(j) {
+  (j.language || []).forEach(l => {
+    if (preferRulesRecord(LANGUAGE_LIB[l.name], l)) LANGUAGE_LIB[l.name] = { name: l.name, source: l.source, type: l.type || "" };
+  });
+}
+function saveLanguageLib() {
+  try { localStorage.setItem("charsheet-languagelib", JSON.stringify(LANGUAGE_LIB)); }
+  catch (e) { console.warn("Could not cache languages", e); }
+}
+function loadLanguageLib() {
+  try { LANGUAGE_LIB = JSON.parse(localStorage.getItem("charsheet-languagelib")) || {}; }
+  catch (e) { LANGUAGE_LIB = {}; }
+}
 // ASI feat picks, keyed by the same string used for that ASI feature's feat-link (see fkeyFor).
 // Persisted as part of the character (collectState/applyState in persistence.js).
 let FEAT_CHOICES = {};
@@ -73,11 +93,12 @@ let FEATURE_TEXT_BY_KEY = {};
 function parseClassFile(j) {
   // A class-*.json is authoritative for its class(es); (re)build each fresh.
   (j.class || []).forEach(c => {
+    if (!preferRulesRecord(CLASS_LIB[c.name], c)) return;
     CLASS_LIB[c.name] = {
       name: c.name, source: c.source,
       hd: c.hd ? ("d" + c.hd.faces) : "",
       caster: c.casterProgression || "",
-      feats: (j.classFeature || []).filter(f => f.className === c.name)
+      feats: (j.classFeature || []).filter(f => f.className === c.name && (!f.classSource || f.classSource === c.source))
         .map(f => ({ name: f.name, level: f.level, source: f.source, text: stripTags(flattenEntries(f.entries)) }))
         .sort((a, b) => a.level - b.level),
       // Kept for the character creator: multiclassing prerequisites (PHB p163) and the starting
@@ -90,11 +111,12 @@ function parseClassFile(j) {
   });
   (j.subclass || []).forEach(sc => {
     const r = CLASS_LIB[sc.className];
-    if (r) r.subs[sc.shortName] = { name: sc.name, shortName: sc.shortName, source: sc.source, feats: [], grantedSpells: sc.additionalSpells || [] };
+    if (r && (!sc.classSource || sc.classSource === r.source) && preferRulesRecord(r.subs[sc.shortName], sc)) r.subs[sc.shortName] = { name: sc.name, shortName: sc.shortName, source: sc.source, feats: [], grantedSpells: sc.additionalSpells || [] };
   });
   (j.subclassFeature || []).forEach(f => {
     const r = CLASS_LIB[f.className]; if (!r) return;
-    const s = r.subs[f.subclassShortName]; if (!s) return;
+    if (f.classSource && f.classSource !== r.source) return;
+    const s = r.subs[f.subclassShortName]; if (!s || (f.subclassSource && f.subclassSource !== s.source)) return;
     s.feats.push({ name: f.name, level: f.level, source: f.source, text: stripTags(flattenEntries(f.entries)) });
   });
   Object.values(CLASS_LIB).forEach(r => Object.values(r.subs).forEach(s => s.feats.sort((a, b) => a.level - b.level)));
@@ -111,6 +133,7 @@ function parseRaceEntries(entries) {
 function parseRaceFile(j) {
   (j.race || []).forEach(r => {
     const existing = RACE_LIB[r.name];
+    if (!preferRulesRecord(existing, r)) return;
     RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], size: r.size || [], speed: r.speed, subs: (existing && existing.subs) || {} };
   });
   (j.subrace || []).forEach(s => {
@@ -127,6 +150,7 @@ function parseRaceFile(j) {
     // Speed is usually only set at the race level; a subrace carries its own `speed` only when it
     // genuinely differs (data has none of these among the common PHB/XGE/MPMM subraces today, but
     // 5e.tools' shape allows it), so it's kept undefined here rather than defaulted to the race's.
+    if (!preferRulesRecord(rec.subs[name], s)) return;
     rec.subs[name] = { name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [], speed: s.speed };
   });
 }
@@ -274,7 +298,7 @@ function grantedSpellsHtml(spells, header, cls) {
   return `<div class="hint" style="margin:.15rem 0 .3rem 1.2rem">${escapeHtml(header)} spells${note}: ${links}</div>`;
 }
 function parseFeatFile(j) {
-  (j.feat || []).forEach(f => { FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)) }; });
+  (j.feat || []).forEach(f => { if (!preferRulesRecord(FEAT_LIB[f.name], f)) return; FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)) }; });
 }
 /* Backgrounds. 5e.tools stores the mechanical parts in the same "proficiencies" shapes the classes
    use — a flat list, or a { choose: { from, count } } block. Both are kept as-is and interpreted at
@@ -285,6 +309,7 @@ function parseFeatFile(j) {
    one part of a background PHB p125 lets you swap for another background's, so it's stored whole. */
 function parseBackgroundFile(j) {
   (j.background || []).forEach(b => {
+    if (!preferRulesRecord(BACKGROUND_LIB[b.name], b)) return;
     const feature = (b.entries || []).find(e => e && e.name && /^Feature:/i.test(e.name));
     BACKGROUND_LIB[b.name] = {
       name: b.name, source: b.source,
@@ -348,6 +373,7 @@ async function autoLoadOne(url, parseFn, save) {
 }
 function autoLoadRaces() { return autoLoadOne("data/races.json", parseRaceFile, saveRaceLib); }
 function autoLoadFeats() { return autoLoadOne("data/feats.json", parseFeatFile, saveFeatLib); }
+function autoLoadLanguages() { return autoLoadOne("data/languages.json", parseLanguageFile, saveLanguageLib); }
 function autoLoadBackgrounds() { return autoLoadOne("data/backgrounds.json", parseBackgroundFile, saveBackgroundLib); }
 function saveClassLib() {
   try { localStorage.setItem("charsheet-classlib", JSON.stringify({ v: CLASS_SCHEMA, lib: CLASS_LIB })); }
@@ -499,7 +525,7 @@ function renderUsesTracker(feature, usesSpec) {
   ).join("");
   const pendingHint = (usesSpec.delayed && st.pendingRests != null)
     ? ` <span class="hint">(${st.pendingRests} more long rest${st.pendingRests === 1 ? "" : "s"} to recharge)</span>` : "";
-  return ` <span class="uses-tracker" data-useskey="${key}">${pips} <span class="hint">${used}/${max} · ${periodLabel}</span>${pendingHint}</span>`;
+  return ` <span class="uses-tracker" data-useskey="${key}">${pips} <span class="hint">${used}/${max} | ${periodLabel}</span>${pendingHint}</span>`;
 }
 function togglePip(pip) {
   const key = pip.dataset.useskey, i = Number(pip.dataset.i);
@@ -660,25 +686,26 @@ function toggleFeatDetail(link) {
 function runClassAutoLoad() {
   $("class-lib-autostatus").textContent = "loading from data/ …";
   // Returns the promise so reloadAllLibraries can actually wait on it — see runSpellAutoLoad's note.
-  return Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats(), autoLoadBackgrounds()]).then(([cls, race, feat, bg]) => {
+  return Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats(), autoLoadBackgrounds(), autoLoadLanguages()]).then(([cls, race, feat, bg, lang]) => {
     renderClassLibrary();
     const parts = [
       cls.filesLoaded ? `${cls.filesLoaded}/${cls.filesTotal} class file(s)` : (cls.blocked ? "classes blocked" : "no class data"),
       race.found ? "races" : (race.blocked ? "races blocked" : "no races.json"),
       feat.found ? "feats" : (feat.blocked ? "feats blocked" : "no feats.json"),
       bg.found ? "backgrounds" : (bg.blocked ? "backgrounds blocked" : "no backgrounds.json"),
+      lang.found ? "languages" : (lang.blocked ? "languages blocked" : "no languages.json"),
     ];
     $("class-lib-autostatus").textContent = "auto-loaded: " + parts.join(", ");
   });
 }
 document.addEventListener("DOMContentLoaded", () => {
-  loadClassLib(); loadRaceLib(); loadFeatLib(); loadBackgroundLib();
+  loadClassLib(); loadRaceLib(); loadFeatLib(); loadBackgroundLib(); loadLanguageLib();
   $("class-import").addEventListener("change", e => { if (e.target.files.length) loadClassFiles(e.target.files); e.target.value = ""; });
   $("class-lib-clear").addEventListener("click", () => {
     if (confirm("Clear the imported class/race/feat/background library? (does not affect your character)")) {
-      CLASS_LIB = {}; RACE_LIB = {}; FEAT_LIB = {}; BACKGROUND_LIB = {};
+      CLASS_LIB = {}; RACE_LIB = {}; FEAT_LIB = {}; BACKGROUND_LIB = {}; LANGUAGE_LIB = {};
       localStorage.removeItem("charsheet-classlib"); localStorage.removeItem("charsheet-racelib");
-      localStorage.removeItem("charsheet-featlib"); localStorage.removeItem("charsheet-bglib");
+      localStorage.removeItem("charsheet-featlib"); localStorage.removeItem("charsheet-bglib"); localStorage.removeItem("charsheet-languagelib");
       renderClassLibrary();
     }
   });

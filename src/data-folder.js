@@ -270,13 +270,14 @@ async function importPickedFolder(fileList) {
   if (res.empty) {
     // Almost always someone picking their whole Downloads folder, or the pmcrwf folder on a copy
     // that never had data/ next to it. Say which folder we wanted rather than just failing.
-    DATA_IMPORT_ERROR = "No game data in that folder — pick 5e.tools' own data/ directory "
+    DATA_IMPORT_ERROR = "No game data in that folder. Pick 5e.tools' own data/ directory "
       + "(the one containing spells/ and bestiary/), or the folder that holds it.";
     renderDataBar();
     return false;
   }
   DATA_LAST_DIFF = res.diff;
-  await requestPersistentStorage();
+  // Firefox may wait for a browser permission prompt; the stored data is ready either way.
+  void requestPersistentStorage();
   renderDataBar();
   await reloadAllLibraries();
   renderDataBar();
@@ -336,6 +337,7 @@ function resetDataLibraries() {
   if (typeof RACE_LIB !== "undefined") RACE_LIB = {};
   if (typeof FEAT_LIB !== "undefined") FEAT_LIB = {};
   if (typeof BACKGROUND_LIB !== "undefined") BACKGROUND_LIB = {};
+  if (typeof LANGUAGE_LIB !== "undefined") LANGUAGE_LIB = {};
   if (typeof VARIANT_RULES !== "undefined") VARIANT_RULES = [];
   if (typeof RULES_CONDITIONS !== "undefined") RULES_CONDITIONS = {};
   // The bestiary keeps its own copy and its own memoised load; resetBestiary clears both.

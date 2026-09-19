@@ -44,6 +44,16 @@ h2 { font-size: 1rem; margin: 0 0 .5rem; }
 .module.wide { flex-basis: 100%; }
 table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 th, td { text-align: left; padding: 1px 4px; }
+/* Resizing a module adds room without spreading its controls across that room. */
+.module .lay-body { width: fit-content; max-width: 100%; }
+.module table { width: auto; }
+.module th, .module td { padding: 3px 6px; }
+.module fieldset { width: fit-content; max-width: 100%; min-width: 0; }
+.module .spell-table .nm { width: auto; }
+.character-fields, .class-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .75rem; }
+.character-fields { margin-bottom: .6rem; }
+.character-fields label { display: inline-flex; align-items: baseline; gap: .25rem; }
+#class-table { margin-bottom: .5rem; }
 input[type="number"], input[type="text"] { font: inherit; background: var(--bg); color: var(--fg); }
 input.num { width: 3.6rem; text-align: right; }
 input.tiny { width: 2.6rem; text-align: right; }
@@ -205,7 +215,7 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
    Sits where the effects strip does and is styled to match it: this is a statement about the sheet's
    surroundings, not part of any module. Themed off --danger only in the "nothing loaded" state,
    which is the one that needs a click before the sheet is much use. */
-#data-bar { margin: -.25rem 0 1rem; padding: .35rem .55rem; border: 1px solid var(--border-soft); border-radius: var(--radius); font-size: .85rem; }
+#data-bar { margin: -.25rem 0 0; padding: .35rem .55rem; border: 1px solid var(--border-soft); border-radius: var(--radius); font-size: .85rem; }
 #data-bar button { font: inherit; font-size: .8rem; margin-left: .4rem; }
 #data-bar code { font-family: var(--font-mono); }
 #data-bar .hint { margin-left: .4rem; }
@@ -252,7 +262,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cmp-act-text { font-size: .8rem; color: var(--muted-fg); }
 
 /* ----- character tabs (src/characters.js) ----- */
-#char-tabs { display: flex; flex-wrap: wrap; gap: .25rem; padding: .25rem .5rem 0; }
+#char-tabs { display: flex; flex-wrap: wrap; gap: .35rem; padding: .65rem .5rem; }
 #char-tabs button { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .5rem; }
 .char-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--link-border); }
 .char-tab-x { margin-left: .4rem; opacity: .55; }
@@ -438,6 +448,8 @@ input.banned-value { color: #c00; }
 }
 .combo-opt { padding: .1rem .45rem; cursor: pointer; white-space: nowrap; }
 .combo-opt:hover, .combo-opt.hl { background: var(--menu-hover-bg); }
+.combo-child { padding-left: 1.9rem; }
+.combo-expand { padding: 0 .2rem; line-height: 1; border: 0; background: transparent; }
 .combo-empty { padding: .2rem .45rem; }
 
 .cr-ok { color: var(--link); }
@@ -543,3 +555,11 @@ button.linkish {
   background: none; border: 0; padding: 0; font: inherit; color: var(--link, #1a56c4);
   text-decoration: underline; cursor: pointer;
 }
+
+/* Keep character creation navigation still while its contents scroll. */
+#creator-modal .modal-box { box-sizing: border-box; width: min(52rem, calc(100vw - 2rem)); height: min(46rem, calc(100dvh - 2rem)); min-width: 0; max-width: none; display: flex; flex-direction: column; }
+.cr-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
+.cr-header .modal-title { margin: 0; }
+#cr-close { font-size: 1.25rem; line-height: 1; padding: .2rem .45rem; }
+#cr-body { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
+.cr-header, #cr-stepper, #cr-blocker, .cr-actions { flex-shrink: 0; }

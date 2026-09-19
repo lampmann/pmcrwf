@@ -109,7 +109,7 @@ function levelBoxChanged() {
   if (typeof renderHitDice === "function") renderHitDice();
   const cur = $("hp-cur");
   if (cur && num(cur) > maxHP()) { cur.value = String(maxHP()); commitMath(cur); }
-  logEvent("info", `<b>Level down</b> - ${have} &rarr; ${totalLevel()}${dropped.length ? ` (${escapeHtml(dropped.join(", "))})` : ""} &middot; XP set to ${xpForLevel(want).toLocaleString()}`);
+  logEvent("info", `<b>Level down</b> - ${have} &rarr; ${totalLevel()}${dropped.length ? ` (${escapeHtml(dropped.join(", "))})` : ""} | XP set to ${xpForLevel(want).toLocaleString()}`);
   renderXp(); saveState();
 }
 

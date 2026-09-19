@@ -81,7 +81,7 @@ function rangeFeet(raw) {
 function durationCat(raw) { const du = raw.duration && raw.duration[0]; return du ? du.type : ""; }
 // filter groups. `dynamic` groups (Source) compute their options from the loaded library.
 const SPELL_FGROUPS = [
-  { key:"source", label:"Source", dynamic:true, get:s=>[s.source], dynOpts:()=>spellSources().map(src=>[src, src, SOURCE_NAMES[src]||src]) },
+  { key:"source", label:"Source", dynamic:true, get:s=>[s.source], dynOpts:()=>spellSources().map(src=>[src, escapeHtml(SOURCE_NAMES[src]||src)]) },
   { key:"srcgroup", label:"Source Group", get:s=>[sourceGroupOf(s.source)], opts:[["core","Core"],["supplement","Supplement"],["adventure","Adventure"]] },
   // Not every 5e.tools data dump includes per-spell class lists ("classes.fromClassList") —
   // when it's missing this group just has no options to show (see DOCS re: import-not-hardcode).
@@ -239,7 +239,7 @@ function spellSources() { return [...new Set(SPELL_LIB.map(s => s.source))].sort
 function spellClassesInLib() { return [...new Set(SPELL_LIB.flatMap(s => s.classes || []))].sort(); }
 
 function renderSpellLibrary() {
-  $("spell-lib-count").textContent = SPELL_LIB.length ? (SPELL_LIB.length + " spells · " + spellSources().length + " source(s)") : "no spells loaded";
+  $("spell-lib-count").textContent = SPELL_LIB.length ? (SPELL_LIB.length + " spells | " + spellSources().length + " source(s)") : "no spells loaded";
   SPELL_FILTERS.renderArea();
   renderSpellResults();
 }
@@ -285,7 +285,7 @@ function toggleSpellDetail(link) {
   const s = SPELL_LIB.find(x => (x.name + "|" + x.source) === link.dataset.key); if (!s) return;
   const comp = ["v", "s", "m"].filter(k => s.comp && s.comp[k]).map(k => k.toUpperCase()).join("") || "-";
   const meta = ["Level " + s.level, s.school, s.cast ? ("Cast: " + s.cast) : "", "Comp: " + comp,
-    s.conc ? "Concentration" : "", s.ritual ? "Ritual" : "", s.save ? (s.save + " save") : "", s.attack ? "spell attack" : ""].filter(Boolean).join(" · ");
+    s.conc ? "Concentration" : "", s.ritual ? "Ritual" : "", s.save ? (s.save + " save") : "", s.attack ? "spell attack" : ""].filter(Boolean).join(" | ");
   const det = document.createElement("tr"); det.className = "sp-detail";
   det.innerHTML = `<td></td><td colspan="8"><div class="hint">${meta}</div><div>${escapeHtml(s.text).replace(/\n/g, "<br>")}</div>` +
     (s.higher ? `<div style="margin-top:3px"><b>At Higher Levels:</b> ${escapeHtml(s.higher).replace(/\n/g, "<br>")}</div>` : "") + `</td>`;
