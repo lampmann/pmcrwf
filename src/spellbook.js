@@ -16,7 +16,10 @@
 const CLASS_SPELL_ABILITY = { artificer: "int", bard: "cha", cleric: "wis", druid: "wis", paladin: "cha", ranger: "wis",
   sorcerer: "cha", warlock: "cha", wizard: "int" };
 const SB_ABBR = { strength: "STR", dexterity: "DEX", constitution: "CON", intelligence: "INT", wisdom: "WIS", charisma: "CHA" };
-const SB_QUICK = { levels: new Set(), conc: false, ritual: false, times: new Set() };
+// Each quick filter cycles blank -> include (blue) -> exclude (red), like the library's filters.
+const SB_QUICK = { levels: new Map(), times: new Map(), conc: "", ritual: "" };
+const sbNextState = st => st === "" || st == null ? "inc" : st === "inc" ? "exc" : "";
+const sbQuickActive = () => SB_QUICK.levels.size || SB_QUICK.times.size || SB_QUICK.conc || SB_QUICK.ritual;
 let SB_OPEN_DETAIL = new Set();   // "level|name" rows whose description is expanded
 
 /* ----- numbers ----- */
@@ -167,10 +170,15 @@ function sbMatchesSearch(row) {
 }
 function sbPassesQuick(row, level) {
   const lib = row.lib || {};
-  if (SB_QUICK.levels.size && !SB_QUICK.levels.has(level)) return false;
-  if (SB_QUICK.conc && !lib.conc) return false;
-  if (SB_QUICK.ritual && !lib.ritual) return false;
-  if (SB_QUICK.times.size && !SB_QUICK.times.has(lib.castKind || "other")) return false;
+  // Within levels (and within casting times), includes combine with OR and excludes remove.
+  const inSet = (map, v) => {
+    if (map.get(v) === "exc") return false;
+    const incs = [...map.values()].filter(x => x === "inc").length;
+    return !incs || map.get(v) === "inc";
+  };
+  if (!inSet(SB_QUICK.levels, level) || !inSet(SB_QUICK.times, lib.castKind || "other")) return false;
+  if (SB_QUICK.conc && (SB_QUICK.conc === "inc") !== !!lib.conc) return false;
+  if (SB_QUICK.ritual && (SB_QUICK.ritual === "inc") !== !!lib.ritual) return false;
   return true;
 }
 function sbPassesPanel(row) {
@@ -254,36 +262,37 @@ function renderSpellbook() {
     levels.push(L);
     const visible = [...own.sort((a, b) => a.name.localeCompare(b.name)), ...up.sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name))]
       .filter(r => sbMatchesSearch(r) && sbPassesQuick(r, L) && sbPassesPanel(r));
-    const filtering = SB_QUICK.levels.size || SB_QUICK.conc || SB_QUICK.ritual || SB_QUICK.times.size || (($("sb-search") || {}).value || "").trim();
+    const filtering = sbQuickActive() || (($("sb-search") || {}).value || "").trim();
     if (filtering && !visible.length) continue;
     const body = visible.map(r => { SB_ROWS.push(r); return sbRowHtml(r, L, SB_ROWS.length - 1); }).join("");
-    const head = `<div class="sb-level-head"><span class="sb-level-title">${L ? ordinalLevel(L) + " Level" : "Cantrip"}</span>
-      <span class="sb-level-slots">${sbSlotBoxes("slot", L, slots, slotUsed(L))}${pactHere ? sbSlotBoxes("pact", L, pact.count, pactUsed()) : ""}</span></div>`;
-    const table = body ? `<div class="sb-table-wrap"><table class="sb-table"><thead><tr><th></th><th>Name</th><th>Time</th><th>Range</th><th>Hit / DC</th>
-      <th>Effect</th><th>Duration</th><th>Upcasting</th><th>Comp.</th><th>Class</th></tr></thead><tbody>${body}</tbody></table></div>` : "";
-    sections.push(`<section class="sb-level" data-level="${L}">${head}${table}</section>`);
+    // One table for every level, a tbody per level, so the columns line up all the way down.
+    const head = `<tr class="sb-level-row"><td colspan="10"><div class="sb-level-head"><span class="sb-level-title">${L ? ordinalLevel(L) + " Level" : "Cantrip"}</span>
+      <span class="sb-level-slots">${sbSlotBoxes("slot", L, slots, slotUsed(L))}${pactHere ? sbSlotBoxes("pact", L, pact.count, pactUsed()) : ""}</span></div></td></tr>`;
+    const cols = body ? `<tr class="sb-colhead"><th></th><th>Name</th><th>Time</th><th>Range</th><th>Hit / DC</th>
+      <th>Effect</th><th>Duration</th><th>Upcasting</th><th>Comp.</th><th>Class</th></tr>` : "";
+    sections.push(`<tbody class="sb-level" data-level="${L}">${head}${cols}${body}</tbody>`);
   }
-  const html = sections.join("") || `<div class="hint">No spells.</div>`;
+  const html = sections.length ? `<div class="sb-table-wrap"><table class="sb-table">${sections.join("")}</table></div>` : `<div class="hint">No spells.</div>`;
   el.innerHTML = (typeof concentrationBannerHtml === "function" ? concentrationBannerHtml() : "") + html;
   renderQuickFilters(levels);
 }
 function renderQuickFilters(levels) {
   const el = $("sb-quick"); if (!el) return;
-  const b = (attr, val, label, on, title) => `<button type="button" class="sb-q${on ? " active" : ""}" data-q="${attr}" data-v="${val}"${title ? ` title="${title}"` : ""}>${label}</button>`;
-  const none = !SB_QUICK.levels.size && !SB_QUICK.conc && !SB_QUICK.ritual && !SB_QUICK.times.size;
-  el.innerHTML = b("all", "", "All", none, "Show everything") +
-    levels.map(L => b("level", L, L ? ordinalLevel(L) : "0", SB_QUICK.levels.has(L), L ? ordinalLevel(L) + " level" : "Cantrips")).join("") +
+  const b = (attr, val, label, st, title) => `<button type="button" class="sb-q${st ? " " + st : ""}" data-q="${attr}" data-v="${val}"${title ? ` title="${title}"` : ""}>${label}</button>`;
+  el.innerHTML = b("all", "", "All", sbQuickActive() ? "" : "inc", "Show everything") +
+    levels.map(L => b("level", L, L ? ordinalLevel(L) : "0", SB_QUICK.levels.get(L), L ? ordinalLevel(L) + " level" : "Cantrips")).join("") +
     b("conc", "", sbConcIcon(), SB_QUICK.conc, "Concentration") + b("ritual", "", sbRitualIcon(), SB_QUICK.ritual, "Ritual") +
-    b("time", "action", "A", SB_QUICK.times.has("action"), "Action") + b("time", "bonus", "BA", SB_QUICK.times.has("bonus"), "Bonus Action") +
-    b("time", "reaction", "R", SB_QUICK.times.has("reaction"), "Reaction") + b("time", "other", "Misc", SB_QUICK.times.has("other"), "Other casting times");
+    b("time", "action", "A", SB_QUICK.times.get("action"), "Action") + b("time", "bonus", "BA", SB_QUICK.times.get("bonus"), "Bonus Action") +
+    b("time", "reaction", "R", SB_QUICK.times.get("reaction"), "Reaction") + b("time", "other", "Misc", SB_QUICK.times.get("other"), "Other casting times");
 }
 function sbQuickClick(btn) {
   const q = btn.dataset.q, v = btn.dataset.v;
-  if (q === "all") { SB_QUICK.levels.clear(); SB_QUICK.times.clear(); SB_QUICK.conc = SB_QUICK.ritual = false; }
-  if (q === "level") { const n = Number(v); SB_QUICK.levels.has(n) ? SB_QUICK.levels.delete(n) : SB_QUICK.levels.add(n); }
-  if (q === "conc") SB_QUICK.conc = !SB_QUICK.conc;
-  if (q === "ritual") SB_QUICK.ritual = !SB_QUICK.ritual;
-  if (q === "time") SB_QUICK.times.has(v) ? SB_QUICK.times.delete(v) : SB_QUICK.times.add(v);
+  const cycle = (map, k) => { const n = sbNextState(map.get(k)); if (n) map.set(k, n); else map.delete(k); };
+  if (q === "all") { SB_QUICK.levels.clear(); SB_QUICK.times.clear(); SB_QUICK.conc = SB_QUICK.ritual = ""; }
+  if (q === "level") cycle(SB_QUICK.levels, Number(v));
+  if (q === "time") cycle(SB_QUICK.times, v);
+  if (q === "conc") SB_QUICK.conc = sbNextState(SB_QUICK.conc);
+  if (q === "ritual") SB_QUICK.ritual = sbNextState(SB_QUICK.ritual);
   renderSpellbook();
 }
 

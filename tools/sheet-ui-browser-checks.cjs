@@ -198,6 +198,11 @@ module.exports = async function checkSheetUi(page) {
     out.unfill = document.getElementById('slot-used-1').value;
     document.querySelector('.sb-q[data-q="ritual"]').click();
     out.ritual = [...document.querySelectorAll('.sb-name-link')].map(a => a.textContent);
+    document.querySelector('.sb-q[data-q="ritual"]').click();
+    out.ritualOff = [...document.querySelectorAll('.sb-name-link')].map(a => a.textContent).includes('Alarm') + ',' + document.querySelector('.sb-q[data-q="ritual"]').className;
+    document.querySelector('.sb-q[data-q="ritual"]').click();
+    out.ritualBlank = document.querySelector('.sb-q[data-q="ritual"]').className;
+    out.aligned = new Set([...document.querySelectorAll('.sb-row .sb-name')].map(td => Math.round(td.getBoundingClientRect().left))).size;
     document.querySelector('.sb-q[data-q="all"]').click();
     refreshSpellAddClassSelect(); document.getElementById('spell-add-class').value = 'Wizard'; renderSpellResults();
     const libBtn = n => [...document.querySelectorAll('#spell-results tr')].find(r => r.querySelector('.nm a').textContent === n).querySelector('.sp-lib-add');
@@ -223,6 +228,9 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(book.fill, '1');
   assert.equal(book.unfill, '');
   assert.deepEqual(book.ritual, ['Alarm', 'Alarm', 'Alarm']);
+  assert.equal(book.ritualOff, 'false,sb-q exc', 'a second click excludes');
+  assert.equal(book.ritualBlank, 'sb-q', 'a third click clears');
+  assert.equal(book.aligned, 1, 'the Name column lines up across levels');
   assert.deepEqual(book.libButtons, ['-', '-']);
   assert.equal(book.removed, 'false,+');
 

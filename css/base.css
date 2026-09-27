@@ -651,14 +651,22 @@ button.linkish {
 .sb-filter-area { margin-bottom: .4rem; }
 .sb-quick { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .3rem; }
 .sb-q { font: inherit; font-size: .8rem; padding: .1rem .5rem; min-width: 2rem; display: inline-flex; align-items: center; justify-content: center; }
-.sb-q.active, .sb-q.active:hover { background: var(--select); color: var(--select-fg); border-color: var(--select); }
+.sb-q.inc, .sb-q.inc:hover { background: var(--select); color: var(--select-fg); border-color: var(--select); }
+.sb-q.exc, .sb-q.exc:hover { background: var(--exclude); color: var(--exclude-fg); border-color: var(--exclude); }
+.sb-q.inc:hover, .sb-q.exc:hover { box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .1); }
 .sb-sym { display: inline-flex; vertical-align: -.15em; margin-left: .25rem; }
 .sb-sym svg { width: 1.05em; height: 1.05em; }
 .sb-sym path, .sb-sym rect { fill: var(--fg); }
 .sb-sym text { fill: var(--bg); font: bold 12px sans-serif; text-anchor: middle; }
 .sb-q .sb-sym { margin-left: 0; }
+.sb-q.inc .sb-sym path, .sb-q.inc .sb-sym rect { fill: var(--select-fg); }
+.sb-q.inc .sb-sym text { fill: var(--select); }
+.sb-q.exc .sb-sym path, .sb-q.exc .sb-sym rect { fill: var(--exclude-fg); }
+.sb-q.exc .sb-sym text { fill: var(--exclude); }
 .sb-level-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap;
-  margin-top: .8rem; padding-bottom: .2rem; border-bottom: 1px solid var(--border-hair); }
+  padding-bottom: .2rem; border-bottom: 1px solid var(--border-hair); }
+.sb-table td.sb-level-cell, .sb-table .sb-level-row > td { padding: .9rem 0 0; }
+.sb-table tbody.sb-level:first-child .sb-level-row > td { padding-top: .3rem; }
 .sb-level-title { font-weight: bold; text-transform: uppercase; letter-spacing: .03em; }
 .sb-level-slots { display: inline-flex; gap: .8rem; }
 .sb-slots { display: inline-flex; align-items: center; gap: .2rem; }
