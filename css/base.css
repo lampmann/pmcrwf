@@ -420,6 +420,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 /* Banned rows in the Spell/Equipment libraries. Struck through AND tagged in words, so the state
    never rests on colour alone. */
 .lib-banned .nm a { text-decoration: line-through; opacity: .65; }
+.lib-blocked .nm a, .lib-blocked td { opacity: .55; }
 .lib-ban-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--danger); border: 1px solid var(--danger); border-radius: var(--radius); padding: 0 .25rem; }
 /* A banned option in a dropdown, and an input already holding one. Both carry the word "banned"
    (as a flag in the list, as a tooltip on the input), so the colour is reinforcement rather than

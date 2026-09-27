@@ -149,6 +149,7 @@ function init() {
   loadSpellLib(); SPELL_FILTERS.load(); renderSpellLibrary();
   $("spell-import").addEventListener("change", e => { if (e.target.files.length) loadSpellFiles(e.target.files); e.target.value = ""; });
   $("spell-search").addEventListener("input", renderSpellResults);
+  $("spell-add-class").addEventListener("change", renderSpellResults);
   $("spell-filter-area").addEventListener("click", e => SPELL_FILTERS.handleClick(e));
   $("spell-filter-area").addEventListener("input", e => SPELL_FILTERS.handleInput(e));
   $("spell-results").addEventListener("click", e => {

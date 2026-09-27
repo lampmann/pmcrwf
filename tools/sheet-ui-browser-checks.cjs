@@ -69,5 +69,39 @@ module.exports = async function checkSheetUi(page) {
   assert.deepEqual(await page.evaluate(() => [$('prof-armor-light').checked, $('skillprof-stealth').checked,
     PROFICIENCIES.tools.includes("Thieves' Tools")]), [true, true, true]);
   await page.evaluate(() => { delete CLASS_LIB.Rogue; });
-  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges and Level Up multiclass proficiencies passed.');
+  // Spells: a class only takes spells on its list up to the level it casts; features and items list theirs.
+  const spellChecks = await page.evaluate(() => {
+    const savedSpells = SPELL_LIB, savedItems = ITEM_LIB, savedChar = CHARACTER_ITEMS;
+    SPELL_LIB = [{ name: 'Fireball', source: 'PHB', level: 3, classes: ['Wizard', 'Sorcerer'] },
+      { name: 'Magic Missile', source: 'PHB', level: 1, classes: ['Wizard', 'Sorcerer'] },
+      { name: 'Cure Wounds', source: 'PHB', level: 1, classes: ['Cleric', 'Bard'] },
+      { name: 'Shield', source: 'PHB', level: 1, classes: ['Wizard', 'Sorcerer'] }];
+    document.querySelectorAll('#class-rows tr').forEach(t => t.remove());
+    addClassRow({ name: 'Wizard', sub: '', lvl: 3 }); addClassRow({ name: 'Bard', sub: '', lvl: 10 }); recompute();
+    const f = n => SPELL_LIB.find(x => x.name === n);
+    const out = { tooHigh: spellAddBlock(f('Fireball'), 'Wizard'), ok: spellAddBlock(f('Magic Missile'), 'Wizard'),
+      offList: spellAddBlock(f('Cure Wounds'), 'Wizard'), secrets: spellAddBlock(f('Magic Missile'), 'Bard'), other: spellAddBlock(f('Fireball'), '') };
+    ITEM_LIB = [{ name: 'Wand of Fireballs', source: 'DMG', reqAttune: 'requires attunement', spells: ['fireball'], text: '' },
+      { name: 'Spell Scroll (1st Level)', source: 'DMG', reqAttune: '', spells: [], spellCarrier: 1, text: '' }];
+    CHARACTER_ITEMS = [{ name: 'Wand of Fireballs', qty: 1, attuned: false }, { name: 'Spell Scroll (1st Level)', qty: 1, attuned: false, spell: 'Shield' }];
+    const headers = () => derivedSpellGroups().map(g => g.header + ':' + g.names.join(','));
+    out.unattuned = headers();
+    CHARACTER_ITEMS[0].attuned = true;
+    out.attuned = headers();
+    renderItemList();
+    out.scrollOptions = [...document.querySelectorAll('.inv-spell option')].map(o => o.textContent);
+    out.carrier = [spellCarrierLevel('Spell Scroll (Cantrip)'), spellCarrierLevel('Spellwrought Tattoo (3rd-Level)'), spellCarrierLevel('Wand of Fireballs')];
+    SPELL_LIB = savedSpells; ITEM_LIB = savedItems; CHARACTER_ITEMS = savedChar; renderItemList(); renderSpellList();
+    return out;
+  });
+  assert.equal(spellChecks.tooHigh, 'Wizard 3 casts up to 2nd level');
+  assert.equal(spellChecks.ok, '');
+  assert.equal(spellChecks.offList, 'not on the Wizard spell list');
+  assert.equal(spellChecks.secrets, '', 'Magical Secrets opens every list');
+  assert.equal(spellChecks.other, '');
+  assert.deepEqual(spellChecks.unattuned, ['Spell Scroll (1st Level):Shield']);
+  assert.deepEqual(spellChecks.attuned, ['Wand of Fireballs:fireball', 'Spell Scroll (1st Level):Shield']);
+  assert.deepEqual(spellChecks.scrollOptions, ['- spell -', 'Cure Wounds', 'Magic Missile', 'Shield']);
+  assert.deepEqual(spellChecks.carrier, [0, 3, null]);
+  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits and item/feature spells passed.');
 };

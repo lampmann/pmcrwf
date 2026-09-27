@@ -34,7 +34,7 @@ const SCF_CLASSES = {
   druid: ["Druid", "Ranger"],
   holy: ["Cleric", "Paladin"],
 };
-const ITEM_LIB_SCHEMA = 6;  // bump when the parsed-item shape changes (forces a one-time re-import)
+const ITEM_LIB_SCHEMA = 7;  // bump when the parsed-item shape changes (forces a one-time re-import)
                             // 5: groupItems added (generic variants expand into their members)
                             // 6: `consumable` retained (house-rule pricing halves consumables)
 let ITEM_LIB = [];
@@ -141,6 +141,21 @@ function itemMisc(raw) {
   return [...new Set(t)];
 }
 
+/* 5e.tools lists the spells an item casts in `attachedSpells`: a name array, or keyed by how it's
+   cast ({ charges: { "1": [...] }, daily: { "1e": [...] }, will: [...] }). Only the names are kept. */
+function attachedSpellNames(v) {
+  if (typeof v === "string") return [v.split("|")[0].split("#")[0].trim()].filter(Boolean);
+  if (Array.isArray(v)) return v.flatMap(attachedSpellNames);
+  if (v && typeof v === "object") return Object.values(v).flatMap(attachedSpellNames);
+  return [];
+}
+/* A Spell Scroll or Spellwrought Tattoo carries one spell of the level in its name; which spell is
+   the owner's to say. Returns that level, or null for any other item. */
+function spellCarrierLevel(name) {
+  if (!/^(spell scroll|spellwrought tattoo)\b/i.test(name || "")) return null;
+  const m = /\((cantrip|(\d)(?:st|nd|rd|th)[- ]level)\)/i.exec(name);
+  return m ? (m[2] ? Number(m[2]) : 0) : null;
+}
 function parseItem(raw, sourceArray) {
   const explicitGp = raw.value != null ? Math.round((raw.value / 100) * 100) / 100 : null;  // 5e.tools stores value in cp
   const rarityGp = explicitGp == null ? defaultRarityValueGp(raw) : null;
@@ -190,6 +205,8 @@ function parseItem(raw, sourceArray) {
        with no weight, value or AC into your inventory. */
     groupItems: Array.isArray(raw.items) ? raw.items.map(n => String(n).split("|")[0]) : [],
     recharge: raw.recharge || "",
+    spells: [...new Set(attachedSpellNames(raw.attachedSpells))],
+    spellCarrier: spellCarrierLevel(raw.name),
     poisonTypes: raw.poisonTypes || [],
     lootTables: raw.lootTables || [],
   };

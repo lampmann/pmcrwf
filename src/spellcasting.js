@@ -44,8 +44,10 @@ function addCharacterSpell(cls, lvl, name, opts = {}) {
    it's sitting in that class's ordinary spell list. */
 let _prepModalCtx = null;
 function openPrepClassModal(name, lvl, header) {
-  const classes = getClasses().map(c => c.name.trim()).filter(Boolean);
-  if (!classes.length) { alert("Add a class in the Character module first - this spell needs to be prepared under one."); return; }
+  // The grant adds the spell to a list; the class still has to be able to cast its level.
+  const classes = getClasses().filter(c => c.name.trim() && (lvl === 0 ? classCantripsKnown(c) > 0 : maxLearnableSpellLevel(c) >= lvl))
+    .map(c => c.name.trim());
+  if (!classes.length) { alert(`None of your classes can learn ${lvl ? "a " + ordinalLevel(lvl) + "-level spell" : "a cantrip"} yet.`); return; }
   _prepModalCtx = { name, lvl, header };
   $("prep-modal-spell").textContent = name;
   $("prep-modal-hint").textContent = `Added to your spell list by ${header} - still needs to be prepared/known normally.`;
@@ -72,7 +74,7 @@ function refreshSpellAddClassSelect() {
   const sel = $("spell-add-class"); if (!sel) return;
   const names = getClasses().map(c => c.name.trim()).filter(Boolean);
   const cur = sel.value;
-  sel.innerHTML = `<option value="">-</option>` + names.map(n =>
+  sel.innerHTML = `<option value="">Other</option>` + names.map(n =>
     `<option value="${escapeHtml(n)}" ${n === cur ? "selected" : ""}>${escapeHtml(n)}</option>`).join("");
   if (!names.includes(cur)) sel.value = names[0] || "";
 }
@@ -86,6 +88,60 @@ function spellLineHtml(s, prepBox) {
     : "";
   return `<div><a class="feat-link sp2-link" data-idx="${s.i}"><b>${ordinalLevel(s.lvl)}</b> ${escapeHtml(s.name)}</a>${note} <span class="hint">${src}</span>${concBtn}${prepBox || ""}
     <button class="rowbtn sp2-del" data-idx="${s.i}" aria-label="remove">x</button></div>`;
+}
+/* Spells a feature or an item lets you cast, worked out from the sheet rather than added by hand:
+   the free (not list-expanding) additionalSpells of your race and subclasses once their level is
+   reached, grant-free / grant-innate effects of active features, and items' attached spells (or a
+   scroll's chosen one), counting an attunement item only while attuned. Returns [{ header, names }]. */
+function grantSpellName(n) { return String(n || "").split("|")[0].split("#")[0].trim(); }
+function derivedSpellGroups() {
+  const feat = new Map(), items = new Map();
+  const add = (map, header, raw) => {
+    const n = grantSpellName(raw); if (!n || !header) return;
+    if (!map.has(header)) map.set(header, new Map());
+    map.get(header).set(n.toLowerCase(), n);
+  };
+  const free = (list, lvl) => flattenGrantedSpells(list).filter(g => g.spec === undefined && !g.expanded && g.minLevel <= lvl);
+  if (typeof ciFindRace === "function") {
+    const rec = ciFindRace((($("char-race") || {}).value || "").trim());
+    if (rec) {
+      const sub = ciFindRaceSub(rec, (($("char-subrace") || {}).value || "").trim());
+      const src = sub && (sub.grantedSpells || []).length ? sub : (rec.grantedSpells || []).length ? rec : null;
+      if (src) free(src.grantedSpells, totalLevel()).forEach(g => add(feat, src.name, g.name));
+    }
+  }
+  if (typeof ciFindClass === "function") getClasses().forEach(c => {
+    const rec = ciFindClass(c.name), sub = rec && typeof findSubByName === "function" ? findSubByName(rec, c.sub) : null;
+    if (sub && (sub.grantedSpells || []).length) free(sub.grantedSpells, c.lvl).forEach(g => add(feat, sub.name, g.name));
+  });
+  if (typeof activeFeatures === "function") activeFeatures().forEach(f => {
+    const entry = dbEntryFor(f);
+    (entry && entry.effects || []).forEach(eff => {
+      if (eff.target !== "spell-grant" || eff.op === "grant-list") return;
+      if (eff.when && !whenSatisfied(eff.when, f)) return;
+      if (eff.activation && eff.activation.kind === "choice" && !hasChoiceValue(f, eff.activation.choice)) return;
+      let name = eff.value && eff.value.name;
+      if (name && name.includes("{choice:")) name = name.replace(/\{choice:([a-zA-Z0-9_]+)\}/g, (_, id) => { const v = choiceValue(f, id); return (Array.isArray(v) ? v[0] : v) || ""; });
+      add(feat, f.name, name);
+    });
+  });
+  CHARACTER_ITEMS.forEach(it => {
+    const lib = typeof findLibItemByName === "function" ? findLibItemByName(it.name) : null;
+    if (lib && lib.reqAttune && !it.attuned) return;
+    [...((lib && lib.spells) || []), it.spell].forEach(n => add(items, it.name, n));
+  });
+  // A spell already added by hand under a grant (older characters, or a click in Features) isn't listed twice.
+  const manual = new Set(CHARACTER_SPELLS.filter(x => x.grantSrc).map(x => x.name.toLowerCase()));
+  const out = (map, kind) => [...map.entries()].map(([header, names]) => ({ header, kind,
+    names: [...names.values()].filter(n => kind === "item" || !manual.has(n.toLowerCase())) })).filter(g => g.names.length);
+  return [...out(feat, "feature"), ...out(items, "item")];
+}
+function derivedSpellLineHtml(name) {
+  const lib = findLibSpellByName(name), shown = lib ? lib.name : name.replace(/\b\w/g, c => c.toUpperCase());
+  const conc = lib && lib.conc ? (isConcentratingOn({ name: shown, cls: "" })
+    ? ` <button type="button" class="rowbtn sp2-conc on" data-name="${escapeHtml(shown)}" aria-label="concentrating - click to drop">◉ conc</button>`
+    : ` <button type="button" class="rowbtn sp2-conc" data-name="${escapeHtml(shown)}">○ conc</button>`) : "";
+  return `<div><a class="feat-link sp2-link" data-name="${escapeHtml(shown)}"><b>${lib ? ordinalLevel(lib.level) : ""}</b> ${escapeHtml(shown)}</a> <span class="hint">${lib ? lib.source : ""}</span>${conc}</div>`;
 }
 function renderSpellList() {
   const el = $("spell-feat-results"); if (!el) return;
@@ -130,14 +186,22 @@ function renderSpellList() {
     const items = rows.map(s => spellLineHtml(s)).join("");
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(src)}</b> <span class="hint">- granted spells</span></div>${items}`;
   }).join("");
-  const orphans = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => !s.grantSrc && !assigned.has(s.cls));
-  const orphanHtml = orphans.length ? `<div style="margin:.5rem 0 .1rem"><b>Unassigned</b> <span class="hint">- class removed or not set</span></div>` +
+  const derivedHtml = derivedSpellGroups().map(g => {
+    const byLevel = g.names.map(n => ({ n, lib: findLibSpellByName(n) }))
+      .sort((a, b) => ((a.lib ? a.lib.level : 0) - (b.lib ? b.lib.level : 0)) || a.n.localeCompare(b.n));
+    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(g.header)}</b></div>` + byLevel.map(x => derivedSpellLineHtml(x.n)).join("");
+  }).join("");
+  const rowsOf = test => CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(test).sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
+  const other = rowsOf(s => !s.grantSrc && !s.cls);
+  const otherHtml = other.length ? `<div style="margin:.5rem 0 .1rem"><b>Other</b></div>` + other.map(s => spellLineHtml(s)).join("") : "";
+  const orphans = rowsOf(s => !s.grantSrc && s.cls && !assigned.has(s.cls));
+  const orphanHtml = orphans.length ? `<div style="margin:.5rem 0 .1rem"><b>Unassigned</b> <span class="hint">- class removed</span></div>` +
     orphans.map(s => spellLineHtml(s)).join("") : "";
-  if (!casterHtml && !grantedHtml && !orphanHtml) {
-    el.innerHTML = concentrationBannerHtml() || "<div class='hint'>No spellcasting classes.</div>";
+  if (!casterHtml && !grantedHtml && !derivedHtml && !otherHtml && !orphanHtml) {
+    el.innerHTML = concentrationBannerHtml() || "<div class='hint'>No spells.</div>";
     return;
   }
-  el.innerHTML = concentrationBannerHtml() + casterHtml + grantedHtml + orphanHtml;
+  el.innerHTML = concentrationBannerHtml() + casterHtml + grantedHtml + derivedHtml + otherHtml + orphanHtml;
 }
 function findLibSpellByName(name) {
   const q = (name || "").trim().toLowerCase(); if (!q) return null;
@@ -146,7 +210,7 @@ function findLibSpellByName(name) {
 function toggleSpell2Detail(link) {
   const div = link.closest("div");
   if (div.nextElementSibling && div.nextElementSibling.classList.contains("feat-detail")) { div.nextElementSibling.remove(); return; }
-  const s = CHARACTER_SPELLS[Number(link.dataset.idx)]; if (!s) return;
+  const s = link.dataset.name != null ? { name: link.dataset.name } : CHARACTER_SPELLS[Number(link.dataset.idx)]; if (!s) return;
   const lib = findLibSpellByName(s.name);
   const d = document.createElement("div"); d.className = "feat-detail";
   if (!lib) {
@@ -210,7 +274,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const cr = $("class-rows");
   if (cr) new MutationObserver(() => { refreshSpellAddClassSelect(); renderSpellList(); }).observe(cr, { childList: true });
   document.addEventListener("input", e => {
-    if (e.target.closest && e.target.closest("#class-rows")) { refreshSpellAddClassSelect(); renderSpellList(); }
+    if (e.target.closest && e.target.closest("#class-rows")) { refreshSpellAddClassSelect(); renderSpellList(); if (typeof renderSpellResults === "function") renderSpellResults(); }
   });
   const results = $("spell-feat-results");
   if (results) results.addEventListener("click", e => {
@@ -218,7 +282,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const dropBtn = e.target.closest(".sp2-conc-drop"); if (dropBtn) { dropConcentration(); return; }
     const conc = e.target.closest(".sp2-conc");
     if (conc) {
-      const s = CHARACTER_SPELLS[Number(conc.dataset.idx)]; if (!s) return;
+      const s = conc.dataset.name != null ? { name: conc.dataset.name, cls: "" } : CHARACTER_SPELLS[Number(conc.dataset.idx)]; if (!s) return;
       if (isConcentratingOn(s)) dropConcentration(); else startConcentrating(s.name, s.cls || "");
       return;
     }

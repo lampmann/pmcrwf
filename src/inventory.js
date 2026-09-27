@@ -70,10 +70,20 @@ function renderItemList() {
       <input type="text" inputmode="numeric" class="tiny inv-qty" data-idx="${i}" value="${it.qty}">
       <a class="feat-link inv-link" data-idx="${i}"><b>${escapeHtml(it.name)}</b></a> <span class="hint">${src}</span>${missing}
       <label class="hint" style="margin-left:.4rem"><input type="checkbox" class="inv-eq" data-idx="${i}" ${it.eq ? "checked" : ""}> equipped</label>${it.slot && typeof slotByKey === "function" && slotByKey(it.slot) ? ` <span class="hint">(${escapeHtml(slotByKey(it.slot).label.toLowerCase())})</span>` : ""}${attuneBox}
+${r.lib && r.lib.spellCarrier != null ? invSpellPickHtml(it, i, r.lib.spellCarrier) : ""}
       <span class="hint inv-totals" data-idx="${i}">${itemRowTotalsHtml(it)}</span>
       <button class="rowbtn inv-del" data-idx="${i}" aria-label="remove">x</button>
     </div>`;
   }).join("");
+}
+/* Which spell a scroll or tattoo holds: any spell of its level, or free text before spells load. */
+function invSpellPickHtml(it, i, level) {
+  const names = [...new Set((typeof SPELL_LIB !== "undefined" ? SPELL_LIB : []).filter(s => s.level === level).map(s => s.name))]
+    .sort((a, b) => a.localeCompare(b));
+  if (!names.length) return ` <input type="text" class="inv-spell" data-idx="${i}" value="${escapeHtml(it.spell || "")}" placeholder="spell" style="width:9rem">`;
+  if (it.spell && !names.includes(it.spell)) names.unshift(it.spell);
+  return ` <select class="inv-spell" data-idx="${i}"><option value="">- spell -</option>${names.map(n =>
+    `<option value="${escapeHtml(n)}"${n === it.spell ? " selected" : ""}>${escapeHtml(n)}</option>`).join("")}</select>`;
 }
 /* The per-row "x lb ea | y gp ea | totals" readout. Its own function so setItemQty can repaint just
    this span instead of the whole list. */
@@ -107,6 +117,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   // `input`, not `change`: the totals should follow what you're typing, and nothing here re-renders
   // the list, so there's no field to lose.
+  results.addEventListener("change", e => {
+    const sp = e.target.closest(".inv-spell"); if (!sp) return;
+    const it = CHARACTER_ITEMS[Number(sp.dataset.idx)]; if (!it) return;
+    it.spell = sp.value.trim();
+    if (typeof renderSpellList === "function") renderSpellList();
+    scheduleSave();
+  });
   results.addEventListener("input", e => {
     const qty = e.target.closest(".inv-qty"); if (qty) setItemQty(Number(qty.dataset.idx), qty.value);
   });

@@ -256,12 +256,14 @@ function renderSpellResults() {
   const el = $("spell-results");
   if (!SPELL_LIB.length) { el.innerHTML = "<div class='hint'>No spells loaded.</div>"; return; }
   if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
+  const addCls = ($("spell-add-class") || {}).value || "";
   const body = rows.map(s => {
     const key = (s.name + "|" + s.source).replace(/"/g, "&quot;");
     const sv = s.attack ? "atk" : s.save ? (s.save.slice(0, 3) + " sv") : "";
     const ban = (typeof banNote === "function") ? banNote("spell", s.name, s.source) : null;
-    return `<tr${ban ? ' class="lib-banned"' : ""}>
-      <td><button class="sp-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ' aria-label="add to sheet"'}>+</button></td>
+    const block = ban ? "" : spellAddBlock(s, addCls);
+    return `<tr${ban ? ' class="lib-banned"' : block ? ' class="lib-blocked"' : ""}>
+      <td><button class="sp-lib-add" data-key="${key}"${ban || block ? ` disabled title="${escapeHtml(ban || block)}"` : ' aria-label="add to sheet"'}>+</button></td>
       <td class="c"><b>${s.level}</b></td>
       <td class="nm"><a class="sp-name-link" data-key="${key}">${s.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${s.school}</td>
@@ -291,7 +293,39 @@ function toggleSpellDetail(link) {
     (s.higher ? `<div style="margin-top:3px"><b>At Higher Levels:</b> ${escapeHtml(s.higher).replace(/\n/g, "<br>")}</div>` : "") + `</td>`;
   tr.after(det);
 }
+/* Why a spell can't go on a class's list, or "" if it can: it must be on that class's list (Eldritch
+   Knights and Arcane Tricksters use the Wizard list; Magical Secrets opens every list) and no higher
+   than the class can cast, worked out per class as PHB p164 says. "Other" takes anything. */
+function spellListClassFor(row) {
+  const sub = (row.sub || "").trim().toLowerCase();
+  return typeof SUBCLASS_CASTING_STYLE === "object" && SUBCLASS_CASTING_STYLE[sub] ? "wizard" : row.name.trim().toLowerCase();
+}
+function hasMagicalSecrets(row) {
+  const name = row.name.trim().toLowerCase(), sub = (row.sub || "").trim().toLowerCase();
+  return name === "bard" && (row.lvl >= 10 || (/lore/.test(sub) && row.lvl >= 6));
+}
+function maxLearnableSpellLevel(row) {
+  const max = classMaxSpellLevel(row);
+  // Mystic Arcanum: one spell each of 6th to 9th level at Warlock 11, 13, 15 and 17.
+  if (row.name.trim().toLowerCase() === "warlock") return row.lvl >= 17 ? 9 : row.lvl >= 15 ? 8 : row.lvl >= 13 ? 7 : row.lvl >= 11 ? 6 : max;
+  return max;
+}
+function spellAddBlock(s, clsName) {
+  if (!clsName || !s) return "";
+  const row = getClasses().find(c => c.name.trim() === clsName); if (!row) return "";
+  if (s.level === 0) { if (!(classCantripsKnown(row) > 0)) return `${clsName} ${row.lvl} has no cantrips`; }
+  else {
+    const max = maxLearnableSpellLevel(row);
+    if (s.level > max) return max ? `${clsName} ${row.lvl} casts up to ${ordinalLevel(max)} level` : `${clsName} ${row.lvl} has no spells yet`;
+  }
+  const list = spellListClassFor(row);
+  if (!hasMagicalSecrets(row) && (s.classes || []).length && !s.classes.some(c => c.toLowerCase() === list))
+    return `not on the ${list.charAt(0).toUpperCase() + list.slice(1)} spell list`;
+  return "";
+}
 function addSpellFromLib(key) {
   const s = SPELL_LIB.find(x => (x.name + "|" + x.source) === key); if (!s) return;
-  addCharacterSpell($("spell-add-class").value, s.level, s.name);
+  const cls = $("spell-add-class").value;
+  if (spellAddBlock(s, cls)) return;
+  addCharacterSpell(cls, s.level, s.name);
 }
