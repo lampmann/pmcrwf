@@ -288,50 +288,53 @@
   <!-- ===== INVENTORY & EQUIPMENT ===== -->
   <section class="module wide" data-module="inventory">
     <h2>Inventory &amp; Equipment</h2>
-    <!-- Equipped body slots, PHB p141 (src/equip-slots.js). -->
-    <fieldset>
-      <legend>Equipped</legend>
-      <div id="equip-slots"></div>
-    </fieldset>
-    <div>
-      Coins:
-      <label>cp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-cp"></label>
-      <label>sp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-sp"></label>
-      <label>ep <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-ep"></label>
-      <label>gp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-gp"></label>
-      <label>pp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-pp"></label>
-      &nbsp;=&nbsp;<span class="derived" id="coin-total-gp">0</span> gp
-    </div>
-    <fieldset>
-      <legend>Equipment Library </legend>
-
-      <div id="item-library-body" style="display:none">
+    <!-- Equipped body slots, PHB p141 (src/equip-slots.js): body slots down the left, hands across
+         the top right, and everything else below the hands. -->
+    <div class="inv-layout">
+      <div id="equip-slots" class="inv-body-col"></div>
+      <div class="inv-main">
+        <div id="equip-hands"></div>
         <div>
-          <button id="item-lib-reload">Reload</button>
-          <button id="item-lib-clear">Clear</button>
-          <span class="hint" id="item-lib-count">no equipment loaded</span>
-          <span class="hint" id="item-lib-autostatus"></span>
+          Coins:
+          <label>cp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-cp"></label>
+          <label>sp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-sp"></label>
+          <label>ep <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-ep"></label>
+          <label>gp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-gp"></label>
+          <label>pp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-pp"></label>
+          &nbsp;=&nbsp;<span class="derived" id="coin-total-gp">0</span> gp
         </div>
-        <div class="hint"><label style="display:inline">Import JSON <input type="file" id="item-import" accept="application/json" multiple></label>
-        </div>
-        <div id="item-filter-area"></div>
-        <div style="margin:.35rem 0">
-          <input type="text" id="item-search" placeholder="search name / type / rarity / source…" style="width:18rem" autocomplete="off">
-        </div>
-        <div id="item-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
+        <fieldset>
+          <legend>Equipment Library </legend>
+
+          <div id="item-library-body" style="display:none">
+            <div>
+              <button id="item-lib-reload">Reload</button>
+              <button id="item-lib-clear">Clear</button>
+              <span class="hint" id="item-lib-count">no equipment loaded</span>
+              <span class="hint" id="item-lib-autostatus"></span>
+            </div>
+            <div class="hint"><label style="display:inline">Import JSON <input type="file" id="item-import" accept="application/json" multiple></label>
+            </div>
+            <div id="item-filter-area"></div>
+            <div style="margin:.35rem 0">
+              <input type="text" id="item-search" placeholder="search name / type / rarity / source…" style="width:18rem" autocomplete="off">
+            </div>
+            <div id="item-results" style="max-height:16rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem"></div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Items</legend>
+          <button id="item-lib-toggle">+ Add Item</button>
+          <div class="hint">Attunement: <span class="derived" id="attuned-count">0</span>/3.</div>
+          <div id="char-item-list" style="margin-top:.35rem"></div>
+          <div class="hint" style="margin-top:.35rem">
+            Total weight: <span class="derived" id="items-weight-total">0</span> lb
+            &nbsp;|&nbsp; Total item value: <span class="derived" id="items-value-total">0</span> gp
+            &nbsp;|&nbsp; <b>Total wealth (coins + items): <span class="derived" id="wealth-total-gp">0</span> gp</b>
+          </div>
+        </fieldset>
       </div>
-    </fieldset>
-    <fieldset>
-      <legend>Items</legend>
-      <button id="item-lib-toggle">+ Add Item</button>
-      <div class="hint">Attunement: <span class="derived" id="attuned-count">0</span>/3.</div>
-      <div id="char-item-list" style="margin-top:.35rem"></div>
-      <div class="hint" style="margin-top:.35rem">
-        Total weight: <span class="derived" id="items-weight-total">0</span> lb
-        &nbsp;|&nbsp; Total item value: <span class="derived" id="items-value-total">0</span> gp
-        &nbsp;|&nbsp; <b>Total wealth (coins + items): <span class="derived" id="wealth-total-gp">0</span> gp</b>
-      </div>
-    </fieldset>
+    </div>
   </section>
 
   <!-- ===== COMPANIONS & SUMMONS ===== -->

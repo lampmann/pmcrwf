@@ -32,9 +32,11 @@
    ============================================================ */
 
 const BODY_SLOTS = [
-  { key: "mainHand", label: "Main hand", kind: "hand" },
-  { key: "offHand", label: "Off hand", kind: "hand" },
-  { key: "armor", label: "Armour", kind: "armor" },
+  // Two hands, both just "Hand": 5e has no main or off hand. The keys keep their old names so saved
+  // characters load unchanged, and "offHand" is still where a shield guesses itself.
+  { key: "mainHand", label: "Hand", kind: "hand" },
+  { key: "offHand", label: "Hand", kind: "hand" },
+  { key: "armor", label: "Armor", kind: "armor" },
   { key: "head", label: "Headwear", kind: "head" },
   { key: "cloak", label: "Cloak", kind: "cloak" },
   { key: "gloves", label: "Gloves", kind: "gloves" },
@@ -169,13 +171,20 @@ function slotCellHtml(slot) {
   </div>`;
 }
 
+/* Body slots run down the left of the module; the hands sit across the top of the right side, with
+   coins and the item list below them (see the Inventory markup). */
+const BODY_COLUMN = ["head", "cloak", "armor", "bracers", "gloves", "boots"];
 function renderEquipSlots() {
   const el = $("equip-slots"); if (!el) return;
   placeLegacyEquipped();
-  const slots = activeSlots();
-  el.innerHTML =
-    `<div class="eq-doll">${slots.map(slotCellHtml).join("")}</div>
-     <div class="hint"><label style="margin-left:.5rem"><input type="checkbox" id="eq-extra-arms"${extraArmsEnabled() ? " checked" : ""}${/thri-?kreen/i.test((($("char-race")||{}).value||"")) ? " disabled" : ""}> extra arms</label></div>`;
+  const extra = extraArmsEnabled();
+  const cell = k => slotCellHtml(slotByKey(k));
+  const handsHtml = `<div class="eq-hands">${cell("mainHand")}${cell("offHand")}</div>` +
+    (extra ? `<div class="eq-hands">${cell("hand3")}${cell("hand4")}</div>` : "");
+  const armsBox = `<label class="hint eq-arms"><input type="checkbox" id="eq-extra-arms"${extra ? " checked" : ""}${/thri-?kreen/i.test((($("char-race")||{}).value||"")) ? " disabled" : ""}> extra arms</label>`;
+  const hands = $("equip-hands");
+  el.innerHTML = (hands ? "" : handsHtml) + `<div class="eq-doll">${BODY_COLUMN.map(cell).join("")}</div>` + armsBox;
+  if (hands) hands.innerHTML = handsHtml;
 }
 
 /* The picker. Same popup idiom as the combat tracker's menus. */
@@ -230,10 +239,11 @@ function paintEquipPicker(anchor) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const el = $("equip-slots"); if (!el) return;
+  if (!$("equip-slots")) return;
   renderEquipSlots();
+  const hosts = [$("equip-slots"), $("equip-hands")].filter(Boolean);
 
-  el.addEventListener("click", e => {
+  hosts.forEach(el => el.addEventListener("click", e => {
     if (e.target.id === "eq-extra-arms") { EQUIP_EXTRA_ARMS = e.target.checked; renderEquipSlots(); scheduleSave(); return; }
     const x = e.target.closest("[data-unslot]");
     if (x) { e.stopPropagation(); unequipSlot(x.dataset.unslot); return; }
@@ -242,7 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (EQ_PICKER && EQ_PICKER.slotKey === cell.dataset.slot) { closeEquipPicker(); return; }
       openEquipPicker(cell.dataset.slot, cell);
     }
-  });
+  }));
 
   document.addEventListener("click", e => {
     const item = e.target.closest(".eq-picker .cbt-item");
@@ -269,6 +279,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const cell = e.target.closest(".eq-slot.filled");
     if (cell) { e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", "slot:" + cell.dataset.slot); } catch (err) {} }
   });
+  hosts.forEach(el => {
   el.addEventListener("dragover", e => {
     const cell = e.target.closest("[data-slot]"); if (!cell) return;
     e.preventDefault(); e.dataTransfer.dropEffect = "move";
@@ -287,6 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const it = itemInSlot(from);
       if (it) equipToSlot(CHARACTER_ITEMS.indexOf(it), cell.dataset.slot);
     }
+  });
   });
   // Dropping a slotted item onto the inventory list takes it off.
   const list = $("char-item-list");

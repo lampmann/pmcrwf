@@ -323,7 +323,13 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cr-classes td { padding: .1rem .3rem .1rem 0; vertical-align: middle; }
 .cr-cls-del { color: var(--danger); }
 /* ----- equipped body slots (src/equip-slots.js) ----- */
-.eq-doll { display: flex; flex-wrap: wrap; gap: .3rem; }
+.inv-layout { display: flex; gap: .6rem; align-items: flex-start; }
+.inv-body-col { flex: 0 0 auto; }
+.inv-main { flex: 1 1 auto; min-width: 0; }
+.eq-doll { display: flex; flex-direction: column; gap: .3rem; }
+.eq-hands { display: flex; gap: .3rem; margin-bottom: .3rem; }
+.eq-hands > .eq-slot { flex: 1 1 0; }
+.eq-arms { display: block; margin-top: .3rem; }
 .eq-slot { position: relative; min-width: 8.5rem; padding: .2rem .4rem; cursor: pointer;
   border: 1px dashed var(--border-soft); border-radius: var(--radius); }
 .eq-slot.filled { border-style: solid; border-color: var(--link-border); }
