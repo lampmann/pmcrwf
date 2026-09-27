@@ -150,6 +150,82 @@ module.exports = async function checkSheetUi(page) {
     return out;
   });
   assert.deepEqual(senses, { race: 60, extended: 90, alone: 60, best: 120, shown: '120' });
+  // Spellbook: per-class numbers, level sections, upcast rows with scaled dice, casting spends the right slot.
+  const book = await page.evaluate(() => {
+    const saved = { lib: SPELL_LIB, spells: CHARACTER_SPELLS, conc: CONCENTRATING };
+    const raw = (name, level, extra) => Object.assign({ name, source: 'PHB', level, school: 'V', time: [{ number: 1, unit: 'action' }],
+      range: { type: 'point', distance: { type: 'feet', amount: 60 } }, duration: [{ type: 'instant' }], components: { v: true, s: true }, entries: ['x'] }, extra);
+    SPELL_LIB = [
+      raw('Fireball', 3, { savingThrow: ['dexterity'], damageInflict: ['fire'], entries: ['{@damage 8d6} fire damage.'],
+        entriesHigherLevel: [{ type: 'entries', name: 'At Higher Levels', entries: ['When you cast this spell using a spell slot of 4th level or higher, the damage increases by {@scaledamage 8d6|3-9|1d6} for each slot level above 3rd.'] }] }),
+      raw('Cure Wounds', 1, { miscTags: ['HL'], range: { type: 'point', distance: { type: 'touch' } }, entries: ['regains {@dice 1d8} + your spellcasting ability modifier hit points.'],
+        entriesHigherLevel: [{ type: 'entries', entries: ['the healing increases by {@scaledice 1d8|1-9|1d8} for each slot level above 1st.'] }] }),
+      raw('Bless', 1, { duration: [{ type: 'timed', duration: { type: 'minute', amount: 1 }, concentration: true }] }),
+      raw('Hex', 1, { time: [{ number: 1, unit: 'bonus' }], duration: [{ type: 'timed', duration: { type: 'hour', amount: 1 }, concentration: true }] }),
+      raw('Alarm', 1, { time: [{ number: 1, unit: 'minute' }], meta: { ritual: true } }),
+    ].map(parseSpell);
+    SPELL_LIB.forEach(x => { x.classes = { Fireball: ['Wizard'], 'Cure Wounds': ['Cleric'], Bless: ['Cleric'], Hex: ['Warlock'], Alarm: ['Wizard'] }[x.name]; });
+    document.querySelectorAll('#class-rows tr').forEach(t => t.remove());
+    addClassRow({ name: 'Wizard', sub: '', lvl: 5 }); addClassRow({ name: 'Cleric', sub: '', lvl: 1 }); addClassRow({ name: 'Warlock', sub: '', lvl: 2 });
+    ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(a => { document.getElementById('score-' + a).value = 10; });
+    document.getElementById('score-int').value = 18; document.getElementById('score-wis').value = 16; document.getElementById('score-cha').value = 14;
+    for (let i = 1; i <= 9; i++) document.getElementById('slot-used-' + i).value = '';
+    document.getElementById('pact-used').value = '';
+    CONCENTRATING = null;
+    CHARACTER_SPELLS = [['Wizard', 3, 'Fireball'], ['Cleric', 1, 'Cure Wounds'], ['Cleric', 1, 'Bless'], ['Warlock', 1, 'Hex'], ['Wizard', 1, 'Alarm']]
+      .map(([cls, lvl, name]) => ({ cls, lvl, name, prep: true, grantSrc: '', note: '' }));
+    recompute();
+    const out = {};
+    out.parsed = ['timeStr', 'rangeStr', 'durStr'].map(k => SPELL_LIB.find(x => x.name === 'Hex')[k]).join(',');
+    out.stats = [...document.querySelectorAll('#sb-stats .sb-stat-val')].map(e => e.textContent);
+    out.statTitles = [...document.querySelectorAll('#sb-stats .sb-stat-val')][2].querySelector('[title]').title;
+    const sec = L => document.querySelector(`.sb-level[data-level="${L}"]`);
+    const names = L => [...sec(L).querySelectorAll('.sb-name-link')].map(a => a.textContent);
+    out.third = names(3);
+    const cureAt3 = [...sec(3).querySelectorAll('.sb-row')].find(r => r.querySelector('.sb-name-link').textContent === 'Cure Wounds');
+    out.cure3 = cureAt3.querySelector('.sb-effect').dataset.dice + ' ' + cureAt3.querySelector('.sb-lvl-badge').textContent;
+    out.fire3 = [...sec(3).querySelectorAll('.sb-row')][0].children[4].textContent.trim();
+    out.slotsAt1 = sec(1).querySelectorAll('.sb-slots[data-kind="slot"] .sb-slot').length + '/' + sec(1).querySelectorAll('.sb-slots[data-kind="pact"] .sb-slot').length;
+    const castBtn = (L, name) => [...sec(L).querySelectorAll('.sb-row')].find(r => r.querySelector('.sb-name-link').textContent === name).querySelector('.sb-cast');
+    castBtn(3, 'Fireball').click();
+    out.after3 = document.getElementById('slot-used-3').value;
+    castBtn(1, 'Hex').click();
+    out.pact = document.getElementById('pact-used').value + '/' + document.getElementById('slot-used-1').value;
+    out.conc = CONCENTRATING && CONCENTRATING.name;
+    sec(1).querySelectorAll('.sb-slots[data-kind="slot"] .sb-slot')[3].click();
+    out.fill = document.getElementById('slot-used-1').value;
+    sec(1).querySelector('.sb-slots[data-kind="slot"] .sb-slot.used').click();
+    out.unfill = document.getElementById('slot-used-1').value;
+    document.querySelector('.sb-q[data-q="ritual"]').click();
+    out.ritual = [...document.querySelectorAll('.sb-name-link')].map(a => a.textContent);
+    document.querySelector('.sb-q[data-q="all"]').click();
+    refreshSpellAddClassSelect(); document.getElementById('spell-add-class').value = 'Wizard'; renderSpellResults();
+    const libBtn = n => [...document.querySelectorAll('#spell-results tr')].find(r => r.querySelector('.nm a').textContent === n).querySelector('.sp-lib-add');
+    out.libButtons = [libBtn('Fireball').textContent, libBtn('Alarm').textContent];
+    libBtn('Fireball').click();
+    out.removed = CHARACTER_SPELLS.some(x => x.name === 'Fireball') + ',' + libBtn('Fireball').textContent;
+    SPELL_LIB = saved.lib; CHARACTER_SPELLS = saved.spells; CONCENTRATING = saved.conc;
+    for (let i = 1; i <= 9; i++) document.getElementById('slot-used-' + i).value = '';
+    document.getElementById('pact-used').value = '';
+    recompute();
+    return out;
+  });
+  assert.equal(book.parsed, 'BA,60 ft,1 h');
+  assert.deepEqual(book.stats, ['+4 | +3 | +2', '+7 | +6 | +5', '15 | 14 | 13']);
+  assert.equal(book.statTitles, 'Wizard (INT)');
+  assert.deepEqual(book.third, ['Fireball', 'Alarm', 'Bless', 'Cure Wounds', 'Hex']);
+  assert.equal(book.cure3, '3d8+3 1st');
+  assert.equal(book.fire3, 'DEX 15');
+  assert.equal(book.slotsAt1, '4/2');
+  assert.equal(book.after3, '1');
+  assert.equal(book.pact, '1/', 'a Warlock spell spends a pact slot first');
+  assert.equal(book.conc, 'Hex');
+  assert.equal(book.fill, '1');
+  assert.equal(book.unfill, '');
+  assert.deepEqual(book.ritual, ['Alarm', 'Alarm', 'Alarm']);
+  assert.deepEqual(book.libButtons, ['-', '-']);
+  assert.equal(book.removed, 'false,+');
+
   // Merging modules: the stationary one keeps its box and its tab comes first; tabs switch; detaching dissolves.
   await page.evaluate(() => { const L = __layout; L.state.free = true; L.apply(); });
   const merged = await page.evaluate(() => {
@@ -168,5 +244,5 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(await page.evaluate(() => { __layout.detach(document.querySelector('[data-module="senses"]')); return Object.keys(__layout.state.stacks).length + document.querySelectorAll('.lay-tab').length; }), 0);
   await page.evaluate(() => { const L = __layout; Object.assign(L.state, { map: {}, stacks: {}, free: false, activated: false }); L.apply(); L.save(); });
 
-  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses and merged modules passed.');
+  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook and merged modules passed.');
 };

@@ -116,9 +116,10 @@ button:active:not(:disabled), .fbtn:active, .fctrl-btn:active, .char-tab:active,
 }
 /* An "on" chip already carries a strong background; tinting it grey would wash it out, so those
    darken via a shadow overlay instead of a background swap. */
+.fbtn.inc:hover, .cr-method.active:hover, .cr-racial.active:hover { background-color: var(--select); }
+.fbtn.exc:hover { background-color: var(--exclude); }
 .fbtn.inc:hover, .fbtn.exc:hover, .cr-method.active:hover, .cr-racial.active:hover {
-  background-color: currentColor;
-  box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .12);
+  box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .1);
 }
 .fbtn.inc:active, .fbtn.exc:active, .cr-method.active:active, .cr-racial.active:active {
   box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .25);
@@ -635,3 +636,54 @@ button.linkish {
   vertical-align: middle; color: #fff; font: bold .7rem/1 system-ui, sans-serif; }
 .rm-adv { background: #2e9e3e; clip-path: polygon(50% 0, 100% 100%, 0 100%); align-items: flex-end; padding-bottom: .1em; }
 .rm-dis { background: #c93030; clip-path: polygon(0 0, 100% 0, 50% 100%); align-items: flex-start; padding-top: .1em; }
+
+/* ----- Spellcasting module (src/spellbook.js) ----- */
+.sb-stats { display: flex; justify-content: center; gap: 2.2rem; flex-wrap: wrap; padding: .2rem 0 .5rem; border-bottom: 1px solid var(--border-hair); }
+.sb-stat { text-align: center; }
+.sb-stat-val { font-size: 1.3rem; font-weight: bold; line-height: 1.2; }
+.sb-stat-val [title] { cursor: help; }
+.sb-sep { color: var(--muted-fg); font-weight: normal; }
+.sb-stat-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-fg); }
+.sb-bar { display: flex; gap: .4rem; align-items: stretch; margin: .55rem 0 .4rem; }
+.sb-bar #sb-search { flex: 1; min-width: 8rem; padding: .3rem .45rem; }
+#sb-filter-btn { display: inline-flex; align-items: center; padding: 0 .5rem; }
+#sb-filter-btn.active { background: var(--select); color: var(--select-fg); border-color: var(--select); }
+.sb-filter-area { margin-bottom: .4rem; }
+.sb-quick { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .3rem; }
+.sb-q { font: inherit; font-size: .8rem; padding: .1rem .5rem; min-width: 2rem; display: inline-flex; align-items: center; justify-content: center; }
+.sb-q.active, .sb-q.active:hover { background: var(--select); color: var(--select-fg); border-color: var(--select); }
+.sb-sym { display: inline-flex; vertical-align: -.15em; margin-left: .25rem; }
+.sb-sym svg { width: 1.05em; height: 1.05em; }
+.sb-sym path, .sb-sym rect { fill: var(--fg); }
+.sb-sym text { fill: var(--bg); font: bold 12px sans-serif; text-anchor: middle; }
+.sb-q .sb-sym { margin-left: 0; }
+.sb-level-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap;
+  margin-top: .8rem; padding-bottom: .2rem; border-bottom: 1px solid var(--border-hair); }
+.sb-level-title { font-weight: bold; text-transform: uppercase; letter-spacing: .03em; }
+.sb-level-slots { display: inline-flex; gap: .8rem; }
+.sb-slots { display: inline-flex; align-items: center; gap: .2rem; }
+.sb-slot { width: 1.15rem; height: 1.15rem; padding: 0; border: 1px solid var(--border-soft); background: var(--bg); }
+.sb-slot.used, .sb-slot.used:hover { background: var(--select); border-color: var(--select); }
+.sb-slots-label { font-size: .75rem; font-weight: bold; text-transform: uppercase; margin-left: .25rem; }
+.sb-table-wrap { overflow-x: auto; }
+.sb-table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+.sb-table th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted-fg); padding: .35rem .4rem .15rem; white-space: nowrap; }
+.sb-table td { padding: .3rem .4rem; vertical-align: middle; border: 0; }
+.sb-table .sb-name { white-space: nowrap; font-style: italic; }
+.sb-table .sb-act { white-space: nowrap; width: 1%; }
+.sb-cast { font: inherit; font-size: .75rem; font-weight: bold; text-transform: uppercase; padding: .1rem .45rem; }
+.sb-atwill { font-size: .68rem; text-transform: uppercase; color: var(--muted-fg); }
+.sb-lvl-badge { display: inline-block; margin-left: .25rem; padding: 0 .25rem; font-size: .62rem; font-weight: bold; vertical-align: super;
+  background: var(--select); color: var(--select-fg); border-radius: 2px; }
+.sb-effect { font: inherit; font-size: .85rem; padding: .1rem .4rem; white-space: nowrap; }
+.sb-eff-kind { font-size: .75rem; color: var(--muted-fg); }
+.sb-up { font-size: .8rem; max-width: 16rem; }
+.sb-uptext { cursor: help; }
+.sb-detail td { padding-top: 0; }
+/* Manage Spells: laid out like the other dialogs, but not a .modal-overlay (see the markup). */
+.sp-manage-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+.sp-manage-box { box-sizing: border-box; width: min(58rem, calc(100vw - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); display: flex; flex-direction: column; }
+.sp-manage-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .3rem; }
+#spell-manage-close { font-size: 1.2rem; line-height: 1; padding: .1rem .45rem; }
+.sp-manage-body { overflow: auto; min-height: 0; }
+.sp-manage-body fieldset { margin-bottom: .5rem; }

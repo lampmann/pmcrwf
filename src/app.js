@@ -31,7 +31,7 @@ function runItemAutoLoad() {
    controls, file pickers), the modal dialogs (which own their own draft state and commit it
    explicitly), and the dice command line. Anything typed inside these neither feeds a derived number
    nor belongs in a save, so it skips the sheet-wide recompute+autosave — see the listener below. */
-const NON_SHEET_INPUTS = "#spell-library-body, #item-library-body, #mon-library-body, .modal-overlay, #cmd-input, #roll-mirror";
+const NON_SHEET_INPUTS = "#spell-library-body, #sb-search, #sb-filter-area, #item-library-body, #mon-library-body, .modal-overlay, #cmd-input, #roll-mirror";
 
 /* ---------- Init / wiring ---------- */
 function init() {
@@ -172,16 +172,8 @@ function init() {
   $("spell-lib-reload").addEventListener("click", runSpellAutoLoad);
   runSpellAutoLoad();
 
-  // Spell Library starts collapsed; the Spellcasting module's "+ Add Spell" opens it.
-  $("spell-lib-toggle").addEventListener("click", () => {
-    const open = $("spell-library-body").style.display === "none";
-    $("spell-library-body").style.display = open ? "" : "none";
-    if (open) {
-      refreshSpellAddClassSelect();
-      $("spell-search").focus();
-      $("spell-library-body").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  });
+  // Manage Spells opens the dialog holding your spell list, the slot table and the Spell Library.
+  $("spell-lib-toggle").addEventListener("click", () => { if (typeof openSpellManager === "function") openSpellManager(); });
 
   // ----- Equipment library wiring -----
   loadItemLib(); ITEM_FILTERS.load(); renderItemLibrary();

@@ -6,7 +6,9 @@ function profBonus() {
   const base = ov !== "" ? Number(ov) : (lvl < 1 ? 2 : Math.ceil(lvl / 4) + 1);
   return base + effFlat("profbonus");   // override sets the base; effects still add on top
 }
-function spellMod() { const ab = $("spell-ability").value; return ab ? abilityMod(ab) : 0; }
+// The default ability, or the first casting class's own when none is set (see spellbook.js).
+function spellAbility() { return $("spell-ability").value || (typeof defaultSpellAbility === "function" ? defaultSpellAbility() : ""); }
+function spellMod() { const ab = spellAbility(); return ab ? abilityMod(ab) : 0; }
 function spellAttackBonus() { return profBonus() + spellMod() + parseBonus($("spell-atk-misc").value).flat + effFlat("spellatk"); }
 function spellAttackDice() { return parseBonus($("spell-atk-misc").value).dice + effDice("spellatk"); }
 // One source of truth for the save DC, so the Routines module can show it for save-based spells.
@@ -85,6 +87,13 @@ function casterLevel() {
     if (casting === "third") return s + Math.floor(c.lvl / 3);
     return s;
   }, 0);
+}
+/* Pact Magic (PHB p107): a Warlock's slots are all one level and come back on a short rest. */
+const PACT_SLOTS = [[0,0],[1,1],[2,1],[2,2],[2,2],[2,3],[2,3],[2,4],[2,4],[2,5],[2,5],[3,5],[3,5],[3,5],[3,5],[3,5],[3,5],[4,5],[4,5],[4,5],[4,5]];
+function pactSlots() {
+  const lvl = getClasses().reduce((s, c) => s + (((c.casting === "auto" ? classCasting(c.name, c.sub) : c.casting) === "pact") ? c.lvl : 0), 0);
+  const [count, level] = PACT_SLOTS[Math.max(0, Math.min(20, lvl))];
+  return { count, level };
 }
 function autoSlots() { return MULTICLASS_SLOTS[Math.max(0, Math.min(20, casterLevel()))]; }
 function slotTotal(i) {
@@ -191,7 +200,7 @@ function recompute() {
   if (typeof renderConditionEffects === "function") renderConditionEffects();
   { const d = checkDice("init"); $("init").textContent = sign(checkBonus("init")) + (d ? " " + d : ""); }
   { const d = checkDice("ac"); $("ac").textContent = String(checkBonus("ac")) + (d ? " " + d : ""); }
-  const ab = $("spell-ability").value;
+  const ab = spellAbility();
   if (ab) {
     $("spell-dc").textContent = spellSaveDC();
     const ad = spellAttackDice();

@@ -176,6 +176,8 @@ function performRest(kind) {
     // any marks still on the tracker are stale by the time it finishes.
     if (typeof clearDeathSaves === "function" && clearDeathSaves()) notes.push("death saves cleared");
   }
+  // Pact Magic slots come back on any rest (PHB p107).
+  if ($("pact-used") && ($("pact-used").value || "").trim() !== "") { clearHpField("pact-used"); notes.push("pact slots restored"); }
   const recovered = applyRest(kind);   // feature-effect uses trackers (class-library.js) — also renders the Features panel
   if (recovered) notes.push(`${recovered} feature${recovered === 1 ? "" : "s"} recovered`);
   logEvent("rest", `<b>${kind === "lr" ? "Long Rest" : "Short Rest"}</b>` +

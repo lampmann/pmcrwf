@@ -56,7 +56,7 @@ const SOURCE_GROUP = {
   ToA:"adventure", VEoR:"adventure", WBtW:"adventure", WDH:"adventure", WDMM:"adventure", XMtS:"adventure",
 };
 function sourceGroupOf(src) { return SOURCE_GROUP[src] || "supplement"; }
-const LIB_SCHEMA = 6;  // bump when the parsed-spell shape changes (forces a one-time re-import)
+const LIB_SCHEMA = 7;  // bump when the parsed-spell shape changes (forces a one-time re-import)
 function castCat(u) { return (u === "action" || u === "bonus" || u === "reaction" || u === "minute" || u === "hour") ? u : ""; }
 // 5e.tools' Parser.SPELL_AREA_TYPE_TO_FULL — short area-of-effect shape codes from a spell's own
 // areaTags field (not every spell has one; single-target spells usually don't).
@@ -128,6 +128,70 @@ function spellDice(raw) {
   const m = txt.match(/{@damage ([^}|]+)}/i) || txt.match(/{@dice ([^}|]+)}/i);
   return m ? m[1].trim() : "";
 }
+/* ----- display fields for the Spellcasting table ----- */
+const SPELL_TIME_SHORT = { action: "A", bonus: "BA", reaction: "R" };
+const SPELL_UNIT_SHORT = { minute: "m", hour: "h", round: "rd", day: "d", turn: "turn" };
+function spellTimeStr(raw) {
+  const t = raw.time && raw.time[0]; if (!t) return "";
+  if (SPELL_TIME_SHORT[t.unit]) return (t.number > 1 ? t.number : "") + SPELL_TIME_SHORT[t.unit];
+  return (t.number || 1) + (SPELL_UNIT_SHORT[t.unit] || " " + t.unit);
+}
+function spellCastKind(raw) {
+  const u = raw.time && raw.time[0] && raw.time[0].unit;
+  return u === "action" || u === "bonus" || u === "reaction" ? u : "other";
+}
+function spellRangeStr(raw) {
+  const r = raw.range; if (!r) return "";
+  const d = r.distance || {};
+  const dist = d.type === "feet" ? d.amount + " ft" : d.type === "miles" ? d.amount + (d.amount === 1 ? " mile" : " miles") : "";
+  if (r.type === "special") return "Special";
+  if (r.type !== "point") return "Self" + (dist ? ` (${dist.replace(" ft", "-ft")} ${r.type})` : "");
+  if (d.type === "self") return "Self";
+  if (d.type === "touch") return "Touch";
+  if (d.type === "sight") return "Sight";
+  if (d.type === "unlimited") return "Unlimited";
+  return dist || "";
+}
+function spellDurationStr(raw) {
+  const du = raw.duration && raw.duration[0]; if (!du) return "";
+  if (du.type === "instant") return "Instant";
+  if (du.type === "permanent") return "Until dispelled";
+  if (du.type === "special") return "Special";
+  const d = du.duration || {};
+  const unit = { round: "rd", minute: "min", hour: "h", day: "d", week: "wk", year: "yr", turn: "turn" }[d.type] || d.type || "";
+  return (d.upTo ? "Up to " : "") + (d.amount || 1) + " " + unit;
+}
+/* The spell's own dice: {@damage X} for damage, {@dice X} for a healing spell, plus whether the
+   text adds "your spellcasting ability modifier" right after it. */
+function spellEffect(raw) {
+  const txt = flattenEntries(raw.entries);
+  const heal = (raw.miscTags || []).includes("HL");
+  const m = heal ? (/\{@dice ([^}|]+)\}([^.]{0,50})/i.exec(txt) || /\{@damage ([^}|]+)\}([^.]{0,50})/i.exec(txt))
+    : (/\{@damage ([^}|]+)\}([^.]{0,50})/i.exec(txt));
+  if (!m) return null;
+  return { dice: m[1].replace(/\s+/g, ""), addMod: /^\s*\+\s*your spellcasting ability modifier/i.test(m[2]),
+    kind: heal ? "healing" : ((raw.damageInflict || [])[0] || "") };
+}
+/* {@scaledamage 8d6|3-9|1d6} / {@scaledice 1d8|1-9|1d8}: the extra dice per slot level above the spell's. */
+function spellUpcastScale(raw) {
+  const txt = raw.entriesHigherLevel ? flattenEntries(raw.entriesHigherLevel) : "";
+  const m = /\{@scale(?:damage|dice) ([^|}]+)\|([^|}]+)\|([^}|]+)/i.exec(txt);
+  return m ? { per: m[3].trim(), step: /every two slot levels/i.test(txt) ? 2 : 1 } : null;
+}
+function spellUpcastText(raw) {
+  if (!raw.entriesHigherLevel) return "";
+  return stripTags(flattenEntries(raw.entriesHigherLevel))
+    .replace(/^at higher levels\.?\s*/i, "")
+    .replace(/^when you cast this spell using a spell slot of \S+ level or higher,\s*/i, "")
+    .replace(/\s*for (?:each|every) slot level above \S+?\./gi, " per slot level.")
+    .replace(/\s*for every two slot levels above \S+?\./gi, " per two slot levels.")
+    .replace(/^\w/, c => c.toUpperCase()).trim();
+}
+function spellCantripScaling(raw) {
+  const sc = raw.scalingLevelDice; if (!sc) return null;
+  const one = Array.isArray(sc) ? sc[0] : sc;
+  return one && one.scaling ? one.scaling : null;
+}
 function parseSpell(raw) {
   const comp = raw.components || {};
   return {
@@ -151,6 +215,15 @@ function parseSpell(raw) {
     classes: (raw.classes && raw.classes.fromClassList || []).map(c => c.name),
     text: stripTags(flattenEntries(raw.entries)),
     higher: raw.entriesHigherLevel ? stripTags(flattenEntries(raw.entriesHigherLevel)) : "",
+    timeStr: spellTimeStr(raw),
+    castKind: spellCastKind(raw),
+    rangeStr: spellRangeStr(raw),
+    durStr: spellDurationStr(raw),
+    material: raw.components && raw.components.m ? (typeof raw.components.m === "string" ? raw.components.m : (raw.components.m.text || "")) : "",
+    effect: spellEffect(raw),
+    upScale: spellUpcastScale(raw),
+    upText: spellUpcastText(raw),
+    cantripScale: spellCantripScaling(raw),
     // Tag-preserving versions of the above, kept only so the Spellcasting module can turn
     // {@damage}/{@dice} tags into click-to-roll links (see renderInlineSpellText in spellcasting.js).
     rawText: flattenEntries(raw.entries),
@@ -261,9 +334,13 @@ function renderSpellResults() {
     const key = (s.name + "|" + s.source).replace(/"/g, "&quot;");
     const sv = s.attack ? "atk" : s.save ? (s.save.slice(0, 3) + " sv") : "";
     const ban = (typeof banNote === "function") ? banNote("spell", s.name, s.source) : null;
-    const block = ban ? "" : spellAddBlock(s, addCls);
+    const added = spellAddedTo(s.name, addCls);
+    const block = ban || added ? "" : spellAddBlock(s, addCls);
+    const btn = added
+      ? `<button class="sp-lib-add sp-lib-remove" data-key="${key}" aria-label="remove from ${escapeHtml(addCls || "Other")}">-</button>`
+      : `<button class="sp-lib-add" data-key="${key}"${ban || block ? ` disabled title="${escapeHtml(ban || block)}"` : ' aria-label="add to sheet"'}>+</button>`;
     return `<tr${ban ? ' class="lib-banned"' : block ? ' class="lib-blocked"' : ""}>
-      <td><button class="sp-lib-add" data-key="${key}"${ban || block ? ` disabled title="${escapeHtml(ban || block)}"` : ' aria-label="add to sheet"'}>+</button></td>
+      <td>${btn}</td>
       <td class="c"><b>${s.level}</b></td>
       <td class="nm"><a class="sp-name-link" data-key="${key}">${s.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${s.school}</td>
@@ -323,9 +400,18 @@ function spellAddBlock(s, clsName) {
     return `not on the ${list.charAt(0).toUpperCase() + list.slice(1)} spell list`;
   return "";
 }
+/* Index of a spell already added by hand under a class ("" = Other), or -1. */
+function spellAddedIndex(name, cls) {
+  const n = String(name || "").toLowerCase();
+  return CHARACTER_SPELLS.findIndex(x => !x.grantSrc && (x.cls || "") === (cls || "") && x.name.toLowerCase() === n);
+}
+function spellAddedTo(name, cls) { return spellAddedIndex(name, cls) >= 0; }
+/* + adds the spell to the chosen class; once it's there the button reads - and takes it off again. */
 function addSpellFromLib(key) {
   const s = SPELL_LIB.find(x => (x.name + "|" + x.source) === key); if (!s) return;
   const cls = $("spell-add-class").value;
-  if (spellAddBlock(s, cls)) return;
-  addCharacterSpell(cls, s.level, s.name);
+  const at = spellAddedIndex(s.name, cls);
+  if (at >= 0) removeCharacterSpell(at);
+  else { if (spellAddBlock(s, cls)) return; addCharacterSpell(cls, s.level, s.name); }
+  renderSpellResults();
 }

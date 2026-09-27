@@ -95,24 +95,27 @@ function spellLineHtml(s, prepBox) {
    scroll's chosen one), counting an attunement item only while attuned. Returns [{ header, names }]. */
 function grantSpellName(n) { return String(n || "").split("|")[0].split("#")[0].trim(); }
 function derivedSpellGroups() {
+  // header -> { names: Map(lower -> name), meta }. meta.mode is "slot" (cast with your slots, like a
+  // domain spell) or "use" (the feature or item casts it); cls/ability pick the numbers it rolls with.
   const feat = new Map(), items = new Map();
-  const add = (map, header, raw) => {
+  const add = (map, header, raw, meta) => {
     const n = grantSpellName(raw); if (!n || !header) return;
-    if (!map.has(header)) map.set(header, new Map());
-    map.get(header).set(n.toLowerCase(), n);
+    if (!map.has(header)) map.set(header, { names: new Map(), meta });
+    map.get(header).names.set(n.toLowerCase(), n);
   };
   const free = (list, lvl) => flattenGrantedSpells(list).filter(g => g.spec === undefined && !g.expanded && g.minLevel <= lvl);
+  const blockAbility = list => { const b = (list || []).find(x => x && typeof x.ability === "string"); return b ? b.ability : ""; };
   if (typeof ciFindRace === "function") {
     const rec = ciFindRace((($("char-race") || {}).value || "").trim());
     if (rec) {
       const sub = ciFindRaceSub(rec, (($("char-subrace") || {}).value || "").trim());
       const src = sub && (sub.grantedSpells || []).length ? sub : (rec.grantedSpells || []).length ? rec : null;
-      if (src) free(src.grantedSpells, totalLevel()).forEach(g => add(feat, src.name, g.name));
+      if (src) free(src.grantedSpells, totalLevel()).forEach(g => add(feat, src.name, g.name, { mode: "use", ability: blockAbility(src.grantedSpells) }));
     }
   }
   if (typeof ciFindClass === "function") getClasses().forEach(c => {
     const rec = ciFindClass(c.name), sub = rec && typeof findSubByName === "function" ? findSubByName(rec, c.sub) : null;
-    if (sub && (sub.grantedSpells || []).length) free(sub.grantedSpells, c.lvl).forEach(g => add(feat, sub.name, g.name));
+    if (sub && (sub.grantedSpells || []).length) free(sub.grantedSpells, c.lvl).forEach(g => add(feat, sub.name, g.name, { mode: "slot", cls: c.name.trim() }));
   });
   if (typeof activeFeatures === "function") activeFeatures().forEach(f => {
     const entry = dbEntryFor(f);
@@ -122,18 +125,20 @@ function derivedSpellGroups() {
       if (eff.activation && eff.activation.kind === "choice" && !hasChoiceValue(f, eff.activation.choice)) return;
       let name = eff.value && eff.value.name;
       if (name && name.includes("{choice:")) name = name.replace(/\{choice:([a-zA-Z0-9_]+)\}/g, (_, id) => { const v = choiceValue(f, id); return (Array.isArray(v) ? v[0] : v) || ""; });
-      add(feat, f.name, name);
+      add(feat, f.name, name, { mode: "use", cls: (f.origin && f.origin.className) || "" });
     });
   });
   CHARACTER_ITEMS.forEach(it => {
     const lib = typeof findLibItemByName === "function" ? findLibItemByName(it.name) : null;
     if (lib && lib.reqAttune && !it.attuned) return;
-    [...((lib && lib.spells) || []), it.spell].forEach(n => add(items, it.name, n));
+    // A scroll or tattoo is cast with your own numbers; other items state their own DC in their text.
+    const meta = { mode: "use", item: true, own: !!(lib && lib.spellCarrier != null) };
+    [...((lib && lib.spells) || []), it.spell].forEach(n => add(items, it.name, n, meta));
   });
   // A spell already added by hand under a grant (older characters, or a click in Features) isn't listed twice.
   const manual = new Set(CHARACTER_SPELLS.filter(x => x.grantSrc).map(x => x.name.toLowerCase()));
-  const out = (map, kind) => [...map.entries()].map(([header, names]) => ({ header, kind,
-    names: [...names.values()].filter(n => kind === "item" || !manual.has(n.toLowerCase())) })).filter(g => g.names.length);
+  const out = (map, kind) => [...map.entries()].map(([header, g]) => ({ header, kind, meta: g.meta,
+    names: [...g.names.values()].filter(n => kind === "item" || !manual.has(n.toLowerCase())) })).filter(g => g.names.length);
   return [...out(feat, "feature"), ...out(items, "item")];
 }
 function derivedSpellLineHtml(name) {
@@ -144,6 +149,9 @@ function derivedSpellLineHtml(name) {
   return `<div><a class="feat-link sp2-link" data-name="${escapeHtml(shown)}"><b>${lib ? ordinalLevel(lib.level) : ""}</b> ${escapeHtml(shown)}</a> <span class="hint">${lib ? lib.source : ""}</span>${conc}</div>`;
 }
 function renderSpellList() {
+  if (typeof renderSpellbook === "function") renderSpellbook();
+  const info = $("pact-info");
+  if (info && typeof pactSlots === "function") { const p = pactSlots(); info.textContent = p.count ? `of ${p.count} (${ordinalLevel(p.level)} level)` : "none"; }
   const el = $("spell-feat-results"); if (!el) return;
   const classes = getClasses().filter(c => c.name.trim());
   const casters = classes.filter(c => classSpellAllowance(c));
