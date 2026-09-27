@@ -5,7 +5,7 @@ function evalArith(s) {
   try { const v = Function('"use strict"; return (' + s + ')')(); return typeof v === "number" && isFinite(v) ? v : null; }
   catch (e) { return null; }
 }
-function commitMath(el) {
+function commitMath(el, opts) {
   let raw = (el.value || "").trim();
   const allowEmpty = el.hasAttribute("data-allow-empty");
   const prev = Number(el.dataset.prev || 0);
@@ -16,7 +16,7 @@ function commitMath(el) {
   else { const a = evalArith(raw); val = a === null ? prev : a; }            // arithmetic, e.g. "30+5"
   const min = el.dataset.min !== undefined ? Number(el.dataset.min) : -Infinity;
   let max = el.dataset.max !== undefined ? Number(el.dataset.max) : Infinity;
-  if (el.dataset.maxFrom) {
+  if (el.dataset.maxFrom && !(opts && opts.skipMaxFrom)) {
     const f = $(el.dataset.maxFrom);
     const raw = f ? (f.value !== undefined ? f.value : f.textContent) : "";
     if (raw !== "" && !isNaN(Number(raw))) max = Math.min(max, Number(raw));
@@ -40,6 +40,8 @@ function enforceTotalLevelCap(changed) {
 function initMathFields() {
   document.querySelectorAll("[data-math]").forEach(el => {
     el.dataset.prev = (el.value !== "" && !isNaN(Number(el.value))) ? String(Number(el.value)) : "0";
-    if (el.value !== "") commitMath(el);
+    // A saved value was clamped when it was entered. On load the field a max comes from (Max HP,
+    // a slot total) hasn't been computed yet and still reads 0, so that clamp is skipped here.
+    if (el.value !== "") commitMath(el, { skipMaxFrom: true });
   });
 }

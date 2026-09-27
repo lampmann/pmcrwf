@@ -33,7 +33,7 @@ registerEffects({
   },
   "subclass|cleric|tempest domain|stormborn": {
     name: "Stormborn", sv: 1,
-    unsupported: [{ reason: "flying speed not modeled", tags: ["movement"] }],
+    effects: [{ target: "speed-fly", op: "tag", value: "equal to your walking speed, outdoors and not underground" }],
   },
 
   // ----- TRICKERY DOMAIN -----

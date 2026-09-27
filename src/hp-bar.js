@@ -5,7 +5,7 @@
    replacing them: #hp-cur and #hp-temp are still the persisted math
    fields everything else reads and writes (rests, Hit Dice, Death Ward,
    damage from the roller), so this file only sizes the fills. Colours
-   follow Risk of Rain 2: green health, yellow barrier, dark track. The
+   are solid Tango palette: green health, yellow temp HP, dark track. The
    temp bar sits above the health bar at a width proportional to temp/max.
 
    Resist / Immune / Vulnerable are hidden persisted fields holding comma
@@ -30,6 +30,8 @@ function hpFieldValue(el) {
   const v = (el.value || "").trim();
   return /^\d+(\.\d+)?$/.test(v) ? Number(v) : Number(el.dataset.prev || 0) || 0;
 }
+/* Temp HP past max HP stacks upward: a full-width yellow row per whole max, with the remainder on
+   top holding the number. */
 function renderHpBar() {
   const fill = document.getElementById("hp-fill"), tempBar = document.getElementById("hp-temp-bar");
   if (!fill && !tempBar) return;
@@ -37,10 +39,14 @@ function renderHpBar() {
   const cur = hpFieldValue(document.getElementById("hp-cur"));
   const temp = hpFieldValue(document.getElementById("hp-temp"));
   if (fill) fill.style.width = (max ? Math.max(0, Math.min(100, cur / max * 100)) : 0) + "%";
-  if (tempBar) {
-    tempBar.style.width = `max(3.2rem, ${max ? Math.min(100, temp / max * 100) : 0}%)`;
-    tempBar.classList.toggle("hp-temp-empty", !temp);
-  }
+  if (!tempBar) return;
+  let full = max ? Math.floor(temp / max) : 0, rest = max ? temp - full * max : 0;
+  if (full && !rest) { full--; rest = max; }
+  const shown = Math.min(full, 4);
+  tempBar.style.width = `max(3.2rem, ${max ? rest / max * 100 : 0}%)`;
+  tempBar.classList.toggle("hp-temp-empty", !temp);
+  const stack = document.getElementById("hp-temp-full");
+  if (stack && stack.children.length !== shown) stack.innerHTML = '<div class="hp-temp-bar"></div>'.repeat(shown);
 }
 
 function defValues(field) {

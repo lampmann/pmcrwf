@@ -589,18 +589,19 @@ button.linkish {
 #cr-body { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
 .cr-header, #cr-stepper, #cr-blocker, .cr-actions { flex-shrink: 0; }
 
-/* ----- health bar (src/hp-bar.js). Fixed Risk of Rain 2 colours, deliberately the same in every theme. ----- */
+/* ----- health bar (src/hp-bar.js). Solid Tango palette colours, the same in every theme. ----- */
 .hp-bars { margin: .2rem 0 .4rem; }
-.hp-bar, .hp-temp-bar { position: relative; height: 1.55rem; border: 1px solid #0b0b0b; box-shadow: 0 0 0 1px #4a4a4a;
-  display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; text-shadow: 0 1px 2px #000; }
-.hp-bar { background: #242424; margin-top: .25rem; }
-.hp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(#9be25e, #5fae2c); transition: width .15s ease; }
-.hp-temp-bar { background: linear-gradient(#ffe36e, #d9ad24); height: 1.2rem; transition: width .15s ease; }
-.hp-temp-bar.hp-temp-empty { background: #242424; opacity: .6; }
+.hp-bar, .hp-temp-bar { position: relative; height: 1.55rem; box-sizing: border-box; border: 1px solid #000; margin-top: .2rem;
+  display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.hp-bar { background: #2e3436; color: #fff; text-shadow: 0 1px 2px #000; }
+.hp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #4e9a06; transition: width .15s ease; }
+.hp-temp-bar { background: #edd400; color: #2e3436; transition: width .15s ease; }
+.hp-temp-bar.hp-temp-empty { background: #2e3436; color: #fff; }
+.hp-bars > .hp-temp-bar:first-child { margin-top: 0; }
 .hp-bar-text { position: relative; display: inline-flex; align-items: baseline; }
 .hp-bars input { font: inherit; color: inherit; background: transparent; border: 0; padding: 0; text-align: center; width: 3.2ch; field-sizing: content; min-width: 1.5ch; }
 .hp-bar-text #hp-cur { text-align: right; }
-.hp-bars input:focus { outline: 1px dotted #fff; }
+.hp-bars input:focus { outline: 1px dotted currentColor; }
 .hp-slash { margin: 0 .1rem; }
 /* ----- defence checklists (src/hp-bar.js) ----- */
 .def-manual { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; font-size: .85rem; }

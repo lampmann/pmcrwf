@@ -21,6 +21,16 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(hp.tempEmpty, false);
   const bars = await page.evaluate(() => [document.getElementById('hp-temp-bar'), document.querySelector('.hp-bar')].map(e => e.getBoundingClientRect().top));
   assert(bars[0] < bars[1], 'temp HP bar sits above the health bar');
+  // Temp HP past max stacks full rows under the remainder, all the same height as the health bar.
+  await page.evaluate(() => { const t = document.getElementById('hp-temp'); t.value = String(Number(document.getElementById('hp-max').textContent) * 2 + 3); commitMath(t); renderHpBar(); });
+  assert.equal(await page.locator('#hp-temp-full .hp-temp-bar').count(), 2);
+  const heights = await page.evaluate(() => [...document.querySelectorAll('.hp-temp-bar, .hp-bar')].map(e => e.offsetHeight));
+  assert.equal(new Set(heights).size, 1);
+  // A reload keeps current HP (it used to clamp to the not-yet-computed max of 0).
+  await page.evaluate(() => { saveState(); });
+  await page.reload();
+  await page.waitForFunction(() => !document.querySelector('#class-lib-autostatus').textContent.includes('loading'));
+  assert.equal(await page.locator('#hp-cur').inputValue(), '26');
 
   await page.locator('.dd-check[data-field="def-resist"] .dd-check-btn').click();
   await page.locator('.dd-check[data-field="def-resist"] input[value="fire"]').check();

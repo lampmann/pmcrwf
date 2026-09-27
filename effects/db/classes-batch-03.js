@@ -10,10 +10,12 @@ registerEffects({
       { target: "damage-bonus", op: "add", value: 1, when: { minLevel: 9 }, activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
       { target: "damage-bonus", op: "add", value: 1, when: { minLevel: 16 }, activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
       { target: "damage-bonus", op: "note", text: "melee Strength attacks only, while raging" },
+      { target: "resist-bludgeoning", op: "tag", value: "bludgeoning", activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
+      { target: "resist-piercing", op: "tag", value: "piercing", activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
+      { target: "resist-slashing", op: "tag", value: "slashing", activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
     ],
     uses: { max: 2, per: "lr" },
     unsupported: [
-      { reason: "resistance to bludgeoning/piercing/slashing while raging", tags: ["resistance", "conditional"] },
       { reason: "can't cast spells or concentrate on spells while raging", tags: ["spellcasting"] },
       { reason: "uses count scales at class levels 3/6/12/17 (the damage bonus itself is applied)", tags: ["scaling-uses"] },
     ],
@@ -21,9 +23,7 @@ registerEffects({
 
   "class|barbarian|unarmored defense": {
     name: "Unarmored Defense", sv: 1,
-    unsupported: [
-      { reason: "AC calculation (10 + DEX mod + CON mod) not modeled", tags: ["AC"] },
-    ],
+    effects: [{ target: "ac", op: "add", value: { mod: "con" }, when: { armor: ["none"] } }],
   },
 
   "class|barbarian|danger sense": {
@@ -222,8 +222,9 @@ registerEffects({
 
   "subclass|barbarian|path of the berserker|mindless rage": {
     name: "Mindless Rage", sv: 1,
-    unsupported: [
-      { reason: "immunity to charmed/frightened while raging; condition-specific immunity not modeled", tags: ["condition-immunity", "conditional"] },
+    effects: [
+      { target: "immune-charmed", op: "tag", value: "charmed", activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
+      { target: "immune-frightened", op: "tag", value: "frightened", activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
     ],
   },
 

@@ -171,6 +171,7 @@
 <script src="../effects/db/races-batch-08.js"></script>
 <script src="../effects/db/uses-classes.js"></script>
 <script src="../effects/db/uses-races.js"></script>
+<script src="../effects/db/optional-features.js"></script>
 <script src="../src/effects.js"></script>
 <script src="../src/effects-ui.js"></script>
 <script src="../src/spellcasting.js"></script>
@@ -2582,6 +2583,28 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("...and is reported separately", shieldWorn());
     assert("...which a shield predicate sees", whenSatisfied({ shield: true }));
     assert("...and its negation does not", !whenSatisfied({ shield: false }));
+    // Natural armour formulas add onto the unarmoured 10 + DEX the AC formula already gives.
+    {
+      const savedDexScore = $("score-dex").value;
+      $("score-dex").value = 14;
+      const acOf = key => EFFECTS_DB[key].effects.find(e => e.target === "ac");
+      const tortle = acOf("race|tortle|natural armor");
+      assertEqual("Tortle Natural Armor lands on a flat 17 whatever the DEX", 10 + abilityMod("dex") + evalValue({ origin: {} }, tortle.value), 17);
+      $("score-dex").value = 8;
+      assertEqual("...low DEX too", 10 + abilityMod("dex") + evalValue({ origin: {} }, tortle.value), 17);
+      assertEqual("...and only unarmoured", JSON.stringify(tortle.when), JSON.stringify({ armor: ["none"] }));
+      const mam = acOf("feat|medium armor master");
+      $("score-dex").value = 16;
+      assertEqual("Medium Armor Master adds 1 at DEX 16", evalValue({ origin: {} }, mam.value), 1);
+      $("score-dex").value = 20;
+      assertEqual("...still only 1 at DEX 20", evalValue({ origin: {} }, mam.value), 1);
+      $("score-dex").value = 14;
+      assertEqual("...and nothing at DEX 14", evalValue({ origin: {} }, mam.value), 0);
+      assertEqual("Monk Unarmored Defense needs no shield either", acOf("class|monk|unarmored defense").when.shield, false);
+      assert("Rage grants its resistances under the Raging toggle",
+        EFFECTS_DB["class|barbarian|rage"].effects.filter(e => /^resist-/.test(e.target) && e.activation && e.activation.id === "rage").length === 3);
+      $("score-dex").value = savedDexScore;
+    }
     CHARACTER_ITEMS = savedItems2; ITEM_LIB = savedLib2; $("class-rows").innerHTML = savedRows2;
 
     // --- the roller's proficiency test, which Reliable Talent's floor is gated on ---

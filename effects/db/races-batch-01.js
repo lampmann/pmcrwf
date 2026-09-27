@@ -96,7 +96,7 @@ registerEffects({
 
   "race|autognome|armored casing": {
     name: "Armored Casing", sv: 1,
-    unsupported: [{ reason: "AC bonus (13 + DEX when unarmored); AC target not yet wired", tags: ["ac"] }],
+    effects: [{ target: "ac", op: "add", value: 3, when: { armor: ["none"] } }],
   },
 
   "race|bugbear|long-limbed": {

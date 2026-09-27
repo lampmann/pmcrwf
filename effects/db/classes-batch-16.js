@@ -12,10 +12,6 @@ registerEffects({
     unsupported: [{ reason: "sorcery points are a spendable pool convertible to spell slots; the uses tracker counts discrete uses, not a point pool", tags: ["resource", "spell-slots"] }],
   },
 
-  "class|sorcerer|metamagic": {
-    name: "Metamagic", sv: 1,
-    unsupported: [{ reason: "Metamagic options live in 5e.tools' optional-features file, which isn't imported yet", tags: ["optional-features"] }],
-  },
 
   "class|sorcerer|magical guidance": {
     name: "Magical Guidance", sv: 1,
@@ -25,8 +21,10 @@ registerEffects({
   // ===== Draconic Bloodline =====
   "subclass|sorcerer|draconic bloodline|draconic resilience": {
     name: "Draconic Resilience", sv: 1,
-    effects: [{ target: "hpmax", op: "add", value: { level: "class", class: "@self" } }],
-    unsupported: [{ reason: "unarmored AC becomes 13 + DEX; AC isn't an effects target", tags: ["ac"] }],
+    effects: [
+      { target: "hpmax", op: "add", value: { level: "class", class: "@self" } },
+      { target: "ac", op: "add", value: 3, when: { armor: ["none"] } },
+    ],
   },
 
   "subclass|sorcerer|draconic bloodline|dragon ancestor": {

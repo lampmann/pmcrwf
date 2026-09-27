@@ -7,7 +7,7 @@ registerEffects({
 
   "class|monk|unarmored defense": {
     name: "Unarmored Defense", sv: 1,
-    unsupported: [{ reason: "AC calculation (10 + DEX mod + WIS mod) not yet supported", tags: ["ac"] }],
+    effects: [{ target: "ac", op: "add", value: { mod: "wis" }, when: { armor: ["none"], shield: false } }],
   },
 
   "class|monk|flurry of blows": {

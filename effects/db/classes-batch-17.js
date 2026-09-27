@@ -4,15 +4,9 @@
    spell level), so they're four separate keys, each with its own 1/long-rest
    tracker — that matches how the Features panel lists them.
 
-   Eldritch Invocations are the class's main customisation and can't be
-   converted at all yet: they live in 5e.tools' optional-features file, which
-   the sheet doesn't import (see DOCS.md). */
+   Eldritch Invocations are in optional-features.js. */
 registerEffects({
   // ===== Warlock (base class) =====
-  "class|warlock|eldritch invocations": {
-    name: "Eldritch Invocations", sv: 1,
-    unsupported: [{ reason: "invocations live in 5e.tools' optional-features file, which isn't imported yet - several of them (Agonizing Blast, Devil's Sight, ...) would otherwise be automatable", tags: ["optional-features"] }],
-  },
 
   "class|warlock|mystic arcanum (6th level)": {
     name: "Mystic Arcanum (6th Level)", sv: 1,

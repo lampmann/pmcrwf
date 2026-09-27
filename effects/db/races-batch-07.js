@@ -160,6 +160,9 @@ registerEffects({
   },
   "race|thri-kreen|chameleon carapace": {
     name: "Chameleon Carapace", sv: 1,
-    unsupported: [{ reason: "armor-class calculation (13 + DEX unarmored) + conditional stealth advantage; needs AC model", tags: ["ac", "advantage"] }],
+    effects: [
+      { target: "ac", op: "add", value: 3, when: { armor: ["none"] } },
+      { target: "situational-advantage", op: "tag", value: "on Stealth checks after matching your color to your surroundings" },
+    ],
   },
 });

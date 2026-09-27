@@ -151,10 +151,6 @@
       unsupported: [{ reason: "medium armor and scimitar proficiency; no proficiencies module", tags: ["proficiency", "equipment"] }],
     },
 
-    "subclass|bard|college of swords|fighting style": {
-      name: "Fighting Style", sv: 1,
-      unsupported: [{ reason: "Fighting Style options live in 5e.tools' optional-features file, which isn't imported yet", tags: ["optional-features"] }],
-    },
 
     "subclass|bard|college of swords|blade flourish": {
       name: "Blade Flourish", sv: 1,

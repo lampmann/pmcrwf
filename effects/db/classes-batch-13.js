@@ -41,10 +41,6 @@ registerEffects({
     ],
   },
 
-  "class|paladin|fighting style": {
-    name: "Fighting Style", sv: 1,
-    unsupported: [{ reason: "Fighting Style options live in 5e.tools' optional-features file, which isn't imported yet", tags: ["optional-features"] }],
-  },
 
   "class|paladin|extra attack": {
     name: "Extra Attack", sv: 1,

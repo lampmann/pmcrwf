@@ -30,10 +30,6 @@
       unsupported: [{ reason: "advantage on Survival to track and INT checks to recall lore about one creature type; no creature-type predicate", tags: ["conditional", "skills"] }],
     },
 
-    "class|ranger|fighting style": {
-      name: "Fighting Style", sv: 1,
-      unsupported: [{ reason: "Fighting Style options live in 5e.tools' optional-features file, which isn't imported yet", tags: ["optional-features"] }],
-    },
 
     "class|ranger|extra attack": {
       name: "Extra Attack", sv: 1,

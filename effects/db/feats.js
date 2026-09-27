@@ -143,27 +143,12 @@ registerEffects({
     ]
   },
   "feat|dungeon delver": {
-    "name": "Dungeon Delver",
-    "sv": 1,
-    "effects": [
-      {
-        "target": "skill-perception",
-        "op": "adv"
-      },
-      {
-        "target": "skill-investigation",
-        "op": "adv"
-      }
+    name: "Dungeon Delver", sv: 1,
+    effects: [
+      { target: "situational-advantage", op: "tag", value: "on Perception and Investigation checks to find secret doors" },
+      { target: "situational-advantage", op: "tag", value: "on saves to avoid or resist traps" },
+      { target: "resist-damage dealt by traps", op: "tag", value: "damage dealt by traps" },
     ],
-    "unsupported": [
-      {
-        "reason": "advantage on trap saves and trap damage resistance not modeled",
-        "tags": [
-          "trap-save",
-          "damage-resistance"
-        ]
-      }
-    ]
   },
   "feat|cohort of chaos": {
     "name": "Cohort of Chaos",
@@ -231,30 +216,14 @@ registerEffects({
     ]
   },
   "feat|dragon hide": {
-    "name": "Dragon Hide",
-    "sv": 1,
-    "unsupported": [
-      {
-        "reason": "AC calculation and natural-weapon attacks not modeled",
-        "tags": [
-          "ac",
-          "natural-weapon"
-        ]
-      }
-    ]
+    name: "Dragon Hide", sv: 1,
+    effects: [{ target: "ac", op: "add", value: 3, when: { armor: ["none"] } }],
+    unsupported: [{ reason: "retractable claws deal 1d4 + STR slashing as unarmed strikes; no unarmed strike model", tags: ["natural-weapon"] }],
   },
   "feat|dual wielder": {
-    "name": "Dual Wielder",
-    "sv": 1,
-    "unsupported": [
-      {
-        "reason": "AC modification and weapon-property effects not modeled",
-        "tags": [
-          "ac",
-          "weapon-property"
-        ]
-      }
-    ]
+    name: "Dual Wielder", sv: 1,
+    effects: [{ target: "ac", op: "add", value: 1, activation: { kind: "toggle", id: "dual", label: "Two melee weapons", default: false } }],
+    unsupported: [{ reason: "two-weapon fighting with non-light one-handed weapons, and drawing two at once; weapon properties aren't tracked", tags: ["weapon-property"] }],
   },
   "feat|durable": {
     "name": "Durable",
@@ -550,17 +519,12 @@ registerEffects({
     ]
   },
   "feat|infernal constitution": {
-    "name": "Infernal Constitution",
-    "sv": 1,
-    "unsupported": [
-      {
-        "reason": "damage resistance to cold/poison (not modeled); poison-condition advantage (condition-specific, not ability-based)",
-        "tags": [
-          "damage-resistance",
-          "conditional-save"
-        ]
-      }
-    ]
+    name: "Infernal Constitution", sv: 1,
+    effects: [
+      { target: "resist-cold", op: "tag", value: "cold" },
+      { target: "resist-poison", op: "tag", value: "poison" },
+      { target: "save-vs-poisoned", op: "tag", value: "poisoned" },
+    ],
   },
   "feat|keenness of the stone giant": {
     "name": "Keenness of the Stone Giant",
@@ -671,16 +635,12 @@ registerEffects({
     ]
   },
   "feat|medium armor master": {
-    "name": "Medium Armor Master",
-    "sv": 1,
-    "unsupported": [
-      {
-        "reason": "AC not modeled; conditional AC bonus and stealth mechanic require AC target",
-        "tags": [
-          "ac"
-        ]
-      }
-    ]
+    name: "Medium Armor Master", sv: 1,
+    // Medium armor's DEX cap rises from 2 to 3: at most +1, and only with DEX 16 or more.
+    effects: [
+      { target: "ac", op: "add", value: { min: [1, { max: [0, { sum: [{ mod: "dex" }, -2] }] }] }, when: { armor: ["medium"] } },
+      { target: "skill-stealth", op: "note", text: "medium armor imposes no Stealth disadvantage" },
+    ],
   },
   "feat|metamagic adept": {
     "name": "Metamagic Adept",

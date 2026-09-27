@@ -20,12 +20,8 @@ registerEffects({
 
   "race|tortle|natural armor": {
     name: "Natural Armor", sv: 1,
-    // Not a flat bonus — replaces the whole base-AC formula (flat 17, no DEX at
-    // all) rather than adding to it. "min"/"max" ops only clamp the *effects
-    // layer's own contribution*, not the combined final AC (add(17) would double
-    // up with armorClassAuto()'s already-computed base) — there's no "set/replace
-    // the base formula" op yet, so this stays unsupported.
-    unsupported: [{ reason: "base AC 17, no DEX - replaces the whole AC formula rather than adding to it; no override/replace op exists yet", tags: ["ac"] }],
+    // A flat 17 with no DEX: unarmored AC is already 10 + DEX, so add 7 - DEX. A shield still adds.
+    effects: [{ target: "ac", op: "add", value: { sum: [7, { mul: [-1, { mod: "dex" }] }] }, when: { armor: ["none"] } }],
   },
 
   "race|tortle|shell defense": {
