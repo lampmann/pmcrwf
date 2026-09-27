@@ -78,7 +78,36 @@ function isReservedTarget(t) { return /^(attack-|damage-)/.test(t) && !LIVE_ATTA
 let EFFECT_CHOICES = {};   // { fkey: { choiceId: value } }
 let EFFECT_TOGGLES = {};   // { "fkey|toggleId": true }
 
-function dbEntryFor(feature) { return feature.effKey ? EFFECTS_DB[feature.effKey] : null; }
+function dbEntryFor(feature) {
+  if (!feature.effKey) return null;
+  const base = EFFECTS_DB[feature.effKey] || null;
+  return feature.effKey.startsWith("feat|") ? featEntryWithAbility(feature.effKey, base) : base;
+}
+/* A half feat's +1 comes from the feat record's own `ability` field rather than being written into
+   the effects database feat by feat: a fixed increase ({ cha: 1 }) becomes an add on that score, a
+   choice ({ choose: { from, amount } }) becomes a pick of those abilities. An entry that already
+   raises a score itself (Resilient, Observant) is left as it is, so nothing counts twice. */
+const FEAT_ENTRY_CACHE = new Map();
+function featEntryWithAbility(key, base) {
+  const rec = typeof ciFindFeat === "function" ? ciFindFeat(key.slice(5)) : null;
+  const ab = rec && Array.isArray(rec.ability) ? rec.ability[0] : null;
+  if (!ab || (base && (base.effects || []).some(e => /^score-/.test(e.target)))) return base;
+  const hit = FEAT_ENTRY_CACHE.get(key);
+  if (hit && hit.rec === rec && hit.base === base) return hit.entry;
+  const choices = [], effects = [];
+  Object.entries(ab).forEach(([k, v]) => {
+    if (/^(str|dex|con|int|wis|cha)$/.test(k) && Number(v)) effects.push({ target: "score-" + k, op: "add", value: Number(v) });
+  });
+  if (ab.choose && Array.isArray(ab.choose.from) && ab.choose.from.length) {
+    const from = ab.choose.from.filter(a => /^(str|dex|con|int|wis|cha)$/.test(a));
+    choices.push({ id: "featability", kind: "pick", n: Math.max(1, Number(ab.choose.count) || 1), options: from, label: "+" + (Number(ab.choose.amount) || 1) + " to" });
+    effects.push({ target: "score-{choice:featability}", op: "add", value: Number(ab.choose.amount) || 1, activation: { kind: "choice", choice: "featability" } });
+  }
+  const entry = { name: (base && base.name) || rec.name, sv: 1, ...(base || {}),
+    choices: [...choices, ...((base && base.choices) || [])], effects: [...effects, ...((base && base.effects) || [])] };
+  FEAT_ENTRY_CACHE.set(key, { rec, base, entry });
+  return entry;
+}
 
 /* ----- limited-use ("N uses per rest") spec, declared on a DB entry as `uses: { max, per, delayed? }` —
    `max` is an ordinary value expression (see evalValue below), so "proficiency bonus" is

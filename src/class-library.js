@@ -19,8 +19,8 @@ const RACE_SCHEMA = 8;   // 8: senses; 7: keep language, weapon, tool and feat g
 // { raceName: { name, source, size:["S","M"], speed:30|{walk,fly,...}, entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
-const FEAT_SCHEMA = 2;   // 2: prefer 2014 records
-// { featName: { name, source, text } }
+const FEAT_SCHEMA = 3;   // 3: keep the ability increases; 2: prefer 2014 records
+// { featName: { name, source, text, ability } } - ability is 5e.tools' own list ([{ cha: 1 }], [{ choose: { from, amount } }])
 let FEAT_LIB = {};
 const BACKGROUND_SCHEMA = 2;   // 2: prefer 2014 records
 /* Backgrounds are imported like everything else — 5e.tools' own data/backgrounds.json, which most
@@ -338,7 +338,7 @@ function grantedSpellsHtml(spells, header, cls) {
   return `<div class="hint" style="margin:.15rem 0 .3rem 1.2rem">${escapeHtml(header)} spells${note}: ${links}</div>`;
 }
 function parseFeatFile(j) {
-  (j.feat || []).forEach(f => { if (!preferRulesRecord(FEAT_LIB[f.name], f)) return; FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)) }; });
+  (j.feat || []).forEach(f => { if (!preferRulesRecord(FEAT_LIB[f.name], f)) return; FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)), ability: Array.isArray(f.ability) ? f.ability : [] }; });
 }
 /* Backgrounds. 5e.tools stores the mechanical parts in the same "proficiencies" shapes the classes
    use — a flat list, or a { choose: { from, count } } block. Both are kept as-is and interpreted at

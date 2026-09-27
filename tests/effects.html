@@ -2198,6 +2198,24 @@ document.addEventListener("DOMContentLoaded", () => {
      The slot always existed and always offered a feat; taking the +2 instead was listed as a gained
      feature and left to you. Picks are stored as two slots because that IS the rule — the same
      ability twice is the +2, two different ones is +1 each, and neither needs a special case. */
+  // Half feats: the feat record's own `ability` field is the +1, not a hand-written entry per feat.
+  {
+    const savedFeatLib0 = FEAT_LIB;
+    FEAT_LIB = { Actor: { name: "Actor", source: "PHB", text: "x", ability: [{ cha: 1 }] },
+      Athlete: { name: "Athlete", source: "PHB", text: "x", ability: [{ choose: { from: ["str", "dex"], amount: 1 } }] },
+      Observant: { name: "Observant", source: "PHB", text: "x", ability: [{ choose: { from: ["int", "wis"], amount: 1 } }] },
+      Alert: { name: "Alert", source: "PHB", text: "x", ability: [] } };
+    const actor = dbEntryFor({ effKey: "feat|actor" });
+    assert("a fixed half feat adds to its score", actor.effects.some(e => e.target === "score-cha" && e.op === "add" && e.value === 1));
+    const athlete = dbEntryFor({ effKey: "feat|athlete" });
+    assertEqual("a choose half feat asks which score", JSON.stringify(athlete.choices[0].options), JSON.stringify(["str", "dex"]));
+    assert("...and adds to the pick", athlete.effects.some(e => e.target === "score-{choice:featability}"));
+    const obs = dbEntryFor({ effKey: "feat|observant" });
+    assertEqual("an entry that already raises a score isn't given a second +1",
+      obs.effects.filter(e => /^score-/.test(e.target)).length, 1);
+    assert("a feat with no increase is left alone", !(dbEntryFor({ effKey: "feat|alert" }).choices || []).some(c => c.id === "featability"));
+    FEAT_LIB = savedFeatLib0;
+  }
   {
     const savedFeatChoices = FEAT_CHOICES, savedAsi = ASI_CHOICES, savedStr = $("score-str").value;
     const savedClassLib3 = CLASS_LIB, savedFeatLib = FEAT_LIB;

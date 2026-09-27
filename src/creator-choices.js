@@ -341,7 +341,28 @@ function creatorAsiIncrease(ab) {
   });
   return n;
 }
-function creatorScoreWithAsi(ab) { return Math.min(30, creatorFinalScore(ab) + creatorAsiIncrease(ab)); }
+/* What the draft's feats (a racial feat, an ASI taken as a feat) add to a score: every score add in
+   their effects entries, including a half feat's own +1, with picks read from the draft. A feat can't
+   take a score past 20. The built character gets these through its effects, not its base scores. */
+function creatorFeatIncrease(ab) {
+  let n = 0;
+  if (typeof creatorFeatureList !== "function") return 0;
+  creatorFeatureList().filter(f => (f.effKey || "").startsWith("feat|")).forEach(f => {
+    const entry = dbEntryFor(f); if (!entry) return;
+    const picks = (CREATOR.effectChoices || {})[f.fkey] || {};
+    (entry.effects || []).forEach(e => {
+      if (e.op !== "add" || typeof e.value !== "number") return;
+      const m = /^score-(?:\{choice:([a-zA-Z0-9_]+)\}|(str|dex|con|int|wis|cha))$/.exec(e.target || ""); if (!m) return;
+      const hits = m[2] ? (m[2] === ab ? 1 : 0) : [].concat(picks[m[1]] || []).filter(v => v === ab).length;
+      n += hits * e.value;
+    });
+  });
+  return n;
+}
+function creatorScoreWithAsi(ab) {
+  const withAsi = creatorFinalScore(ab) + creatorAsiIncrease(ab);
+  return Math.min(30, withAsi + Math.min(creatorFeatIncrease(ab), Math.max(0, 20 - withAsi)));
+}
 function crAsiHtml() {
   const slots = crAsiSlots(); if (!slots.length) return "";
   const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
