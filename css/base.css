@@ -42,6 +42,14 @@ h2 { font-size: 1rem; margin: 0 0 .5rem; }
 .modules { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
 .module { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem .75rem; min-width: 240px; background: var(--bg); box-shadow: var(--module-shadow); }
 .module.wide { flex-basis: 100%; }
+/* A number that belongs in a module's title bar, pinned to its right edge (Passive Perception). In
+   the h2 so it stays visible when the module is folded. */
+.module > h2 .module-corner { float: right; font-size: .85rem; font-weight: normal; }
+/* Creator: one block per class in steps 2 and 4, and a line per feature choice. */
+.cr-classblock { margin-top: .5rem; padding-top: .3rem; border-top: 1px solid var(--border-hair); }
+.cr-classblock > div, .cr-feature-choice { margin-top: .2rem; }
+.cr-feature-choice label { margin-right: .5rem; }
+.optf-chosen { margin-left: 1.2rem; }
 table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 th, td { text-align: left; padding: 1px 4px; }
 /* Resizing a module adds room without spreading its controls across that room. */

@@ -73,13 +73,13 @@ const THIRD_CASTER_KNOWN = [null, 0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9,10,10,11
 // prepared at once; `spellbookMax`, only set for Wizard, is the separate (larger) known/spellbook pool
 // (PHB: 4 + 2 per level, i.e. spells the Wizard actually has *written down* — not counting scroll copies —
 // as distinct from how many of those it can have prepared on a given day).
-function classSpellAllowance(c) {
+function classSpellAllowance(c, modOf = abilityMod) {
   const name = (c.name || "").trim().toLowerCase(), sub = (c.sub || "").trim().toLowerCase(), lvl = Math.max(0, Math.min(20, c.lvl || 0));
   if (!lvl) return null;
   if (SUBCLASS_CASTING_STYLE[sub]) return { style: "known", max: THIRD_CASTER_KNOWN[lvl] || 0 };
   const style = CASTING_STYLE[name];
   if (!style) return null;
-  const abilMod = abilityMod(CASTING_ABILITY[name]);
+  const abilMod = modOf(CASTING_ABILITY[name]);
   if (style === "known") { const t = SPELLS_KNOWN_TABLE[name]; return t ? { style, max: t[lvl] || 0 } : null; }
   const base = HALF_PREPARED_CLASSES.includes(name) ? Math.floor(lvl / 2) : lvl;
   const result = { style, max: Math.max(1, base + abilMod) };
@@ -105,6 +105,19 @@ function classCantripsKnown(c) {
   if (SUBCLASS_CASTING_STYLE[sub]) return THIRD_CASTER_CANTRIPS[lvl] || 0;
   const t = CANTRIPS_KNOWN_TABLE[name];
   return t ? (t[lvl] || 0) : 0;
+}
+
+/* The highest spell level a class can learn or prepare at a given class level, as if single-classed
+   (PHB p164: known and prepared spells are worked out per class). 0 means no spells yet. */
+function classMaxSpellLevel(c) {
+  const name = (c.name || "").trim().toLowerCase(), sub = (c.sub || "").trim().toLowerCase(), lvl = Math.max(0, Math.min(20, c.lvl || 0));
+  if (!lvl) return 0;
+  if (SUBCLASS_CASTING_STYLE[sub]) return lvl < 3 ? 0 : lvl < 7 ? 1 : lvl < 13 ? 2 : lvl < 19 ? 3 : 4;
+  if (name === "warlock") return Math.min(5, Math.ceil(lvl / 2));
+  if (name === "artificer") return Math.min(5, Math.ceil(Math.ceil(lvl / 2) / 2));
+  if (name === "paladin" || name === "ranger") return lvl < 2 ? 0 : Math.min(5, Math.ceil(Math.ceil(lvl / 2) / 2));
+  if (CASTING_STYLE[name]) return Math.min(9, Math.ceil(lvl / 2));
+  return 0;
 }
 
 /* Coin values in gp-equivalent, per SRD exchange rates. */

@@ -34,6 +34,16 @@ function spellMatchesFilterSpec(sp, spec) {
   return true;
 }
 
+/* How a pick option reads in a dropdown: skill slugs ("animalhandling") as the skill's name, ability
+   keys as the ability's name, anything else as written. Pick lists sort by this. */
+function choiceOptionLabel(o) {
+  const s = String(o);
+  const skill = (typeof SKILLS !== "undefined") && SKILLS.find(x => x[0].toLowerCase().replace(/[^a-z]/g, "") === s);
+  if (skill) return skill[0];
+  const ab = (typeof ABILITIES !== "undefined") && ABILITIES.find(a => a.key === s);
+  return ab ? ab.name : s;
+}
+
 /* ----- inline controls: toggle / choice / always-on chip / unsupported marker, appended after
    a feature's uses-tracker in the Features panel (class-library.js's renderRaceSection/renderClassFeatures) ----- */
 function renderEffectControls(feature) {
@@ -88,7 +98,9 @@ function renderEffectControls(feature) {
       for (let i = 0; i < n; i++) {
         const cur = curArr[i] || "";
         const others = curArr.filter((v, j) => j !== i && v);
-        const opts = (c.options || []).filter(o => !others.includes(o)).map(o => `<option value="${o}"${cur === o ? " selected" : ""}>${escapeHtml(String(o))}</option>`).join("");
+        const opts = (c.options || []).filter(o => !others.includes(o))
+          .map(o => ({ o, label: choiceOptionLabel(o) })).sort((a, b) => a.label.localeCompare(b.label))
+          .map(({ o, label }) => `<option value="${o}"${cur === o ? " selected" : ""}>${escapeHtml(label)}</option>`).join("");
         selects += `<select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"${n > 1 ? ` data-slot="${i}"` : ""}><option value="">-</option>${opts}</select> `;
       }
       html += ` <label class="hint">${escapeHtml(c.label || "choice")}: ${selects}</label>`;

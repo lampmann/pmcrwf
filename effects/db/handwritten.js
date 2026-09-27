@@ -79,7 +79,7 @@ registerEffects({
      plainly what to do if you took the other branch. Leaving the picker empty costs nothing. */
   "race|custom lineage|variable trait": {
     name: "Variable Trait", sv: 1,
-    choices: [{ id: "skill", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Skill proficiency (or leave empty for darkvision)" }],
+    choices: [{ id: "skill", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Skill (none = darkvision)" }],
     effects: [
       { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" } },
     ],

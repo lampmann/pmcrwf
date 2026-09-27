@@ -28,7 +28,7 @@ function validateCharacterState(state) {
     if (state[key] == null) continue;
     if (!Array.isArray(state[key]) || !state[key].every(isRecord)) invalid(`${key} must be a list of objects`);
   }
-  for (const key of ["featChoices", "asiChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
+  for (const key of ["featChoices", "asiChoices", "optFeatureChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
     if (state[key] != null && !isRecord(state[key])) invalid(`${key} must be an object`);
   }
   for (const key of ["weapons", "tools", "languages"]) {
@@ -58,6 +58,7 @@ function collectState() {
     combat: (typeof COMBAT !== "undefined" ? COMBAT : null),   // the round tracker, so a fight survives a reload
     boons: (typeof BOONS !== "undefined" ? BOONS : null),      // Guidance/Resistance/Death Ward counts (src/boons.js)
     featChoices: FEAT_CHOICES, asiChoices: ASI_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
+    optFeatureChoices: (typeof OPTFEATURE_CHOICES !== "undefined" ? OPTFEATURE_CHOICES : {}),
     skillOrder: (typeof currentSkillOrder === "function" ? currentSkillOrder() : []),
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
   };
@@ -78,6 +79,7 @@ function applyState(state) {
   };
   FEAT_CHOICES = state.featChoices || {};
   ASI_CHOICES = state.asiChoices || {};
+  if (typeof OPTFEATURE_CHOICES !== "undefined") OPTFEATURE_CHOICES = state.optFeatureChoices || {};
   // The row order is the character's, so it follows a tab switch and an export (see rows.js).
   if (typeof applySkillOrder === "function") applySkillOrder(state.skillOrder || []);
   USES_STATE = state.usesState || {};

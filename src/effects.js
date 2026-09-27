@@ -61,6 +61,7 @@ function effKeyFor(origin, name) {
   if (!n) return null;
   switch (origin.kind) {
     case "feat": return "feat|" + n;
+    case "optfeature": return "optfeature|" + n;
     case "race": return "race|" + origin.raceName.trim().toLowerCase() + "|" + n;
     case "subrace": return "subrace|" + origin.subraceName.trim().toLowerCase() + "|" + n;
     case "class": return "class|" + origin.className.trim().toLowerCase() + "|" + n;

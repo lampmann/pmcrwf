@@ -48,7 +48,8 @@ const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 const POINT_COST = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
 const POINT_BUY_BUDGET = 27;
 const CREATOR_ABILITIES = ["str", "dex", "con", "int", "wis", "cha"];
-const CREATOR_STEPS = ["Race", "Class", "Ability Scores", "Description", "Equipment"];
+const CREATOR_STEPS = ["Race", "Class", "Ability Scores", "Spells", "Description", "Equipment"];
+const CR_STEP = { race: 1, cls: 2, scores: 3, spells: 4, desc: 5, equip: 6 };
 const SIZE_NAMES = { T: "Tiny", S: "Small", M: "Medium", L: "Large", H: "Huge", G: "Gargantuan", V: "Varies" };
 
 /* Wizard state. Rebuilt from scratch on every open — a half-finished character is never persisted,
@@ -82,6 +83,12 @@ function blankCreator() {
     startGold: null, goldAveraged: false,                // starting gold, rolled or averaged, when equipMode === "gold"
     higherLevel: false, campaignMagic: "standard",       // DMG p38, characters starting above 1st level
     higherGold: null, higherRoll: null,
+    // See creator-choices.js for all of these.
+    picks: {},                                           // "skills:Fighter" | "tools:Monk" | "langs:race" | "tools:race" -> [one value per slot]
+    effectChoices: {},                                   // fkey -> { choiceId: value }, the sheet's EFFECT_CHOICES shape
+    optChoices: {},                                      // optional-feature group key -> [names], the sheet's OPTFEATURE_CHOICES shape
+    asiFeats: {}, asiScores: {},                         // ASI fkey -> feat name | [ability, ability]
+    spells: {},                                          // class name -> { cantrips, spells, prepared }
   };
 }
 
@@ -368,16 +375,17 @@ function raceFeatHtml() {
   // Feats can be switched off entirely for a campaign (src/house-rules.js). Say so rather than
   // offering a box whose contents the rest of the sheet would then ignore.
   if (typeof hrSetting === "function" && hrSetting("feats") === false) {
-    return `<div style="margin-top:.4rem"><b>Feat</b>
-      <span class="hint">this race grants one, but feats are off in this campaign's House Rules.</span></div>`;
+    return `<div style="margin-top:.4rem"><b>Feat</b> <span class="hint">off in this campaign's House Rules</span></div>`;
   }
   const rows = slots.map(s => `<label class="cr-racefeat-slot">${escapeHtml(s.entry)}:
     ${creatorCombo("cr-racefeat-" + s.entry.replace(/[^a-z0-9]/gi, ""), CREATOR.raceFeats[s.entry] || "",
       filteredNames("feat", FEAT_LIB, CREATOR.raceFeats[s.entry] || ""), "type to search", "", "", "feat")}
     </label>`).join(" ");
-  return `<div style="margin-top:.4rem"><b>Feat</b>
-    <span class="hint">this race grants one &mdash; it goes on the sheet's Features module too</span>
-    <div style="margin-top:.2rem">${rows}</div></div>`;
+  const choices = slots.map(s => {
+    const f = (typeof creatorFeatureList === "function" ? creatorFeatureList() : []).find(x => x.isRaceFeat && x.featSlotName === s.entry);
+    return f && (CREATOR.raceFeats[s.entry] || "").trim() && typeof crChoicesHtml === "function" ? crChoicesHtml(f) : "";
+  }).join("");
+  return `<div style="margin-top:.4rem"><b>Feat</b> ${rows}${choices}</div>`;
 }
 
 /* Size. Most races are one size; a few (Dhampir, Fairy, and the other MPMM "Small or Medium" races)
@@ -475,8 +483,9 @@ function higherLevelBand(level) { return HIGHER_LEVEL_START.find(b => level >= b
    Each step returns plain HTML; the shell wires the shared Back/Next/Create controls, so a step only
    has to describe its own fields and its own validity (see creatorStepBlockerFor). */
 
+function creatorShownScore(ab) { return typeof creatorScoreWithAsi === "function" ? creatorScoreWithAsi(ab) : creatorFinalScore(ab); }
 function creatorFinalCell(ab) {
-  const final = creatorFinalScore(ab);
+  const final = creatorShownScore(ab);
   return `= <b>${final}</b> <span class="hint">(${sign(mod(final))})</span>`;
 }
 
@@ -495,6 +504,8 @@ function creatorStepHtml() {
       ${racialAsiHtml()}
       ${raceSizeHtml()}
       ${raceFeatHtml()}
+      ${typeof crRaceProfHtml === "function" ? crRaceProfHtml() : ""}
+      ${typeof crStepChoicesHtml === "function" ? crStepChoicesHtml(1) : ""}
       ${raceTraitsHtml()}
     </div>`;
   }
@@ -504,9 +515,12 @@ function creatorStepHtml() {
     const rows = c.classes.map((row, i) => {
       const rec = ciFindClass(row.name);
       const hd = row.name ? classHitDie(row.name) : "";
+      // A class grants its subclass at a set level (Cleric 1, Wizard 2, Fighter 3...). Below it there
+      // is nothing to choose.
+      const subLocked = rec && rec.subLevel && (Number(row.lvl) || 0) < rec.subLevel;
       return `<tr>
         <td>${creatorRowCombo("cr-cls", i, row.name, filteredNames("class", CLASS_LIB, row.name), "type to search", "class")}</td>
-        <td>${creatorRowCombo("cr-sub", i, row.sub, subNames(rec), "no subclass", "subclass", rec ? rec.name + ": " : "")}</td>
+        <td>${subLocked ? `<span class="hint">at level ${rec.subLevel}</span>` : creatorRowCombo("cr-sub", i, row.sub, subNames(rec), "no subclass", "subclass", rec ? rec.name + ": " : "")}</td>
         <td><input type="number" class="tiny cr-lvl" data-crrow="${i}" min="1" max="20" value="${row.lvl}"></td>
         <td class="hint">${hd || ""}</td>
         <td>${c.classes.length > 1 ? `<button type="button" class="cr-cls-del" data-crrow="${i}" aria-label="remove this class">&times;</button>` : ""}</td>
@@ -534,6 +548,7 @@ function creatorStepHtml() {
           const ok = meetsMcRequirement(rec.mcReq, creatorFinalScore);
           return `${escapeHtml(r.name)}: <b class="${ok ? "cr-ok" : "cr-over"}">${escapeHtml(mcRequirementText(rec.mcReq))}</b>`;
         }).join(" | ")}</div>${fails.length ? "" : `<div>All prerequisites met.</div>`}</div>` : ""}
+      ${typeof crClassesHtml === "function" ? crClassesHtml() : ""}
     </div>`;
   }
 
@@ -568,8 +583,9 @@ function creatorStepHtml() {
         control = `<input type="number" class="tiny cr-manual" data-ab="${ab}" min="1" max="30" value="${c.scores[ab]}">`;
       }
       const inc = racialIncrease(ab);
+      const asi = typeof creatorAsiIncrease === "function" ? creatorAsiIncrease(ab) : 0;
       return `<tr><td>${ab.toUpperCase()}</td><td>${control}</td>
-        <td class="hint">${inc ? `+${inc} racial` : ""}</td>
+        <td class="hint">${[inc ? `+${inc} racial` : "", asi ? `+${asi} ASI` : ""].filter(Boolean).join(", ")}</td>
         <td id="cr-final-${ab}">${creatorFinalCell(ab)}</td></tr>`;
     }).join("");
     return `<div class="cr-step"><b>Step 3 | Determine Ability Scores</b>
@@ -583,13 +599,20 @@ function creatorStepHtml() {
       <table class="cr-scores">${rows}</table>
       <div style="margin-top:.5rem"><b>Racial increases</b> </div>
       ${racialAsiHtml()}
+      ${typeof crAsiHtml === "function" ? crAsiHtml() : ""}
     </div>`;
   }
 
-  if (c.step === 4) {
+  if (c.step === CR_STEP.spells) {
+    return `<div class="cr-step"><b>Step 4 | Choose Spells</b>
+      ${typeof crSpellsStepHtml === "function" ? crSpellsStepHtml() : ""}
+    </div>`;
+  }
+
+  if (c.step === CR_STEP.desc) {
     const bgs = filteredNames("background", BACKGROUND_LIB, c.background);
     const rec = !c.customBg ? ciFindBackground(c.background) : null;
-    return `<div class="cr-step"><b>Step 4 | Describe Your Character</b>
+    return `<div class="cr-step"><b>Step 5 | Describe Your Character</b>
 
       ${sourceFilterHtml("background", BACKGROUND_LIB)}
       <label>Name <input type="text" id="cr-name" value="${escapeHtml(c.name)}" style="width:14rem"></label>
@@ -657,7 +680,7 @@ function chooseBlocks(list, kind) {
           const name = String(x).replace(/\|.*/, "");
           return kind === "tools" && categories[name.toLowerCase()] ? proficiencyOptions(kind, categories[name.toLowerCase()]) : [name];
         });
-        out.push({ count: v.count || 1, from: [...new Set(from)] });
+        out.push({ count: v.count || 1, from: [...new Set(from)].sort((a, b) => a.localeCompare(b)) });
       } else if (kind && /^any/.test(k) && Number.isInteger(v) && v > 0) {
         out.push({ count: v, from: proficiencyOptions(kind, k) });
       }
@@ -669,6 +692,8 @@ function bgChooseHtml(rec, kind) {
   const blocks = chooseBlocks(rec[kind], kind);
   if (!blocks.length) return "";
   const picked = (CREATOR.bgChoices && CREATOR.bgChoices[kind]) || [];
+  const classSkills = kind === "skills" && CREATOR.picks
+    ? Object.keys(CREATOR.picks).filter(k => k.startsWith("skills:")).flatMap(k => CREATOR.picks[k].filter(Boolean)).map(x => x.toLowerCase()) : [];
   let slot = 0;
   const rows = blocks.map(b => {
     const sels = [];
@@ -677,7 +702,8 @@ function bgChooseHtml(rec, kind) {
       const cur = picked[idx] || "";
       sels.push(`<select class="cr-bgchoose" data-bgkind="${kind}" data-bgslot="${idx}">` +
         `<option value=""${cur ? "" : " selected"}>- choose -</option>` +
-        b.from.map(o => `<option value="${escapeHtml(o)}"${o === cur ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") +
+        b.from.filter(o => o === cur || !classSkills.includes(String(o).toLowerCase()))
+          .map(o => `<option value="${escapeHtml(o)}"${o === cur ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") +
         `</select>`);
     }
     return sels.join(" ");
@@ -736,7 +762,7 @@ function creatorStep5Html() {
     return `<div style="margin:.15rem 0">${opt("a")}${opt("b")}</div>`;
   }).join("") : `<div class="hint">No starting equipment loaded.</div>`;
 
-  return `<div class="cr-step"><b>Step 5 | Choose Equipment</b>
+  return `<div class="cr-step"><b>Step 6 | Choose Equipment</b>
     <div class="hint">${
       // R35: the open-ended picks are exactly where this ruling bites, so it's stated here rather
       // than left in the rules reference. The sheet can't police it - it never learns which
@@ -775,7 +801,7 @@ function creatorStep5Html() {
     <div style="margin-top:.6rem">Ready to create:
       <b>${escapeHtml(c.name || "unnamed")}</b>, ${escapeHtml(c.race || "no race")}${c.subrace ? ` (${escapeHtml(c.subrace)})` : ""},
       ${classTxt}${c.background ? `, ${escapeHtml(c.background)}${c.customBg ? " (custom)" : ""}` : ""}</div>
-    <div class="hint">${CREATOR_ABILITIES.map(ab => `${ab.toUpperCase()} ${creatorFinalScore(ab)}`).join(" | ")}</div>
+    <div class="hint">${CREATOR_ABILITIES.map(ab => `${ab.toUpperCase()} ${creatorShownScore(ab)}`).join(" | ")}</div>
     ${hp != null ? `<div class="hint">Level 1 HP: ${HIT_DIE_MAX[hd]} ${sign(conMod)} CON = <b>${Math.max(1, hp)}</b></div>` : ""}
   </div>`;
 }
@@ -802,7 +828,7 @@ function creatorStepBlockerFor(step) {
     const total = creatorTotalLevel();
     if (c.classes.some(r => (Number(r.lvl) || 0) < 1)) return "Every class needs at least 1 level.";
     if (total > 20) return `Total level is ${total} - the cap is 20.`;
-    const fails = mcFailures(c.classes, creatorFinalScore);
+    const fails = mcFailures(c.classes, creatorShownScore);
     if (fails.length) return `Multiclassing needs ${fails.map(f => `${f.need} for ${f.name}`).join("; ")}.`;
   }
   if (step === 3) {
@@ -812,7 +838,8 @@ function creatorStepBlockerFor(step) {
       if (!CREATOR_ABILITIES.every(ab => c.assign[ab] != null)) return "Assign every number to an ability.";
     }
   }
-  if (step === 5 && c.equipMode === "gold" && startingGoldDice() && c.startGold == null) return "Roll your starting gold, or take the equipment package.";
+  if (step === CR_STEP.equip && c.equipMode === "gold" && startingGoldDice() && c.startGold == null) return "Roll your starting gold, or take the equipment package.";
+  if (typeof creatorChoiceBlocker === "function") { const more = creatorChoiceBlocker(step); if (more) return more; }
   return "";
 }
 function creatorStepValid(step) { return !creatorStepBlockerFor(step == null ? CREATOR.step : step); }
@@ -821,7 +848,7 @@ function creatorStepBlocker() { return creatorStepBlockerFor(CREATOR.step); }
 /* The first problem anywhere in the wizard, so Create can explain itself from whichever step you
    happen to be standing on. */
 function creatorFirstBlocker() {
-  for (let s = 1; s <= 5; s++) { const b = creatorStepBlockerFor(s); if (b) return { step: s, msg: b }; }
+  for (let s = 1; s <= CREATOR_STEPS.length; s++) { const b = creatorStepBlockerFor(s); if (b) return { step: s, msg: b }; }
   return null;
 }
 
@@ -839,7 +866,7 @@ function creatorStepperHtml() {
 function renderCreatorChrome() {
   $("cr-stepper").innerHTML = creatorStepperHtml();
   $("cr-back").disabled = CREATOR.step === 1;
-  const last = CREATOR.step === 5;
+  const last = CREATOR.step === CREATOR_STEPS.length;
   $("cr-next").style.display = last ? "none" : "";
   $("cr-create").style.display = last ? "" : "none";
   const here = creatorStepBlocker();
@@ -873,7 +900,7 @@ function renderCreatorKeepingFocus(el) {
 }
 
 function goToCreatorStep(n) {
-  if (!CREATOR || n < 1 || n > 5 || n === CREATOR.step) return;
+  if (!CREATOR || n < 1 || n > CREATOR_STEPS.length || n === CREATOR.step) return;
   CREATOR.step = n;
   renderCreator();
 }
@@ -1011,15 +1038,20 @@ function creatorBuildState() {
     if (SKILLS.some(s => s[0].toLowerCase().replace(/[^a-z]/g, "") === slug)) fields["skillprof-" + slug] = true;
   });
 
-  return {
+  const built = {
     v: 1, effectsSv: 1, fields,
-    classes: rows.map(r => ({ name: r.name, sub: r.sub, lvl: r.lvl, hitDie: "auto", casting: "auto" })),
+    classes: rows.map(r => {
+      const rec = ciFindClass(r.name);
+      const locked = rec && rec.subLevel && (Number(r.lvl) || 0) < rec.subLevel;
+      return { name: r.name, sub: locked ? "" : r.sub, lvl: r.lvl, hitDie: "auto", casting: "auto" };
+    }),
     spells: [], items: creatorStartingItems(), attacks: [], routines: [],
     featChoices: creatorRaceFeatChoices(), usesState: {}, hdState: {},
     effectChoices: {}, effectToggles: {},
     proficiencies: prof,
     concentrating: null,
   };
+  return typeof creatorApplyChoices === "function" ? creatorApplyChoices(built) : built;
 }
 
 /* The racial feat, in the shape the Features module reads it back out of: keyed by the same fkey
@@ -1126,10 +1158,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (t.id === "cr-name") { CREATOR.name = t.value; return; }
 
     if (t.classList.contains("cr-lvl")) {
+      // Redrawn (with the caret kept) rather than patched: the subclass box, class skills, optional
+      // features, ASI slots and spell counts all change with level. Empty mid-edit is left alone.
+      if (t.value === "") return;
       CREATOR.classes[Number(t.dataset.crrow)].lvl = Math.max(1, Math.min(20, Number(t.value) || 1));
-      const total = creatorTotalLevel(), tot = $("cr-total-level");
-      if (tot) { tot.textContent = total; tot.className = total > 20 ? "cr-over" : ""; }
-      renderCreatorChrome(); return;
+      renderCreatorKeepingFocus(t); return;
     }
     if (t.classList.contains("cr-manual")) {
       const ab = t.dataset.ab;

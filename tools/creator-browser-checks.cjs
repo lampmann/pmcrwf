@@ -90,14 +90,14 @@ module.exports = async function checkCreator(page) {
   assert.equal(await page.locator('#cr-subrace').inputValue(), '');
 
   // Clicking the backdrop or pressing Escape cannot discard a draft.
-  await page.locator('[data-crstep="4"]').click();
+  await page.locator('[data-crstep="5"]').click();
   await page.locator('#cr-name').fill('Keep this draft');
   await page.locator('#creator-modal').click({ position: { x: 2, y: 2 } });
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('#cr-name').inputValue(), 'Keep this draft');
   const box = await page.locator('#creator-modal .modal-box').boundingBox();
   const tabs = await page.locator('#cr-stepper').boundingBox();
-  for (const step of [1, 2, 3, 4, 5]) {
+  for (const step of [1, 2, 3, 4, 5, 6]) {
     await page.locator(`[data-crstep="${step}"]`).click();
     assert.deepEqual(await page.locator('#creator-modal .modal-box').boundingBox(), box);
     assert.deepEqual(await page.locator('#cr-stepper').boundingBox(), tabs);
@@ -115,7 +115,7 @@ module.exports = async function checkCreator(page) {
   assert.equal(await page.locator('[data-src="PHB"]').getAttribute('title'), null);
   assert.deepEqual(await page.locator('#creator-modal .modal-box').boundingBox(), box);
 
-  await page.evaluate(() => { CREATOR.background = 'Acolyte'; goToCreatorStep(4); });
+  await page.evaluate(() => { CREATOR.background = 'Acolyte'; goToCreatorStep(CR_STEP.desc); });
   assert.equal(await page.locator('[data-bgkind="languages"]').count(), 2);
   assert.deepEqual(await page.locator('[data-bgkind="languages"]').first().locator('option').allTextContents(), ['- choose -', 'Common', 'Elvish']);
   await page.locator('[data-bgkind="languages"]').nth(0).selectOption('Common');

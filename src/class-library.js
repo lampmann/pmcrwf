@@ -10,11 +10,12 @@
    the character (see persistence.js), not just cached locally, since it's
    a character choice, not imported data.
    ============================================================ */
-const CLASS_SCHEMA = 3;   // 3: prefer 2014 records and keep class features within their edition
+const CLASS_SCHEMA = 4;   // 4: keep saves, starting/multiclass proficiencies and optional-feature progressions
 // { className: { name, source, hd, caster, feats:[{name,level,source,text}],
-//                mcReq, startEq, subs:{ shortName:{name,shortName,source,feats:[...]} } } }
+//                mcReq, startEq, saves, startProf, mcProf, optProg,
+//                subs:{ shortName:{name,shortName,source,feats:[...],optProg} } } }
 let CLASS_LIB = {};
-const RACE_SCHEMA = 6;   // 6: prefer 2014 records; earlier versions added ability, size, speed and named base subraces
+const RACE_SCHEMA = 7;   // 7: keep language, weapon, tool and feat grants; earlier versions added ability, size, speed and named base subraces
 // { raceName: { name, source, size:["S","M"], speed:30|{walk,fly,...}, entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
@@ -28,6 +29,13 @@ const BACKGROUND_SCHEMA = 2;   // 2: prefer 2014 records
    { name: { name, source, skills:[..], tools:[..], languages:n|[..], feature:{name,text}, equipment } } */
 let BACKGROUND_LIB = {};
 let LANGUAGE_LIB = {};
+/* Optional features: Fighting Styles, Eldritch Invocations, Pact Boons, Metamagic, Maneuvers, Arcane
+   Shots, Runes, Elemental Disciplines, Artificer Infusions. 5e.tools keeps them in their own file,
+   data/optionalfeatures.json, tagged with a featureType code ("FS:F", "EI", "MV:B"...), and a class
+   or subclass says how many of which type it grants at each level (optionalfeatureProgression).
+   { name: { name, source, types:["FS:F","FS:R"], minLevel, text } } */
+const OPTFEATURE_SCHEMA = 1;
+let OPTFEATURE_LIB = {};
 // This sheet uses 2014 rules. Prefer their records when names collide with revised books.
 function preferRulesRecord(existing, incoming) {
   if (!existing || existing.source === incoming.source) return true;
@@ -90,6 +98,13 @@ let USES_STATE = {};
 // re-walking the whole render tree.
 let FEATURE_TEXT_BY_KEY = {};
 
+/* The class level that grants a subclass: the classFeatures entry flagged gainSubclassFeature, whose
+   reference ends in the level ("Martial Archetype|Fighter||3"). Null when the data doesn't say. */
+function subclassLevelOf(c) {
+  const g = (c.classFeatures || []).find(x => x && typeof x === "object" && x.gainSubclassFeature);
+  const n = g && Number(String(g.classFeature || "").split("|").pop());
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
 function parseClassFile(j) {
   // A class-*.json is authoritative for its class(es); (re)build each fresh.
   (j.class || []).forEach(c => {
@@ -106,12 +121,20 @@ function parseClassFile(j) {
       // prose, so they're cheap to carry and there's nothing to strip.
       mcReq: (c.multiclassing && c.multiclassing.requirements) || null,
       startEq: c.startingEquipment || null,
+      // Also for the creator, and just as structured: saving throws (first class only, PHB p163),
+      // armor/weapon/tool/skill proficiencies for a character who starts in this class, the smaller
+      // set gained by multiclassing into it, and how many optional features it grants per level.
+      saves: Array.isArray(c.proficiency) ? c.proficiency : [],
+      startProf: c.startingProficiencies || null,
+      mcProf: (c.multiclassing && c.multiclassing.proficienciesGained) || null,
+      optProg: Array.isArray(c.optionalfeatureProgression) ? c.optionalfeatureProgression : [],
+      subLevel: subclassLevelOf(c),
       subs: {},
     };
   });
   (j.subclass || []).forEach(sc => {
     const r = CLASS_LIB[sc.className];
-    if (r && (!sc.classSource || sc.classSource === r.source) && preferRulesRecord(r.subs[sc.shortName], sc)) r.subs[sc.shortName] = { name: sc.name, shortName: sc.shortName, source: sc.source, feats: [], grantedSpells: sc.additionalSpells || [] };
+    if (r && (!sc.classSource || sc.classSource === r.source) && preferRulesRecord(r.subs[sc.shortName], sc)) r.subs[sc.shortName] = { name: sc.name, shortName: sc.shortName, source: sc.source, feats: [], grantedSpells: sc.additionalSpells || [], optProg: Array.isArray(sc.optionalfeatureProgression) ? sc.optionalfeatureProgression : [] };
   });
   (j.subclassFeature || []).forEach(f => {
     const r = CLASS_LIB[f.className]; if (!r) return;
@@ -134,7 +157,7 @@ function parseRaceFile(j) {
   (j.race || []).forEach(r => {
     const existing = RACE_LIB[r.name];
     if (!preferRulesRecord(existing, r)) return;
-    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], size: r.size || [], speed: r.speed, subs: (existing && existing.subs) || {} };
+    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], size: r.size || [], speed: r.speed, ...raceGrants(r), subs: (existing && existing.subs) || {} };
   });
   (j.subrace || []).forEach(s => {
     if (s._copy) return; // reprinted/variant subraces using 5e.tools' copy-inheritance system aren't resolved
@@ -151,8 +174,19 @@ function parseRaceFile(j) {
     // genuinely differs (data has none of these among the common PHB/XGE/MPMM subraces today, but
     // 5e.tools' shape allows it), so it's kept undefined here rather than defaulted to the race's.
     if (!preferRulesRecord(rec.subs[name], s)) return;
-    rec.subs[name] = { name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [], speed: s.speed };
+    rec.subs[name] = { name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [], speed: s.speed, ...raceGrants(s) };
   });
+}
+/* The structured grants on a race or subrace record, in the same shape backgrounds use:
+   [{ common: true, anyStandard: 1 }], [{ "battleaxe|phb": true }], [{ choose: { from: [...] } }],
+   and feats: [{ any: 1 }] for Variant Human and Custom Lineage. */
+function raceGrants(r) {
+  return {
+    languages: r.languageProficiencies || [],
+    weapons: r.weaponProficiencies || [],
+    tools: r.toolProficiencies || [],
+    feats: r.feats || [],
+  };
 }
 /* 5e.tools stores speed as a flat walking-speed number for most races (`30`), or as an object with
    several movement types for the handful that fly/swim/etc natively (Aarakocra: {walk:20,fly:50}).
@@ -322,6 +356,26 @@ function parseBackgroundFile(j) {
     };
   });
 }
+function parseOptFeatureFile(j) {
+  (j.optionalfeature || []).forEach(o => {
+    if (!o || !o.name || !preferRulesRecord(OPTFEATURE_LIB[o.name], o)) return;
+    // Only the level prerequisite is kept: it is the one that decides whether an option can be taken
+    // at all at a given class level. Pact, spell and feature prerequisites stay in the text.
+    const lvls = (o.prerequisite || []).map(p => p && p.level && (typeof p.level === "number" ? p.level : p.level.level)).filter(n => typeof n === "number");
+    OPTFEATURE_LIB[o.name] = { name: o.name, source: o.source, types: o.featureType || [],
+      minLevel: lvls.length ? Math.max(...lvls) : 0, text: stripTags(flattenEntries(o.entries)) };
+  });
+}
+function saveOptFeatureLib() {
+  try { localStorage.setItem("charsheet-optfeaturelib", JSON.stringify({ v: OPTFEATURE_SCHEMA, lib: OPTFEATURE_LIB })); }
+  catch (e) { console.warn("Optional-feature library too large for localStorage; kept in memory for this session only.", e); }
+}
+function loadOptFeatureLib() {
+  try {
+    const d = JSON.parse(localStorage.getItem("charsheet-optfeaturelib"));
+    OPTFEATURE_LIB = (d && d.v === OPTFEATURE_SCHEMA && d.lib) || {};
+  } catch (e) { OPTFEATURE_LIB = {}; }
+}
 function loadClassFiles(files) {
   // Files are auto-detected by content: class-*.json / races.json / feats.json can all be dropped in together.
   let done = 0; const total = files.length, errs = [];
@@ -335,9 +389,10 @@ function loadClassFiles(files) {
         if (j.race || j.subrace) { parseRaceFile(j); matched = true; }
         if (j.feat) { parseFeatFile(j); matched = true; }
         if (j.background) { parseBackgroundFile(j); matched = true; }
+        if (j.optionalfeature) { parseOptFeatureFile(j); matched = true; }
         if (!matched) errs.push(file.name + ": not a recognized class/race/feat/background file");
       } catch (e) { errs.push(file.name + ": " + e); }
-      if (++done === total) { saveClassLib(); saveRaceLib(); saveFeatLib(); saveBackgroundLib(); renderClassLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n")); }
+      if (++done === total) { saveClassLib(); saveRaceLib(); saveFeatLib(); saveBackgroundLib(); saveOptFeatureLib(); renderClassLibrary(); if (errs.length) alert("Some files failed:\n" + errs.join("\n")); }
     };
     rd.readAsText(file);
   });
@@ -375,6 +430,7 @@ function autoLoadRaces() { return autoLoadOne("data/races.json", parseRaceFile, 
 function autoLoadFeats() { return autoLoadOne("data/feats.json", parseFeatFile, saveFeatLib); }
 function autoLoadLanguages() { return autoLoadOne("data/languages.json", parseLanguageFile, saveLanguageLib); }
 function autoLoadBackgrounds() { return autoLoadOne("data/backgrounds.json", parseBackgroundFile, saveBackgroundLib); }
+function autoLoadOptFeatures() { return autoLoadOne("data/optionalfeatures.json", parseOptFeatureFile, saveOptFeatureLib); }
 function saveClassLib() {
   try { localStorage.setItem("charsheet-classlib", JSON.stringify({ v: CLASS_SCHEMA, lib: CLASS_LIB })); }
   catch (e) { console.warn("Class library too large for localStorage; kept in memory for this session only.", e); }
@@ -428,25 +484,19 @@ function ciFindRaceSub(rec, name) { const q = (name || "").trim().toLowerCase();
 function isASI(name) { return (name || "").trim().toLowerCase() === "ability score improvement"; }
 
 /* ----- racial feat grants -----
-   Variant Human and Custom Lineage hand you a feat, and 5e.tools' 2014 race data has no field that
-   says so: the trait is literally { name: "Feat", entries: ["You gain one feat of your choice."] }.
-   That left the sheet with no way at all to record a racial feat — the feat picker was wired only to
-   class Ability Score Improvements, so a Variant Human's feat existed as prose and nothing else, and
-   the effects engine never saw it. Taking Alert gave you no initiative.
-
-   Two honest ways to fix that: pattern-match the English, or name the traits. Matching prose is the
-   one thing this project refuses to do (DOCS, "degrade to manual, never guess" — note that
-   CHOICE_CUE in creator.js only ever puts a pencil next to a name, it never acts). So: name them,
-   on exactly the principle effects/ already works by — an inert list keyed by name that does nothing
-   unless the user's own imported data happens to contain a matching trait.
-
-   The general rule is the trait's NAME, not its text: a race trait called exactly "Feat" grants a
-   feat. That is a name match of the same kind every effects entry makes, and its worst failure is a
-   spare empty picker on some homebrew race, not a wrong number. RACE_FEAT_TRAITS is the escape hatch
-   for a trait that grants a feat under some other name. */
+   Variant Human and Custom Lineage hand you a feat. 5e.tools says so twice: a trait literally named
+   "Feat", and a structured `feats: [{ any: 1 }]` block on the race or subrace record. The trait name
+   is the anchor, since it is what the Features module lists and what an fkey is built from; the
+   structured block covers a record that grants a feat without a trait of that name, which then gets
+   a synthetic "Feat" slot (see featuresFor). RACE_FEAT_TRAITS is the escape hatch for homebrew that
+   names the trait something else. Nothing here reads the trait's prose. */
 const RACE_FEAT_TRAITS = [
   // { race: "Some Homebrew Race", entry: "Bonus Feat" },   // race is optional; entry is required
 ];
+function raceFeatCount(rec, sub) {
+  const count = list => (list || []).reduce((n, b) => n + (Number(b && b.any) || 0), 0);
+  return count(rec && rec.feats) + count(sub && sub.feats);
+}
 function traitGrantsFeat(raceName, entryName) {
   const e = (entryName || "").trim().toLowerCase();
   if (!e) return false;
@@ -458,6 +508,56 @@ function traitGrantsFeat(raceName, entryName) {
 function fkeyFor(className, name, level) { return (className + "|" + name + "|" + level).replace(/"/g, "&quot;"); }
 function raceFkey(raceName, entryName) { return ("race||" + raceName + "||" + entryName).replace(/"/g, "&quot;"); }
 
+/* ----- optional features (Fighting Style, Invocations, Metamagic, Maneuvers...) -----
+   A class or subclass record's optionalfeatureProgression says how many options of which featureType
+   it grants by level, either as a 20-entry array or as { "3": 2, "10": 3 }. Each progression is a
+   group with its own slots; the picks live on the character in OPTFEATURE_CHOICES, keyed by group,
+   and each chosen option becomes a feature of its own (effKey "optfeature|<name>") so an effects
+   entry for it applies like any other. `required` names (Way of the Four Elements' Elemental
+   Attunement) fill slots automatically and are not stored. */
+let OPTFEATURE_CHOICES = {};   // { groupKey: ["Archery"] }, free picks only
+function optKeyFor(className, groupName, level) { return ("opt|" + className + "|" + groupName + "|" + level).replace(/"/g, "&quot;"); }
+function optProgCount(prog, lvl) {
+  const p = prog && prog.progression;
+  if (Array.isArray(p)) return lvl >= 1 ? (Number(p[Math.min(20, lvl) - 1]) || 0) : 0;
+  let n = 0;
+  if (p && typeof p === "object") Object.entries(p).forEach(([k, v]) => { if (Number(k) <= lvl) n = Math.max(n, Number(v) || 0); });
+  return n;
+}
+function optProgFirstLevel(prog) {
+  const p = prog && prog.progression;
+  if (Array.isArray(p)) { const i = p.findIndex(v => Number(v) > 0); return i < 0 ? 0 : i + 1; }
+  const ks = p && typeof p === "object" ? Object.keys(p).map(Number).filter(k => Number(p[k]) > 0) : [];
+  return ks.length ? Math.min(...ks) : 0;
+}
+function optGroupsFor(rec, sub, lvl) {
+  const out = [];
+  const add = (prog, subName) => {
+    const count = optProgCount(prog, lvl); if (!count) return;
+    const level = optProgFirstLevel(prog);
+    const required = [];
+    Object.entries(prog.required || {}).forEach(([k, names]) => {
+      if (Number(k) <= lvl) (names || []).forEach(n => required.push(String(n).split("|")[0]));
+    });
+    out.push({ key: optKeyFor(rec.name, prog.name || "Options", level), className: rec.name, subName,
+      name: prog.name || "Options", types: prog.featureType || [], count, level, required });
+  };
+  (rec.optProg || []).forEach(p => add(p, ""));
+  if (sub) (sub.optProg || []).forEach(p => add(p, sub.name));
+  return out;
+}
+/* Everything a group's slots may hold at this class level, alphabetical. */
+function optOptionsFor(group, lvl) {
+  return Object.values(OPTFEATURE_LIB)
+    .filter(o => o.types.some(t => group.types.includes(t)) && (o.minLevel || 0) <= lvl)
+    .map(o => o.name).sort((a, b) => a.localeCompare(b));
+}
+/* A group's full contents: required names first, then the stored picks. */
+function optGroupPicks(group, optChoices) {
+  const picks = ((optChoices || {})[group.key] || []).filter(Boolean);
+  return [...new Set([...group.required, ...picks])].slice(0, Math.max(group.count, group.required.length));
+}
+
 /* ----- the single source of truth for "what features does this character currently have" -----
    Used by renderClassFeatures()/renderRaceSection() (to build the Features panel), by applyRest()
    (to re-scan for limited-use recovery), and by the effects engine (effects.js) to know which
@@ -465,13 +565,23 @@ function raceFkey(raceName, entryName) { return ("race||" + raceName + "||" + en
    each calls this fresh. Race/subrace-trait entries always carry text; class/subclass features do
    too, except an "Ability Score Improvement" slot with no feat chosen yet, whose `text` is null
    (isAsi is true either way, so callers can still render its picker). */
+/* activeFeatures reads the live sheet; featuresFor takes the same inputs as arguments, which is what
+   lets the character creator ask "what will this character have" before the character exists. */
 function activeFeatures() {
+  return featuresFor({
+    race: ($("char-race") && $("char-race").value || "").trim(),
+    subrace: ($("char-subrace") && $("char-subrace").value || "").trim(),
+    classes: getClasses(), featChoices: FEAT_CHOICES, optChoices: OPTFEATURE_CHOICES,
+  });
+}
+function featuresFor({ race = "", subrace = "", classes = [], featChoices = {}, optChoices = {} } = {}) {
   const out = [];
-  const raceName = ($("char-race") && $("char-race").value || "").trim();
+  const raceName = String(race || "").trim();
+  const FEAT_CHOICES = featChoices;   // shadows the global so the body below reads the caller's choices
   if (raceName) {
     const rec = ciFindRace(raceName);
     if (rec) {
-      const subName = ($("char-subrace") && $("char-subrace").value || "").trim();
+      const subName = String(subrace || "").trim();
       const sub = ciFindRaceSub(rec, subName);
       const list = rec.entries.map(e => ({ e, fromSub: false }));
       if (sub) sub.entries.forEach(e => {
@@ -479,6 +589,10 @@ function activeFeatures() {
         const item = { e, fromSub: true };
         if (i >= 0) list[i] = item; else list.push(item);
       });
+      // A structured feat grant with no trait called "Feat" to hang it on gets one.
+      if (raceFeatCount(rec, sub) && !list.some(x => traitGrantsFeat(rec.name, x.e.name))) {
+        list.push({ e: { name: "Feat", source: (sub && sub.source) || rec.source, text: "You gain one feat of your choice." }, fromSub: !!(sub && raceFeatCount(null, sub)) });
+      }
       list.forEach(({ e, fromSub }) => {
         const fkey = raceFkey(rec.name, e.name);
         const origin = fromSub
@@ -510,10 +624,10 @@ function activeFeatures() {
       });
     }
   }
-  getClasses().filter(c => c.name.trim()).forEach(c => {
+  (classes || []).filter(c => (c.name || "").trim()).forEach(c => {
     const rec = ciFindClass(c.name); if (!rec) return;
-    const lvl = c.lvl || 0;
-    const sub = ciFindSub(rec, c.sub);
+    const lvl = Number(c.lvl) || 0;
+    const sub = ciFindSub(rec, c.sub || "");
     const list = rec.feats.filter(f => f.level <= lvl).map(f => ({ f, fromSub: false }));
     if (sub) sub.feats.filter(f => f.level <= lvl).forEach(f => list.push({ f, fromSub: true }));
     list.sort((a, b) => a.f.level - b.f.level || a.f.name.localeCompare(b.f.name));
@@ -535,10 +649,44 @@ function activeFeatures() {
         text: featRec ? featRec.text : null, isAsi: true, asiFeatName: f.name, asiChosen: chosen, origin,
       });
     });
+    optGroupsFor(rec, sub, lvl).forEach(g => {
+      optGroupPicks(g, optChoices).forEach(name => {
+        const o = OPTFEATURE_LIB[name] || ciFind(OPTFEATURE_LIB, name);
+        out.push({
+          fkey: g.key + "|" + name, effKey: effKeyFor({ kind: "optfeature" }, name),
+          name: o ? o.name : name, level: g.level, source: o ? o.source : "", text: o ? o.text : "",
+          isAsi: false, isOptFeature: true, optGroupKey: g.key,
+          origin: { kind: "optfeature", className: rec.name, subclassName: g.subName },
+        });
+      });
+    });
   });
   return out;
 }
 
+/* A group's pickers. Required names show as plain text; the rest are selects, each excluding what
+   the group's other slots already hold. With no optional-feature library loaded they fall back to
+   free text, so a pick can still be recorded. `cls` lets the creator reuse this with its own handler. */
+function optSlotsHtml(g, lvl, optChoices, cls) {
+  const picks = ((optChoices || {})[g.key] || []).slice();
+  const free = Math.max(0, g.count - g.required.length);
+  const options = optOptionsFor(g, lvl);
+  const req = g.required.map(n => `<b>${escapeHtml(n)}</b>`).join(", ");
+  const slots = [];
+  for (let i = 0; i < free; i++) {
+    const cur = picks[i] || "";
+    if (!options.length) {
+      slots.push(`<input type="text" class="${cls}" data-optkey="${g.key}" data-slot="${i}" value="${escapeHtml(cur)}" style="width:10rem">`);
+      continue;
+    }
+    const others = new Set([...g.required, ...picks.filter((v, j) => j !== i && v)]);
+    const list = options.filter(o => !others.has(o));
+    if (cur && !list.includes(cur)) list.unshift(cur);   // keep a value the data no longer offers
+    slots.push(`<select class="${cls}" data-optkey="${g.key}" data-slot="${i}"><option value="">-</option>` +
+      list.map(o => `<option value="${escapeHtml(o)}"${o === cur ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") + `</select>`);
+  }
+  return [req, slots.join(" ")].filter(Boolean).join(" ");
+}
 /* The feat box, shared by class Ability Score Improvements and by the race traits that grant a feat
    (see traitGrantsFeat). One control, one class, one storage map, so the change handler and the
    typeahead below don't have to learn that racial feats exist.
@@ -709,7 +857,16 @@ function renderClassFeatures() {
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
     const grantedHtml = (sub && sub.grantedSpells && sub.grantedSpells.length)
       ? grantedSpellsHtml(flattenGrantedSpells(sub.grantedSpells).filter(g => g.minLevel <= lvl), sub.name, rec.name) : "";
-    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)} ${lvl}</b>${subNote}</div>${items}${grantedHtml}`;
+    const optHtml = optGroupsFor(rec, sub, lvl).map(g => {
+      const chosen = all.filter(f => f.isOptFeature && f.optGroupKey === g.key);
+      const lines = chosen.map(f => {
+        FEATURE_TEXT_BY_KEY[f.fkey] = f.text;
+        const usesSpec = usesSpecFor(f), tracker = usesSpec ? renderUsesTracker(f, usesSpec) : "";
+        return `<div class="optf-chosen"><a class="feat-link" data-fkey="${f.fkey}">${escapeHtml(f.name)}</a> <span class="hint">${f.source || ""}</span>${tracker}${renderEffectControls(f)}</div>`;
+      }).join("");
+      return `<div><b>${g.level}</b> ${escapeHtml(g.name)}: ${optSlotsHtml(g, lvl, OPTFEATURE_CHOICES, "optf-sel")}</div>${lines}`;
+    }).join("");
+    return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)} ${lvl}</b>${subNote}</div>${items}${optHtml}${grantedHtml}`;
   }).join("");
   el.innerHTML = raceHtml + classHtml;
   el.querySelectorAll(".asi-input").forEach(inp => {
@@ -725,7 +882,11 @@ function toggleFeatDetail(link) {
   if (div.nextElementSibling && div.nextElementSibling.classList.contains("feat-detail")) { div.nextElementSibling.remove(); return; }
   const fkey = link.dataset.fkey;
   let text = null;
-  if (fkey.startsWith("race||")) {
+  if (fkey.startsWith("opt|")) {
+    const name = fkey.split("|").pop();
+    const o = OPTFEATURE_LIB[name] || ciFind(OPTFEATURE_LIB, name);
+    text = o ? o.text : null;
+  } else if (fkey.startsWith("race||")) {
     const [, raceName, entryName] = fkey.split("||");
     const rec = ciFindRace(raceName);
     if (rec) {
@@ -758,7 +919,7 @@ function toggleFeatDetail(link) {
 function runClassAutoLoad() {
   $("class-lib-autostatus").textContent = "loading from data/ …";
   // Returns the promise so reloadAllLibraries can actually wait on it — see runSpellAutoLoad's note.
-  return Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats(), autoLoadBackgrounds(), autoLoadLanguages()]).then(([cls, race, feat, bg, lang]) => {
+  return Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats(), autoLoadBackgrounds(), autoLoadLanguages(), autoLoadOptFeatures()]).then(([cls, race, feat, bg, lang, opt]) => {
     renderClassLibrary();
     const parts = [
       cls.filesLoaded ? `${cls.filesLoaded}/${cls.filesTotal} class file(s)` : (cls.blocked ? "classes blocked" : "no class data"),
@@ -766,18 +927,20 @@ function runClassAutoLoad() {
       feat.found ? "feats" : (feat.blocked ? "feats blocked" : "no feats.json"),
       bg.found ? "backgrounds" : (bg.blocked ? "backgrounds blocked" : "no backgrounds.json"),
       lang.found ? "languages" : (lang.blocked ? "languages blocked" : "no languages.json"),
+      opt.found ? "optional features" : (opt.blocked ? "optional features blocked" : "no optionalfeatures.json"),
     ];
     $("class-lib-autostatus").textContent = "auto-loaded: " + parts.join(", ");
   });
 }
 document.addEventListener("DOMContentLoaded", () => {
-  loadClassLib(); loadRaceLib(); loadFeatLib(); loadBackgroundLib(); loadLanguageLib();
+  loadClassLib(); loadRaceLib(); loadFeatLib(); loadBackgroundLib(); loadLanguageLib(); loadOptFeatureLib();
   $("class-import").addEventListener("change", e => { if (e.target.files.length) loadClassFiles(e.target.files); e.target.value = ""; });
   $("class-lib-clear").addEventListener("click", () => {
     if (confirm("Clear the imported class/race/feat/background library? (does not affect your character)")) {
-      CLASS_LIB = {}; RACE_LIB = {}; FEAT_LIB = {}; BACKGROUND_LIB = {}; LANGUAGE_LIB = {};
+      CLASS_LIB = {}; RACE_LIB = {}; FEAT_LIB = {}; BACKGROUND_LIB = {}; LANGUAGE_LIB = {}; OPTFEATURE_LIB = {};
       localStorage.removeItem("charsheet-classlib"); localStorage.removeItem("charsheet-racelib");
       localStorage.removeItem("charsheet-featlib"); localStorage.removeItem("charsheet-bglib"); localStorage.removeItem("charsheet-languagelib");
+      localStorage.removeItem("charsheet-optfeaturelib");
       renderClassLibrary();
     }
   });
@@ -803,6 +966,14 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-short-rest").addEventListener("click", openShortRestModal);
   $("btn-long-rest").addEventListener("click", () => performRest("lr"));
   $("class-feat-results").addEventListener("change", e => {
+    const optSel = e.target.closest(".optf-sel");
+    if (optSel) {
+      const key = optSel.dataset.optkey, slot = Number(optSel.dataset.slot);
+      const picks = (OPTFEATURE_CHOICES[key] || []).slice();
+      picks[slot] = optSel.value.trim();
+      if (picks.some(Boolean)) OPTFEATURE_CHOICES[key] = picks; else delete OPTFEATURE_CHOICES[key];
+      scheduleSave(); renderClassFeatures(); invalidateEffects(); recompute(); return;
+    }
     const inp = e.target.closest(".asi-input");
     if (inp) {
       const v = inp.value.trim();

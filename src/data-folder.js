@@ -338,6 +338,7 @@ function resetDataLibraries() {
   if (typeof FEAT_LIB !== "undefined") FEAT_LIB = {};
   if (typeof BACKGROUND_LIB !== "undefined") BACKGROUND_LIB = {};
   if (typeof LANGUAGE_LIB !== "undefined") LANGUAGE_LIB = {};
+  if (typeof OPTFEATURE_LIB !== "undefined") OPTFEATURE_LIB = {};
   if (typeof VARIANT_RULES !== "undefined") VARIANT_RULES = [];
   if (typeof RULES_CONDITIONS !== "undefined") RULES_CONDITIONS = {};
   // The bestiary keeps its own copy and its own memoised load; resetBestiary clears both.

@@ -135,7 +135,7 @@ function buildSkills() {
       <td class="skill-grip" aria-label="drag to reorder">&#8942;&#8942;</td>
       <td><input type="checkbox" data-persist id="skillprof-${slug}"></td>
       <td><input type="checkbox" data-persist id="skillexp-${slug}"></td>
-      <td>${name} <span class="hint">(${ab})</span></td>
+      <td>${name}</td><td class="hint skill-ab">(${ab})</td>
       <td><input type="text" data-persist id="skillmisc-${slug}" style="width:4.5rem;text-align:right"></td>
       <td class="derived" id="skillbonus-${slug}">+0</td>
       <td><button class="roll" data-roll-check="skill-${slug}" data-label="${name}">roll</button></td>`;

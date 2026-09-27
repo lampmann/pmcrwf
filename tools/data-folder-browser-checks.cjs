@@ -33,7 +33,7 @@ module.exports = async function checkDataFolder(page, directory) {
   await page.locator('.combo-child').filter({ hasText: /^High$/ }).click();
   assert.equal(await page.locator('#cr-race').inputValue(), 'Elf');
   assert.equal(await page.locator('#cr-subrace').inputValue(), 'High');
-  await page.evaluate(() => { CREATOR.background = 'Folk Hero'; goToCreatorStep(4); });
+  await page.evaluate(() => { CREATOR.background = 'Folk Hero'; goToCreatorStep(CR_STEP.desc); });
   assert(await page.locator('[data-bgkind="tools"] option').count() > 10);
   await page.evaluate(() => { CREATOR.background = 'Acolyte'; renderCreator(); });
   assert.equal(await page.locator('[data-bgkind="languages"]').count(), 2);

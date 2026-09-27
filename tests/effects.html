@@ -185,6 +185,7 @@
 <script src="../src/house-rules.js"></script>
 <script src="../src/characters.js"></script>
 <script src="../src/creator.js"></script>
+<script src="../src/creator-choices.js"></script>
 <script src="../src/xp.js"></script>
 <script src="../src/combat.js"></script>
 <script src="../src/equip-slots.js"></script>
@@ -1182,11 +1183,11 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("the gold dice are read out of the class data", startingGoldDice(), "5d4 × 10");
       assertEqual("the average of 5d4 × 10 is 125", averageGold(), 125);
       CREATOR.equipMode = "gold";
-      assert("taking gold blocks step 5 until you pick a number", !creatorStepValid(5));
+      assert("taking gold blocks the equipment step until you pick a number", !creatorStepValid(CR_STEP.equip));
       creatorAverageGold();
       assertEqual("taking the average fills it in", CREATOR.startGold, 125);
       assert("...and is marked as an average rather than a roll", CREATOR.goldAveraged);
-      assert("...unblocking the step", creatorStepValid(5));
+      assert("...unblocking the step", creatorStepValid(CR_STEP.equip));
       assertEqual("...and landing in the coin purse", creatorBuildState().fields["coin-gp"], "125");
       CLASS_LIB = { Fighter: { name: "Fighter", hd: "d10", feats: [], subs: {}, startEq: null } };
       assertEqual("a class with no gold data has no average to offer", averageGold(), null);
@@ -1254,7 +1255,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const rec = ciFindBackground("Sage");
       assertEqual("a choose block is read out of the data", chooseBlocks(rec.languages).length, 1);
       assertEqual("...with its count", chooseBlocks(rec.languages)[0].count, 2);
-      assertEqual("...and its options", chooseBlocks(rec.languages)[0].from.join(","), "Draconic,Elvish,Dwarvish,Celestial");
+      assertEqual("...and its options, alphabetical", chooseBlocks(rec.languages)[0].from.join(","), "Celestial,Draconic,Dwarvish,Elvish");
       assertEqual("a list with nothing to choose yields no blocks", chooseBlocks(rec.skills).length, 0);
 
       assertEqual("what a background grants outright is unaffected",
@@ -1292,7 +1293,7 @@ document.addEventListener("DOMContentLoaded", () => {
       CREATOR.background = "Folk Hero";
       const bg = creatorBuildState();
       assert("a background's stated skills become proficiencies", bg.fields["skillprof-animalhandling"] === true && bg.fields["skillprof-survival"] === true);
-      assertEqual("...its stated tools go to Proficiencies", bg.proficiencies.tools.join(), "vehicles (land)");
+      assertEqual("...its stated tools go to Proficiencies, title-cased", bg.proficiencies.tools.join(), "Vehicles (Land)");
       assert("...but a 'choose' tool is NOT picked for you", !bg.proficiencies.tools.some(t => /artisan/.test(t)));
       CREATOR.background = "Sage";
       const sage = creatorBuildState();
@@ -1304,12 +1305,186 @@ document.addEventListener("DOMContentLoaded", () => {
       CREATOR.customBg = true; CREATOR.bgSkills = ["Athletics", "Perception"]; CREATOR.bgTools = ["Smith's tools", "Dwarvish"];
       const custom = creatorBuildState();
       assert("a custom background's two skills apply", custom.fields["skillprof-athletics"] === true && custom.fields["skillprof-perception"] === true);
-      assertEqual("...and its two tool/language picks land in Proficiencies", custom.proficiencies.tools.join(", "), "Smith's tools, Dwarvish");
+      assertEqual("...and its two tool/language picks land in Proficiencies", custom.proficiencies.tools.join(", "), "Smith's Tools, Dwarvish");
       assertEqual("...and it is labelled as custom on the sheet", custom.fields["char-bg"], "Custom");
       CREATOR.bgSkills = ["Athletics", "Not A Skill"];
       assertEqual("a skill name that isn't one is ignored rather than written to a bogus field",
         Object.keys(creatorBuildState().fields).filter(k => k.startsWith("skillprof-")).length, 1);
       BACKGROUND_LIB = savedBg;
+    }
+
+    // --- the creator's class, race, ASI, optional-feature and spell choices (creator-choices.js) ---
+    /* Fixtures are cut down from real 5e.tools 2014 records: the field names and shapes
+       (startingProficiencies, multiclassing.proficienciesGained, optionalfeatureProgression as both an
+       array and a level map, languageProficiencies, feats) are the data's own. */
+    {
+      const saved = { CLASS_LIB, RACE_LIB, FEAT_LIB, OPTFEATURE_LIB, SPELL_LIB, BACKGROUND_LIB, LANGUAGE_LIB };
+      CLASS_LIB = {}; RACE_LIB = {};
+      parseClassFile({ class: [
+        { name: "Fighter", source: "PHB", hd: { faces: 10 }, proficiency: ["str", "con"],
+          classFeatures: ["Fighting Style|Fighter||1", { classFeature: "Martial Archetype|Fighter||3", gainSubclassFeature: true }],
+          startingProficiencies: { armor: ["light", "medium", "heavy", "shield"], weapons: ["simple", "martial"],
+            skills: [{ choose: { from: ["acrobatics", "animal handling", "athletics", "history", "insight", "intimidation", "perception", "survival"], count: 2 } }] },
+          multiclassing: { requirements: { or: [{ str: 13 }, { dex: 13 }] }, proficienciesGained: { armor: ["light", "medium", "shield"], weapons: ["simple", "martial"] } },
+          optionalfeatureProgression: [{ name: "Fighting Style", featureType: ["FS:F"], progression: { "1": 1 } }] },
+        { name: "Wizard", source: "PHB", hd: { faces: 6 }, proficiency: ["int", "wis"], casterProgression: "full",
+          classFeatures: [{ classFeature: "Arcane Tradition|Wizard||2", gainSubclassFeature: true }],
+          startingProficiencies: { weapons: ["{@item dagger|phb|daggers}", "{@item quarterstaff|phb|quarterstaffs}", "{@item dart|phb|darts}"],
+            skills: [{ choose: { from: ["arcana", "history"], count: 2 } }] } },
+        { name: "Monk", source: "PHB", hd: { faces: 8 }, proficiency: ["str", "dex"],
+          startingProficiencies: { weapons: ["simple"], toolProficiencies: [{ anyArtisansTool: 1 }, { anyMusicalInstrument: 1 }] } },
+        { name: "Warlock", source: "PHB", hd: { faces: 8 }, proficiency: ["wis", "cha"],
+          startingProficiencies: { armor: ["light"], weapons: ["simple"] },
+          multiclassing: { requirements: { cha: 13 }, proficienciesGained: { armor: ["light"], weapons: ["simple"] } },
+          optionalfeatureProgression: [{ name: "Eldritch Invocations", featureType: ["EI"], progression: [0, 2, 2, 2, 3] }] },
+      ], classFeature: [
+        { name: "Ability Score Improvement", className: "Fighter", classSource: "PHB", level: 4, entries: ["..."] },
+      ], subclass: [
+        { name: "School of Evocation", shortName: "Evocation", className: "Wizard", classSource: "PHB", source: "PHB" },
+      ] });
+      parseRaceFile({ race: [
+        { name: "Dwarf", source: "PHB", size: ["M"], speed: 25, entries: [],
+          languageProficiencies: [{ common: true, dwarvish: true }],
+          weaponProficiencies: [{ "battleaxe|phb": true, "warhammer|phb": true }],
+          toolProficiencies: [{ choose: { from: ["smith's tools", "brewer's supplies", "mason's tools"] } }] },
+        { name: "Human", source: "PHB", size: ["M"], speed: 30, entries: [], languageProficiencies: [{ common: true, anyStandard: 1 }] },
+        { name: "Custom Lineage", source: "TCE", size: ["M"], speed: 30, entries: [], feats: [{ any: 1 }] },
+      ] });
+      OPTFEATURE_LIB = {};
+      parseOptFeatureFile({ optionalfeature: [
+        { name: "Defense", source: "PHB", featureType: ["FS:F", "FS:P"], entries: ["+1 AC while wearing armor."] },
+        { name: "Archery", source: "PHB", featureType: ["FS:F", "FS:R"], entries: ["+2 to ranged attacks."] },
+        { name: "Agonizing Blast", source: "PHB", featureType: ["EI"], entries: ["..."] },
+        { name: "Thirsting Blade", source: "PHB", featureType: ["EI"], prerequisite: [{ pact: "Blade", level: { level: 5, class: { name: "Warlock" } } }], entries: ["..."] },
+      ] });
+      LANGUAGE_LIB = { Common: { name: "Common", type: "standard" }, Dwarvish: { name: "Dwarvish", type: "standard" }, Elvish: { name: "Elvish", type: "standard" } };
+      BACKGROUND_LIB = { Soldier: { name: "Soldier", source: "PHB", skills: [{ athletics: true, intimidation: true }], tools: [], languages: [] } };
+      FEAT_LIB = { ...saved.FEAT_LIB, Resilient: { name: "Resilient", source: "PHB", text: "..." } };
+
+      // saves, armor and weapons: the first class's full set
+      CREATOR = blankCreator();
+      CREATOR.classes = [{ name: "Fighter", sub: "", lvl: 1 }];
+      let st = creatorBuildState();
+      assertEqual("the first class's saving throws are applied", Object.keys(st.fields).filter(k => /^saveprof-/.test(k) && st.fields[k]).sort().join(","), "saveprof-con,saveprof-str");
+      assertEqual("...its armor", ["light", "medium", "heavy", "shields"].filter(a => st.fields["prof-armor-" + a]).join(","), "light,medium,heavy,shields");
+      assert("...and its weapon categories", st.fields["prof-weapon-simple"] && st.fields["prof-weapon-martial"]);
+
+      // a second class adds only its multiclass set, and never saves
+      CREATOR.classes = [{ name: "Wizard", sub: "", lvl: 1 }, { name: "Fighter", sub: "", lvl: 1 }];
+      st = creatorBuildState();
+      assertEqual("a multiclass never adds saving throws", Object.keys(st.fields).filter(k => /^saveprof-/.test(k) && st.fields[k]).sort().join(","), "saveprof-int,saveprof-wis");
+      assert("...but does add its multiclass armor", st.fields["prof-armor-medium"] && !st.fields["prof-armor-heavy"]);
+      assertEqual("named weapons are item names, alphabetical", st.proficiencies.weapons.join(","), "Dagger,Dart,Quarterstaff");
+
+      // class skills
+      CREATOR = blankCreator();
+      CREATOR.classes = [{ name: "Fighter", sub: "", lvl: 1 }];
+      assert("class skills block step 2 until chosen", /Fighter skills/.test(creatorStepBlockerFor(2)));
+      assertEqual("...offered by name, alphabetical", crSkillBlocks(CLASS_LIB.Fighter.startProf.skills)[0].from.slice(0, 3).join(","), "Acrobatics,Animal Handling,Athletics");
+      CREATOR.picks["skills:Fighter"] = ["Athletics", "Perception"];
+      CREATOR.optChoices[optKeyFor("Fighter", "Fighting Style", 1)] = ["Defense"];
+      assertEqual("...and clear once they are", creatorStepBlockerFor(2), "");
+      CREATOR.background = "Soldier";
+      assert("a class pick the background also gives is flagged", /Athletics is also a background skill/.test(creatorStepBlockerFor(2)));
+      CREATOR.picks["skills:Fighter"] = ["Acrobatics", "Perception"];
+      st = creatorBuildState();
+      assert("class skills reach the sheet", st.fields["skillprof-acrobatics"] && st.fields["skillprof-perception"] && st.fields["skillprof-athletics"]);
+
+      // Monk: "any artisan's tools or any musical instrument" is one choice, not two
+      assertEqual("alternative tool blocks are one slot", crToolBlocks(CLASS_LIB.Monk.startProf.toolProficiencies).map(b => b.count).join(","), "1");
+
+      // subclass level
+      assertEqual("the subclass level is read from gainSubclassFeature", CLASS_LIB.Wizard.subLevel, 2);
+      CREATOR = blankCreator(); CREATOR.background = "";
+      CREATOR.classes = [{ name: "Wizard", sub: "Evocation", lvl: 1 }];
+      assertEqual("a subclass chosen below that level is dropped", creatorBuildState().classes[0].sub, "");
+      CREATOR.classes[0].lvl = 2;
+      assertEqual("...and kept from it", creatorBuildState().classes[0].sub, "Evocation");
+
+      // racial languages, weapons and tools
+      CREATOR = blankCreator(); CREATOR.race = "Dwarf";
+      assert("a race's tool choice blocks step 1", /tool/.test(creatorStepBlockerFor(1)));
+      CREATOR.picks["tools:race"] = ["Mason's Tools"];
+      st = creatorBuildState();
+      assertEqual("fixed racial languages apply", st.proficiencies.languages.join(","), "Common,Dwarvish");
+      assertEqual("...and weapons", st.proficiencies.weapons.join(","), "Battleaxe,Warhammer");
+      assert("...and the chosen tool", st.proficiencies.tools.includes("Mason's Tools"));
+      CREATOR = blankCreator(); CREATOR.race = "Human";
+      assert("an 'any standard' language blocks until chosen", /languages/.test(creatorStepBlockerFor(1)));
+      CREATOR.picks["langs:race"] = ["Elvish"];
+      assertEqual("...then applies", creatorBuildState().proficiencies.languages.join(","), "Common,Elvish");
+
+      // a structured feat grant with no trait called "Feat" still gets a slot
+      assertEqual("a race's feats block creates a feat slot", featuresFor({ race: "Custom Lineage" }).filter(f => f.isRaceFeat).length, 1);
+
+      // optional features
+      const warGroups = lvl => optGroupsFor(CLASS_LIB.Warlock, null, lvl);
+      assertEqual("an array progression has nothing at level 1", warGroups(1).length, 0);
+      assertEqual("...two invocations at level 2", warGroups(2)[0].count, 2);
+      assertEqual("...three at 5", warGroups(5)[0].count, 3);
+      assertEqual("options are filtered by level prerequisite", optOptionsFor(warGroups(2)[0], 2).join(","), "Agonizing Blast");
+      assertEqual("...and appear once the level is reached", optOptionsFor(warGroups(5)[0], 5).join(","), "Agonizing Blast,Thirsting Blade");
+      const fsKey = optKeyFor("Fighter", "Fighting Style", 1);
+      const fsFeatures = featuresFor({ classes: [{ name: "Fighter", sub: "", lvl: 1 }], optChoices: { [fsKey]: ["Defense"] } }).filter(f => f.isOptFeature);
+      assertEqual("a chosen option is a feature of its own", fsFeatures.map(f => f.name + "|" + f.effKey).join(","), "Defense|optfeature|defense");
+      CREATOR = blankCreator(); CREATOR.classes = [{ name: "Fighter", sub: "", lvl: 1 }];
+      CREATOR.picks["skills:Fighter"] = ["Acrobatics", "Perception"];
+      assert("an unchosen Fighting Style blocks step 2", /Fighting Style/.test(creatorStepBlockerFor(2)));
+      CREATOR.optChoices[fsKey] = ["Archery"];
+      assertEqual("...and reaches the character", JSON.stringify(creatorBuildState().optFeatureChoices), JSON.stringify({ [fsKey]: ["Archery"] }));
+
+      // Ability Score Improvements
+      CREATOR.classes = [{ name: "Fighter", sub: "", lvl: 4 }];
+      CREATOR.scores.str = 19; CREATOR.method = "manual";
+      const asiKey = fkeyFor("Fighter", "Ability Score Improvement", 4);
+      assert("an unspent ASI blocks step 3", /Ability Score Improvement at Fighter 4/.test(creatorStepBlockerFor(3)));
+      CREATOR.asiScores[asiKey] = ["str", "str"];
+      assert("an ASI can't take a score past 20", /above 20/.test(creatorStepBlockerFor(3)));
+      CREATOR.asiScores[asiKey] = ["str", "con"];
+      assertEqual("+1 and +1 is fine", creatorStepBlockerFor(3), "");
+      assertEqual("...and shows in the score", creatorScoreWithAsi("str"), 20);
+      st = creatorBuildState();
+      assertEqual("...the base score is written without it (the sheet adds ASIs itself)", st.fields["score-str"], "19");
+      assertEqual("...and the picks go to ASI_CHOICES", JSON.stringify(st.asiChoices), JSON.stringify({ [asiKey]: ["str", "con"] }));
+      CREATOR.asiFeats[asiKey] = "Resilient";
+      st = creatorBuildState();
+      assertEqual("a feat instead takes the slot", st.featChoices[asiKey], "Resilient");
+      assertEqual("...and the +1s no longer count", creatorAsiIncrease("str"), 0);
+      assert("...and the feat's own choice is asked for", /Resilient/.test(creatorStepBlockerFor(3)));
+
+      // effects-entry choices only count once their level is reached (Bard Expertise at 3 and 10)
+      const bardExp = { fkey: "Bard|Expertise|3", effKey: "class|bard|expertise", name: "Expertise", origin: { kind: "class", className: "Bard" } };
+      CREATOR.classes = [{ name: "Bard", sub: "", lvl: 3 }];
+      assertEqual("only the level-3 Expertise picks are live at 3", crLiveChoices(bardExp).map(c => c.id).join(","), "exp3a,exp3b");
+      CREATOR.classes = [{ name: "Bard", sub: "", lvl: 10 }];
+      assertEqual("...all four at 10", crLiveChoices(bardExp).length, 4);
+
+      // spells
+      assertEqual("spell levels per class", [classMaxSpellLevel({ name: "Wizard", lvl: 5 }), classMaxSpellLevel({ name: "Paladin", lvl: 1 }),
+        classMaxSpellLevel({ name: "Paladin", lvl: 5 }), classMaxSpellLevel({ name: "Warlock", lvl: 11 }),
+        classMaxSpellLevel({ name: "Fighter", sub: "Eldritch Knight", lvl: 7 })].join(","), "3,0,2,5,2");
+      SPELL_LIB = [
+        { name: "Fire Bolt", level: 0, classes: ["Wizard"] }, { name: "Light", level: 0, classes: ["Wizard", "Cleric"] },
+        { name: "Mage Hand", level: 0, classes: ["Wizard"] }, { name: "Shield", level: 1, classes: ["Wizard"] },
+        { name: "Magic Missile", level: 1, classes: ["Wizard"] }, { name: "Sleep", level: 1, classes: ["Wizard"] },
+        { name: "Fly", level: 3, classes: ["Wizard"] },
+      ];
+      CREATOR = blankCreator(); CREATOR.method = "manual"; CREATOR.scores.int = 16;
+      CREATOR.classes = [{ name: "Wizard", sub: "", lvl: 1 }];
+      const need = crSpellNeeds(crRows()[0]);
+      assertEqual("a level 1 Wizard: 3 cantrips, a 6-spell book, 4 prepared, 1st level only",
+        [need.cantrips, need.spells, need.prepared, need.spellList.map(s => s.name).join("+")].join(","), "3,6,4,Magic Missile+Shield+Sleep");
+      assert("unchosen cantrips block the Spells step", /cantrips/.test(creatorStepBlockerFor(CR_STEP.spells)));
+      CREATOR.spells.Wizard = { cantrips: ["Fire Bolt", "Light", "Mage Hand"], spells: ["Shield", "Sleep", "Magic Missile"], prepared: ["Shield"] };
+      assert("the book is bounded by what the library offers, then preparation is asked for", /Prepare 3/.test(creatorStepBlockerFor(CR_STEP.spells)));
+      CREATOR.spells.Wizard.prepared = ["Shield", "Sleep", "Magic Missile"];
+      assertEqual("...and then the step clears", creatorStepBlockerFor(CR_STEP.spells), "");
+      st = creatorBuildState();
+      assertEqual("spells reach the sheet with their level and prepared flag",
+        st.spells.map(s => `${s.lvl}:${s.name}:${s.prep ? "P" : "-"}`).join(","), "0:Fire Bolt:-,0:Light:-,0:Mage Hand:-,1:Shield:P,1:Sleep:P,1:Magic Missile:P");
+
+      ({ CLASS_LIB, RACE_LIB, FEAT_LIB, OPTFEATURE_LIB, SPELL_LIB, BACKGROUND_LIB, LANGUAGE_LIB } = saved);
+      CREATOR = blankCreator();
     }
 
     // --- malformed library records must not throw out of the render (they used to) ---
