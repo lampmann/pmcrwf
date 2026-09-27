@@ -130,8 +130,8 @@
     <!-- Health bar (src/hp-bar.js): temp HP above, current/max below. The inputs are the same
          persisted math fields as before, only restyled, so typing "-7" still subtracts. -->
     <div class="hp-bars">
-      <div class="hp-temp-bar" id="hp-temp-bar"><input type="text" inputmode="numeric" data-persist data-math data-min="0" data-allow-empty id="hp-temp" placeholder="0" aria-label="Temporary hit points"></div>
       <div id="hp-temp-full"></div>
+      <div class="hp-temp-bar" id="hp-temp-bar"><input type="text" inputmode="numeric" data-persist data-math data-min="0" data-allow-empty id="hp-temp" placeholder="0" aria-label="Temporary hit points"></div>
       <div class="hp-bar"><div class="hp-fill" id="hp-fill"></div>
         <span class="hp-bar-text"><input type="text" inputmode="numeric" data-persist data-math data-min="0" data-max-from="hp-max" data-allow-empty id="hp-cur" aria-label="Current hit points"><span class="hp-slash">/</span><span id="hp-max">0</span></span></div>
       <div class="hint">Max override <input type="number" class="tiny" data-persist id="hp-max-override" placeholder="auto"></div>

@@ -30,8 +30,6 @@ function hpFieldValue(el) {
   const v = (el.value || "").trim();
   return /^\d+(\.\d+)?$/.test(v) ? Number(v) : Number(el.dataset.prev || 0) || 0;
 }
-/* Temp HP past max HP stacks upward: a full-width yellow row per whole max, with the remainder on
-   top holding the number. */
 /* Each box is as wide as what's typed in it (or its placeholder), since Firefox has no field-sizing. */
 function fitHpInputs() {
   document.querySelectorAll(".hp-bar input, .hp-temp-bar input").forEach(el => {
@@ -39,6 +37,8 @@ function fitHpInputs() {
     el.style.width = (n + 0.6) + "ch";
   });
 }
+/* Temp HP past max HP stacks upward: the bottom row holds the number and is full width, a full row
+   sits above it per further whole max, and the remainder tops the stack. */
 function renderHpBar() {
   fitHpInputs();
   const fill = document.getElementById("hp-fill"), tempBar = document.getElementById("hp-temp-bar");
@@ -48,13 +48,15 @@ function renderHpBar() {
   const temp = hpFieldValue(document.getElementById("hp-temp"));
   if (fill) fill.style.width = (max ? Math.max(0, Math.min(100, cur / max * 100)) : 0) + "%";
   if (!tempBar) return;
-  let full = max ? Math.floor(temp / max) : 0, rest = max ? temp - full * max : 0;
-  if (full && !rest) { full--; rest = max; }
-  const shown = Math.min(full, 4);
-  tempBar.style.width = `max(3.2rem, ${max ? rest / max * 100 : 0}%)`;
+  const rows = max ? Math.ceil(temp / max) : 0;
   tempBar.classList.toggle("hp-temp-empty", !temp);
-  const stack = document.getElementById("hp-temp-full");
-  if (stack && stack.children.length !== shown) stack.innerHTML = '<div class="hp-temp-bar"></div>'.repeat(shown);
+  tempBar.style.width = rows > 1 ? "100%" : `max(3.2rem, ${max ? temp / max * 100 : 0}%)`;
+  const stack = document.getElementById("hp-temp-full"); if (!stack) return;
+  const extra = Math.min(Math.max(0, rows - 1), 4);
+  const topPct = rows > 1 ? (temp - (rows - 1) * max) / max * 100 : 100;
+  const html = extra ? `<div class="hp-temp-bar" style="width:${rows - 1 > 4 ? 100 : topPct}%"></div>` +
+    '<div class="hp-temp-bar"></div>'.repeat(extra - 1) : "";
+  if (stack.innerHTML !== html) stack.innerHTML = html;
 }
 
 function defValues(field) {

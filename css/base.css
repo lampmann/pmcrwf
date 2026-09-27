@@ -600,7 +600,8 @@ button.linkish {
 .hp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #4e9a06; transition: width .15s ease; }
 .hp-temp-bar { background: #edd400; color: #2e3436; transition: width .15s ease; }
 .hp-temp-bar.hp-temp-empty { background: #2e3436; color: #fff; }
-.hp-bars > .hp-temp-bar:first-child { margin-top: 0; }
+#hp-temp-full > .hp-temp-bar:first-child { margin-top: 0; }
+#hp-temp-full:empty + .hp-temp-bar { margin-top: 0; }
 .hp-bar-text { position: relative; display: inline-flex; align-items: baseline; }
 .hp-bar input, .hp-temp-bar input { font: inherit; color: inherit; background: transparent; border: 0; padding: 0; text-align: center; width: 2ch; min-width: 1.5ch; }
 .hp-bar-text #hp-cur { text-align: right; }

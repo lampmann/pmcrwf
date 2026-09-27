@@ -30,6 +30,9 @@ module.exports = async function checkSheetUi(page) {
   // Temp HP past max stacks full rows under the remainder, all the same height as the health bar.
   await page.evaluate(() => { const t = document.getElementById('hp-temp'); t.value = String(Number(document.getElementById('hp-max').textContent) * 2 + 3); commitMath(t); renderHpBar(); });
   assert.equal(await page.locator('#hp-temp-full .hp-temp-bar').count(), 2);
+  const tempRows = await page.evaluate(() => [...document.querySelectorAll('.hp-temp-bar')].map(e => ({ top: e.getBoundingClientRect().top, input: !!e.querySelector('input') })));
+  assert.equal(tempRows.filter(r => r.input).length, 1);
+  assert.equal(tempRows.reduce((a, b) => b.top > a.top ? b : a).input, true, 'the number sits on the bottom temp HP row');
   const heights = await page.evaluate(() => [...document.querySelectorAll('.hp-temp-bar, .hp-bar')].map(e => e.offsetHeight));
   assert.equal(new Set(heights).size, 1);
   // A reload keeps current HP (it used to clamp to the not-yet-computed max of 0).
