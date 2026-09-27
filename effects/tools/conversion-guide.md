@@ -94,6 +94,12 @@ don't create an empty entry just to have one.
   resistance/immunity/vulnerability, always with op `tag`. The suffix is
   free text and is what gets printed, so keep it the type as the book names
   it (`resist-poison`, `resist-all damage except psychic`).
+- `"sense-darkvision"` / `"sense-blindsight"` / `"sense-tremorsense"` / `"sense-truesight"` - a
+  sense's range in feet, read by the Senses module. Use `min` to grant a range (senses don't stack,
+  so the best grant wins, including the race record's own field) and `add` to extend a sense that
+  something else already grants ("if you already have darkvision, its range increases by 30 feet"
+  is a `min` 60 plus an `add` 30). `"sense-special"` with op `tag` lists a sense that has no single
+  range (Devil's Sight, Blindsense) as text.
 - `"save-vs-<condition>"` — advantage on saves against a condition
   (Fey Ancestry, Brave, Gnome Cunning), op `tag`. Note this is *not*
   `save-<ability>`, which is the numeric bonus target.
@@ -206,6 +212,9 @@ applying it, so a typo fails safe (and `validate-db.js` catches it).
   `medium`/`heavy`, read from what's actually equipped through the same
   lookup the AC formula uses, so a predicate and the AC it implies can't
   disagree.
+- `{ choice: { id: "skill", is: "darkvision" } }` / `{ choice: { id: "skill", not: "darkvision" } }` -
+  whether a pick on this entry is (or isn't) a given option. An unmade choice satisfies neither, so
+  an either/or trait (Custom Lineage's skill or darkvision) is one pick with an option per branch.
 - `{ shield: false }` — whether a shield is equipped. A shield is
   deliberately **not** body armour, so "no armour" and "no shield" are two
   separate predicates and a feature that means both must say both

@@ -78,7 +78,8 @@ registerEffects({
   },
   "subclass|cleric|twilight domain|eyes of night": {
     name: "Eyes of Night", sv: 1,
-    unsupported: [{ reason: "darkvision not modeled; spell-slot-contingent uses (to share) not modeled", tags: ["vision", "resource"] }],
+    effects: [{ target: "sense-darkvision", op: "min", value: 300 }],
+    unsupported: [{ reason: "sharing it with others costs an action and, past WIS mod uses, a spell slot; the uses tracker has no spell-slot alternative", tags: ["resource"] }],
   },
   "subclass|cleric|twilight domain|vigilant blessing": {
     name: "Vigilant Blessing", sv: 1,

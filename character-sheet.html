@@ -155,6 +155,26 @@
 
   </section>
 
+  <!-- ===== SENSES (src/senses.js) ===== -->
+  <section class="module" data-module="senses">
+    <h2>Senses</h2>
+    <table class="senses-table">
+      <thead><tr><th></th><th>ft</th><th>Other</th></tr></thead>
+      <tbody>
+        <tr><td>Blindsight</td><td class="derived" id="sense-blindsight">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-blindsight-other" aria-label="Blindsight from other sources"></td></tr>
+        <tr><td>Darkvision</td><td class="derived" id="sense-darkvision">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-darkvision-other" aria-label="Darkvision from other sources"></td></tr>
+        <tr><td>Tremorsense</td><td class="derived" id="sense-tremorsense">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-tremorsense-other" aria-label="Tremorsense from other sources"></td></tr>
+        <tr><td>Truesight</td><td class="derived" id="sense-truesight">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-truesight-other" aria-label="Truesight from other sources"></td></tr>
+      </tbody>
+    </table>
+    <div id="sense-special" class="hint"></div>
+    <table class="senses-table senses-passive">
+      <tr><td>Passive Perception</td><td class="derived" id="passive-perc-2">10</td></tr>
+      <tr><td>Passive Investigation</td><td class="derived" id="passive-inv">10</td></tr>
+      <tr><td>Passive Insight</td><td class="derived" id="passive-ins">10</td></tr>
+    </table>
+  </section>
+
   <!-- ===== COMBAT ROUND TRACKER (src/combat.js) ===== -->
   <section class="module" data-module="combat">
     <h2>Combat <span class="hint" id="combat-status"></span></h2>
@@ -513,6 +533,7 @@
 <script src="src/rows.js"></script>
 <script src="src/derived.js"></script>
 <script src="src/hp-bar.js"></script>
+<script src="src/senses.js"></script>
 <script src="src/event-log.js"></script>
 <script src="src/dice.js"></script>
 <script src="src/boons.js"></script>
@@ -542,6 +563,7 @@
 <script src="effects/db/uses-classes.js"></script>
 <script src="effects/db/uses-races.js"></script>
 <script src="effects/db/optional-features.js"></script>
+<script src="effects/db/senses.js"></script>
 <script src="effects/db/races-batch-01.js"></script>
 <script src="effects/db/races-batch-02.js"></script>
 <script src="effects/db/races-batch-03.js"></script>

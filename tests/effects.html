@@ -172,6 +172,7 @@
 <script src="../effects/db/uses-classes.js"></script>
 <script src="../effects/db/uses-races.js"></script>
 <script src="../effects/db/optional-features.js"></script>
+<script src="../effects/db/senses.js"></script>
 <script src="../src/effects.js"></script>
 <script src="../src/effects-ui.js"></script>
 <script src="../src/spellcasting.js"></script>
@@ -2562,6 +2563,19 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("@self resolves to the feature's own class",
       whenSatisfied({ minClassLevel: { class: "@self", level: 5 } }, { origin: { className: "Barbarian" } }));
     assert("an unrecognized predicate refuses rather than guessing", !whenSatisfied({ phaseOfMoon: "full" }));
+    {
+      const f = { fkey: "race|custom lineage|variable trait", origin: {} };
+      const saved = EFFECT_CHOICES[f.fkey];
+      delete EFFECT_CHOICES[f.fkey];
+      assert("a choice predicate fails while nothing is picked", !whenSatisfied({ choice: { id: "skill", is: "darkvision" } }, f)
+        && !whenSatisfied({ choice: { id: "skill", not: "darkvision" } }, f));
+      EFFECT_CHOICES[f.fkey] = { skill: "darkvision" };
+      assert("...'is' holds for the picked option", whenSatisfied({ choice: { id: "skill", is: "darkvision" } }, f));
+      assert("...and 'not' fails for it", !whenSatisfied({ choice: { id: "skill", not: "darkvision" } }, f));
+      EFFECT_CHOICES[f.fkey] = { skill: ["stealth"] };
+      assert("...'not' holds for any other pick, array-stored too", whenSatisfied({ choice: { id: "skill", not: "darkvision" } }, f));
+      if (saved === undefined) delete EFFECT_CHOICES[f.fkey]; else EFFECT_CHOICES[f.fkey] = saved;
+    }
 
     // Armour state, read from what's actually equipped.
     ITEM_LIB = [{ name: "Plate", armor: true, armorCat: "heavy", ac: 18, weight: 65 },

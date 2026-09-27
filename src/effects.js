@@ -152,6 +152,16 @@ function whenSatisfied(when, feature) {
     if (k === "armor") return [].concat(v).includes(armorWorn());
     if (k === "notArmor") return ![].concat(v).includes(armorWorn());
     if (k === "shield") return shieldWorn() === !!v;
+    // A picked option: { id, is: "darkvision" } holds when that choice's value is (or includes) it,
+    // { id, not: "darkvision" } when a value is picked and isn't. An unmade choice satisfies neither.
+    if (k === "choice") {
+      const raw = feature ? choiceValue(feature, v.id) : undefined;
+      const vals = [].concat(raw == null ? [] : raw).filter(x => x !== "" && x != null);
+      if (!vals.length) return false;
+      if (v.is != null) return vals.includes(v.is);
+      if (v.not != null) return !vals.includes(v.not);
+      return false;
+    }
     return false;   // unrecognized predicate — can't verify, so don't apply
   });
 }

@@ -77,6 +77,18 @@ registerEffects({
     effects: [{ target: "spell-grant", op: "grant-innate", value: { name: "confusion" } }],
     uses: { max: 1, per: "lr" },
   },
+  "optfeature|devil's sight": {
+    name: "Devil's Sight", sv: 1,
+    effects: [{ target: "sense-special", op: "tag", value: "Devil's Sight 120 ft (magical darkness too)" }],
+  },
+  "optfeature|witch sight": {
+    name: "Witch Sight", sv: 1,
+    effects: [{ target: "sense-special", op: "tag", value: "Witch Sight 30 ft (true forms)" }],
+  },
+  "optfeature|blind fighting": {
+    name: "Blind Fighting", sv: 1,
+    effects: [{ target: "sense-blindsight", op: "min", value: 10 }],
+  },
   "optfeature|eldritch mind": {
     name: "Eldritch Mind", sv: 1,
     effects: [{ target: "situational-advantage", op: "tag", value: "on Constitution saves to maintain concentration" }],
@@ -213,7 +225,10 @@ registerEffects({
   },
   "optfeature|stone rune": {
     name: "Stone Rune", sv: 1,
-    effects: [{ target: "skill-insight", op: "adv" }],
+    effects: [
+      { target: "skill-insight", op: "adv" },
+      { target: "sense-darkvision", op: "min", value: 120 },
+    ],
     uses: { max: 1, per: "sr" },
   },
   "optfeature|storm rune": {

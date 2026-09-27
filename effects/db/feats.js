@@ -529,9 +529,13 @@ registerEffects({
   "feat|keenness of the stone giant": {
     "name": "Keenness of the Stone Giant",
     "sv": 1,
+    "effects": [
+      { "target": "sense-darkvision", "op": "min", "value": 60 },
+      { "target": "sense-darkvision", "op": "add", "value": 60 }
+    ],
     "unsupported": [
       {
-        "reason": "darkvision (not modeled); spell attacks with resource tracking (requires attacks/spells table and use-pool model)",
+        "reason": "Avalanche of Rocks: a thrown rock spell attack; spell attacks aren't attack rows",
         "tags": [
           "spell-attack",
           "resource",

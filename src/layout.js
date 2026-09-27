@@ -105,9 +105,17 @@
   /* ---- positions ---- */
   function ensurePositions() {
     const crect = container().getBoundingClientRect();
+    // A module added to the sheet after you arranged yours (Senses, say) goes below everything
+    // rather than into its flow spot, which your arrangement may already cover.
+    const placed = modules().filter(m => state.map[key(m)]);
+    let bottom = placed.reduce((b, m) => { const p = state.map[key(m)]; return Math.max(b, p.y + (p.h || m.offsetHeight)); }, 0);
     modules().forEach(m => {
-      if (!state.map[key(m)]) {
-        const r = m.getBoundingClientRect();
+      if (state.map[key(m)]) return;
+      const r = m.getBoundingClientRect();
+      if (placed.length) {
+        state.map[key(m)] = { x: 0, y: bottom + 16, w: Math.round(r.width), h: 0, z: 0 };
+        bottom += 16 + m.offsetHeight;
+      } else {
         state.map[key(m)] = { x: Math.max(0, Math.round(r.left - crect.left)), y: Math.max(0, Math.round(r.top - crect.top)), w: Math.round(r.width), h: 0, z: 0 };
       }
     });

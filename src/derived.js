@@ -181,6 +181,7 @@ function recompute() {
     $("skillbonus-" + tr.dataset.slug).textContent = sign(checkBonus(key)) + (d ? " " + d : "");
   });
   $("passive-perc").textContent = 10 + checkBonus("skill-perception") + effFlat("passive-perception");
+  if (typeof renderSenses === "function") renderSenses();
   renderDefenses();
   // Just the two movement numbers, not a re-render of the round tracker — see syncCombatMovement.
   if (typeof syncCombatMovement === "function") syncCombatMovement();

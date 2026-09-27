@@ -125,5 +125,30 @@ module.exports = async function checkSheetUi(page) {
   assert.deepEqual(spellChecks.attuned, ['Wand of Fireballs:fireball', 'Spell Scroll (1st Level):Shield']);
   assert.deepEqual(spellChecks.scrollOptions, ['- spell -', 'Cure Wounds', 'Magic Missile', 'Shield']);
   assert.deepEqual(spellChecks.carrier, [0, 3, null]);
-  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits and item/feature spells passed.');
+  // Senses: the best grant wins, an extension adds only onto someone else's grant, Other counts as a grant.
+  const senses = await page.evaluate(() => {
+    const savedContribs = effContribs, savedRace = RACE_LIB.Testling;
+    RACE_LIB.Testling = { name: 'Testling', source: 'X', entries: [], subs: {}, senses: { darkvision: 60 } };
+    const race = document.getElementById('char-race'), prevRace = race.value; race.value = 'Testling';
+    const other = document.getElementById('sense-darkvision-other'); other.value = '';
+    let contribs = [];
+    effContribs = t => t === 'sense-darkvision' ? contribs : [];
+    const out = {};
+    out.race = senseRange('darkvision').n;
+    contribs = [{ op: 'min', n: 60, source: 'Umbral Sight' }, { op: 'add', n: 30, source: 'Umbral Sight' }];
+    out.extended = senseRange('darkvision').n;
+    race.value = '';
+    out.alone = senseRange('darkvision').n;
+    contribs = [{ op: 'min', n: 120, source: 'Stone Rune' }];
+    other.value = '90';
+    out.best = senseRange('darkvision').n;
+    renderSenses();
+    out.shown = document.getElementById('sense-darkvision').textContent;
+    other.value = ''; race.value = prevRace; effContribs = savedContribs;
+    if (savedRace) RACE_LIB.Testling = savedRace; else delete RACE_LIB.Testling;
+    recompute();
+    return out;
+  });
+  assert.deepEqual(senses, { race: 60, extended: 90, alone: 60, best: 120, shown: '120' });
+  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells and senses passed.');
 };

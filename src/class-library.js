@@ -15,7 +15,7 @@ const CLASS_SCHEMA = 4;   // 4: keep saves, starting/multiclass proficiencies an
 //                mcReq, startEq, saves, startProf, mcProf, optProg,
 //                subs:{ shortName:{name,shortName,source,feats:[...],optProg} } } }
 let CLASS_LIB = {};
-const RACE_SCHEMA = 7;   // 7: keep language, weapon, tool and feat grants; earlier versions added ability, size, speed and named base subraces
+const RACE_SCHEMA = 8;   // 8: senses; 7: keep language, weapon, tool and feat grants; earlier versions added ability, size, speed and named base subraces
 // { raceName: { name, source, size:["S","M"], speed:30|{walk,fly,...}, entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
@@ -157,7 +157,7 @@ function parseRaceFile(j) {
   (j.race || []).forEach(r => {
     const existing = RACE_LIB[r.name];
     if (!preferRulesRecord(existing, r)) return;
-    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], size: r.size || [], speed: r.speed, ...raceGrants(r), subs: (existing && existing.subs) || {} };
+    RACE_LIB[r.name] = { name: r.name, source: r.source, entries: parseRaceEntries(r.entries), grantedSpells: r.additionalSpells || [], ability: r.ability || [], size: r.size || [], speed: r.speed, ...raceGrants(r), senses: raceSenses(r), subs: (existing && existing.subs) || {} };
   });
   (j.subrace || []).forEach(s => {
     if (s._copy) return; // reprinted/variant subraces using 5e.tools' copy-inheritance system aren't resolved
@@ -174,12 +174,18 @@ function parseRaceFile(j) {
     // genuinely differs (data has none of these among the common PHB/XGE/MPMM subraces today, but
     // 5e.tools' shape allows it), so it's kept undefined here rather than defaulted to the race's.
     if (!preferRulesRecord(rec.subs[name], s)) return;
-    rec.subs[name] = { name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [], speed: s.speed, ...raceGrants(s) };
+    rec.subs[name] = { name, source: s.source, entries: parseRaceEntries(s.entries), grantedSpells: s.additionalSpells || [], ability: s.ability || [], speed: s.speed, ...raceGrants(s), senses: raceSenses(s) };
   });
 }
 /* The structured grants on a race or subrace record, in the same shape backgrounds use:
    [{ common: true, anyStandard: 1 }], [{ "battleaxe|phb": true }], [{ choose: { from: [...] } }],
    and feats: [{ any: 1 }] for Variant Human and Custom Lineage. */
+/* Structured senses on a race or subrace record ("darkvision": 60, "blindsight": 30). */
+function raceSenses(r) {
+  const out = {};
+  ["blindsight", "darkvision", "tremorsense", "truesight"].forEach(k => { if (Number(r[k]) > 0) out[k] = Number(r[k]); });
+  return out;
+}
 function raceGrants(r) {
   return {
     languages: r.languageProficiencies || [],

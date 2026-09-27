@@ -613,6 +613,9 @@ button.linkish {
 .hp-bar-text #hp-cur { text-align: right; }
 .hp-bar input:focus, .hp-temp-label input:focus { outline: 1px dotted currentColor; }
 .hp-slash { margin: 0 -.2em; }
+/* ----- senses (src/senses.js) ----- */
+.senses-table td:nth-child(2) { text-align: right; min-width: 2.5rem; }
+.senses-passive { margin-top: .35rem; }
 /* ----- defence checklists (src/hp-bar.js) ----- */
 .def-manual { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; font-size: .85rem; }
 .dd-check { position: relative; }

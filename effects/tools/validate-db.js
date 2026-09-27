@@ -35,7 +35,7 @@ const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise",
 // Free-text suffix targets: everything after the prefix is a name the readout prints verbatim
 // ("resist-poison", "resist-all damage except psychic", "save-vs-charmed", "speed-fly"), so there's
 // no closed vocabulary to check against — only that the suffix isn't empty.
-const TAG_PREFIXES = ["resist-", "immune-", "vuln-", "save-vs-", "speed-"];
+const TAG_PREFIXES = ["resist-", "immune-", "vuln-", "save-vs-", "speed-", "sense-"];
 const ACTIVATION_KINDS = new Set(["always", "toggle", "choice"]);
 const CHOICE_KINDS = new Set(["pick", "ability", "spellfilter"]);
 const SPELL_GRANT_OPS = ["grant-free", "grant-list", "grant-innate"];
@@ -45,7 +45,7 @@ const USES_FIELDS = new Set(["max", "per", "delayed"]);
 // whenSatisfied() in src/effects.js returns false for any predicate it doesn't recognize, so an
 // effect carrying a typo'd/invented key is silently inert forever — catch it here instead.
 const WHEN_PREDICATES = new Set(["minLevel", "maxLevel", "minClassLevel", "maxClassLevel", "hasClass", "casting",
-  "armor", "notArmor", "shield"]);
+  "armor", "notArmor", "shield", "choice"]);
 const ARMOR_CATEGORIES = new Set(["none", "light", "medium", "heavy"]);
 // evalValue() dispatches on the FIRST matching key and ignores every other field on the node, so
 // `{ mod: "con", min: 1 }` quietly evaluates to a bare CON modifier — the "minimum 1" vanishes.

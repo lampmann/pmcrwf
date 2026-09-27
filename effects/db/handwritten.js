@@ -79,10 +79,11 @@ registerEffects({
      plainly what to do if you took the other branch. Leaving the picker empty costs nothing. */
   "race|custom lineage|variable trait": {
     name: "Variable Trait", sv: 1,
-    choices: [{ id: "skill", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Skill (none = darkvision)" }],
+    choices: [{ id: "skill", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "darkvision", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Darkvision or skill" }],
     effects: [
-      { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" } },
+      { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" }, when: { choice: { id: "skill", not: "darkvision" } } },
+      { target: "sense-darkvision", op: "min", value: 60, when: { choice: { id: "skill", is: "darkvision" } } },
     ],
-    unsupported: [{ reason: "the other half of this trait is darkvision 60 ft, which the sheet doesn't model — leave the skill picker empty if that's the branch you took", tags: ["vision", "choice"] }],
   },
+
 });
