@@ -83,3 +83,11 @@
 #lay-selbox .lay-sh.nw { top: -9px; left: -9px; cursor: nwse-resize; }
 #lay-selbox .lay-sh.se { bottom: -9px; right: -9px; cursor: nwse-resize; }
 #lay-selbox .lay-sh.sw { bottom: -9px; left: -9px; cursor: nesw-resize; }
+
+/* ----- merged modules (src/layout.js): a tab bar like the character tabs, no close button ----- */
+.module > .lay-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin: -.2rem 0 .45rem; }
+.module > .lay-tabs .lay-tab { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .5rem; }
+.module.lay-stack-hidden { display: none !important; }
+.modules.lay-free > .module .lay-tab { pointer-events: auto; cursor: grab; position: relative; z-index: 8; }  /* above the resize handles */
+.modules.lay-free > .module.lay-merge-target { outline: 2px solid var(--select); outline-offset: -2px;
+  background-image: linear-gradient(color-mix(in srgb, var(--select) 10%, transparent), color-mix(in srgb, var(--select) 10%, transparent)); }

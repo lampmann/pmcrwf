@@ -20,6 +20,7 @@
   const state = { free: false, activated: false, grid: 8, snapGrid: true, snapEdge: true, zTop: 0, map: {}, collapsed: { dice: true } };
   try { const d = JSON.parse(localStorage.getItem(LKEY)); if (d) Object.assign(state, d); } catch (e) {}
   if (!state.collapsed) state.collapsed = {};   // a layout saved before collapsing existed
+  if (!state.stacks) state.stacks = {};         // { id: { members: [key, ...], active: key } }
 
   const DIRS = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
   const byId = id => document.getElementById(id);
@@ -30,6 +31,86 @@
   const sX = () => window.scrollX || window.pageXOffset || 0;
   const sY = () => window.scrollY || window.pageYOffset || 0;
   function save() { try { localStorage.setItem(LKEY, JSON.stringify(state)); } catch (e) {} }
+
+  /* ---- merged modules (stacks) ----
+     Dropping a module onto another in Free mode merges them: every member keeps its own element and
+     ids (the rest of the sheet never notices), all members share one position and size, only the
+     active one is shown, and a tab bar at the top of each switches between them. Dragging a tab out
+     in Free mode takes that module back out. */
+  const stackIdOf = k => Object.keys(state.stacks).find(id => state.stacks[id].members.includes(k)) || null;
+  const stackMates = m => { const id = stackIdOf(key(m)); return id ? state.stacks[id].members.filter(k => k !== key(m)).map(moduleByKey).filter(Boolean) : []; };
+  const isHiddenMember = m => m.classList.contains("lay-stack-hidden");
+  function moduleTitle(m) {
+    const h2 = m.querySelector(":scope > h2");
+    return h2 ? [...h2.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join("").replace(/\s+/g, " ").trim() || key(m) : key(m);
+  }
+  /* Copies a member's position and size to the rest of its stack. */
+  function syncStack(m) {
+    const p = state.map[key(m)]; if (!p) return;
+    stackMates(m).forEach(o => {
+      const q = state.map[key(o)] || (state.map[key(o)] = {});
+      Object.assign(q, { x: p.x, y: p.y, w: p.w, h: p.h, hc: p.hc, z: p.z });
+      applyPos(o);
+    });
+  }
+  function renderStacks() {
+    modules().forEach(m => { m.classList.remove("lay-stack-hidden", "lay-stacked"); const t = m.querySelector(":scope > .lay-tabs"); if (t) t.remove(); });
+    // A stack left with fewer than two modules on the page (one removed, a stale save) dissolves.
+    Object.keys(state.stacks).forEach(id => {
+      const st = state.stacks[id];
+      st.members = st.members.filter((k, i, a) => moduleByKey(k) && a.indexOf(k) === i);
+      if (st.members.length < 2) delete state.stacks[id];
+      else if (!st.members.includes(st.active)) st.active = st.members[0];
+    });
+    if (!state.activated) return;
+    Object.values(state.stacks).forEach(st => {
+      st.members.forEach(k => {
+        const m = moduleByKey(k);
+        m.classList.add("lay-stacked");
+        m.classList.toggle("lay-stack-hidden", k !== st.active);
+        const bar = document.createElement("div"); bar.className = "lay-tabs";
+        bar.innerHTML = st.members.map(mk => `<button type="button" class="char-tab lay-tab${mk === st.active ? " active" : ""}" data-tab="${mk}">${escapeText(moduleTitle(moduleByKey(mk)))}</button>`).join("");
+        m.insertBefore(bar, m.firstChild);
+      });
+    });
+  }
+  function escapeText(t) { return String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+  function switchTab(k) {
+    const id = stackIdOf(k); if (!id) return;
+    state.stacks[id].active = k;
+    const m = moduleByKey(k); if (m) { applyPos(m); }
+    renderStacks(); sizeContainer(); save();
+  }
+  /* The stationary module keeps its place, size and tab order; the dragged one (or its whole
+     stack) joins behind it and takes the same box. */
+  function mergeInto(dragged, target) {
+    const tKey = key(target), dKeys = stackIdOf(key(dragged)) ? [...state.stacks[stackIdOf(key(dragged))].members] : [key(dragged)];
+    const dId = stackIdOf(key(dragged)); if (dId) delete state.stacks[dId];
+    let tId = stackIdOf(tKey);
+    if (!tId) { tId = "s" + Date.now().toString(36); state.stacks[tId] = { members: [tKey], active: tKey }; }
+    dKeys.forEach(k => { if (!state.stacks[tId].members.includes(k)) state.stacks[tId].members.push(k); });
+    // A module that was never resized sizes to its content; the stack gets the height it has now.
+    const pt = state.map[tKey];
+    if (pt && !pt.h && !target.classList.contains("lay-collapsed")) pt.h = target.offsetHeight;
+    renderStacks();
+    applyPos(target); syncStack(target);
+    clearSelection(); sizeContainer(); save();
+  }
+  /* Takes a module out of its stack; it keeps the stack's size and lands where it's dropped. */
+  function detach(m) {
+    const id = stackIdOf(key(m)); if (!id) return;
+    const st = state.stacks[id];
+    st.members = st.members.filter(k => k !== key(m));
+    if (st.active === key(m)) st.active = st.members[0];
+    renderStacks(); save();
+  }
+  /* The visible module under a viewport point, other than `m` and its own stack; topmost wins. */
+  function mergeTargetAt(m, cx, cy) {
+    const skip = new Set([m, ...stackMates(m)]);
+    return modules().filter(o => !skip.has(o) && !isHiddenMember(o)).filter(o => {
+      const r = o.getBoundingClientRect(); return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+    }).sort((a, b) => (Number(b.style.zIndex) || 0) - (Number(a.style.zIndex) || 0))[0] || null;
+  }
 
   /* ---- selection ---- */
   const selected = new Set();
@@ -145,6 +226,7 @@
     if (state.activated) { ensurePositions(); c.classList.add("lay-active"); modules().forEach(applyPos); sizeContainer(); }
     else { c.classList.remove("lay-active"); modules().forEach(clearPos); c.style.minHeight = ""; clearSelection(); }
     modules().forEach(applyCollapse);
+    renderStacks();
     c.classList.toggle("lay-free", state.free);
     if (!state.free) clearSelection();
     updateGrid(); updateSelbox();
@@ -157,8 +239,9 @@
     if (state.snapGrid) { const g = state.grid; x = Math.round(x / g) * g; y = Math.round(y / g) * g; }
     if (state.snapEdge) {
       const T = 7;
+      const mates = new Set(stackMates(m));
       modules().forEach(o => {
-        if (o === m) return; const p = state.map[key(o)]; if (!p) return;
+        if (o === m || mates.has(o) || isHiddenMember(o)) return; const p = state.map[key(o)]; if (!p) return;
         const ow = o.offsetWidth, oh = o.offsetHeight;
         if (Math.abs(x - p.x) < T) x = p.x;
         if (Math.abs(x - (p.x + ow)) < T) x = p.x + ow;
@@ -182,8 +265,9 @@
     }
     if (state.snapEdge) {
       const T = 7;
+      const mates = new Set(stackMates(m));
       modules().forEach(o => {
-        if (o === m) return; const p = state.map[key(o)]; if (!p) return;
+        if (o === m || mates.has(o) || isHiddenMember(o)) return; const p = state.map[key(o)]; if (!p) return;
         const ow = o.offsetWidth, oh = o.offsetHeight, ex = [p.x, p.x + ow], ey = [p.y, p.y + oh];
         if (dir.includes("e")) ex.forEach(v => { if (Math.abs(right - v) < T) right = v; });
         if (dir.includes("w")) ex.forEach(v => { if (Math.abs(left - v) < T) left = v; });
@@ -222,14 +306,21 @@
       const adx = s.x - po.x, ady = s.y - po.y;
       grp.forEach(m => { const o = origins.get(m), p = state.map[key(m)]; p.x = Math.max(0, o.x + adx); p.y = Math.max(0, o.y + ady); m.style.left = p.x + "px"; m.style.top = p.y + "px"; });
       if (isGroup) updateSelbox();
+      else {
+        const t = mergeTargetAt(primary, lastCX, lastCY);
+        if (t !== target) { if (target) target.classList.remove("lay-merge-target"); target = t; if (target) target.classList.add("lay-merge-target"); }
+      }
     }
+    let target = null;
     function mv(ev) { lastCX = ev.clientX; lastCY = ev.clientY; update(); }
     function onScroll() { update(); }
     let raf = requestAnimationFrame(function tick() { const sp = edgeScrollSpeed(lastCX, lastCY); if (sp.x || sp.y) { scrollBy(sp.x, sp.y); update(); } raf = requestAnimationFrame(tick); });
     function up() {
       cancelAnimationFrame(raf);
       document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); removeEventListener("scroll", onScroll);
-      document.body.style.userSelect = ""; grp.forEach(m => m.classList.remove("lay-dragging")); sizeContainer(); save();
+      document.body.style.userSelect = ""; grp.forEach(m => m.classList.remove("lay-dragging"));
+      if (target) { target.classList.remove("lay-merge-target"); mergeInto(primary, target); return; }
+      grp.forEach(syncStack); sizeContainer(); save();
     }
     document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up); addEventListener("scroll", onScroll, { passive: true });
   }
@@ -261,7 +352,7 @@
       if (m.classList.contains("lay-collapsed")) p.hc = bottom - top; else p.h = bottom - top;
       m.style.left = p.x + "px"; m.style.top = p.y + "px"; m.style.width = p.w + "px"; m.style.height = (bottom - top) + "px";
     }
-    function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); document.body.style.userSelect = ""; sizeContainer(); save(); }
+    function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); document.body.style.userSelect = ""; syncStack(m); sizeContainer(); save(); }
     document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
   }
 
@@ -301,7 +392,7 @@
       });
       updateSelbox();
     }
-    function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); document.body.style.userSelect = ""; sizeContainer(); save(); }
+    function up() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); document.body.style.userSelect = ""; mods.forEach(syncStack); sizeContainer(); save(); }
     document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
   }
 
@@ -314,7 +405,7 @@
     function mv(ev) { const b = bounds(ev), cr = cont.getBoundingClientRect(); band.style.left = (b.x1 - cr.left) + "px"; band.style.top = (b.y1 - cr.top) + "px"; band.style.width = (b.x2 - b.x1) + "px"; band.style.height = (b.y2 - b.y1) + "px"; }
     function up(ev) {
       const b = bounds(ev); document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); band.remove();
-      modules().forEach(m => { const r = m.getBoundingClientRect(); if (r.right > b.x1 && r.left < b.x2 && r.bottom > b.y1 && r.top < b.y2) selectAdd(m); });
+      modules().forEach(m => { if (isHiddenMember(m)) return; const r = m.getBoundingClientRect(); if (r.right > b.x1 && r.left < b.x2 && r.bottom > b.y1 && r.top < b.y2) selectAdd(m); });
       updateSelectionUI();
     }
     document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
@@ -325,6 +416,7 @@
     if (!state.free || e.button !== 0) return;
     const sh = e.target.closest("#lay-selbox .lay-sh"); if (sh) { startGroupResize(sh.dataset.dir, e); return; }
     const rh = e.target.closest(".lay-h"); if (rh) { const m = rh.closest(".module"); if (m) startResize(m, e, rh.dataset.dir); return; }
+    const tab = e.target.closest(".lay-tab"); if (tab) { startTabDrag(tab, e); return; }
     const m = e.target.closest(".module");
     if (m && m.parentElement && m.parentElement.classList.contains("modules")) {
       if (e.shiftKey) { toggleSelect(m); return; }
@@ -334,11 +426,32 @@
     const cont = e.target.closest(".modules"); if (cont) startMarquee(e, cont);
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.free) clearSelection(); });
+  /* In Free mode a tab is both a switch (click) and a handle: pulled more than a few pixels, its
+     module leaves the stack at the pointer and carries on as an ordinary drag, so it can be dropped
+     anywhere or onto another module. */
+  function startTabDrag(tab, e) {
+    e.preventDefault(); e.stopPropagation();
+    const k = tab.dataset.tab, sx = e.clientX, sy = e.clientY;
+    function mv(ev) {
+      if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 6) return;
+      done();
+      const m = moduleByKey(k); if (!m) return;
+      const crect = container().getBoundingClientRect(), p = state.map[k];
+      detach(m);
+      p.x = Math.max(0, Math.round(ev.clientX - crect.left - 30)); p.y = Math.max(0, Math.round(ev.clientY - crect.top - 12));
+      applyPos(m);
+      startDrag(m, ev);
+    }
+    function up() { done(); switchTab(k); }
+    function done() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); }
+    document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
+  }
   /* Plain click delegation, not routed through the pointerdown handler above: that one only acts
      while state.free (dragging/resizing), and CSS already sets pointer-events:none on every button
      inside a module while Free is on — including this one — so there's nothing to guard against
      the two handlers fighting over the same click. */
   document.addEventListener("click", e => {
+    const tab = e.target.closest(".lay-tab"); if (tab && !state.free) { switchTab(tab.dataset.tab); return; }
     const btn = e.target.closest(".lay-collapse-btn"); if (!btn) return;
     const m = btn.closest(".module"); if (m) toggleCollapse(m);
   });
@@ -353,7 +466,7 @@
     rd.onload = () => {
       try {
         const d = JSON.parse(rd.result); if (typeof d !== "object" || !d.map) throw new Error("not a layout file");
-        Object.assign(state, { free: false }, d, { free: false });
+        Object.assign(state, { free: false, stacks: {} }, d, { free: false });
         syncControls(); apply(); save();
       } catch (err) { alert("Bad layout file: " + err); }
     };
@@ -386,7 +499,7 @@
     byId("lay-grid").addEventListener("change", e => { state.snapGrid = e.target.checked; updateGrid(); save(); });
     byId("lay-edge").addEventListener("change", e => { state.snapEdge = e.target.checked; save(); });
     byId("lay-gridsize").addEventListener("change", e => { state.grid = Math.max(1, Math.min(64, Number(e.target.value) || 8)); e.target.value = state.grid; updateGrid(); save(); });
-    byId("lay-reset").addEventListener("click", () => { if (confirm("Reset module layout back to the default flow? This also expands any collapsed modules.")) { state.map = {}; state.collapsed = {}; state.free = false; state.activated = false; state.zTop = 0; clearSelection(); syncControls(); apply(); save(); updateHint(); } });
+    byId("lay-reset").addEventListener("click", () => { if (confirm("Reset module layout back to the default flow? This also expands any collapsed modules.")) { state.map = {}; state.collapsed = {}; state.stacks = {}; state.free = false; state.activated = false; state.zTop = 0; clearSelection(); syncControls(); apply(); save(); updateHint(); } });
     byId("lay-save").addEventListener("click", exportLayout);
     byId("lay-load").addEventListener("change", e => { if (e.target.files[0]) importLayout(e.target.files[0]); e.target.value = ""; });
     updateHint();
@@ -394,5 +507,5 @@
 
   document.addEventListener("DOMContentLoaded", () => { buildBar(); wrapBodies(); addCollapseToggles(); addHandles(); apply(); });
   window.__layout = { state, apply, snapMove, modules, ensurePositions, save, selected, selectAdd, updateSelectionUI, selectionRect,
-    toggleCollapse, wrapBodies, addCollapseToggles };
+    toggleCollapse, wrapBodies, addCollapseToggles, mergeInto, detach, switchTab, stackIdOf };
 })();

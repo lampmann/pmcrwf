@@ -508,6 +508,7 @@ By default modules flow down the page. Contents stay left-aligned when modules a
 - **Snap to grid** — positions and sizes (drag **and** resize) snap to a grid; the **grid** box sets the cell size in px. When editing with snap-to-grid on, a grey grid is overlaid.
 - **Snap to modules** — while dragging or resizing, edges snap to align with (or sit flush against) other modules' edges.
 - **Multi-select** — drag a box across empty space to marquee-select modules (Shift-click to add/remove one; Esc clears). Then **drag any selected module to move them all together**, or drag the selection box's handles to **resize them all at once**. A module you move jumps to the **front and stays there**.
+- **Merge** - drop a module onto another (it highlights as you hover) to merge them: the one you dropped onto keeps its position and size, a row of tabs appears at the top, and its tab comes first. Click a tab to switch, in or out of Free mode. In Free mode, drag a tab away to take that module back out: it keeps the merged size and lands where you drop it, or merges into whatever module you drop it on. Merges are saved with the arrangement; **reset** undoes them.
 - While dragging, the page **auto-scrolls** when you near an edge (faster the closer you get), and modules track the scroll so they never lag behind.
 - **reset** returns to the default flow (and expands anything collapsed); **save file** / **load** export and import the arrangement as a JSON file.
 
@@ -569,6 +570,16 @@ For Firefox, run `npx playwright install firefox` and set `PMCRWF_TEST_BROWSER=f
 ## Roadmap / known limits
 Only what is still outstanding. Anything finished has been removed from this list and is described in
 its own section above; the [Tests](#tests) suite is the record of what actually works.
+
+**Feature automation still to do** (each shows `⚠ not automated` with its reason on hover)
+- Proficiencies granted by features (subclass Bonus Proficiencies, Githyanki Martial Prodigy): effects can't tick the Proficiencies module's armor, weapon and tool boxes yet.
+- Resource pools: ki, sorcery points, superiority dice and psionic dice as spendable points, rather than per-rest uses.
+- Temporary hit points granted by features (Dark One's Blessing, Tomb of Levistus, Twilight Sanctuary).
+- Roll changes: rerolls (Great Weapon Fighting, Lucky-style features), bonuses added after the roll (Flash of Genius, Arcane Deflection) and extra crit dice (Brutal Critical, Savage Attacks).
+- Per-weapon bonuses: effects that belong to one weapon or unarmed strikes (Two-Weapon Fighting, Unarmed Fighting, Dragon Hide's claws); weapon bonuses currently reach every attack row, which each row can opt out of.
+- Use counts that scale oddly (Channel Divinity 2 then 3, Rage uses) and uses that can also be paid with a spell slot.
+- Senses from items (Goggles of Night) and choose-one features where only some options are senses (Eagle totem, Transmuter's Stone).
+- Out of scope for now: action economy (Extra Attack and friends), effects on other creatures (auras, Cutting Words), companions' own stat blocks, and size, reach and jump distances.
 
 **Known limits of what shipped**
 - Icon variants for modules and the toolbar — not built.

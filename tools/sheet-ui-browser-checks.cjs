@@ -150,5 +150,23 @@ module.exports = async function checkSheetUi(page) {
     return out;
   });
   assert.deepEqual(senses, { race: 60, extended: 90, alone: 60, best: 120, shown: '120' });
-  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells and senses passed.');
+  // Merging modules: the stationary one keeps its box and its tab comes first; tabs switch; detaching dissolves.
+  await page.evaluate(() => { const L = __layout; L.state.free = true; L.apply(); });
+  const merged = await page.evaluate(() => {
+    const L = __layout, saves = document.querySelector('[data-module="saves"]'), senses = document.querySelector('[data-module="senses"]');
+    const before = { ...L.state.map.saves };
+    L.mergeInto(senses, saves);
+    const shown = () => ['saves', 'senses'].filter(k => document.querySelector(`[data-module="${k}"]`).offsetParent);
+    const p = L.state.map;
+    return { tabs: [...saves.querySelectorAll('.lay-tab')].map(t => t.textContent), shown: shown(),
+      sameBox: p.senses.x === before.x && p.senses.y === before.y && p.senses.w === before.w && p.senses.h === p.saves.h };
+  });
+  assert.deepEqual(merged, { tabs: ['Saving Throws', 'Senses'], shown: ['saves'], sameBox: true });
+  await page.evaluate(() => { __layout.state.free = false; __layout.apply(); });
+  await page.locator('[data-module="saves"] .lay-tab[data-tab="senses"]').click();
+  assert.deepEqual(await page.evaluate(() => ['saves', 'senses'].filter(k => document.querySelector(`[data-module="${k}"]`).offsetParent)), ['senses']);
+  assert.equal(await page.evaluate(() => { __layout.detach(document.querySelector('[data-module="senses"]')); return Object.keys(__layout.state.stacks).length + document.querySelectorAll('.lay-tab').length; }), 0);
+  await page.evaluate(() => { const L = __layout; Object.assign(L.state, { map: {}, stacks: {}, free: false, activated: false }); L.apply(); L.save(); });
+
+  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses and merged modules passed.');
 };
