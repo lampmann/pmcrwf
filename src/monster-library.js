@@ -366,7 +366,7 @@
       try { out.push(parseMonster(resolveCopy(m, index, 0))); seen.add(k); }
       catch (e) { console.warn("Skipped a malformed monster entry:", m && m.name, e); }
     });
-    MON_LIB = MON_LIB.concat(out);
+    MON_LIB = typeof editionMerge === "function" ? editionMerge(MON_LIB.slice(), out) : MON_LIB.concat(out);
     MON_LIB.sort((a, b) => a.name.localeCompare(b.name));
   }
   function sources() { return [...new Set(MON_LIB.map(m => m.source))].sort(); }

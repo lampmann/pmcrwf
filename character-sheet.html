@@ -23,6 +23,7 @@
 <div class="toolbar">
   <strong>pmcrwf</strong>
   <span style="float:right">
+    <label title="Use the 2024 books' versions of anything printed in both, and their new content"><input type="checkbox" id="edition-2024"> 2024 content</label>
     <label>Theme <select id="theme-select"></select></label>
     <button id="btn-export">Export JSON</button>
     <label>Import <input type="file" id="file-import" accept="application/json" style="width:12rem"></label>
@@ -547,6 +548,7 @@
 
 <script src="src/errors.js"></script>
 <script src="src/data.js"></script>
+<script src="src/edition.js"></script>
 <script src="src/text-utils.js"></script>
 <!-- Before every library: they call dataFetch() instead of fetch() for data/ paths.
      data-snapshot.js first — data-folder.js's shim reads the stored copy through it. -->

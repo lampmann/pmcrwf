@@ -36,11 +36,20 @@ let LANGUAGE_LIB = {};
    { name: { name, source, types:["FS:F","FS:R"], minLevel, text } } */
 const OPTFEATURE_SCHEMA = 1;
 let OPTFEATURE_LIB = {};
-// This sheet uses 2014 rules. Prefer their records when names collide with revised books.
+// One record per name across the 2014 and 2024 books, decided by the top bar's 2024 switch
+// (src/edition.js): off leaves 2024 records out, on lets them replace their 2014 namesakes.
 function preferRulesRecord(existing, incoming) {
+  if (typeof editionAllows === "function" && !editionAllows(incoming)) return false;
   if (!existing || existing.source === incoming.source) return true;
+  if (typeof editionRank === "function") return editionRank(incoming) < editionRank(existing);
   const rank = source => source === "PHB" ? 0 : ["XPHB", "XDMG", "XMM"].includes(source) ? 2 : 1;
   return rank(incoming.source) < rank(existing.source);
+}
+/* A subclass or feature written for a class's 2014 record also belongs to its 2024 record when 2024
+   content is on: most subclasses (XGE, TCE, SCAG...) were only ever printed against the PHB class. */
+function classSourceMatches(src, cls) {
+  if (!src || src === cls.source) return true;
+  return typeof USE_2024 !== "undefined" && USE_2024 && src === "PHB" && cls.source === "XPHB";
 }
 function parseLanguageFile(j) {
   (j.language || []).forEach(l => {
@@ -134,11 +143,11 @@ function parseClassFile(j) {
   });
   (j.subclass || []).forEach(sc => {
     const r = CLASS_LIB[sc.className];
-    if (r && (!sc.classSource || sc.classSource === r.source) && preferRulesRecord(r.subs[sc.shortName], sc)) r.subs[sc.shortName] = { name: sc.name, shortName: sc.shortName, source: sc.source, feats: [], grantedSpells: sc.additionalSpells || [], optProg: Array.isArray(sc.optionalfeatureProgression) ? sc.optionalfeatureProgression : [] };
+    if (r && classSourceMatches(sc.classSource, r) && preferRulesRecord(r.subs[sc.shortName], sc)) r.subs[sc.shortName] = { name: sc.name, shortName: sc.shortName, source: sc.source, feats: [], grantedSpells: sc.additionalSpells || [], optProg: Array.isArray(sc.optionalfeatureProgression) ? sc.optionalfeatureProgression : [] };
   });
   (j.subclassFeature || []).forEach(f => {
     const r = CLASS_LIB[f.className]; if (!r) return;
-    if (f.classSource && f.classSource !== r.source) return;
+    if (!classSourceMatches(f.classSource, r)) return;
     const s = r.subs[f.subclassShortName]; if (!s || (f.subclassSource && f.subclassSource !== s.source)) return;
     s.feats.push({ name: f.name, level: f.level, source: f.source, text: stripTags(flattenEntries(f.entries)) });
   });

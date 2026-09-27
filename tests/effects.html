@@ -122,6 +122,7 @@
 <script>try { localStorage.clear(); } catch (e) {}</script>
 <script src="../src/errors.js"></script>
 <script src="../src/data.js"></script>
+<script src="../src/edition.js"></script>
 <script src="../src/text-utils.js"></script>
 <!-- Every library below fetches data/ through dataFetch. Without this the call is a ReferenceError
      that lands in the same catch as a missing file, so the harness would still pass while testing
@@ -2198,6 +2199,27 @@ document.addEventListener("DOMContentLoaded", () => {
      The slot always existed and always offered a feat; taking the +2 instead was listed as a gained
      feature and left to you. Picks are stored as two slots because that IS the rule — the same
      ability twice is the +2, two different ones is +1 each, and neither needs a special case. */
+  // 2014 / 2024: one record per name, the top bar's switch deciding which (src/edition.js).
+  {
+    const saved = USE_2024;
+    const fb14 = { name: "Fireball", source: "PHB" }, fb24 = { name: "Fireball", source: "XPHB" };
+    const starry = { name: "Starry Wisp", source: "XPHB" }, hex = { name: "Hex", source: "PHB" }, xge = { name: "Toll the Dead", source: "XGE" };
+    USE_2024 = false;
+    let lib = editionMerge([], [fb14, fb24, starry, hex, xge]);
+    assertEqual("2024 off: 2024 records are left out, 2014 ones kept", lib.map(r => r.name + "|" + r.source).join(","), "Fireball|PHB,Hex|PHB,Toll the Dead|XGE");
+    assert("...and a class record from the 2024 book loses to the 2014 one", !preferRulesRecord({ source: "PHB" }, { source: "XPHB" }));
+    assert("...or isn't taken at all", !preferRulesRecord(null, { source: "XPHB" }));
+    USE_2024 = true;
+    lib = editionMerge([], [fb14, hex, fb24, starry, xge]);
+    assertEqual("2024 on: a 2024 record replaces its 2014 namesake, one copy each", lib.map(r => r.name + "|" + r.source).join(","),
+      "Fireball|XPHB,Hex|PHB,Starry Wisp|XPHB,Toll the Dead|XGE");
+    assert("...and wins a name collision in the keyed libraries", preferRulesRecord({ source: "PHB" }, { source: "XPHB" }));
+    assert("...while a subclass printed against the 2014 class still attaches to the 2024 one", classSourceMatches("PHB", { source: "XPHB" }));
+    assertEqual("filtering a cached list keeps everything when on", editionFilter([fb14, fb24]).length, 2);
+    USE_2024 = false;
+    assertEqual("...and drops 2024 records when off", editionFilter([fb14, fb24]).length, 1);
+    USE_2024 = saved;
+  }
   // Half feats: the feat record's own `ability` field is the +1, not a hand-written entry per feat.
   {
     const savedFeatLib0 = FEAT_LIB;

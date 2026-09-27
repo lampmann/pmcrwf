@@ -222,7 +222,8 @@ function parseItemArrays(j) {
 }
 function mergeItems(list) {
   const seen = new Set(ITEM_LIB.map(i => i.name + "|" + i.source));
-  list.forEach(i => { if (!i.name) return; const k = i.name + "|" + i.source; if (!seen.has(k)) { ITEM_LIB.push(i); seen.add(k); } });
+  if (typeof editionMerge === "function") editionMerge(ITEM_LIB, list);
+  else list.forEach(i => { if (!i.name) return; const k = i.name + "|" + i.source; if (!seen.has(k)) { ITEM_LIB.push(i); seen.add(k); } });
   ITEM_LIB.sort((a, b) => a.name.localeCompare(b.name));
 }
 function loadItemFiles(files) {
@@ -265,7 +266,7 @@ function saveItemLib() {
 function loadItemLib() {
   try {
     const d = JSON.parse(localStorage.getItem("charsheet-itemlib"));
-    if (d && d.v === ITEM_LIB_SCHEMA) ITEM_LIB = d.items || [];
+    if (d && d.v === ITEM_LIB_SCHEMA) ITEM_LIB = typeof editionFilter === "function" ? editionFilter(d.items) : (d.items || []);
     else { ITEM_LIB = []; if (d) localStorage.removeItem("charsheet-itemlib"); } // stale schema -> re-import
   } catch (e) { ITEM_LIB = []; }
 }

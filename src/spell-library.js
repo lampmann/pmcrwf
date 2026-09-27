@@ -232,7 +232,8 @@ function parseSpell(raw) {
 }
 function mergeSpells(list) {
   const seen = new Set(SPELL_LIB.map(s => s.name + "|" + s.source));
-  list.forEach(s => { const k = s.name + "|" + s.source; if (!seen.has(k)) { SPELL_LIB.push(s); seen.add(k); } });
+  if (typeof editionMerge === "function") editionMerge(SPELL_LIB, list);
+  else list.forEach(s => { const k = s.name + "|" + s.source; if (!seen.has(k)) { SPELL_LIB.push(s); seen.add(k); } });
   SPELL_LIB.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 }
 // 5e.tools ships per-spell class lists separately, in data/spells/sources.json — keyed by
@@ -303,7 +304,7 @@ function saveSpellLib() {
 function loadSpellLib() {
   try {
     const d = JSON.parse(localStorage.getItem("charsheet-spelllib"));
-    if (d && d.v === LIB_SCHEMA) SPELL_LIB = d.spells || [];
+    if (d && d.v === LIB_SCHEMA) SPELL_LIB = typeof editionFilter === "function" ? editionFilter(d.spells) : (d.spells || []);
     else { SPELL_LIB = []; if (d) localStorage.removeItem("charsheet-spelllib"); } // stale schema → re-import
   } catch (e) { SPELL_LIB = []; }
   localStorage.removeItem("charsheet-spellsrcoff"); // retire old keys

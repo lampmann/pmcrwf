@@ -42,6 +42,14 @@ The sheet draws a line between two kinds of game data:
 
 When adding a new auto-calculated feature, ask which bucket it falls into: a short, fixed, prose-free table → hardcode it with an override box (see Max HP and Spell Slots below, or the effects database); anything bigger, descriptive, or that reproduces sourcebook text → make it an import, not a bundled dataset.
 
+### 2014 and 2024 content
+5e.tools ships the 2024 books (XPHB, XDMG, XMM) next to the 2014 ones, often under the same names. The **2024 content** switch in the top bar decides which copy the sheet keeps, everywhere at once (classes, subclasses, races, feats, backgrounds, spells, items, monsters, optional features, languages):
+
+- **Off** (default): records from the 2024 books are left out entirely.
+- **On**: a 2024 record replaces its 2014 namesake, and anything only one edition has is kept. Subclasses printed against the 2014 class (XGE, TCE...) still attach to the 2024 class.
+
+Either way there is one copy of each name, so no picker offers two Fireballs. The setting is per browser. Changing it reloads the page and rebuilds the libraries from your data folder; files imported one by one through a library's **Import** box need importing again.
+
 ## Running pmcrwf as a website
 The sheet is a static site — no build step, no server-side code, and every path in it is relative — so it can be hosted as-is and reached from a URL instead of a local server. `.github/workflows/pages.yml` publishes it to GitHub Pages on every push to `main`; enable it once under **Settings → Pages → Build and deployment → Source: GitHub Actions**. Nothing about the local workflow changes: `pmcrwf.cmd` still works exactly as before, and everything in this section is inert when the sheet is opened from a local server.
 
