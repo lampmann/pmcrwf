@@ -128,9 +128,33 @@ module.exports = async function checkCreator(page) {
   assert.deepEqual(await page.evaluate(() => comboOptionsOf(document.querySelector('.cr-bgtool'))), ['Abyssal', "Carpenter's Tools", 'Common', 'Disguise Kit', 'Elvish']);
   await page.evaluate(() => { CREATOR.bgTools = ['Elvish', 'Disguise Kit']; });
   assert.deepEqual(await page.evaluate(() => creatorBuildState().proficiencies), { weapons: [], tools: ['Disguise Kit'], languages: ['Elvish'] });
+  // A race that grants a feat (Variant Human, Custom Lineage) asks which one in step 1, and hands it
+  // to the built character under the same fkey the Features module reads back — one slot seen twice
+  // rather than two places a feat can hide. Injected straight into the libraries rather than through
+  // the folder snapshot, so the counts and option lists asserted above stay as they were.
+  await page.evaluate(() => {
+    RACE_LIB['Custom Lineage'] = { name: 'Custom Lineage', source: 'TCE', ability: [], size: ['M'], speed: 30, subs: {},
+      entries: [{ name: 'Feat', source: 'TCE', text: 'You gain one feat of your choice.' }] };
+    RACE_LIB.Halfling = { name: 'Halfling', source: 'PHB', ability: [], size: ['S'], speed: 25, subs: {},
+      entries: [{ name: 'Lucky', source: 'PHB', text: 'Reroll a 1.' }] };
+    FEAT_LIB.Alert = { name: 'Alert', source: 'PHB', text: '+5 initiative.' };
+    CREATOR.race = 'Custom Lineage'; CREATOR.subrace = ''; CREATOR.raceFeats = {};
+    goToCreatorStep(1);
+  });
+  assert.equal(await page.locator('[id^="cr-racefeat-"]').count(), 1);
+  assert.match(await page.evaluate(() => creatorStepBlockerFor(1)), /Choose the feat your race grants/);
+  await page.evaluate(() => { CREATOR.raceFeats.Feat = 'Alert'; renderCreator(); });
+  assert.equal(await page.evaluate(() => creatorStepBlockerFor(1)), '');
+  assert.deepEqual(await page.evaluate(() => creatorBuildState().featChoices), { 'race||Custom Lineage||Feat': 'Alert' });
+  // A race that grants no feat gets no picker and no blocker.
+  await page.evaluate(() => { CREATOR.race = 'Halfling'; CREATOR.raceFeats = {}; renderCreator(); });
+  assert.equal(await page.locator('[id^="cr-racefeat-"]').count(), 0);
+  assert.equal(await page.evaluate(() => creatorStepBlockerFor(1)), '');
+  assert.deepEqual(await page.evaluate(() => creatorBuildState().featChoices), {});
+
   await page.locator('#cr-close').click();
   assert.equal(await page.locator('#creator-modal').isVisible(), false);
   assert.equal(await page.locator('.combo-panel').count(), 0);
-  console.log('Creator: persistent folder data, 2014 records, nested race search, mouse/keyboard selection, background choices, fixed dialog, deliberate close, full book names, and text drags passed.');
+  console.log('Creator: persistent folder data, 2014 records, nested race search, mouse/keyboard selection, background choices, racial feat grants, fixed dialog, deliberate close, full book names, and text drags passed.');
 };
 
