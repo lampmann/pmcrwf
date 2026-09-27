@@ -32,7 +32,15 @@ function hpFieldValue(el) {
 }
 /* Temp HP past max HP stacks upward: a full-width yellow row per whole max, with the remainder on
    top holding the number. */
+/* Each box is as wide as what's typed in it (or its placeholder), since Firefox has no field-sizing. */
+function fitHpInputs() {
+  document.querySelectorAll(".hp-bar input, .hp-temp-bar input").forEach(el => {
+    const n = Math.max(1, (el.value || el.placeholder || "").length);
+    el.style.width = (n + 0.6) + "ch";
+  });
+}
 function renderHpBar() {
+  fitHpInputs();
   const fill = document.getElementById("hp-fill"), tempBar = document.getElementById("hp-temp-bar");
   if (!fill && !tempBar) return;
   const max = Math.max(0, Number((document.getElementById("hp-max") || {}).textContent) || 0);

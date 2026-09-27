@@ -591,6 +591,8 @@ button.linkish {
 .cr-header, #cr-stepper, #cr-blocker, .cr-actions { flex-shrink: 0; }
 
 /* ----- health bar (src/hp-bar.js). Solid Tango palette colours, the same in every theme. ----- */
+/* The body fills the module here rather than fitting its content, so the bars span the module. */
+.module[data-module="hp"] > .lay-body { width: auto; }
 .hp-bars { margin: .2rem 0 .4rem; }
 .hp-bar, .hp-temp-bar { position: relative; height: 1.55rem; box-sizing: border-box; border: 1px solid #000; margin-top: .2rem;
   display: flex; align-items: center; justify-content: center; font-weight: bold; }
@@ -600,9 +602,9 @@ button.linkish {
 .hp-temp-bar.hp-temp-empty { background: #2e3436; color: #fff; }
 .hp-bars > .hp-temp-bar:first-child { margin-top: 0; }
 .hp-bar-text { position: relative; display: inline-flex; align-items: baseline; }
-.hp-bars input { font: inherit; color: inherit; background: transparent; border: 0; padding: 0; text-align: center; width: 3.2ch; field-sizing: content; min-width: 1.5ch; }
+.hp-bar input, .hp-temp-bar input { font: inherit; color: inherit; background: transparent; border: 0; padding: 0; text-align: center; width: 2ch; min-width: 1.5ch; }
 .hp-bar-text #hp-cur { text-align: right; }
-.hp-bars input:focus { outline: 1px dotted currentColor; }
+.hp-bar input:focus, .hp-temp-bar input:focus { outline: 1px dotted currentColor; }
 .hp-slash { margin: 0 .1rem; }
 /* ----- defence checklists (src/hp-bar.js) ----- */
 .def-manual { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; font-size: .85rem; }
