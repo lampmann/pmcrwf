@@ -222,7 +222,7 @@ function clearBoonsForRest(kind) {
 /* ----- rendering ----- */
 function boonRowHtml(def) {
   const n = boonCount(def.key);
-  return `<span class="boon">
+  return `<span class="boon boon-ctr">
     <button type="button" class="boon-step" data-boon="${def.key}" data-delta="-1" aria-label="one fewer">&minus;</button>
     <input type="text" inputmode="numeric" class="tiny boon-count${n ? " boon-on" : ""}" data-boon="${def.key}" value="${n}">
     <button type="button" class="boon-step" data-boon="${def.key}" data-delta="1" aria-label="one more">+</button>
@@ -233,7 +233,7 @@ function boonRowHtml(def) {
    limits sees nothing here at all. */
 function castingRowHtml(name, limit) {
   const n = castingCount(name), over = n > limit;
-  return `<span class="boon" title="${escapeHtml(name)} - this campaign allows ${limit} active at a time">
+  return `<span class="boon boon-ctr" title="${escapeHtml(name)} - this campaign allows ${limit} active at a time">
     <button type="button" class="boon-step" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" data-delta="-1" aria-label="one fewer">&minus;</button>
     <input type="text" inputmode="numeric" class="tiny boon-count${n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" value="${n}">
     <button type="button" class="boon-step" data-casting="${escapeHtml(name).replace(/"/g, "&quot;")}" data-delta="1" aria-label="one more">+</button>
@@ -247,7 +247,7 @@ function heroPointHtml() {
   const max = (typeof heroPointMax === "function") ? heroPointMax() : null;
   if (max == null) return "";
   const n = boonCount("heroPoints"), over = n > max;
-  return `<span class="boon">
+  return `<span class="boon boon-ctr">
     <button type="button" class="boon-step" data-boon="heroPoints" data-delta="-1" aria-label="spend one">&minus;</button>
     <input type="text" inputmode="numeric" class="tiny boon-count${n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-boon="heroPoints" value="${n}">
     <button type="button" class="boon-step" data-boon="heroPoints" data-delta="1" aria-label="one more">+</button>
@@ -264,7 +264,7 @@ function encumbranceHtml() {
 /* A counter the player invented. `max` is optional and advisory — over it goes red, nothing stops. */
 function customRowHtml(c) {
   const over = c.max != null && c.n > c.max;
-  return `<span class="boon" aria-label="a counter you added - the &times; removes it">
+  return `<span class="boon boon-ctr" aria-label="a counter you added - the &times; removes it">
     <button type="button" class="boon-step" data-custom="${c.id}" data-delta="-1" aria-label="one fewer">&minus;</button>
     <input type="text" inputmode="numeric" class="tiny boon-count${c.n ? " boon-on" : ""}${over ? " boon-over" : ""}" data-custom="${c.id}" value="${c.n}">
     <button type="button" class="boon-step" data-custom="${c.id}" data-delta="1" aria-label="one more">+</button>

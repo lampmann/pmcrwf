@@ -169,6 +169,7 @@ const server = http.createServer((req, res) => {
     await page.reload();
     assert.equal(await page.locator('#roll-anim-toggle').innerText(), 'Tumble: Off');
     await require("./creator-browser-checks.cjs")(page);
+    await require("./sheet-ui-browser-checks.cjs")(page);
     if (process.env.PMCRWF_TEST_DATA) await require("./data-folder-browser-checks.cjs")(page, process.env.PMCRWF_TEST_DATA);
     assert.deepEqual(errors, []);
     console.log('Full app: import/rejection, reload persistence, export download, reset, delayed import switching, and hidden-tab save passed; no browser errors.');

@@ -1303,6 +1303,58 @@ function luMcHtml() {
     ${fails.length ? `<div class="cr-over">Prerequisites not met.</div>` : ""}</div>`;
 }
 
+/* Multiclassing into a class grants its smaller proficiency set (PHB p164): armor, weapons and tools
+   outright, plus a skill or instrument for a few classes. Shown and picked here, applied on confirm. */
+function luMcProf() {
+  const rec = LEVELUP && LEVELUP.target === "new" ? ciFindClass(LEVELUP.newClass) : null;
+  if (!rec || !rec.mcProf || typeof crSkillBlocks !== "function") return null;
+  const mc = rec.mcProf;
+  const have = SKILLS.map(sk => sk[0]).filter(n => { const el = $("skillprof-" + n.toLowerCase().replace(/[^a-z]/g, "")); return el && el.checked; });
+  return { rec, mc, skills: crSkillBlocks(mc.skills), tools: crToolBlocks(mc.toolProficiencies), have };
+}
+function luMcProfHtml() {
+  const p = luMcProf(); if (!p) return "";
+  const w = crWeaponSplit(p.mc.weapons), armor = crArmorKeys(p.mc.armor), tools = crFixedNames(p.mc.toolProficiencies);
+  const facts = [armor.length ? `Armor ${armor.map(crTitle).join(", ")}` : "", (w.cats.length || w.named.length) ? `Weapons ${[...w.cats.map(crTitle), ...w.named].join(", ")}` : "",
+    tools.length ? `Tools ${tools.join(", ")}` : ""].filter(Boolean);
+  const sel = (key, blocks, taken) => {
+    const picks = LEVELUP.picks[key] || [];
+    let slot = 0;
+    return blocks.filter(b => b.from.length).map(b => Array.from({ length: b.count }, () => {
+      const idx = slot++, cur = picks[idx] || "";
+      const others = new Set([...picks.filter((v, j) => j !== idx && v), ...taken].map(x => x.toLowerCase()));
+      return `<select class="lu-pick" data-key="${key}" data-slot="${idx}"><option value="">- choose -</option>` +
+        b.from.filter(o => o === cur || !others.has(o.toLowerCase())).map(o => `<option value="${escapeHtml(o)}"${o === cur ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") + `</select>`;
+    }).join(" ")).join(" ");
+  };
+  const slots = blocks => blocks.filter(b => b.from.length).reduce((n, b) => n + b.count, 0);
+  const sk = slots(p.skills), tl = slots(p.tools);
+  return `<div style="margin-top:.5rem"><b>Proficiencies</b>
+    ${facts.length ? `<div class="hint">${escapeHtml(facts.join(" | "))}</div>` : ""}
+    ${sk ? `<div>Skill ${sel("skills", p.skills, p.have)}</div>` : ""}
+    ${tl ? `<div>Tool ${sel("tools", p.tools, [])}</div>` : ""}</div>`;
+}
+function luMcProfMissing() {
+  const p = luMcProf(); if (!p) return 0;
+  const count = (key, blocks) => { const picks = LEVELUP.picks[key] || []; let slot = 0, miss = 0;
+    blocks.filter(b => b.from.length).forEach(b => { for (let i = 0; i < b.count; i++) if (!picks[slot++]) miss++; }); return miss; };
+  return count("skills", p.skills) + count("tools", p.tools);
+}
+function luApplyMcProf() {
+  const p = luMcProf(); if (!p) return;
+  const tick = id => { const el = $(id); if (el && !el.checked) { el.checked = true; el.dispatchEvent(new Event("change", { bubbles: true })); } };
+  crArmorKeys(p.mc.armor).forEach(a => tick("prof-armor-" + a));
+  const w = crWeaponSplit(p.mc.weapons);
+  w.cats.forEach(c => tick("prof-weapon-" + c));
+  const add = (cat, names) => names.filter(Boolean).forEach(n => {
+    if (!PROFICIENCIES[cat].some(x => x.toLowerCase() === n.toLowerCase())) PROFICIENCIES[cat].push(crTitle(n));
+  });
+  add("weapons", w.named);
+  add("tools", crFixedNames(p.mc.toolProficiencies));
+  add("tools", LEVELUP.picks.tools || []);
+  (LEVELUP.picks.skills || []).filter(Boolean).forEach(s => tick("skillprof-" + s.toLowerCase().replace(/[^a-z]/g, "")));
+  if (typeof renderAllProficiencyLists === "function") renderAllProficiencyLists();
+}
 function renderLevelUp() {
   const modal = $("levelup-modal"); if (!modal || modal.style.display === "none") return;
   const rows = levelUpClasses();
@@ -1322,6 +1374,7 @@ function renderLevelUp() {
   const newClassHtml = isNew ? `<div style="margin-top:.4rem">
       <label>New class ${creatorCombo("lu-newclass", LEVELUP.newClass, classes, "type to search", "", "", "class")}</label>
       ${luMcHtml()}
+      ${luMcProfHtml()}
     </div>` : "";
 
   const gained = !isNew && cur ? featuresAtLevel(cur.name, cur.sub, newLevel)
@@ -1351,14 +1404,14 @@ function renderLevelUp() {
    on every keystroke without destroying the field being typed into. */
 function renderLevelUpChrome() {
   if (!LEVELUP) return;
-  const blocked = LEVELUP.target === "new" && !LEVELUP.newClass.trim();
+  const blocked = (LEVELUP.target === "new" && !LEVELUP.newClass.trim()) || luMcProfMissing() > 0;
   $("lu-confirm").disabled = blocked || (LEVELUP.hpMode === "roll" && LEVELUP.rolled == null);
 }
 
 function openLevelUp() {
   const modal = $("levelup-modal"); if (!modal) return;
   const rows = levelUpClasses();
-  LEVELUP = { target: rows.length ? 0 : "new", newClass: "", hpMode: "fixed", rolled: null };
+  LEVELUP = { target: rows.length ? 0 : "new", newClass: "", hpMode: "fixed", rolled: null, picks: {} };
   modal.style.display = "";
   renderLevelUp();
 }
@@ -1371,6 +1424,7 @@ function levelUpConfirm() {
   const autoBefore = maxHPAuto();   // what the formula said before this level existed
 
   if (isNew) {
+    luApplyMcProf();
     addClassRow({ name: LEVELUP.newClass, sub: "", lvl: 1 });
   } else {
     const tr = document.querySelectorAll("#class-rows tr")[LEVELUP.target];
@@ -1441,13 +1495,17 @@ document.addEventListener("DOMContentLoaded", () => {
       LEVELUP.rolled = null; renderLevelUp(); return;
     }
     if (e.target.name === "lu-hp") { LEVELUP.hpMode = e.target.value; LEVELUP.rolled = null; renderLevelUp(); return; }
+    if (e.target.classList.contains("lu-pick")) {
+      const list = (LEVELUP.picks[e.target.dataset.key] || []).slice(); list[Number(e.target.dataset.slot)] = e.target.value;
+      LEVELUP.picks[e.target.dataset.key] = list; renderLevelUp(); return;
+    }
   });
   /* The class box is a combobox (a text input with a datalist), so it redraws on `input` — the
      feature preview and the prerequisite check both depend on it — and never on `change`, which for
      a text box fires on blur and would detach whatever you clicked next. Same rule as the creator. */
   $("lu-body").addEventListener("input", e => {
     if (!LEVELUP || e.target.id !== "lu-newclass") return;
-    LEVELUP.newClass = e.target.value; LEVELUP.rolled = null;
+    LEVELUP.newClass = e.target.value; LEVELUP.rolled = null; LEVELUP.picks = {};
     const pos = e.target.selectionStart;
     renderLevelUp();
     const again = $("lu-newclass");

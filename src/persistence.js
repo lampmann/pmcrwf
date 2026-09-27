@@ -156,7 +156,7 @@ function saveState() {
   if (ok) { st.textContent = "saved " + new Date().toLocaleTimeString(); st.style.color = ""; st.removeAttribute("title"); }
   else {
     st.textContent = "NOT SAVED - browser storage full (this character is only in memory)";
-    st.style.color = "#c00";
+    st.style.color = "var(--danger)";
     st.title = "Export this character to a file, then delete characters you no longer need or clear old event logs to free space.";
   }
 }

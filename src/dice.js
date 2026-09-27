@@ -249,6 +249,26 @@ const D20SEL = "[data-roll-check], .atk-roll, .wpn-roll, .mon-roll";   // button
    without re-rolling it themselves — a second roll would land on a different number than the one
    already in the log. */
 let LAST_D20_ROLL = null;
+/* Advantage / disadvantage badges beside every d20 roll button: a green triangle with an A, a red
+   one pointing down with a D. Reads the same mode rollInfo() rolls with, so the badge never disagrees
+   with the roll. Called at the end of recompute(); only adds, updates or removes the small span right
+   after each button, so no input anywhere is disturbed. */
+function paintRollModes(root) {
+  (root || document).querySelectorAll(D20SEL).forEach(btn => {
+    if (btn.closest("#roll-mirror, #dicelog, .ev")) return;
+    let mode = null;
+    try { mode = rollInfo(btn).mode; } catch (e) { mode = null; }
+    const next = btn.nextElementSibling;
+    const badge = next && next.classList.contains("rm-badge") ? next : null;
+    if (mode !== "adv" && mode !== "dis") { if (badge) badge.remove(); return; }
+    const el = badge || document.createElement("span");
+    el.className = "rm-badge rm-" + mode;
+    el.textContent = mode === "adv" ? "A" : "D";
+    el.setAttribute("aria-label", mode === "adv" ? "advantage" : "disadvantage");
+    el.title = mode === "adv" ? "Advantage" : "Disadvantage";
+    if (!badge) btn.after(el);
+  });
+}
 function modeFromEvent(ev) { return ev && ev.shiftKey ? "adv" : (ev && (ev.ctrlKey || ev.metaKey || ev.altKey)) ? "dis" : "normal"; }
 function rollInfo(btn) {
   if (btn.dataset.rollCheck) {

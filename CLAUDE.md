@@ -2,6 +2,7 @@
 
 ## UI copy
 - Keep interface text terse. Labels, values and the rule itself; no hint lines that explain what a control does, reassure, or narrate ("it goes on the sheet's Features module too"). If a sentence would only be read once, leave it out.
+- No labels that only announce a feature or a fix ("(multiclass supported)", "all effects automated"). If it means nothing to someone opening the sheet for the first time, it goes.
 - No em-dashes or middle dots in anything user-visible, commit messages, or new code comments. Use " - " or " | " instead (the sheet already uses " | " as its separator).
 - Lists a user picks from are alphabetical. Abilities stay in STR, DEX, CON, INT, WIS, CHA order.
 

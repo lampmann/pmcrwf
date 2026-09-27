@@ -19,7 +19,7 @@
 /* While editing (Free on), clip overflow so the resize handles stay pinned to the module's edges
    instead of scrolling away with the content. Scrolling is for the arranged, not-editing state above. */
 .modules.lay-free > .module { cursor: move; user-select: none; outline: 1px dashed var(--border-soft); overflow: hidden; }
-.modules.lay-free > .module.lay-selected { outline: 2px solid var(--link); }
+.modules.lay-free > .module.lay-selected { outline: 2px solid var(--select); }
 /* Everything inside a module goes inert while Free is on, so a drag across a checkbox arranges the
    sheet rather than ticking it. The collapse toggle is the one exception: folding a module down to
    its title bar is part of ARRANGING the sheet, not part of using it, and it was the one control
@@ -70,11 +70,11 @@
    applyCollapse in layout.js). */
 
 /* --- marquee selection band --- */
-#lay-marquee { position: absolute; z-index: 9995; pointer-events: none; border: 1px dashed var(--link); background: rgba(26,86,196,.12); }
+#lay-marquee { position: absolute; z-index: 9995; pointer-events: none; border: 1px dashed var(--select); background: color-mix(in srgb, var(--select) 12%, transparent); }
 
 /* --- group selection box + its resize handles --- */
-#lay-selbox { position: absolute; z-index: 9996; pointer-events: none; border: 1px solid var(--link); }
-#lay-selbox .lay-sh { position: absolute; width: 18px; height: 18px; background: var(--link); pointer-events: auto; }
+#lay-selbox { position: absolute; z-index: 9996; pointer-events: none; border: 1px solid var(--select); }
+#lay-selbox .lay-sh { position: absolute; width: 18px; height: 18px; background: var(--select); pointer-events: auto; }
 #lay-selbox .lay-sh.n  { top: -9px; left: 50%; margin-left: -9px; cursor: ns-resize; }
 #lay-selbox .lay-sh.s  { bottom: -9px; left: 50%; margin-left: -9px; cursor: ns-resize; }
 #lay-selbox .lay-sh.e  { right: -9px; top: 50%; margin-top: -9px; cursor: ew-resize; }

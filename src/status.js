@@ -54,7 +54,7 @@
     let rows = "<tr><th>Lvl</th><th>Effect</th></tr>";   // click a level to set it; rows up to it are highlighted (cumulative)
     for (let i = 1; i <= 6; i++) {
       const active = i <= lvl;
-      rows += `<tr data-exh="${i}" style="cursor:pointer${active ? ";background:var(--menu-hover-bg)" : ""}"><td style="text-align:center">${i}</td><td>${EXH[i]}</td></tr>`;
+      rows += `<tr data-exh="${i}"${active ? ` class="exh-on"` : ""}><td style="text-align:center">${i}</td><td>${EXH[i]}</td></tr>`;
     }
     out.innerHTML = `<table style="margin-top:.25rem">${rows}</table>`;
   }

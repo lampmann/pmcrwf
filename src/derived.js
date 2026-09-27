@@ -123,6 +123,8 @@ function manualDefences(fieldId) {
 }
 
 function renderDefenses() {
+  // The checklist buttons show what's ticked, so they follow a character switch or an import too.
+  if (typeof renderDefenceChecklists === "function" && !DEF_OPEN) renderDefenceChecklists();
   const el = $("defenses-row"); if (!el) return;
   if (typeof effFlatByPrefix !== "function") { el.textContent = ""; return; }
   const bits = [];
@@ -196,6 +198,7 @@ function recompute() {
   } else { $("spell-dc").textContent = "-"; $("spell-atk").textContent = "-"; }
 
   $("hp-max").textContent = String(maxHP());
+  if (typeof renderHpBar === "function") renderHpBar();
   /* Current HP is deliberately NOT clamped here. recompute() runs on every keystroke, so a max that
      is momentarily low mid-edit — CON cleared to be retyped, a class level blanked, a class row
      deleted before being re-added — used to overwrite current HP with that temporary max, and
@@ -219,6 +222,8 @@ function recompute() {
   if (typeof renderEffectsStrip === "function") renderEffectsStrip();
   if (typeof paintEffectAudit === "function") paintEffectAudit();
   if (typeof renderXp === "function") renderXp();
+  // Last, so attack rows have already written their data-mode.
+  if (typeof paintRollModes === "function") paintRollModes();
 }
 
 /* ---------- Inventory (coin purse + item list, all summed in gp) ---------- */

@@ -154,7 +154,7 @@ function renderEffectsStrip() {
   ).join(" ");
   const counter = snap.unapplied.length
     ? `<span class="hint eff-strip-counter" title="${escapeHtml(snap.unapplied.map(u => u.source + (u.reason ? " - " + u.reason : "")).join("\n"))}">${snap.unapplied.length} feature effect(s) not automated</span>`
-    : `<span class="hint eff-strip-counter">all detected effects automated</span>`;
+    : "";
   el.innerHTML = chips + counter;
 }
 

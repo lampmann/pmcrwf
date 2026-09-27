@@ -15,6 +15,13 @@
   --link-border: #1a56c4;
   --danger: #b32318;
   --danger-border: #b32318;
+  /* Meaning, not decoration: the same three colours in every theme. Selected / included / on is blue,
+     excluded is red, met / valid is green. Themes may retune the shade, never the hue. */
+  --select: #1a56c4;
+  --select-fg: #fff;
+  --exclude: #b32318;
+  --exclude-fg: #fff;
+  --ok: #2e7d32;
   --btn-bg: #fff;
   --btn-fg: #000;
   --btn-border: #999;
@@ -160,11 +167,11 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .flabel { font-weight: bold; font-size: .8rem; padding-top: 3px; }
 .fctrl { display: inline-block; margin-right: .4rem; }
 .fctrl-btn { border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg); padding: 0 3px; margin-right: 2px; font-size: .72rem; }
-.fctrl-btn.blue { color: var(--link); border-color: var(--link-border); }
+.fctrl-btn.blue { color: var(--select); border-color: var(--select); }
 .fctrl-btn.red { color: var(--danger); border-color: var(--danger-border); }
 .fbtn { border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg); padding: 0 5px; margin: 1px; font-size: .8rem; }
-.fbtn.inc { background: var(--link); color: var(--tooltip-fg); border-color: var(--link-border); }
-.fbtn.exc { background: var(--danger); color: var(--tooltip-fg); border-color: var(--danger-border); }
+.fbtn.inc { background: var(--select); color: var(--select-fg); border-color: var(--select); }
+.fbtn.exc { background: var(--exclude); color: var(--exclude-fg); border-color: var(--exclude); }
 /* ----- roll modifier tooltip + context menu ----- */
 #rolltip { position: fixed; background: var(--tooltip-bg); color: var(--tooltip-fg); padding: 2px 6px; font-size: .75rem; pointer-events: none; display: none; z-index: 1000; white-space: nowrap; }
 #rollmenu { position: fixed; background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border); font-size: .8rem; z-index: 1001; box-shadow: 2px 2px 4px var(--menu-shadow); }
@@ -211,13 +218,14 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 /* inline controls appended after a feature's uses-tracker in the Features panel */
 .eff-chip { margin-left: .4rem; font-size: .8rem; color: var(--muted-fg); }
 .eff-toggle, .eff-strip-toggle { font: inherit; font-size: .85rem; margin-left: .3rem; padding: 0 .4rem; border: 1px solid var(--btn-border); border-radius: var(--radius); background: var(--btn-bg); color: var(--btn-fg); cursor: pointer; }
-.eff-toggle.on, .eff-strip-toggle.on { border-color: var(--link-border); color: var(--link); font-weight: bold; }
+.eff-toggle.on, .eff-strip-toggle.on { border-color: var(--select); color: var(--select); font-weight: bold; }
 .eff-toggle:disabled, .eff-strip-toggle:disabled { opacity: .5; cursor: not-allowed; }
 .eff-unsup { margin-left: .4rem; font-size: .8rem; color: var(--danger); cursor: help; }
 .eff-choice { margin-left: .4rem; font: inherit; }
 /* the always-visible active-effects strip, between the toolbar and the modules */
 #effects-strip { display: none; margin: -.25rem 0 1rem; padding: .3rem .5rem; border: 1px solid var(--border-soft); border-radius: var(--radius); font-size: .85rem; }
-#effects-strip.has-content { display: block; }
+/* flow-root so the floated counter stays inside the border when the strip is only one line. */
+#effects-strip.has-content { display: flow-root; }
 .eff-strip-counter { float: right; }
 /* ----- data folder bar (src/data-folder.js) -----
    Sits where the effects strip does and is styled to match it: this is a statement about the sheet's
@@ -248,7 +256,7 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 /* ----- concentration indicator (src/spellcasting.js) ----- */
 .conc-banner { margin: -.1rem 0 .5rem; padding: .3rem .5rem; border: 1px solid var(--link-border); border-radius: var(--radius); font-size: .85rem; }
 .sp2-conc { font: inherit; font-size: .8rem; margin-left: .4rem; padding: 0 .3rem; border: 1px solid var(--btn-border); border-radius: var(--radius); background: var(--btn-bg); color: var(--btn-fg); cursor: pointer; }
-.sp2-conc.on { border-color: var(--link-border); color: var(--link); font-weight: bold; }
+.sp2-conc.on { border-color: var(--select); color: var(--select); font-weight: bold; }
 /* audit trail: a dotted underline on any derived value an effect touched, and the small
    "base + effects = total" note next to ability scores / AC / speed */
 .has-eff { border-bottom: 1px dotted var(--link-border); cursor: help; }
@@ -272,7 +280,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 /* ----- character tabs (src/characters.js) ----- */
 #char-tabs { display: flex; flex-wrap: wrap; gap: .35rem; padding: .65rem .5rem; }
 #char-tabs button { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .5rem; }
-.char-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--link-border); }
+.char-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--select); }
 .char-tab-x { margin-left: .4rem; opacity: .55; }
 .char-tab-x:hover { opacity: 1; color: var(--danger); }
 /* Groups (src/characters.js): a boxed run of tabs that share one Event Log. */
@@ -297,7 +305,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 
 /* ----- character creator / level-up dialogs (src/creator.js) ----- */
 .cr-step label { display: inline-block; margin: .2rem 0; }
-.cr-method.active, .cr-racial.active { background: var(--link); color: var(--tooltip-fg); border-color: var(--link-border); }
+.cr-method.active, .cr-racial.active { background: var(--select); color: var(--select-fg); border-color: var(--select); }
 .cr-scores td { padding: .1rem .4rem .1rem 0; }
 .cr-pool { display: inline-block; border: 1px solid var(--border); border-radius: var(--radius); padding: 0 .3rem; margin-right: .15rem; }
 .cr-pool.used { opacity: .35; text-decoration: line-through; }
@@ -308,7 +316,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
    any time, so they have to look clickable and show which ones still have something wrong. */
 #cr-stepper { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .5rem; }
 .cr-tab { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .5rem; }
-.cr-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--link-border); }
+.cr-tab.active { font-weight: bold; border-bottom-width: 2px; border-bottom-color: var(--select); }
 .cr-tab-bad { color: var(--danger); }
 .cr-classes { border-collapse: collapse; margin-top: .3rem; }
 .cr-classes td { padding: .1rem .3rem .1rem 0; vertical-align: middle; }
@@ -377,12 +385,21 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .boon { display: inline-flex; align-items: center; gap: .15rem; }
 .boon-step { font: inherit; font-size: .8rem; padding: 0 .35rem; min-width: 1.4rem; }
 .boon-count { width: 2.1rem; text-align: center; }
+/* A counter's name sits above its -, box and + (the x for a custom counter stays at the end). */
+.boon-ctr { display: inline-grid; grid-template-columns: auto auto auto auto; column-gap: .15rem; row-gap: .05rem; align-items: center; }
+.boon-ctr > .boon-label { grid-row: 1; grid-column: 1 / span 3; text-align: center; }
+.boon-ctr > .boon-step, .boon-ctr > .boon-count, .boon-ctr > .boon-del { grid-row: 2; }
+.boon-ctr > .boon-step[data-delta="-1"] { grid-column: 1; }
+.boon-ctr > .boon-count { grid-column: 2; }
+.boon-ctr > .boon-step[data-delta="1"] { grid-column: 3; }
+.boon-ctr > .boon-del { grid-column: 4; }
+.boons-row { align-items: end; }
 /* An active boon is stated in text too (the label grows a "+2d4"), so weight rather than colour
    alone carries it — same rule as the combat tracker's pips. */
 .boon-on { font-weight: bold; }
 /* Over a concurrent-casting limit (H4). Says "over" in words next to the count, so the colour is
    reinforcement; the sheet shows it rather than preventing it. */
-.boon-over { color: #c00; }
+.boon-over { color: var(--danger); }
 
 /* ----- house rules (src/house-rules.js) ----- */
 .hr-tab { font: inherit; font-size: .85rem; padding: .15rem .6rem; margin-right: .2rem; }
@@ -403,19 +420,19 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 /* Banned rows in the Spell/Equipment libraries. Struck through AND tagged in words, so the state
    never rests on colour alone. */
 .lib-banned .nm a { text-decoration: line-through; opacity: .65; }
-.lib-ban-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: #c00; border: 1px solid #c00; border-radius: var(--radius); padding: 0 .25rem; }
+.lib-ban-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--danger); border: 1px solid var(--danger); border-radius: var(--radius); padding: 0 .25rem; }
 /* A banned option in a dropdown, and an input already holding one. Both carry the word "banned"
    (as a flag in the list, as a tooltip on the input), so the colour is reinforcement rather than
    the only signal. Options stay listed and stay pickable — the DM's ban is advice at the point of
    choosing, not a lock. */
-.banned-opt { color: #c00; }
+.banned-opt { color: var(--danger); }
 .banned-flag { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
-input.banned-value { color: #c00; }
+input.banned-value { color: var(--danger); }
 /* An oversized weapon (src/house-rules.js, R17). Disadvantage is already carried by the roll button's
    own mode and label; unusable is stated in the Size cell's tooltip. The row tint is a hint, never
    the only signal, and the button still rolls — the DM is at the table. */
 #attack-rows tr.atk-oversized .atk-size { color: #a60; }
-#attack-rows tr.atk-unusable .atk-size { color: #c00; font-weight: bold; }
+#attack-rows tr.atk-unusable .atk-size { color: var(--danger); font-weight: bold; }
 .atk-size { font: inherit; font-size: .8rem; }
 
 /* ----- optional & variant rules (src/variant-rules.js) ----- */
@@ -460,7 +477,7 @@ input.banned-value { color: #c00; }
 .combo-expand { padding: 0 .2rem; line-height: 1; border: 0; background: transparent; }
 .combo-empty { padding: .2rem .45rem; }
 
-.cr-ok { color: var(--link); }
+.cr-ok { color: var(--ok); }
 .cr-choice-trait { border-bottom: 1px dotted currentColor; cursor: help; }
 .cr-racial-slot { margin-right: .5rem; }
 .cr-custom-bg { border-left: 2px solid var(--border); padding-left: .5rem; }
@@ -571,3 +588,36 @@ button.linkish {
 #cr-close { font-size: 1.25rem; line-height: 1; padding: .2rem .45rem; }
 #cr-body { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; }
 .cr-header, #cr-stepper, #cr-blocker, .cr-actions { flex-shrink: 0; }
+
+/* ----- health bar (src/hp-bar.js). Fixed Risk of Rain 2 colours, deliberately the same in every theme. ----- */
+.hp-bars { margin: .2rem 0 .4rem; }
+.hp-bar, .hp-temp-bar { position: relative; height: 1.55rem; border: 1px solid #0b0b0b; box-shadow: 0 0 0 1px #4a4a4a;
+  display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; text-shadow: 0 1px 2px #000; }
+.hp-bar { background: #242424; margin-top: .25rem; }
+.hp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(#9be25e, #5fae2c); transition: width .15s ease; }
+.hp-temp-bar { background: linear-gradient(#ffe36e, #d9ad24); height: 1.2rem; transition: width .15s ease; }
+.hp-temp-bar.hp-temp-empty { background: #242424; opacity: .6; }
+.hp-bar-text { position: relative; display: inline-flex; align-items: baseline; }
+.hp-bars input { font: inherit; color: inherit; background: transparent; border: 0; padding: 0; text-align: center; width: 3.2ch; field-sizing: content; min-width: 1.5ch; }
+.hp-bar-text #hp-cur { text-align: right; }
+.hp-bars input:focus { outline: 1px dotted #fff; }
+.hp-slash { margin: 0 .1rem; }
+/* ----- defence checklists (src/hp-bar.js) ----- */
+.def-manual { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; font-size: .85rem; }
+.dd-check { position: relative; }
+.dd-check-btn { font: inherit; font-size: .85rem; }
+.dd-check-panel { position: absolute; z-index: 20; left: 0; top: 100%; display: grid; grid-template-columns: repeat(2, max-content); column-gap: .8rem;
+  padding: .3rem .5rem; background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border); box-shadow: 2px 2px 4px var(--menu-shadow); }
+.dd-check-panel[hidden] { display: none; }
+.dd-check-panel label { white-space: nowrap; display: flex; align-items: center; gap: .3rem; justify-content: flex-start; }
+/* ----- Exhaustion levels (src/status.js). The tint is mixed from the theme's own danger and page
+   colours, so it shows in every theme (several set their hover colours equal to the page). ----- */
+#exhaustion-effect tr[data-exh] { cursor: pointer; }
+#exhaustion-effect tr[data-exh]:hover { background: color-mix(in srgb, var(--fg) 8%, var(--bg)); }
+#exhaustion-effect tr.exh-on { background: color-mix(in srgb, var(--danger) 24%, var(--bg)); }
+/* ----- advantage / disadvantage badges beside roll buttons (paintRollModes in src/dice.js) ----- */
+/* 1.6em wide x 1.39em tall is equilateral (height = width x 0.866). The letter sits at the wide end. */
+.rm-badge { display: inline-flex; justify-content: center; box-sizing: border-box; width: 1.6em; height: 1.39em; margin-left: .25rem;
+  vertical-align: middle; color: #fff; font: bold .7rem/1 system-ui, sans-serif; }
+.rm-adv { background: #2e9e3e; clip-path: polygon(50% 0, 100% 100%, 0 100%); align-items: flex-end; padding-bottom: .1em; }
+.rm-dis { background: #c93030; clip-path: polygon(0 0, 100% 0, 50% 100%); align-items: flex-start; padding-top: .1em; }

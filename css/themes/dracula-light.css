@@ -26,4 +26,9 @@
   --hover-bg: #fffbeb;
   --active-bg: #efeddc;
   --focus-ring: #644ac9;
+  --select: #2f6fd6;
+  --select-fg: #ffffff;
+  --exclude: #cb3a2a;
+  --exclude-fg: #ffffff;
+  --ok: #1f8f3a;
 }

@@ -83,7 +83,7 @@
     <span class="hint" id="xp-next"></span>
     </div>
     <fieldset>
-      <legend>Classes (multiclass supported)</legend>
+      <legend>Classes</legend>
       <table id="class-table">
         <thead><tr><th>Class</th><th>Subclass</th><th>Level</th><th>Hit Die</th><th>Casting</th><th></th></tr></thead>
         <tbody id="class-rows"></tbody>
@@ -127,12 +127,16 @@
   <!-- ===== HP / DEFENSES ===== -->
   <section class="module" data-module="hp">
     <h2>HP &amp; Defenses</h2>
+    <!-- Health bar (src/hp-bar.js): temp HP above, current/max below. The inputs are the same
+         persisted math fields as before, only restyled, so typing "-7" still subtracts. -->
+    <div class="hp-bars">
+      <div class="hp-temp-bar" id="hp-temp-bar"><input type="text" inputmode="numeric" data-persist data-math data-min="0" data-allow-empty id="hp-temp" placeholder="0" aria-label="Temporary hit points"></div>
+      <div class="hp-bar"><div class="hp-fill" id="hp-fill"></div>
+        <span class="hp-bar-text"><input type="text" inputmode="numeric" data-persist data-math data-min="0" data-max-from="hp-max" data-allow-empty id="hp-cur" aria-label="Current hit points"><span class="hp-slash">/</span><span id="hp-max">0</span></span></div>
+      <div class="hint">Max override <input type="number" class="tiny" data-persist id="hp-max-override" placeholder="auto"></div>
+    </div>
     <table>
-      <tr><td>Current HP</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-max-from="hp-max" data-allow-empty id="hp-cur"></td>
-          <td>Max HP</td><td><span class="derived" id="hp-max">0</span>
-            <span class="hint">(override <input type="number" class="tiny" data-persist id="hp-max-override" placeholder="auto">)</span></td></tr>
-      <tr><td>Temp HP</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="hp-temp"></td>
-          <td>Hit Dice</td><td><div id="hit-dice-pools"></div></td></tr>
+      <tr><td>Hit Dice</td><td colspan="3"><div id="hit-dice-pools"></div></td></tr>
       <tr><td>AC</td><td><span class="derived" id="ac">10</span>
             <span class="hint">(misc <input type="text" data-persist id="ac-misc" style="width:3rem;text-align:right">,
             override <input type="number" class="tiny" data-persist id="ac-override" placeholder="auto">)</span></td>
@@ -142,10 +146,9 @@
     </table>
     <button class="roll" data-roll-check="init" data-label="Initiative">Roll Initiative</button>
     <div id="boons-row" class="boons-row"></div>
-    <div class="hint def-manual">Resist <input type="text" data-persist id="def-resist" placeholder="fire, cold">
-      | Immune <input type="text" data-persist id="def-immune" placeholder="poison">
-      | Vulnerable <input type="text" data-persist id="def-vuln" placeholder="radiant">
-      </div>
+    <!-- Hand-entered defences, stored as comma lists; the checklists are drawn by src/hp-bar.js. -->
+    <input type="hidden" data-persist id="def-resist"><input type="hidden" data-persist id="def-immune"><input type="hidden" data-persist id="def-vuln">
+    <div class="def-manual" id="def-manual"></div>
     <div id="defenses-row" class="hint"></div>
 
   </section>
@@ -507,6 +510,7 @@
 <script src="src/math-fields.js"></script>
 <script src="src/rows.js"></script>
 <script src="src/derived.js"></script>
+<script src="src/hp-bar.js"></script>
 <script src="src/event-log.js"></script>
 <script src="src/dice.js"></script>
 <script src="src/boons.js"></script>
