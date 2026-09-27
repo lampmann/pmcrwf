@@ -110,7 +110,7 @@ Book buttons display their full names. Each of race, class and background also h
 *One step is deliberately thin.* Step 4 collects name and background only — personality traits, ideals, bonds, flaws and backstory are on this document's **Not planned** list, so the wizard doesn't ask for fields the sheet has nowhere to put. Background data comes from **`data/backgrounds.json`**, loaded alongside races and classes; without that file a background is still recorded, just not looked up.
 
 ### Levelling up
-**Level** sits next to **XP** in the Character module, and the two are two views of one number (PHB p15's Character Advancement table). Type a level and XP jumps to that level's threshold; type XP and the level follows. A running "**1,300 XP to level 6**" says what you still owe, and the Level box highlights once your XP has already earned the next level.
+**Level** sits next to **XP** in the Character module, and the two are two views of one number (PHB p15's Character Advancement table). Type a level and XP jumps to that level's threshold; type XP and the level follows. A running "**1,300 XP to level 6**" says what you still owe, and a thin blue bar above the XP and Level fields fills as you work through the current level (full at level 20); and the Level box highlights once your XP has already earned the next level.
 
 The Level box is not a third place your level is stored — your actual level is the sum of the Classes table, as it always has been, and everything derived reads it from there. The box is a *request*:
 

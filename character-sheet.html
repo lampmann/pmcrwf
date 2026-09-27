@@ -77,10 +77,13 @@
       </select></label>
     <!-- XP and Level are two views of the same number (PHB p15's Character Advancement table);
          xp.js keeps them in step. See DOCS' "Levelling up". -->
-    <label>XP <input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="char-xp" style="width:6rem"></label>
-    <label>Level
-      <input type="text" inputmode="numeric" class="tiny" id="char-level" style="width:3rem"></label>
-    <span class="hint" id="xp-next"></span>
+    <span class="xp-group">
+      <span class="xp-bar" role="progressbar" aria-label="Progress to the next level" id="xp-bar"><span class="xp-fill" id="xp-fill"></span></span>
+      <label>XP <input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="char-xp" style="width:6rem"></label>
+      <label>Level
+        <input type="text" inputmode="numeric" class="tiny" id="char-level" style="width:3rem"></label>
+      <span class="hint" id="xp-next"></span>
+    </span>
     </div>
     <fieldset>
       <legend>Classes</legend>

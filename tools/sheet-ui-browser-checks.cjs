@@ -234,6 +234,18 @@ module.exports = async function checkSheetUi(page) {
   assert.deepEqual(book.libButtons, ['-', '-']);
   assert.equal(book.removed, 'false,+');
 
+  // XP bar: progress through the current level, above and as wide as the XP / Level / next-level text.
+  const xpBar = await page.evaluate(() => {
+    document.querySelectorAll('#class-rows tr').forEach(t => t.remove()); addClassRow({ name: 'Fighter', sub: '', lvl: 3 });
+    const x = document.getElementById('char-xp'), prev = x.value; x.value = '1800'; commitMath(x); recompute();
+    const bar = document.getElementById('xp-bar').getBoundingClientRect(), label = document.getElementById('char-xp').getBoundingClientRect();
+    const next = document.getElementById('xp-next').getBoundingClientRect();
+    const out = { fill: document.getElementById('xp-fill').style.width, above: bar.bottom <= label.top, spans: bar.right >= next.right - 1 };
+    x.value = prev; commitMath(x); recompute();
+    return out;
+  });
+  assert.deepEqual(xpBar, { fill: '50%', above: true, spans: true });
+
   // Merging modules: the stationary one keeps its box and its tab comes first; tabs switch; detaching dissolves.
   await page.evaluate(() => { const L = __layout; L.state.free = true; L.apply(); });
   const merged = await page.evaluate(() => {
@@ -252,5 +264,5 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(await page.evaluate(() => { __layout.detach(document.querySelector('[data-module="senses"]')); return Object.keys(__layout.state.stacks).length + document.querySelectorAll('.lay-tab').length; }), 0);
   await page.evaluate(() => { const L = __layout; Object.assign(L.state, { map: {}, stacks: {}, free: false, activated: false }); L.apply(); L.save(); });
 
-  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook and merged modules passed.');
+  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook, the XP bar and merged modules passed.');
 };

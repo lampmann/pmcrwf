@@ -701,3 +701,8 @@ button.linkish {
 #spell-manage-close { font-size: 1.2rem; line-height: 1; padding: .1rem .45rem; }
 .sp-manage-body { overflow: auto; min-height: 0; }
 .sp-manage-body fieldset { margin-bottom: .5rem; }
+
+/* ----- XP bar (src/xp.js): thin and above the XP and Level fields, like Risk of Rain 2's. ----- */
+.xp-group { display: inline-block; position: relative; padding-top: 7px; }
+.xp-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #1b2530; border: 1px solid #000; box-sizing: content-box; }
+.xp-fill { display: block; height: 100%; width: 0; background: #6fd0ff; transition: width .2s ease; }

@@ -53,6 +53,19 @@ function renderXp() {
   const box = $("char-level"); if (!box) return;
   if (document.activeElement !== box) box.value = totalLevel();
   const next = $("xp-next"); if (next) next.textContent = xpNextText();
+  const fill = $("xp-fill"), bar = $("xp-bar");
+  if (fill) {
+    const p = xpProgress();
+    fill.style.width = (p * 100) + "%";
+    if (bar) bar.setAttribute("aria-valuenow", String(Math.round(p * 100)));
+  }
+}
+/* How far through the current level the XP total is, 0..1; full at level 20. */
+function xpProgress() {
+  const lvl = totalLevel(), xp = num($("char-xp"));
+  if (lvl >= 20) return 1;
+  const from = xpForLevel(Math.max(1, lvl)), to = xpForLevel(lvl + 1);
+  return Math.max(0, Math.min(1, (xp - from) / (to - from)));
 }
 
 /* Take one level off the last class row that has one to spare. Returns the class name, or "" if
