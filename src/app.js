@@ -82,7 +82,14 @@ function init() {
       return;
     }
     const el = t.closest && t.closest("[data-math]");
-    if (el) { commitMathField(el); if (el.blur) el.blur(); }
+    // Enter commits but keeps the box focused with its value selected, so another "+2" or "-5" can be
+    // typed straight away. A box that a redraw replaced is found again by id.
+    if (el) {
+      e.preventDefault();
+      commitMathField(el);
+      const again = el.isConnected ? el : (el.id && document.getElementById(el.id));
+      if (again && again.select) { again.focus(); again.select(); }
+    }
   });
 
   // roll-check buttons (saves, skills, initiative, spell attack) — left-click rolls; Shift=adv, Ctrl=dis

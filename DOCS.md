@@ -535,7 +535,7 @@ A folded module remembers **its own height, separately from its open one**. Drag
 - Imports check the character's structure before changing the sheet and restore the previous character if rendering fails. If you switch characters while a file is being read, import stops and asks you to select the intended character again. Older exports may omit newer fields. Reset restores the sheet's starting defaults, including ability scores of 10, Medium size, and speed 30.
 
 ## Keyboard
-- **Enter** in a number box commits the math and moves on.
+- **Enter** in a number box commits the math and keeps the box focused with its value selected, so another `+2` or `-5` can follow straight away.
 - **Enter** on a focused checkbox toggles it.
 - **Enter** in the dice box runs the command.
 

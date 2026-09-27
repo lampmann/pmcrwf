@@ -17,6 +17,12 @@ module.exports = async function checkSheetUi(page) {
   const hp = await page.evaluate(() => ({ cur: hpFieldValue(document.getElementById('hp-cur')), max: Number(document.getElementById('hp-max').textContent),
     fill: parseFloat(document.getElementById('hp-fill').style.width), tempEmpty: document.getElementById('hp-temp-bar').classList.contains('hp-temp-empty') }));
   assert.equal(hp.cur, 26);
+  // Enter keeps the box focused with its value selected, so adjustments chain without clicking back in.
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'hp-cur');
+  await page.keyboard.type('+2'); await page.keyboard.press('Enter');
+  await page.keyboard.type('-2'); await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#hp-cur').inputValue(), '26');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'hp-cur');
   assert.equal(Math.round(hp.fill), Math.round(26 / hp.max * 100));
   assert.equal(hp.tempEmpty, false);
   const bars = await page.evaluate(() => [document.getElementById('hp-temp-bar'), document.querySelector('.hp-bar')].map(e => e.getBoundingClientRect().top));
