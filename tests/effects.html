@@ -623,6 +623,89 @@ document.addEventListener("DOMContentLoaded", () => {
     renderClassLibrary(); invalidateEffects(); recompute();
   }
 
+  // ----- racial feat grants (Variant Human, Custom Lineage) -----
+  /* 5e.tools' 2014 race data has no field saying a trait grants a feat, so the sheet used to have no
+     way to record one at all: the feat picker was wired only to class Ability Score Improvements,
+     and a Variant Human's feat existed as prose and nothing else. Taking Alert gave no initiative.
+     Fully self-contained — saves and restores everything it touches, because it runs between two
+     fixtures that each assume the sheet is as they left it. */
+  {
+    const savedClassLib = CLASS_LIB, savedRaceLib = RACE_LIB, savedFeatLib = FEAT_LIB;
+    const savedFeatChoices = FEAT_CHOICES;
+    const savedRace = $("char-race").value, savedSub = $("char-subrace").value;
+    const savedDex = $("score-dex").value;
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    CLASS_LIB = {};
+    FEAT_LIB = {
+      Alert: { name: "Alert", source: "PHB", text: "+5 initiative." },
+      Tough: { name: "Tough", source: "PHB", text: "HP max up by twice your level." },
+    };
+    RACE_LIB = {
+      "Custom Lineage": { name: "Custom Lineage", source: "TCE", ability: [], size: ["M"], speed: 30, subs: {},
+        entries: [
+          { name: "Feat", source: "TCE", text: "You gain one feat of your choice." },
+          { name: "Variable Trait", source: "TCE", text: "Darkvision 60 ft, or proficiency in one skill." },
+        ] },
+      Human: { name: "Human", source: "PHB", ability: [], size: ["M"], speed: 30, entries: [],
+        subs: { Variant: { name: "Variant", source: "PHB", ability: [], entries: [
+          { name: "Feat", source: "PHB", text: "You gain one feat of your choice." }] } } },
+      Dwarf: { name: "Dwarf", source: "PHB", ability: [], size: ["M"], speed: 25, subs: {},
+        entries: [{ name: "Darkvision", source: "PHB", text: "You can see in dim light." }] },
+    };
+
+    // --- which traits are a feat slot ---
+    assert("a trait named Feat grants a feat", traitGrantsFeat("Custom Lineage", "Feat"));
+    assert("...case-insensitively, as every other name match here is", traitGrantsFeat("Custom Lineage", "feat"));
+    assert("an ordinary trait does not", !traitGrantsFeat("Dwarf", "Darkvision"));
+    assert("nor does one whose text merely mentions feats", !traitGrantsFeat("Dwarf", "Dwarven Combat Training"));
+    assert("nor an empty name", !traitGrantsFeat("Dwarf", ""));
+
+    // --- the slot itself ---
+    FEAT_CHOICES = {};
+    $("char-race").value = "Custom Lineage"; $("char-subrace").value = "";
+    $("score-dex").value = 10;
+    renderClassLibrary(); invalidateEffects(); recompute();
+    const slot = () => activeFeatures().find(f => f.isRaceFeat);
+    assert("the trait becomes a feat slot", !!slot());
+    assertEqual("...keyed the same way every other race trait is", slot().fkey, raceFkey("Custom Lineage", "Feat"));
+    assert("...and is NOT an ASI — a racial feat is only the feat, never the two +1s", !slot().isAsi);
+    assertEqual("with nothing chosen it keeps its own effects key, so an entry on the trait still applies",
+      slot().effKey, "race|custom lineage|feat");
+    assertEqual("...and the picker shows the trait's own name", slot().featSlotName, "Feat");
+
+    // --- choosing a feat wires it into the effects engine ---
+    const initBefore = effFlat("init");
+    FEAT_CHOICES[raceFkey("Custom Lineage", "Feat")] = "Alert";
+    renderClassLibrary(); invalidateEffects(); recompute();
+    assertEqual("choosing a feat swaps the slot onto the feat's effects key", slot().effKey, "feat|alert");
+    assertEqual("...so its effects actually apply", effFlat("init") - initBefore, 5);
+    assertEqual("...and the slot reports the feat as its name", slot().name, "Alert");
+    assertEqual("...while the link still labels it by the trait", slot().featSlotName, "Feat");
+
+    // The whole point: this is the path that did not exist. A feat from a race now reaches the same
+    // place a feat from an Ability Score Improvement does.
+    assert("the chosen feat's text replaces the trait's boilerplate", /HP max|initiative/i.test(slot().text));
+
+    // --- the same trait carried by a subrace (Variant Human is where most people meet this) ---
+    FEAT_CHOICES = {};
+    $("char-race").value = "Human"; $("char-subrace").value = "Variant";
+    renderClassLibrary(); invalidateEffects(); recompute();
+    assert("a feat trait on a SUBRACE is a slot too", !!slot());
+    assertEqual("...and is credited to the subrace", slot().origin.kind, "subrace");
+
+    // --- a race that grants no feat gets no slot ---
+    $("char-race").value = "Dwarf"; $("char-subrace").value = "";
+    renderClassLibrary(); invalidateEffects(); recompute();
+    assert("a race with no such trait has no feat slot", !slot());
+
+    CLASS_LIB = savedClassLib; RACE_LIB = savedRaceLib; FEAT_LIB = savedFeatLib;
+    FEAT_CHOICES = savedFeatChoices;
+    $("char-race").value = savedRace; $("char-subrace").value = savedSub;
+    $("score-dex").value = savedDex;
+    document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
+    renderClassLibrary(); invalidateEffects(); recompute();
+  }
+
   // ----- Resting (src/rest.js) — Hit Dice pools + full Short/Long Rest automation, PHB'14 p186 -----
   document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
   CLASS_LIB = {};

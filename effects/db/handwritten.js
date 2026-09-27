@@ -62,4 +62,27 @@ registerEffects({
     uses: { max: 3, per: "lr" },
     unsupported: [{ reason: "post-hoc reroll of any d20; no roll-history model", tags: ["reroll", "resource"] }],
   },
+
+  /* ----- races -----
+     Custom Lineage (TCE p8) had no entry at all, which mattered more than most gaps: it is the one
+     race whose entire point is that everything about it is a choice. Its +2 is handled by the
+     creator (racialAbilityBonus reads the `choose` block's amount) and its feat now has a slot of
+     its own (traitGrantsFeat, src/class-library.js); this is the third piece.
+
+     Variable Trait is "darkvision 60 ft OR proficiency in one skill of your choice", and only half
+     of that is representable — the sheet models no vision at all. Elsewhere a partly-representable
+     choice is declared wholly unsupported rather than given a misleading picker (see the Transmuter
+     entry in classes-batch-18.js). That call is right when the representable branch is one of four
+     and picking it implies the other three don't exist. Here it is one of two, the other is a flat
+     60 ft of darkvision with no number anywhere on this sheet to put it in, and the skill branch is
+     the one that changes a roll — so the picker earns its place, and the unsupported note says
+     plainly what to do if you took the other branch. Leaving the picker empty costs nothing. */
+  "race|custom lineage|variable trait": {
+    name: "Variable Trait", sv: 1,
+    choices: [{ id: "skill", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Skill proficiency (or leave empty for darkvision)" }],
+    effects: [
+      { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" } },
+    ],
+    unsupported: [{ reason: "the other half of this trait is darkvision 60 ft, which the sheet doesn't model — leave the skill picker empty if that's the branch you took", tags: ["vision", "choice"] }],
+  },
 });

@@ -60,6 +60,7 @@ function blankCreator() {
     step: 1,
     race: "", subrace: "", size: "",
     racialChoice: {},                                    // "<blockIndex>:<slot>" -> ability, for a race's `choose` increases
+    raceFeats: {},                                       // trait name -> feat, for races that grant one (Variant Human, Custom Lineage)
     customOrigin: false,                                 // TCE p8: reassign the race's fixed increases freely
     originChoice: {},                                    // "fixed:<n>" -> ability, when customOrigin is on
     srcOff: { race: {}, class: {}, background: {} },     // books switched off in the pickers
@@ -340,6 +341,45 @@ function raceTraitsHtml() {
     </div>`;
 }
 
+/* ----- the feat a race hands you -----
+   Variant Human and Custom Lineage grant a feat, and until now the wizard marked that trait with a
+   pencil and moved on — which meant the character was created with the feat unrecorded, and the
+   sheet had nowhere to record it either. The sheet has a slot for it now (traitGrantsFeat in
+   src/class-library.js); this is the same choice, offered at the moment you pick the race that
+   grants it, and handed to the character through featChoices like any other feat.
+
+   Keyed by the trait's own name rather than by position, so it survives switching subrace back and
+   forth, and so a race with two such traits (none in 2014 content, but the shape allows it) keeps
+   them apart. */
+function raceFeatSlots() {
+  const rec = ciFindRace(CREATOR.race);
+  if (!rec || typeof traitGrantsFeat !== "function") return [];
+  const sub = findSubByName(rec, CREATOR.subrace);
+  const byName = new Map();
+  (rec.entries || []).forEach(e => byName.set(e.name, e));
+  ((sub && sub.entries) || []).forEach(e => byName.set(e.name, e));
+  return [...byName.values()]
+    .filter(e => traitGrantsFeat(rec.name, e.name))
+    .map(e => ({ entry: e.name, text: e.text || "" }));
+}
+function raceFeatHtml() {
+  const slots = raceFeatSlots();
+  if (!slots.length) return "";
+  // Feats can be switched off entirely for a campaign (src/house-rules.js). Say so rather than
+  // offering a box whose contents the rest of the sheet would then ignore.
+  if (typeof hrSetting === "function" && hrSetting("feats") === false) {
+    return `<div style="margin-top:.4rem"><b>Feat</b>
+      <span class="hint">this race grants one, but feats are off in this campaign's House Rules.</span></div>`;
+  }
+  const rows = slots.map(s => `<label class="cr-racefeat-slot">${escapeHtml(s.entry)}:
+    ${creatorCombo("cr-racefeat-" + s.entry.replace(/[^a-z0-9]/gi, ""), CREATOR.raceFeats[s.entry] || "",
+      filteredNames("feat", FEAT_LIB, CREATOR.raceFeats[s.entry] || ""), "type to search", "", "", "feat")}
+    </label>`).join(" ");
+  return `<div style="margin-top:.4rem"><b>Feat</b>
+    <span class="hint">this race grants one &mdash; it goes on the sheet's Features module too</span>
+    <div style="margin-top:.2rem">${rows}</div></div>`;
+}
+
 /* Size. Most races are one size; a few (Dhampir, Fairy, and the other MPMM "Small or Medium" races)
    genuinely leave it to the player, so those get a picker rather than an arbitrary pick. */
 function raceSizeHtml() {
@@ -454,6 +494,7 @@ function creatorStepHtml() {
       <div style="margin-top:.4rem"><b>Ability increases</b></div>
       ${racialAsiHtml()}
       ${raceSizeHtml()}
+      ${raceFeatHtml()}
       ${raceTraitsHtml()}
     </div>`;
   }
@@ -748,6 +789,14 @@ function creatorStepBlockerFor(step) {
     // reading only one of the two stores left the step permanently blocked.
     const unset = racialChoiceSlots().filter(s => !slotValue(s)).length;
     if (unset) return `Choose ${unset} more racial ability increase${unset === 1 ? "" : "s"}.`;
+    // Blocked for the same reason the increases are: this is a choice the race makes you responsible
+    // for, and one that used to get lost entirely. Free text, so it is never a hard stop — anything
+    // you type is accepted, including a feat your data doesn't have.
+    const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
+    if (!featsOff) {
+      const noFeat = raceFeatSlots().filter(s => !(CREATOR.raceFeats[s.entry] || "").trim());
+      if (noFeat.length) return `Choose the feat your race grants (${noFeat.map(s => s.entry).join(", ")}).`;
+    }
   }
   if (step === 2) {
     const total = creatorTotalLevel();
@@ -966,11 +1015,25 @@ function creatorBuildState() {
     v: 1, effectsSv: 1, fields,
     classes: rows.map(r => ({ name: r.name, sub: r.sub, lvl: r.lvl, hitDie: "auto", casting: "auto" })),
     spells: [], items: creatorStartingItems(), attacks: [], routines: [],
-    featChoices: {}, usesState: {}, hdState: {},
+    featChoices: creatorRaceFeatChoices(), usesState: {}, hdState: {},
     effectChoices: {}, effectToggles: {},
     proficiencies: prof,
     concentrating: null,
   };
+}
+
+/* The racial feat, in the shape the Features module reads it back out of: keyed by the same fkey
+   raceFkey() builds, so the picker in step 1 and the picker on the sheet are the same slot seen
+   twice rather than two places a feat can hide. */
+function creatorRaceFeatChoices() {
+  const rec = ciFindRace(CREATOR.race);
+  if (!rec || typeof raceFkey !== "function") return {};
+  const out = {};
+  raceFeatSlots().forEach(s => {
+    const v = (CREATOR.raceFeats[s.entry] || "").trim();
+    if (v) out[raceFkey(rec.name, s.entry)] = v;
+  });
+  return out;
 }
 
 /* Items from the chosen equipment package. Only leaves that name a real item are added — an
@@ -1040,7 +1103,14 @@ document.addEventListener("DOMContentLoaded", () => {
       CREATOR.race = t.value;
       CREATOR.subrace = (e.detail && e.detail.option && e.detail.option.subrace) || "";
       CREATOR.racialChoice = {}; CREATOR.originChoice = {}; CREATOR.size = "";
+      CREATOR.raceFeats = {};
       renderCreatorKeepingFocus(t); return;
+    }
+    if (t.id.startsWith("cr-racefeat-")) {
+      // Matched back to the trait by its own slug, since the id can't carry a name with spaces in it.
+      const slot = raceFeatSlots().find(x => "cr-racefeat-" + x.entry.replace(/[^a-z0-9]/gi, "") === t.id);
+      if (slot) { CREATOR.raceFeats[slot.entry] = t.value; renderCreatorKeepingFocus(t); }
+      return;
     }
     if (t.id === "cr-subrace") { CREATOR.subrace = t.value; CREATOR.racialChoice = {}; renderCreatorKeepingFocus(t); return; }
     if (t.classList.contains("cr-cls")) {

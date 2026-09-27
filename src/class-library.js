@@ -426,6 +426,35 @@ function ciFindFeat(name) { return ciFind(FEAT_LIB, name); }
 function ciFindSub(rec, name) { const q = (name || "").trim().toLowerCase(); if (!q) return null; return Object.values(rec.subs).find(s => s.shortName.toLowerCase() === q || s.name.toLowerCase() === q) || null; }
 function ciFindRaceSub(rec, name) { const q = (name || "").trim().toLowerCase(); if (!q) return null; return Object.values(rec.subs).find(s => s.name.toLowerCase() === q) || null; }
 function isASI(name) { return (name || "").trim().toLowerCase() === "ability score improvement"; }
+
+/* ----- racial feat grants -----
+   Variant Human and Custom Lineage hand you a feat, and 5e.tools' 2014 race data has no field that
+   says so: the trait is literally { name: "Feat", entries: ["You gain one feat of your choice."] }.
+   That left the sheet with no way at all to record a racial feat — the feat picker was wired only to
+   class Ability Score Improvements, so a Variant Human's feat existed as prose and nothing else, and
+   the effects engine never saw it. Taking Alert gave you no initiative.
+
+   Two honest ways to fix that: pattern-match the English, or name the traits. Matching prose is the
+   one thing this project refuses to do (DOCS, "degrade to manual, never guess" — note that
+   CHOICE_CUE in creator.js only ever puts a pencil next to a name, it never acts). So: name them,
+   on exactly the principle effects/ already works by — an inert list keyed by name that does nothing
+   unless the user's own imported data happens to contain a matching trait.
+
+   The general rule is the trait's NAME, not its text: a race trait called exactly "Feat" grants a
+   feat. That is a name match of the same kind every effects entry makes, and its worst failure is a
+   spare empty picker on some homebrew race, not a wrong number. RACE_FEAT_TRAITS is the escape hatch
+   for a trait that grants a feat under some other name. */
+const RACE_FEAT_TRAITS = [
+  // { race: "Some Homebrew Race", entry: "Bonus Feat" },   // race is optional; entry is required
+];
+function traitGrantsFeat(raceName, entryName) {
+  const e = (entryName || "").trim().toLowerCase();
+  if (!e) return false;
+  if (e === "feat") return true;
+  const r = (raceName || "").trim().toLowerCase();
+  return RACE_FEAT_TRAITS.some(t => (t.entry || "").trim().toLowerCase() === e
+    && (!t.race || t.race.trim().toLowerCase() === r));
+}
 function fkeyFor(className, name, level) { return (className + "|" + name + "|" + level).replace(/"/g, "&quot;"); }
 function raceFkey(raceName, entryName) { return ("race||" + raceName + "||" + entryName).replace(/"/g, "&quot;"); }
 
@@ -455,6 +484,27 @@ function activeFeatures() {
         const origin = fromSub
           ? { kind: "subrace", raceName: rec.name, subraceName: sub.name }
           : { kind: "race", raceName: rec.name };
+        /* A trait that grants a feat becomes a slot: same picker, same FEAT_CHOICES storage, same
+           effects wiring a class ASI gets, so a Variant Human's Alert reaches the initiative box by
+           the same path a Fighter's does. NOT isAsi, though — an ASI is "a feat OR two +1s" and this
+           is only the feat, so it carries no score pickers.
+
+           Until a feat is chosen the trait keeps its own effKey, so an effects entry written against
+           the trait itself still applies; once one is chosen the feat's effKey replaces it, because
+           for a trait whose entire content is "you gain a feat" there is nothing else to lose. */
+        if (traitGrantsFeat(rec.name, e.name)) {
+          const chosen = FEAT_CHOICES[fkey] || "";
+          const featRec = chosen ? ciFindFeat(chosen) : null;
+          out.push({
+            fkey,
+            effKey: featRec ? effKeyFor({ kind: "feat" }, featRec.name) : effKeyFor(origin, e.name),
+            name: featRec ? featRec.name : e.name, level: 0,
+            source: featRec ? featRec.source : (e.source || rec.source),
+            text: featRec ? featRec.text : e.text,
+            isAsi: false, isRaceFeat: true, featSlotName: e.name, featChosen: chosen, origin,
+          });
+          return;
+        }
         out.push({ fkey, effKey: effKeyFor(origin, e.name), name: e.name, level: 0,
           source: e.source || rec.source, text: e.text, isAsi: false, origin });
       });
@@ -487,6 +537,20 @@ function activeFeatures() {
     });
   });
   return out;
+}
+
+/* The feat box, shared by class Ability Score Improvements and by the race traits that grant a feat
+   (see traitGrantsFeat). One control, one class, one storage map, so the change handler and the
+   typeahead below don't have to learn that racial feats exist.
+
+   A table can switch feats off entirely — see src/house-rules.js. The picker goes away, but an
+   already-chosen feat still shows, because turning the rule on later must not silently strip a feat
+   off a character who was built under the old ruleset. `offText` differs by caller: an ASI still
+   does something useful with feats off (the +1s), a racial feat slot does not. */
+function featPickerHtml(fkey, chosen, offText) {
+  const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
+  if (featsOff && !chosen) return ` <span class="hint">${offText}</span>`;
+  return ` &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${fkey}" value="${escapeHtml(chosen || "")}" style="width:12rem"></label>`;
 }
 
 /* The other half of an Ability Score Improvement: two "+1 to..." pickers, which together express
@@ -590,7 +654,13 @@ function renderRaceSection(all) {
   const items = entries.map(e => {
     FEATURE_TEXT_BY_KEY[e.fkey] = e.text;
     const usesSpec = usesSpecFor(e), tracker = usesSpec ? renderUsesTracker(e, usesSpec) : "";
-    return `<div><a class="feat-link" data-fkey="${e.fkey}"><b>${escapeHtml(e.name)}</b></a> <span class="hint">${e.source}</span>${tracker}${renderEffectControls(e)}</div>`;
+    // A feat-granting trait keeps ITS name on the link ("Feat"), not the chosen feat's — the trait is
+    // what the race gave you and what you'd go looking for; the feat is what you put in the box, and
+    // clicking through shows its text. Everything else renders as any other trait.
+    const label = e.isRaceFeat ? e.featSlotName : e.name;
+    const picker = e.isRaceFeat
+      ? featPickerHtml(e.fkey, e.featChosen, "feats are off in this campaign's House Rules.") : "";
+    return `<div><a class="feat-link" data-fkey="${e.fkey}"><b>${escapeHtml(label)}</b></a> <span class="hint">${e.source}</span>${picker}${tracker}${renderEffectControls(e)}</div>`;
   }).join("") || "<div class='hint'>&nbsp;&nbsp;no traits</div>";
   const grantedSrc = (sub && sub.grantedSpells && sub.grantedSpells.length) ? sub.grantedSpells
     : (rec.grantedSpells && rec.grantedSpells.length) ? rec.grantedSpells : null;
@@ -634,10 +704,7 @@ function renderClassFeatures() {
       // A table can switch feats off entirely (ASI only) — see src/house-rules.js. The picker goes
       // away, but an already-chosen feat still shows, because turning the rule on later must not
       // silently strip a feat off a character who was built under the old ruleset.
-      const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
-      const picker = (featsOff && !e.asiChosen)
-        ? ` <span class="hint">ASI only - feats are off in this campaign's House Rules.</span>`
-        : ` &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${e.fkey}" value="${escapeHtml(e.asiChosen)}" style="width:12rem"></label>`;
+      const picker = featPickerHtml(e.fkey, e.asiChosen, "ASI only - feats are off in this campaign's House Rules.");
       return `<div>${link}${picker}${asiScoreHtml(e)}${tracker}${renderEffectControls(e)}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
     const grantedHtml = (sub && sub.grantedSpells && sub.grantedSpells.length)
@@ -665,7 +732,12 @@ function toggleFeatDetail(link) {
       const subName = ($("char-subrace") && $("char-subrace").value || "").trim();
       const sub = ciFindRaceSub(rec, subName);
       let e = (sub && sub.entries.find(x => x.name === entryName)) || rec.entries.find(x => x.name === entryName);
-      text = e && e.text;
+      // Same as the ASI branch below: once a feat is chosen, expanding the slot should show the feat
+      // you took rather than re-reading "you gain one feat of your choice".
+      if (e && traitGrantsFeat(rec.name, e.name) && FEAT_CHOICES[fkey]) {
+        const feat = ciFindFeat(FEAT_CHOICES[fkey]);
+        text = feat ? ("Feat: " + feat.name + "\n" + feat.text) : e.text;
+      } else text = e && e.text;
     }
   } else {
     const [cls, name, lvl] = fkey.split("|");
