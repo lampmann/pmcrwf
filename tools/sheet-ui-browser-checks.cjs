@@ -15,7 +15,7 @@ module.exports = async function checkSheetUi(page) {
   await page.locator('#hp-cur').fill('-5');
   await page.locator('#hp-cur').press('Enter');
   const hp = await page.evaluate(() => ({ cur: hpFieldValue(document.getElementById('hp-cur')), max: Number(document.getElementById('hp-max').textContent),
-    fill: parseFloat(document.getElementById('hp-fill').style.width), tempEmpty: document.getElementById('hp-temp-bar').classList.contains('hp-temp-empty') }));
+    fill: parseFloat(document.getElementById('hp-fill').style.width), tempEmpty: document.getElementById('hp-temp-row').classList.contains('hp-temp-empty') }));
   assert.equal(hp.cur, 26);
   // Enter keeps the box focused with its value selected, so adjustments chain without clicking back in.
   assert.equal(await page.evaluate(() => document.activeElement.id), 'hp-cur');
@@ -25,16 +25,29 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(await page.evaluate(() => document.activeElement.id), 'hp-cur');
   assert.equal(Math.round(hp.fill), Math.round(26 / hp.max * 100));
   assert.equal(hp.tempEmpty, false);
-  const bars = await page.evaluate(() => [document.getElementById('hp-temp-bar'), document.querySelector('.hp-bar')].map(e => e.getBoundingClientRect().top));
+  const bars = await page.evaluate(() => [document.getElementById('hp-temp-row'), document.querySelector('.hp-bar')].map(e => e.getBoundingClientRect().top));
   assert(bars[0] < bars[1], 'temp HP bar sits above the health bar');
   // Temp HP past max stacks full rows under the remainder, all the same height as the health bar.
   await page.evaluate(() => { const t = document.getElementById('hp-temp'); t.value = String(Number(document.getElementById('hp-max').textContent) * 2 + 3); commitMath(t); renderHpBar(); });
   assert.equal(await page.locator('#hp-temp-full .hp-temp-bar').count(), 2);
-  const tempRows = await page.evaluate(() => [...document.querySelectorAll('.hp-temp-bar')].map(e => ({ top: e.getBoundingClientRect().top, input: !!e.querySelector('input') })));
+  const tempRows = await page.evaluate(() => [...document.querySelectorAll('#hp-temp-full .hp-temp-bar, #hp-temp-row')].map(e => ({ top: e.getBoundingClientRect().top, input: !!e.querySelector('input') })));
   assert.equal(tempRows.filter(r => r.input).length, 1);
   assert.equal(tempRows.reduce((a, b) => b.top > a.top ? b : a).input, true, 'the number sits on the bottom temp HP row');
-  const heights = await page.evaluate(() => [...document.querySelectorAll('.hp-temp-bar, .hp-bar')].map(e => e.offsetHeight));
+  const heights = await page.evaluate(() => [...document.querySelectorAll('#hp-temp-full .hp-temp-bar, #hp-temp-row, .hp-bar')].map(e => e.offsetHeight));
   assert.equal(new Set(heights).size, 1);
+  // A small temp HP stays to scale and its label moves beside the fill; a big one holds it inside.
+  const labelAt = temp => page.evaluate(t => { const el = document.getElementById('hp-temp'); el.value = String(t); commitMath(el); renderHpBar();
+    const bar = document.getElementById('hp-temp-bar'), max = Number(document.getElementById('hp-max').textContent);
+    return { pct: parseFloat(bar.style.width), want: Math.round(t / max * 1000) / 10, outside: document.getElementById('hp-temp-label').classList.contains('hp-temp-outside'),
+      text: document.getElementById('hp-temp-label').textContent.trim() }; }, temp);
+  const small = await labelAt(1);
+  assert.equal(Math.round(small.pct * 10) / 10, small.want);
+  assert.equal(small.outside, true);
+  assert.equal(small.text, 'THP:');
+  const big = await labelAt(Math.round(Number(await page.locator('#hp-max').innerText()) * 0.9));
+  assert.equal(big.outside, false);
+  assert.match(await page.evaluate(() => [...document.querySelector('.hp-bar-text').childNodes]
+    .map(n => n.tagName === 'INPUT' ? n.value : n.textContent).join('').replace(/\s+/g, ' ').trim()), /^HP: 26 ?\/ ?\d+$/);
   // A reload keeps current HP (it used to clamp to the not-yet-computed max of 0).
   await page.evaluate(() => { saveState(); });
   await page.reload();

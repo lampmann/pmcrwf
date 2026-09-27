@@ -32,25 +32,32 @@ function hpFieldValue(el) {
 }
 /* Each box is as wide as what's typed in it (or its placeholder), since Firefox has no field-sizing. */
 function fitHpInputs() {
-  document.querySelectorAll(".hp-bar input, .hp-temp-bar input").forEach(el => {
+  document.querySelectorAll(".hp-bar input, .hp-temp-label input").forEach(el => {
     const n = Math.max(1, (el.value || el.placeholder || "").length);
-    el.style.width = (n + 0.6) + "ch";
+    el.style.width = `calc(${n}ch + 3px)`;
   });
 }
 /* Temp HP past max HP stacks upward: the bottom row holds the number and is full width, a full row
-   sits above it per further whole max, and the remainder tops the stack. */
+   sits above it per further whole max, and the remainder tops the stack. The bottom fill is always
+   to scale; its "THP: n" label is centred in it when it fits and sits just right of it when not. */
 function renderHpBar() {
   fitHpInputs();
-  const fill = document.getElementById("hp-fill"), tempBar = document.getElementById("hp-temp-bar");
-  if (!fill && !tempBar) return;
+  const fill = document.getElementById("hp-fill"), row = document.getElementById("hp-temp-row");
+  if (!fill && !row) return;
   const max = Math.max(0, Number((document.getElementById("hp-max") || {}).textContent) || 0);
   const cur = hpFieldValue(document.getElementById("hp-cur"));
   const temp = hpFieldValue(document.getElementById("hp-temp"));
   if (fill) fill.style.width = (max ? Math.max(0, Math.min(100, cur / max * 100)) : 0) + "%";
-  if (!tempBar) return;
+  if (!row) return;
   const rows = max ? Math.ceil(temp / max) : 0;
-  tempBar.classList.toggle("hp-temp-empty", !temp);
-  tempBar.style.width = rows > 1 ? "100%" : `max(3.2rem, ${max ? temp / max * 100 : 0}%)`;
+  const pct = rows > 1 ? 100 : max ? Math.min(100, temp / max * 100) : 0;
+  row.classList.toggle("hp-temp-empty", !temp);
+  document.getElementById("hp-temp-bar").style.width = pct + "%";
+  const label = document.getElementById("hp-temp-label");
+  const fillPx = row.clientWidth * pct / 100, labelPx = label.offsetWidth, pad = 6;
+  const inside = !!temp && labelPx + 2 * pad <= fillPx;
+  label.classList.toggle("hp-temp-outside", !inside);
+  label.style.left = (inside ? (fillPx - labelPx) / 2 : (temp ? fillPx + pad : 0)) + "px";
   const stack = document.getElementById("hp-temp-full"); if (!stack) return;
   const extra = Math.min(Math.max(0, rows - 1), 4);
   const topPct = rows > 1 ? (temp - (rows - 1) * max) / max * 100 : 100;

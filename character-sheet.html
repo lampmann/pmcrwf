@@ -131,9 +131,10 @@
          persisted math fields as before, only restyled, so typing "-7" still subtracts. -->
     <div class="hp-bars">
       <div id="hp-temp-full"></div>
-      <div class="hp-temp-bar" id="hp-temp-bar"><input type="text" inputmode="numeric" data-persist data-math data-min="0" data-allow-empty id="hp-temp" placeholder="0" aria-label="Temporary hit points"></div>
+      <div class="hp-temp-row" id="hp-temp-row"><div class="hp-temp-bar" id="hp-temp-bar"></div>
+        <span class="hp-temp-label" id="hp-temp-label">THP: <input type="text" inputmode="numeric" data-persist data-math data-min="0" data-allow-empty id="hp-temp" placeholder="0" aria-label="Temporary hit points"></span></div>
       <div class="hp-bar"><div class="hp-fill" id="hp-fill"></div>
-        <span class="hp-bar-text"><input type="text" inputmode="numeric" data-persist data-math data-min="0" data-max-from="hp-max" data-allow-empty id="hp-cur" aria-label="Current hit points"><span class="hp-slash">/</span><span id="hp-max">0</span></span></div>
+        <span class="hp-bar-text">HP: <input type="text" inputmode="numeric" data-persist data-math data-min="0" data-max-from="hp-max" data-allow-empty id="hp-cur" aria-label="Current hit points"><span class="hp-slash">/</span><span id="hp-max">0</span></span></div>
       <div class="hint">Max override <input type="number" class="tiny" data-persist id="hp-max-override" placeholder="auto"></div>
     </div>
     <table>

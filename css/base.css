@@ -599,14 +599,20 @@ button.linkish {
 .hp-bar { background: #2e3436; color: #fff; text-shadow: 0 1px 2px #000; }
 .hp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #4e9a06; transition: width .15s ease; }
 .hp-temp-bar { background: #edd400; color: #2e3436; transition: width .15s ease; }
-.hp-temp-bar.hp-temp-empty { background: #2e3436; color: #fff; }
 #hp-temp-full > .hp-temp-bar:first-child { margin-top: 0; }
-#hp-temp-full:empty + .hp-temp-bar { margin-top: 0; }
-.hp-bar-text { position: relative; display: inline-flex; align-items: baseline; }
-.hp-bar input, .hp-temp-bar input { font: inherit; color: inherit; background: transparent; border: 0; padding: 0; text-align: center; width: 2ch; min-width: 1.5ch; }
+/* The bottom temp row: a proportional fill, and a label centred in it when it fits, beside it when not. */
+.hp-temp-row { position: relative; height: 1.55rem; margin-top: .2rem; }
+#hp-temp-full:empty + .hp-temp-row { margin-top: 0; }
+.hp-temp-row > .hp-temp-bar { position: absolute; left: 0; top: 0; bottom: 0; height: auto; margin: 0; }
+.hp-temp-row.hp-temp-empty > .hp-temp-bar { display: none; }
+.hp-temp-label { position: absolute; top: 0; bottom: 0; left: 0; display: flex; align-items: center; white-space: nowrap; font-weight: bold; color: #2e3436; }
+.hp-temp-label.hp-temp-outside { color: var(--fg); }
+.hp-bar-text { position: relative; display: inline-flex; align-items: baseline; gap: .3em; }
+.hp-temp-label input { margin-left: .3em; }
+.hp-bar input, .hp-temp-label input { font: inherit; color: inherit; background: transparent; border: 0; padding: 0; text-align: center; width: 2ch; min-width: 1.5ch; }
 .hp-bar-text #hp-cur { text-align: right; }
-.hp-bar input:focus, .hp-temp-bar input:focus { outline: 1px dotted currentColor; }
-.hp-slash { margin: 0 .1rem; }
+.hp-bar input:focus, .hp-temp-label input:focus { outline: 1px dotted currentColor; }
+.hp-slash { margin: 0 -.2em; }
 /* ----- defence checklists (src/hp-bar.js) ----- */
 .def-manual { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; font-size: .85rem; }
 .dd-check { position: relative; }
