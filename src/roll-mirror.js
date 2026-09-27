@@ -64,15 +64,16 @@ function toggleMirrorFold() { MIRROR.folded = !MIRROR.folded; saveMirrorPrefs();
 function hideRollMirror() { MIRROR.hidden = true; saveMirrorPrefs(); renderRollMirror(); }
 function showRollMirror() { MIRROR.hidden = false; saveMirrorPrefs(); renderRollMirror(); }
 
-/* One new entry, newest at the top, oldest trimmed off the bottom. Called from logEvent, so
+/* One new entry, newest at the bottom next to the command line (like a chat), oldest trimmed off the top. Called from logEvent, so
    anything that reaches the Event Log reaches here — rolls, rests, HP changes, resource spends. */
 function mirrorLogEntry(kind, html) {
   const body = mirrorBody(); if (!body) return;
   const d = document.createElement("div");
   d.className = "ev ev-" + kind;
   d.innerHTML = html;
-  body.insertBefore(d, body.firstChild);
-  while (body.children.length > MIRROR_MAX) body.removeChild(body.lastChild);
+  body.appendChild(d);
+  while (body.children.length > MIRROR_MAX) body.removeChild(body.firstChild);
+  body.scrollTop = body.scrollHeight;
   /* A ROLL arriving while the panel is hidden shouldn't silently vanish — that's exactly the moment
      it's wanted. Restricted to kind "roll": every OTHER kind (info, rest, hp, resource, condition)
      used to reopen the panel too, so loading a house-rule preset, taking a rest, or ticking a
@@ -90,8 +91,10 @@ function repaintRollMirror() {
   const body = mirrorBody(); if (!body) return;
   const entries = (typeof ROSTER === "object" && ROSTER.logs && typeof activeLogKey === "function")
     ? (ROSTER.logs[activeLogKey()] || []) : [];
-  body.innerHTML = entries.slice(0, MIRROR_MAX)
+  // The stored log is newest-first; the panel reads top to bottom, oldest to newest.
+  body.innerHTML = entries.slice(0, MIRROR_MAX).reverse()
     .map(e => `<div class="ev ev-${e.kind}">${e.html}</div>`).join("");
+  body.scrollTop = body.scrollHeight;
 }
 
 /* Resizing from the TOP-LEFT, because the panel is pinned to the bottom-right: CSS `resize` only

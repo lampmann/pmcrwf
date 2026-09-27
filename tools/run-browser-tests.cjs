@@ -154,7 +154,7 @@ const server = http.createServer((req, res) => {
       window.diceFrames = [];
       const host = document.querySelector('#roll-mirror-body');
       const observer = new MutationObserver(() => {
-        const entry = host.querySelector('.ev');
+        const all = host.querySelectorAll('.ev'), entry = all[all.length - 1];
         if (entry) diceFrames.push({ text: entry.textContent, rolling: entry.classList.contains('rolling') });
       });
       observer.observe(host, { subtree: true, childList: true, characterData: true });
@@ -162,7 +162,7 @@ const server = http.createServer((req, res) => {
     await page.locator('[data-roll-check="save-str"]').click();
     await page.waitForFunction(() => diceFrames.some(f => f.rolling) && diceFrames.some(f => !f.rolling));
     assert(await page.evaluate(() => new Set(diceFrames.map(f => f.text)).size > 1));
-    assert.equal(await page.locator('#dicelog .ev').first().innerText(), await page.locator('#roll-mirror-body .ev').first().innerText());
+    assert.equal(await page.locator('#dicelog .ev').first().innerText(), await page.locator('#roll-mirror-body .ev').last().innerText());
     await page.reload();
     assert.equal(await page.locator('#roll-anim-toggle').innerText(), 'Tumble: On');
     await page.locator('#roll-anim-toggle').click();

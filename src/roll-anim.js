@@ -207,7 +207,8 @@ function animateNewestRoll() {
   if (!rollAnimAllowed()) return;
   const entries = ["dicelog", "roll-mirror-body"].map(id => {
     const host = document.getElementById(id); if (!host) return null;
-    // The log keeps a sticky header as its first child; the newest entry is the first .ev either way.
+    // The log module is newest-first (behind a sticky header); the Rolls panel is newest-last.
+    if (id === "roll-mirror-body") { const all = host.querySelectorAll(".ev"); return all[all.length - 1] || null; }
     return host.querySelector(".ev");
   });
   animateRollCopies(entries);

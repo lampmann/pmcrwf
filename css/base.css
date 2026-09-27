@@ -558,8 +558,8 @@ input[readonly] { background: rgba(128,128,128,.12); cursor: default; }
   border-left: 2px solid currentColor; border-top: 2px solid currentColor; opacity: .35;
 }
 #roll-mirror-grip:hover { opacity: .8; }
-/* Above the entries, not below them: the log reads newest-first from the top, so the box you type
-   into sits next to where its result will appear rather than a list-length away from it. */
+/* Below the entries, like a chat: the panel reads oldest to newest downwards, so the box you type
+   into sits right under where its result will appear. */
 #roll-mirror-cmd {
   display: block; width: calc(100% - .8rem); margin: .3rem .4rem .25rem;
   font: inherit; font-size: .85rem;

@@ -59,7 +59,34 @@ function renderXp() {
     fill.style.width = (p * 100) + "%";
     if (bar) bar.setAttribute("aria-valuenow", String(Math.round(p * 100)));
   }
+  placeXpBar();
 }
+/* The bar sits halfway between the top of the XP field and whatever is directly above the XP group:
+   the row of fields above it when the row has wrapped, or the module's top edge when nothing is
+   (the module title's text only counts where it actually reaches over the group). */
+function placeXpBar() {
+  const group = document.querySelector(".xp-group"), bar = $("xp-bar"), field = $("char-xp");
+  if (!group || !bar || !field || !group.offsetParent) return;
+  const g = group.getBoundingClientRect(), fieldTop = field.getBoundingClientRect().top;
+  const module = group.closest(".module");
+  let above = module ? module.getBoundingClientRect().top : g.top - 8;
+  const overlaps = r => r.width && r.right > g.left && r.left < g.right && r.bottom <= fieldTop;
+  const fields = group.parentElement ? [...group.parentElement.children].filter(el => el !== group) : [];
+  fields.forEach(el => { const r = el.getBoundingClientRect(); if (overlaps(r)) above = Math.max(above, r.bottom); });
+  const h2 = module && module.querySelector(":scope > h2");
+  if (h2) {
+    const range = document.createRange(); range.selectNodeContents(h2);
+    [...range.getClientRects()].forEach(r => { if (overlaps(r)) above = Math.max(above, r.bottom); });
+  }
+  const h = bar.offsetHeight, mid = (above + fieldTop) / 2;
+  bar.style.top = Math.round(mid - h / 2 - g.top) + "px";
+}
+window.addEventListener("resize", () => placeXpBar());
+// Resizing the module in Free layout re-wraps the fields without resizing the window.
+document.addEventListener("DOMContentLoaded", () => {
+  const group = document.querySelector(".xp-group");
+  if (group && group.parentElement && typeof ResizeObserver === "function") new ResizeObserver(() => placeXpBar()).observe(group.parentElement);
+});
 /* How far through the current level the XP total is, 0..1; full at level 20. */
 function xpProgress() {
   const lvl = totalLevel(), xp = num($("char-xp"));

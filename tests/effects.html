@@ -1727,18 +1727,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
       log("first"); log("second");
       assertEqual("every entry reaches the mirror", mirrorRows().length, 2);
-      assertEqual("...newest first, like the module", mirrorRows()[0], "second");
-      assertEqual("...and the two agree exactly", mirrorRows().join("|"), moduleRows().join("|"));
+      assertEqual("...newest last, next to its command line", mirrorRows()[1], "second");
+      assertEqual("...and the two agree exactly, in reverse order", mirrorRows().reverse().join("|"), moduleRows().join("|"));
 
       logEvent("hp", "took 5"); logEvent("rest", "short rest");
       assertEqual("kinds other than rolls are mirrored too — it mirrors the log, not just dice",
-        mirrorRows().join("|"), moduleRows().join("|"));
+        mirrorRows().reverse().join("|"), moduleRows().join("|"));
 
       switchCharacter("m2");
-      assertEqual("switching characters repaints rather than appends", mirrorRows().join("|"), moduleRows().join("|"));
+      assertEqual("switching characters repaints rather than appends", mirrorRows().reverse().join("|"), moduleRows().join("|"));
       assertEqual("...so the other character's rolls aren't showing", mirrorRows().length, 0);
       switchCharacter("m1");
-      assertEqual("...and switching back brings that character's own log to both", mirrorRows().join("|"), moduleRows().join("|"));
+      assertEqual("...and switching back brings that character's own log to both", mirrorRows().reverse().join("|"), moduleRows().join("|"));
       assert("...which still has its entries", mirrorRows().length === 4);
 
       clearLog();
@@ -1748,7 +1748,7 @@ document.addEventListener("DOMContentLoaded", () => {
       for (let i = 0; i < MIRROR_MAX + 10; i++) log("entry " + i);
       assertEqual("the corner panel keeps only its last few", mirrorRows().length, MIRROR_MAX);
       assert("...while the module keeps more", moduleRows().length > MIRROR_MAX);
-      assertEqual("...and the newest is on top of both", mirrorRows()[0], moduleRows()[0]);
+      assertEqual("...and the newest is at the panel's bottom and the module's top", mirrorRows()[MIRROR_MAX - 1], moduleRows()[0]);
 
       // fold/hide are preferences about the screen, not facts about the character
       MIRROR = { folded: false, hidden: false };

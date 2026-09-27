@@ -240,11 +240,17 @@ module.exports = async function checkSheetUi(page) {
     const x = document.getElementById('char-xp'), prev = x.value; x.value = '1800'; commitMath(x); recompute();
     const bar = document.getElementById('xp-bar').getBoundingClientRect(), label = document.getElementById('char-xp').getBoundingClientRect();
     const next = document.getElementById('xp-next').getBoundingClientRect();
-    const out = { fill: document.getElementById('xp-fill').style.width, above: bar.bottom <= label.top, spans: bar.right >= next.right - 1 };
+    const group = document.querySelector('.xp-group'), mod = group.closest('.module').getBoundingClientRect();
+    const others = [...group.parentElement.children].filter(e => e !== group).map(e => e.getBoundingClientRect())
+      .filter(r => r.width && r.right > group.getBoundingClientRect().left && r.left < group.getBoundingClientRect().right && r.bottom <= label.top);
+    const aboveEdge = Math.max(mod.top, ...others.map(r => r.bottom));
+    const gapAbove = bar.top - aboveEdge, gapBelow = label.top - bar.bottom;
+    const out = { fill: document.getElementById('xp-fill').style.width, above: bar.bottom <= label.top, spans: bar.right >= next.right - 1,
+      centred: gapBelow > 2 && Math.abs(gapAbove - gapBelow) <= 2 };
     x.value = prev; commitMath(x); recompute();
     return out;
   });
-  assert.deepEqual(xpBar, { fill: '50%', above: true, spans: true });
+  assert.deepEqual(xpBar, { fill: '50%', above: true, spans: true, centred: true });
 
   // Merging modules: the stationary one keeps its box and its tab comes first; tabs switch; detaching dissolves.
   await page.evaluate(() => { const L = __layout; L.state.free = true; L.apply(); });
