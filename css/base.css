@@ -732,3 +732,7 @@ button.linkish {
 .bgm-grid input { width: 100%; box-sizing: border-box; }
 .bgm-grid .bgm-wide { grid-column: 1 / -1; }
 .bgm-grid textarea { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; }
+
+/* ----- Rest module ----- */
+.rest-buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
+.rest-buttons button { flex: 1 1 8rem; padding: .35rem .6rem; }

@@ -217,6 +217,15 @@
     </table>
   </section>
 
+  <!-- ===== REST (src/rest.js) ===== -->
+  <section class="module" data-module="rest">
+    <h2>Rest</h2>
+    <div class="rest-buttons">
+      <button id="btn-short-rest">Short Rest</button>
+      <button id="btn-long-rest">Long Rest</button>
+    </div>
+  </section>
+
   <!-- ===== COMBAT ROUND TRACKER (src/combat.js) ===== -->
   <section class="module" data-module="combat">
     <h2>Combat <span class="hint" id="combat-status"></span></h2>
@@ -431,12 +440,9 @@
     </div>
     <div class="hint"><label style="display:inline">Import JSON <input type="file" id="class-import" accept="application/json" multiple></label>
     </div>
-    <div>
-      <button id="btn-short-rest">Short Rest</button>
-      <button id="btn-long-rest">Long Rest</button>
-
-    </div>
-    <div id="class-feat-results" style="max-height:20rem;overflow-y:auto;border:1px solid #000;padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
+    <!-- No height cap: the list is as long as the module lets it be, and a module resized smaller in
+         Free layout scrolls as a whole, like every other module. -->
+    <div id="class-feat-results" style="border:1px solid var(--border);padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
   </section>
 
   <!-- ===== HOUSE RULES ===== -->
