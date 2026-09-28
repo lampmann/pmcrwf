@@ -282,6 +282,9 @@ module.exports = async function checkSheetUi(page) {
 
   // Merging modules: the stationary one keeps its box and its tab comes first; tabs switch; detaching dissolves.
   await page.evaluate(() => { const L = __layout; L.state.free = true; L.apply(); });
+  // An arranged module can be dragged narrower than the flow layout's 240px minimum (Conditions is narrow).
+  assert.equal(await page.evaluate(() => { const m = document.querySelector('[data-module="conditions"]'); m.style.width = '150px';
+    const w = Math.round(m.getBoundingClientRect().width); m.style.width = ''; __layout.apply(); return w; }), 150);
   const merged = await page.evaluate(() => {
     const L = __layout, saves = document.querySelector('[data-module="saves"]'), senses = document.querySelector('[data-module="senses"]');
     const before = { ...L.state.map.saves };

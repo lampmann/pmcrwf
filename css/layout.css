@@ -14,6 +14,9 @@
 /* overflow:auto → when a resized module is smaller than its content, you get scrollbars (both axes),
    mouse-wheel scrolling, and native middle-click autoscroll. */
 .modules.lay-active > .module { position: absolute; margin: 0 !important; overflow: auto; }
+/* Arranged modules take the width you drag them to; the resize code has its own floor (140px), and
+   the flow layout's 240px minimum would otherwise stop a narrow module like Conditions shrinking. */
+.modules.lay-active > .module { min-width: 0; }
 
 /* --- edit mode --- */
 /* While editing (Free on), clip overflow so the resize handles stay pinned to the module's edges
