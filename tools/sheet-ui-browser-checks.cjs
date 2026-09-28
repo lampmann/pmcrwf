@@ -243,7 +243,10 @@ module.exports = async function checkSheetUi(page) {
     const group = document.querySelector('.xp-group'), mod = group.closest('.module').getBoundingClientRect();
     const others = [...group.parentElement.children].filter(e => e !== group).map(e => e.getBoundingClientRect())
       .filter(r => r.width && r.right > group.getBoundingClientRect().left && r.left < group.getBoundingClientRect().right && r.bottom <= label.top);
-    const aboveEdge = Math.max(mod.top, ...others.map(r => r.bottom));
+    const range = document.createRange(); range.selectNodeContents(group.closest('.module').querySelector(':scope > h2'));
+    const g = group.getBoundingClientRect();
+    const title = [...range.getClientRects()].filter(r => r.width && r.right > g.left && r.left < g.right && r.bottom <= label.top);
+    const aboveEdge = Math.max(mod.top, ...others.map(r => r.bottom), ...title.map(r => r.bottom));
     const gapAbove = bar.top - aboveEdge, gapBelow = label.top - bar.bottom;
     const out = { fill: document.getElementById('xp-fill').style.width, above: bar.bottom <= label.top, spans: bar.right >= next.right - 1,
       centred: gapBelow > 2 && Math.abs(gapAbove - gapBelow) <= 2 };

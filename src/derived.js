@@ -135,13 +135,14 @@ function renderDefenses() {
   // The checklist buttons show what's ticked, so they follow a character switch or an import too.
   if (typeof renderDefenceChecklists === "function" && !DEF_OPEN) renderDefenceChecklists();
   const el = $("defenses-row"); if (!el) return;
-  if (typeof effFlatByPrefix !== "function") { el.textContent = ""; return; }
+  const spd = $("speed-extra");
+  if (typeof effFlatByPrefix !== "function") { el.textContent = ""; if (spd) spd.textContent = ""; return; }
   const bits = [];
   // Numeric extra speeds ("fly 60 ft") and described ones ("fly equal to your walking speed" — a
   // value the engine can't compute, since a value expression deliberately can't read another target).
   const speeds = effFlatByPrefix("speed-").map(s => `<b>${escapeHtml(s.kind)}</b> ${s.n} ft`)
     .concat(effTagsByPrefix("speed-").map(t => `<b>${escapeHtml(t.kind)}</b> ${escapeHtml(t.items.map(i => i.label).join(", "))}`));
-  if (speeds.length) bits.push(speeds.join(", "));
+  if (spd) spd.innerHTML = speeds.join("<br>");
   /* Feature-granted AND hand-entered, in one list per category. Plenty of what a character is
      resistant to on a given evening comes from somewhere the sheet can't see — a spell someone else
      cast on you, a potion, a DM ruling, an item not itemised in Inventory — and a defences line that

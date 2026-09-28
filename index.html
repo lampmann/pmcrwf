@@ -76,6 +76,13 @@
         <option value="M" selected>Medium</option><option value="L">Large</option>
         <option value="H">Huge</option><option value="G">Gargantuan</option>
       </select></label>
+    </div>
+  </section>
+
+  <!-- ===== CLASSES (XP, level and the class table) ===== -->
+  <section class="module wide" data-module="classes">
+    <h2>Classes</h2>
+    <div class="character-fields">
     <!-- XP and Level are two views of the same number (PHB p15's Character Advancement table);
          xp.js keeps them in step. See DOCS' "Levelling up". -->
     <span class="xp-group">
@@ -86,19 +93,16 @@
       <span class="hint" id="xp-next"></span>
     </span>
     </div>
-    <fieldset>
-      <legend>Classes</legend>
-      <table id="class-table">
-        <thead><tr><th>Class</th><th>Subclass</th><th>Level</th><th>Hit Die</th><th>Casting</th><th></th></tr></thead>
-        <tbody id="class-rows"></tbody>
-      </table>
-      <div class="class-summary">
-        <button id="btn-add-class">+ add class</button>
-        <span class="hint">Total level: <span class="derived" id="total-level">0</span></span>
-        <span class="hint">Proficiency bonus: <span class="derived" id="pb">+2</span>
-          (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
-      </div>
-    </fieldset>
+    <table id="class-table">
+      <thead><tr><th>Class</th><th>Subclass</th><th>Level</th><th>Hit Die</th><th>Casting</th><th></th></tr></thead>
+      <tbody id="class-rows"></tbody>
+    </table>
+    <div class="class-summary">
+      <button id="btn-add-class">+ add class</button>
+      <span class="hint">Total level: <span class="derived" id="total-level">0</span></span>
+      <span class="hint">Proficiency bonus: <span class="derived" id="pb">+2</span>
+        (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
+    </div>
   </section>
 
   <!-- ===== BACKGROUND (src/background.js) ===== -->
@@ -166,9 +170,9 @@
 
   </section>
 
-  <!-- ===== HP / DEFENSES ===== -->
+  <!-- ===== HP (health bar and Hit Dice) ===== -->
   <section class="module" data-module="hp">
-    <h2>HP &amp; Defenses</h2>
+    <h2>HP</h2>
     <!-- Health bar (src/hp-bar.js): temp HP above, current/max below. The inputs are the same
          persisted math fields as before, only restyled, so typing "-7" still subtracts. -->
     <div class="hp-bars">
@@ -179,22 +183,46 @@
         <span class="hp-bar-text">HP: <input type="text" inputmode="numeric" data-persist data-math data-min="0" data-max-from="hp-max" data-allow-empty id="hp-cur" aria-label="Current hit points"><span class="hp-slash">/</span><span id="hp-max">0</span></span></div>
       <div class="hint">Max override <input type="number" class="tiny" data-persist id="hp-max-override" placeholder="auto"></div>
     </div>
-    <table>
-      <tr><td>Hit Dice</td><td colspan="3"><div id="hit-dice-pools"></div></td></tr>
-      <tr><td>AC</td><td><span class="derived" id="ac">10</span>
-            <span class="hint">(misc <input type="text" data-persist id="ac-misc" style="width:3rem;text-align:right">,
-            override <input type="number" class="tiny" data-persist id="ac-override" placeholder="auto">)</span></td>
-          <td>Speed</td><td><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="speed" value="30" data-autospeed="30"> <span class="derived eff-note" id="speed-total" style="display:none"></span></td></tr>
-      <tr><td>Initiative</td><td class="derived" id="init">+0</td>
-          <td>misc</td><td><input type="text" data-persist id="init-misc" style="width:4.5rem;text-align:right"></td></tr>
-    </table>
-    <button class="roll" data-roll-check="init" data-label="Initiative">Roll Initiative</button>
+    <div class="hit-dice-row"><span>Hit Dice</span> <div id="hit-dice-pools"></div></div>
+  </section>
+
+  <!-- ===== AC ===== -->
+  <section class="module small" data-module="ac">
+    <h2>Armor Class</h2>
+    <div class="stat-big"><span class="derived" id="ac">10</span></div>
+    <div class="hint">misc <input type="text" data-persist id="ac-misc" style="width:3rem;text-align:right">
+      override <input type="number" class="tiny" data-persist id="ac-override" placeholder="auto"></div>
+  </section>
+
+  <!-- ===== SPEED ===== -->
+  <section class="module small" data-module="speed">
+    <h2>Speed</h2>
+    <div class="stat-big"><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="speed" value="30" data-autospeed="30" aria-label="Walking speed"> <span class="hint">ft</span>
+      <span class="derived eff-note" id="speed-total" style="display:none"></span></div>
+    <div class="hint" id="speed-extra"></div>
+  </section>
+
+  <!-- ===== INITIATIVE ===== -->
+  <section class="module small" data-module="initiative">
+    <h2>Initiative</h2>
+    <div class="stat-big"><span class="derived" id="init">+0</span>
+      <button class="roll" data-roll-check="init" data-label="Initiative">roll</button></div>
+    <div class="hint">misc <input type="text" data-persist id="init-misc" style="width:4.5rem;text-align:right"></div>
+  </section>
+
+  <!-- ===== COUNTERS (Guidance, Resistance, Death Ward and your own; src/boons.js) ===== -->
+  <section class="module" data-module="counters">
+    <h2>Counters</h2>
     <div id="boons-row" class="boons-row"></div>
+  </section>
+
+  <!-- ===== DEFENSES ===== -->
+  <section class="module" data-module="defenses">
+    <h2>Defenses</h2>
     <!-- Hand-entered defences, stored as comma lists; the checklists are drawn by src/hp-bar.js. -->
     <input type="hidden" data-persist id="def-resist"><input type="hidden" data-persist id="def-immune"><input type="hidden" data-persist id="def-vuln">
     <div class="def-manual" id="def-manual"></div>
     <div id="defenses-row" class="hint"></div>
-
   </section>
 
   <!-- ===== SENSES (src/senses.js) ===== -->
@@ -276,7 +304,7 @@
       <input type="checkbox" data-persist id="death-fail-2">
       <input type="checkbox" data-persist id="death-fail-3">
     </div>
-    <button class="roll" id="btn-death-roll">Roll Death Save</button>
+    <button class="roll" id="btn-death-roll">Roll</button>
     <button id="btn-death-reset">reset</button>
 
   </section>

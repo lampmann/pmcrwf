@@ -49,7 +49,7 @@
     <input type="text" data-persist data-math data-min="0" data-allow-empty id="speed" value="30" data-autospeed="30"><span id="speed-total" style="display:none"></span>
     <span id="init">+0</span><input type="text" id="init-misc">
     <input type="text" data-persist id="def-resist"><input type="text" data-persist id="def-immune"><input type="text" data-persist id="def-vuln">
-    <div id="defenses-row"></div>
+    <div id="defenses-row"></div><div id="speed-extra"></div>
     <div id="conditions-list"><input type="checkbox" data-persist id="cond-blinded"><input type="checkbox" data-persist id="cond-charmed"><input type="checkbox" data-persist id="cond-deafened"><input type="checkbox" data-persist id="cond-frightened"><input type="checkbox" data-persist id="cond-grappled"><input type="checkbox" data-persist id="cond-incapacitated"><input type="checkbox" data-persist id="cond-invisible"><input type="checkbox" data-persist id="cond-paralyzed"><input type="checkbox" data-persist id="cond-petrified"><input type="checkbox" data-persist id="cond-poisoned"><input type="checkbox" data-persist id="cond-prone"><input type="checkbox" data-persist id="cond-restrained"><input type="checkbox" data-persist id="cond-stunned"><input type="checkbox" data-persist id="cond-unconscious"></div><div id="cond-applied"></div><div id="cond-manual"></div>
     <input type="text" id="exhaustion-level" value="0">
   </section>
@@ -602,7 +602,7 @@ document.addEventListener("DOMContentLoaded", () => {
     RACE_LIB = {}; $("char-race").value = "";
     addClassRow({ name: "Rogue", sub: "Scout", lvl: 9 });
     renderClassLibrary(); invalidateEffects(); recompute();
-    assert("a described extra speed is listed as text", /climb\s*\+10 ft, if you have one/.test(defences()));
+    assert("a described extra speed is listed as text in the Speed module", /climb\s*\+10 ft, if you have one/.test($("speed-extra").textContent));
     assertEqual("...and doesn't leak into the walking speed as a number", speedTotal(), 30);
 
     // Situational advantage is listed, never applied — the trigger is terrain or lighting, which the

@@ -51,7 +51,7 @@ function hitDicePoolHtml(p) {
 function renderHitDice() {
   const el = $("hit-dice-pools"); if (!el) return;
   const pools = hitDicePools();
-  if (!pools.length) { el.innerHTML = `<span class="hint">add a class above to track Hit Dice</span>`; return; }
+  if (!pools.length) { el.innerHTML = `<span class="hint">no classes</span>`; return; }
   el.innerHTML = pools.map(hitDicePoolHtml).join("");
 }
 

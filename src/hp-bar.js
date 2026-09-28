@@ -1,5 +1,5 @@
 /* ============================================================
-   HP BAR AND DEFENCE CHECKLISTS (HP & Defenses module)
+   HP BAR (HP module) AND DEFENCE CHECKLISTS (Defenses module)
 
    The health bar is drawn around the existing inputs rather than
    replacing them: #hp-cur and #hp-temp are still the persisted math
