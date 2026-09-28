@@ -416,7 +416,7 @@
     if (!state.free || e.button !== 0) return;
     const sh = e.target.closest("#lay-selbox .lay-sh"); if (sh) { startGroupResize(sh.dataset.dir, e); return; }
     const rh = e.target.closest(".lay-h"); if (rh) { const m = rh.closest(".module"); if (m) startResize(m, e, rh.dataset.dir); return; }
-    const tab = e.target.closest(".lay-tab"); if (tab) { startTabDrag(tab, e); return; }
+    const tab = e.target.closest(".lay-tab"); if (tab) { startTabDrag(tab, e, true); return; }
     const m = e.target.closest(".module");
     if (m && m.parentElement && m.parentElement.classList.contains("modules")) {
       if (e.shiftKey) { toggleSelect(m); return; }
@@ -426,15 +426,39 @@
     const cont = e.target.closest(".modules"); if (cont) startMarquee(e, cont);
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && state.free) clearSelection(); });
-  /* In Free mode a tab is both a switch (click) and a handle: pulled more than a few pixels, its
-     module leaves the stack at the pointer and carries on as an ordinary drag, so it can be dropped
-     anywhere or onto another module. */
-  function startTabDrag(tab, e) {
+  /* A module tab is a switch (click), a handle for reordering (drag along the bar, marked the same
+     way as the character tabs: a line before or after the nearest tab, the dragged one excluded),
+     and in Free mode a way out of the stack (pull it well clear of the bar and its module leaves at
+     the pointer and carries on as an ordinary drag, so it can be dropped anywhere or merged). */
+  function tabReorderTarget(bar, ignoreKey, x) {
+    const tabs = [...bar.querySelectorAll(".lay-tab")].filter(t => t.dataset.tab !== ignoreKey);
+    let best = null, bestDist = Infinity;
+    tabs.forEach(t => {
+      const r = t.getBoundingClientRect();
+      const d = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+      if (d < bestDist) { bestDist = d; best = { el: t, r }; }
+    });
+    return best ? { key: best.el.dataset.tab, el: best.el, after: x >= best.r.left + best.r.width / 2 } : null;
+  }
+  function clearTabMarks() {
+    document.querySelectorAll(".lay-tab").forEach(t => t.classList.remove("drop-before", "drop-after", "dragging"));
+  }
+  function startTabDrag(tab, e, allowDetach) {
     e.preventDefault(); e.stopPropagation();
-    const k = tab.dataset.tab, sx = e.clientX, sy = e.clientY;
+    const k = tab.dataset.tab, sx = e.clientX, sy = e.clientY, bar = tab.closest(".lay-tabs");
+    let moved = false, target = null;
+    const nearBar = ev => { const r = bar.getBoundingClientRect(); return ev.clientY >= r.top - 14 && ev.clientY <= r.bottom + 14 && ev.clientX >= r.left - 30 && ev.clientX <= r.right + 30; };
     function mv(ev) {
-      if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 6) return;
-      done();
+      if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 6) return;
+      moved = true;
+      clearTabMarks(); tab.classList.add("dragging");
+      if (nearBar(ev) || !allowDetach) {
+        target = tabReorderTarget(bar, k, ev.clientX);
+        if (target) target.el.classList.add(target.after ? "drop-after" : "drop-before");
+        return;
+      }
+      // Pulled clear of the bar in Free mode: the module leaves the stack at the pointer.
+      done(); clearTabMarks();
       const m = moduleByKey(k); if (!m) return;
       const crect = container().getBoundingClientRect(), p = state.map[k];
       detach(m);
@@ -442,16 +466,30 @@
       applyPos(m);
       startDrag(m, ev);
     }
-    function up() { done(); switchTab(k); }
+    function up() {
+      done(); clearTabMarks();
+      if (!moved) { switchTab(k); return; }
+      const id = stackIdOf(k); if (!id || !target) return;
+      const members = state.stacks[id].members.filter(x => x !== k);
+      const at = members.indexOf(target.key); if (at < 0) return;
+      members.splice(target.after ? at + 1 : at, 0, k);
+      state.stacks[id].members = members;
+      renderStacks(); save();
+    }
     function done() { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); }
     document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
   }
+  // Outside Free mode the tabs still reorder (and switch); only pulling a module out needs Free mode.
+  document.addEventListener("pointerdown", e => {
+    if (state.free || e.button !== 0) return;
+    const tab = e.target.closest(".lay-tab"); if (tab) startTabDrag(tab, e, false);
+  });
   /* Plain click delegation, not routed through the pointerdown handler above: that one only acts
      while state.free (dragging/resizing), and CSS already sets pointer-events:none on every button
      inside a module while Free is on — including this one — so there's nothing to guard against
      the two handlers fighting over the same click. */
   document.addEventListener("click", e => {
-    const tab = e.target.closest(".lay-tab"); if (tab && !state.free) { switchTab(tab.dataset.tab); return; }
+    if (e.target.closest(".lay-tab")) return;   // handled on pointerup by startTabDrag
     const btn = e.target.closest(".lay-collapse-btn"); if (!btn) return;
     const m = btn.closest(".module"); if (m) toggleCollapse(m);
   });

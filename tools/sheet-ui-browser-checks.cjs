@@ -298,6 +298,16 @@ module.exports = async function checkSheetUi(page) {
   await page.evaluate(() => { __layout.state.free = false; __layout.apply(); });
   await page.locator('[data-module="saves"] .lay-tab[data-tab="senses"]').click();
   assert.deepEqual(await page.evaluate(() => ['saves', 'senses'].filter(k => document.querySelector(`[data-module="${k}"]`).offsetParent)), ['senses']);
+  // Tabs reorder by dragging, like the character tabs: drop Senses before Saving Throws.
+  {
+    const from = await page.locator('.module:not(.lay-stack-hidden) .lay-tab[data-tab="senses"]').boundingBox();
+    const to = await page.locator('.module:not(.lay-stack-hidden) .lay-tab[data-tab="saves"]').boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2); await page.mouse.down();
+    await page.mouse.move(to.x + 4, to.y + to.height / 2, { steps: 8 });
+    assert.equal(await page.locator('.lay-tab.drop-before').count() >= 1, true);
+    await page.mouse.up();
+    assert.equal(await page.evaluate(() => Object.values(__layout.state.stacks)[0].members.join(',')), 'senses,saves');
+  }
   assert.equal(await page.evaluate(() => { __layout.detach(document.querySelector('[data-module="senses"]')); return Object.keys(__layout.state.stacks).length + document.querySelectorAll('.lay-tab').length; }), 0);
   await page.evaluate(() => { const L = __layout; Object.assign(L.state, { map: {}, stacks: {}, free: false, activated: false }); L.apply(); L.save(); });
 
