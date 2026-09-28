@@ -191,6 +191,7 @@ function recompute() {
   });
   $("passive-perc").textContent = 10 + checkBonus("skill-perception") + effFlat("passive-perception");
   if (typeof renderSenses === "function") renderSenses();
+  if (typeof renderBackgroundModule === "function") renderBackgroundModule();
   renderDefenses();
   // Just the two movement numbers, not a re-render of the round tracker — see syncCombatMovement.
   if (typeof syncCombatMovement === "function") syncCombatMovement();

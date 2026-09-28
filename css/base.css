@@ -721,3 +721,14 @@ button.linkish {
 .cr-spell-filterbar { margin-bottom: .3rem; }
 #cr-spell-filter-btn.active { background: var(--select); color: var(--select-fg); border-color: var(--select); }
 .cr-spell-filter-area { margin-bottom: .4rem; font-size: .9em; }
+
+/* ----- Background module (src/background.js) ----- */
+#bgm-head { margin-bottom: .35rem; }
+.bgm-feature { margin-top: .15rem; }
+.bgm-grid { display: grid; grid-template-columns: repeat(4, minmax(6.5rem, 1fr)); gap: .3rem .6rem; }
+.bgm-grid.bgm-two { grid-template-columns: repeat(2, minmax(13rem, 1fr)); }
+.bgm-feature .feat-detail { max-width: 42rem; }
+.bgm-grid label { display: flex; flex-direction: column; font-size: .85rem; gap: .1rem; }
+.bgm-grid input { width: 100%; box-sizing: border-box; }
+.bgm-grid .bgm-wide { grid-column: 1 / -1; }
+.bgm-grid textarea { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; }

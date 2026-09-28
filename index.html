@@ -101,6 +101,44 @@
     </fieldset>
   </section>
 
+  <!-- ===== BACKGROUND (src/background.js) ===== -->
+  <section class="module" data-module="background">
+    <h2>Background</h2>
+    <div id="bgm-head"></div>
+    <fieldset>
+      <legend>Appearance</legend>
+      <div class="bgm-grid">
+        <label>Sex <input type="text" data-persist id="bg-sex"></label>
+        <label>Height <input type="text" data-persist id="bg-height"></label>
+        <label>Weight <input type="text" data-persist id="bg-weight"></label>
+        <label>Age <input type="text" data-persist id="bg-age"></label>
+        <label>Hair <input type="text" data-persist id="bg-hair"></label>
+        <label>Eyes <input type="text" data-persist id="bg-eyes"></label>
+        <label>Skin <input type="text" data-persist id="bg-skin"></label>
+        <label class="bgm-wide">Physical Characteristic<textarea data-persist id="bg-physical" rows="2"></textarea></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Alignment</legend>
+      <select data-persist id="bg-alignment" aria-label="Alignment">
+        <option value="">-</option>
+        <option>Lawful Good</option><option>Neutral Good</option><option>Chaotic Good</option>
+        <option>Lawful Neutral</option><option>Neutral</option><option>Chaotic Neutral</option>
+        <option>Lawful Evil</option><option>Neutral Evil</option><option>Chaotic Evil</option>
+        <option>Unaligned</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>Personality</legend>
+      <div class="bgm-grid bgm-two">
+        <label>Personality Traits<textarea data-persist id="bg-traits" rows="2"></textarea></label>
+        <label>Ideals<textarea data-persist id="bg-ideals" rows="2"></textarea></label>
+        <label>Bonds<textarea data-persist id="bg-bonds" rows="2"></textarea></label>
+        <label>Flaws<textarea data-persist id="bg-flaws" rows="2"></textarea></label>
+      </div>
+    </fieldset>
+  </section>
+
   <!-- ===== ABILITY SCORES ===== -->
   <section class="module" data-module="abilities">
     <h2>Ability Scores</h2>
@@ -560,6 +598,7 @@
 <script src="src/derived.js"></script>
 <script src="src/hp-bar.js"></script>
 <script src="src/senses.js"></script>
+<script src="src/background.js"></script>
 <script src="src/event-log.js"></script>
 <script src="src/dice.js"></script>
 <script src="src/boons.js"></script>

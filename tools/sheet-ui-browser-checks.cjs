@@ -280,6 +280,23 @@ module.exports = async function checkSheetUi(page) {
   assert.deepEqual(crSpells, { options: ['Guidance', 'Produce Flame', 'Shillelagh'], picked: 'Guidance,Produce Flame', thirdDisabled: true,
     stillOpen: true, evocationOnly: 'Cure Wounds,Thunderwave', cantripsKeptPicked: 'Guidance,Produce Flame' });
 
+  // Background module: the background's feature from the data, and the three groups of fields.
+  const bgm = await page.evaluate(() => {
+    const saved = BACKGROUND_LIB.Sage, prev = document.getElementById('char-bg').value;
+    BACKGROUND_LIB.Sage = { name: 'Sage', source: 'PHB', feature: { name: 'Researcher', text: 'You know where to look.' } };
+    document.getElementById('char-bg').value = 'sage'; recompute();
+    document.getElementById('bgm-feature-link').click();
+    const out = { head: document.getElementById('bgm-head').innerText.replace(/\s+/g, ' ').trim(),
+      groups: [...document.querySelectorAll('[data-module="background"] legend')].map(l => l.textContent),
+      persisted: ['bg-sex', 'bg-height', 'bg-weight', 'bg-age', 'bg-hair', 'bg-eyes', 'bg-skin', 'bg-physical', 'bg-alignment', 'bg-traits', 'bg-ideals', 'bg-bonds', 'bg-flaws']
+        .every(id => document.getElementById(id) && document.getElementById(id).hasAttribute('data-persist')) };
+    document.getElementById('bgm-feature-link').click();
+    if (saved) BACKGROUND_LIB.Sage = saved; else delete BACKGROUND_LIB.Sage;
+    document.getElementById('char-bg').value = prev; recompute();
+    return out;
+  });
+  assert.deepEqual(bgm, { head: 'Sage PHB Feature: Researcher You know where to look.', groups: ['Appearance', 'Alignment', 'Personality'], persisted: true });
+
   // Merging modules: the stationary one keeps its box and its tab comes first; tabs switch; detaching dissolves.
   await page.evaluate(() => { const L = __layout; L.state.free = true; L.apply(); });
   // An arranged module can be dragged narrower than the flow layout's 240px minimum (Conditions is narrow).
@@ -311,5 +328,5 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(await page.evaluate(() => { __layout.detach(document.querySelector('[data-module="senses"]')); return Object.keys(__layout.state.stacks).length + document.querySelectorAll('.lay-tab').length; }), 0);
   await page.evaluate(() => { const L = __layout; Object.assign(L.state, { map: {}, stacks: {}, free: false, activated: false }); L.apply(); L.save(); });
 
-  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook, the XP bar, creator spell checklists and merged modules passed.');
+  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook, the XP bar, creator spell checklists, the Background module and merged modules passed.');
 };
