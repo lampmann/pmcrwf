@@ -9,7 +9,10 @@
               syncRaceSpeed keeps in step with the race); features add to it
      others   the best of the race record's own speed ("fly": 50, or true
               for "equal to your walking speed") and any feature granting
-              one (op "add" on speed-fly etc. is a grant, so grants don't stack)
+              one (op "add" on speed-fly etc. is a grant, so grants don't stack;
+              a tag with equalsWalk grants your walking speed)
+     climb, swim  with neither, half your walking speed: without a climbing
+              or swimming speed each foot costs 1 extra foot (PHB p182)
 
    Grappled, Restrained and exhaustion reach every row; encumbrance only
    slows walking. Speeds a feature describes rather than numbers ("+10 ft,
@@ -53,12 +56,18 @@ function speedBreakdown(type) {
     if (eff) { n += eff; parts.push(sign(eff) + " (" + effContribs("speed").map(c => c.source).join(", ") + ")"); }
   } else if (ov != null) { n = ov; parts.push(ov + " override"); }
   else {
-    const race = raceSpeedOf(type), grant = typeof effFlat === "function" ? effFlat("speed-" + type) : 0;
-    const raceN = race ? (race.walk ? speedBreakdown("walk").n : race.n) : 0;
-    n = Math.max(raceN, grant);
-    if (n) parts.push(n === grant && grant > raceN
-      ? n + " (" + effContribs("speed-" + type).map(c => c.source).join(", ") + ")"
-      : n + " (" + race.source + (race.walk ? ", equal to walking" : "") + (race.cond ? " " + race.cond : "") + ")");
+    // Each candidate base with where it came from; the highest wins.
+    const cands = [], walkN = () => speedBreakdown("walk").n;
+    const race = raceSpeedOf(type);
+    if (race) cands.push({ n: race.walk ? walkN() : race.n, why: race.source + (race.walk ? ", equal to walking" : "") + (race.cond ? " " + race.cond : "") });
+    const grant = typeof effFlat === "function" ? effFlat("speed-" + type) : 0;
+    if (grant) cands.push({ n: grant, why: effContribs("speed-" + type).filter(c => c.op !== "tag").map(c => c.source).join(", ") });
+    (typeof effTags === "function" ? effTags("speed-" + type) : []).filter(t => t.equalsWalk)
+      .forEach(t => cands.push({ n: walkN(), why: t.source + ", equal to walking" }));
+    if (!cands.length && (type === "climb" || type === "swim")) cands.push({ n: Math.floor(walkN() / 2), why: "half walking" });
+    const best = cands.reduce((a, c) => c.n > a.n ? c : a, { n: 0, why: "" });
+    n = best.n;
+    if (n) parts.push(n + " (" + best.why + ")");
   }
   speedMiscTerms(type).forEach(t => { n += t.n; parts.push(sign(t.n) + (t.label ? " " + t.label : "")); });
   if (type === "walk") {
@@ -105,8 +114,9 @@ function renderSpeed() {
   renderSpeedCustomRows();
   const extra = $("speed-extra");
   if (extra && typeof effTagsByPrefix === "function") {
-    extra.innerHTML = effTagsByPrefix("speed-").map(t =>
-      `<b>${escapeHtml(t.kind)}</b> ${escapeHtml(t.items.map(i => i.label).join(", "))}`).join("<br>");
+    extra.innerHTML = effTagsByPrefix("speed-").map(t => ({ kind: t.kind, items: t.items.filter(i => !i.equalsWalk) }))
+      .filter(t => t.items.length)
+      .map(t => `<b>${escapeHtml(t.kind)}</b> ${escapeHtml(t.items.map(i => i.label).join(", "))}`).join("<br>");
   }
 }
 

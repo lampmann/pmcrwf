@@ -141,7 +141,7 @@ registerEffects({
   "race|dhampir|spider climb": {
     name: "Spider Climb", sv: 1,
     effects: [
-      { target: "speed-climb", op: "tag", value: "equal to your walking speed" },
+      { target: "speed-climb", op: "tag", value: "equal to your walking speed", equalsWalk: true },
       { target: "speed-climb", op: "note", text: "from 3rd level you can also move up vertical surfaces and across ceilings, hands free" },
     ],
   },

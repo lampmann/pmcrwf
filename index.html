@@ -100,8 +100,6 @@
     <div class="class-summary">
       <button id="btn-add-class">+ add class</button>
       <span class="hint">Total level: <span class="derived" id="total-level">0</span></span>
-      <span class="hint">Proficiency bonus: <span class="derived" id="pb">+2</span>
-        (override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto">)</span>
     </div>
   </section>
 
@@ -184,6 +182,13 @@
       <div class="hint">Max override <input type="number" class="tiny" data-persist id="hp-max-override" placeholder="auto"></div>
     </div>
     <div class="hit-dice-row"><span>Hit Dice</span> <div id="hit-dice-pools"></div></div>
+  </section>
+
+  <!-- ===== PROFICIENCY BONUS ===== -->
+  <section class="module small" data-module="pb">
+    <h2>Proficiency Bonus</h2>
+    <div class="stat-big"><span class="derived" id="pb">+2</span></div>
+    <div class="hint">override <input type="number" class="tiny" data-persist id="pb-override" placeholder="auto"></div>
   </section>
 
   <!-- ===== AC ===== -->

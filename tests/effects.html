@@ -48,7 +48,7 @@
          0/0, so the field ships with a default and applyState restores it (see syncRaceSpeed). -->
     <input type="hidden" data-persist id="speed" value="30" data-autospeed="30"><input type="hidden" data-persist id="speed-custom">
     <span id="speed-walk-total"></span><input type="text" data-persist id="speed-walk-misc"><input type="number" data-persist id="speed-walk-override">
-    <span id="speed-fly-total"></span><input type="text" data-persist id="speed-fly-misc"><input type="number" data-persist id="speed-fly-override">
+    <span id="speed-fly-total"></span><span id="speed-climb-total"></span><input type="text" data-persist id="speed-fly-misc"><input type="number" data-persist id="speed-fly-override">
     <span id="init">+0</span><input type="text" id="init-misc">
     <input type="text" data-persist id="def-resist"><input type="text" data-persist id="def-immune"><input type="text" data-persist id="def-vuln">
     <div id="defenses-row"></div><div id="speed-extra"></div>
@@ -2190,10 +2190,13 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("a race's own flying speed", speedOf("fly"), 50);
       assertEqual("a speed equal to walking follows it", speedOf("swim"), 25);
       assertEqual("a speed the race lacks is 0", speedOf("burrow"), 0);
+      assertEqual("without a climbing speed, climbing is half walking", speedOf("climb"), 12);
       $("speed-walk-misc").value = "+10 boots, -5"; recompute();
       assertEqual("Misc takes labelled terms", speedTotal(), 30);
       assertEqual("...shown on hover", $("speed-walk-total").title, "25 base +10 boots -5 = 30");
       assertEqual("...and a speed equal to walking follows that too", speedOf("swim"), 30);
+      assertEqual("...as does half walking", speedOf("climb"), 15);
+      assertEqual("...its source shown on hover", $("speed-climb-total").title, "15 (half walking) = 15");
       $("speed-walk-override").value = "40"; recompute();
       assertEqual("Override replaces the base, Misc still adds", speedTotal(), 45);
       $("speed-fly-override").value = "20"; $("speed-fly-misc").value = "+5"; recompute();
@@ -2201,6 +2204,12 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("...drawn in its row", $("speed-fly-total").textContent, "25");
       $("speed-custom").value = JSON.stringify([{ name: "Glide", ft: "15" }]); recompute();
       assertEqual("custom speeds are read back", speedCustomList()[0].name, "Glide");
+      RACE_LIB.Tabaxi = { name: "Tabaxi", source: "VGM", ability: [], entries: [{ name: "Cat's Claws", text: "", source: "VGM" }], speed: 30, subs: {} };
+      $("char-race").value = "Tabaxi"; $("speed-walk-misc").value = ""; $("speed-walk-override").value = "";
+      syncRaceSpeed(); invalidateEffects(); recompute();
+      assertEqual("a feature's climbing speed equal to walking is a number, not half", speedOf("climb"), 30);
+      assert("...and isn't listed again as text", !/climb/.test($("speed-extra").textContent));
+      assertEqual("...while swimming stays half", speedOf("swim"), 15);
 
       applyState(sheetBefore2); recompute();
       RACE_LIB = savedRaceLib2; $("char-race").value = savedRace; $("char-subrace").value = savedSub;

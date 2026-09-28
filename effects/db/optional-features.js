@@ -104,7 +104,7 @@ registerEffects({
   "optfeature|gift of the depths": {
     name: "Gift of the Depths", sv: 1,
     effects: [
-      { target: "speed-swim", op: "tag", value: "equal to your walking speed" },
+      { target: "speed-swim", op: "tag", value: "equal to your walking speed", equalsWalk: true },
       { target: "spell-grant", op: "grant-innate", value: { name: "water breathing" } },
     ],
     uses: { max: 1, per: "lr" },

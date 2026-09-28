@@ -147,7 +147,7 @@ registerEffects({
   "race|tabaxi|cat's claws": {
     name: "Cat's Claws", sv: 1,
     effects: [
-      { target: "speed-climb", op: "tag", value: "equal to your walking speed" },
+      { target: "speed-climb", op: "tag", value: "equal to your walking speed", equalsWalk: true },
       { target: "speed-climb", op: "note", text: "your claws are an unarmed strike dealing 1d4 + STR slashing" },
     ],
   },

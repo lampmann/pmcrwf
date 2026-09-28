@@ -315,7 +315,9 @@ function buildEffectsSnapshot() {
         case "tag": {
           const t = snap.tags[target] || (snap.tags[target] = []);
           const label = String(effect.value || effect.text || "");
-          if (label && !t.some(x => x.label === label)) t.push({ label, source: feature.name });
+          // equalsWalk: a speed-<type> tag that is a standing speed equal to your walking speed, which
+          // the Speed module can show as a number (see speed.js); a timed one like a bonus-action fly omits it.
+          if (label && !t.some(x => x.label === label)) t.push({ label, source: feature.name, equalsWalk: !!effect.equalsWalk });
           addContrib(target, { source: feature.name, fkey: feature.fkey, op: "tag", n: label });
           break;
         }
