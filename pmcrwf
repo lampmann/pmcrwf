@@ -17,7 +17,7 @@ set -eu
 # Follow symlinks to find where this script *really* lives — README's own setup instructions
 # (`ln -s "$PWD/pmcrwf" ~/.local/bin/pmcrwf`) mean $0 is routinely a symlink, and a plain
 # `dirname "$0"` would resolve to the symlink's directory (e.g. ~/.local/bin) instead of the
-# project folder next to character-sheet.html. Portable loop (no GNU-only `readlink -f`, so this
+# project folder next to index.html. Portable loop (no GNU-only `readlink -f`, so this
 # still works on macOS/BSD readlink) — handles chained and relative-target symlinks alike.
 SELF=$0
 while [ -L "$SELF" ]; do
@@ -29,7 +29,7 @@ while [ -L "$SELF" ]; do
 done
 ROOT=$(CDPATH= cd -- "$(dirname -- "$SELF")" && pwd)
 PORT=${PMCRWF_PORT:-8931}
-URL="http://localhost:$PORT/character-sheet.html"
+URL="http://localhost:$PORT/"
 
 say() { printf '[pmcrwf] %s\n' "$*"; }
 
@@ -73,7 +73,7 @@ case "${1:-}" in
     exit 0 ;;
 esac
 
-[ -f "$ROOT/character-sheet.html" ] || { say "character-sheet.html is not in $ROOT — keep this script beside the sheet."; exit 1; }
+[ -f "$ROOT/index.html" ] || { say "index.html is not in $ROOT — keep this script beside the sheet."; exit 1; }
 
 if port_up; then
   say "Already serving port $PORT."

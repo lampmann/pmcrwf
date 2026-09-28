@@ -2,7 +2,7 @@
    EVENT LOG — the running record of what has happened to this character,
    in order: dice rolls, rests, and anything else a mechanic wants to
    report. It began life as the dice roller's roll log, which is why the
-   module still carries `data-module="dice"` in character-sheet.html —
+   module still carries `data-module="dice"` in index.html —
    layout.js keys saved module positions off that attribute, so renaming
    it would silently orphan every saved arrangement. The heading is what
    changed, not the key.

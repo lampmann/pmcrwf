@@ -245,7 +245,7 @@ function loadDbFile(file) {
    of it. That's a silent failure the schema checks below can't reach, so check the wiring too —
    every effects/db/*.js must be loaded by the app page AND by the test page. */
 function checkWiring(files, errors) {
-  [["character-sheet.html", "effects/db/"], ["tests/effects.html", "../effects/db/"]].forEach(([page, prefix]) => {
+  [["index.html", "effects/db/"], ["tests/effects.html", "../effects/db/"]].forEach(([page, prefix]) => {
     const full = path.join(__dirname, "..", "..", page);
     let html;
     try {

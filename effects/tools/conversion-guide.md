@@ -473,7 +473,7 @@ advantage, etc.).
 
 ## Before you finish
 
-**Add a `<script>` tag for your new file** to both `character-sheet.html`
+**Add a `<script>` tag for your new file** to both `index.html`
 and `tests/effects.html`, next to the other `effects/db/*.js` tags. A DB
 file with no script tag parses fine, validates fine, and is never loaded by
 anything — the entries simply never fire. The validator checks this now, but

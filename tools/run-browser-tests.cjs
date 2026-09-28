@@ -42,7 +42,7 @@ const server = http.createServer((req, res) => {
     const errors = [], dialogs = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.accept(); });
-    await page.goto(`http://127.0.0.1:${server.address().port}/character-sheet.html`);
+    await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
     await page.locator('#score-str').waitFor();
     await page.locator('#char-name').fill('Immediate reload');
     await page.reload();

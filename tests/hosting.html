@@ -355,7 +355,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // ---------- sw.js: the precache list still matches the real page ----------
   {
-    const html = await (await fetch("../character-sheet.html")).text();
+    const html = await (await fetch("../index.html")).text();
     const found = shellUrlsFromHtml(html);
 
     /* The assertion that earns this file's keep. The extractor is a regex over the raw HTML; the

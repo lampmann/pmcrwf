@@ -20,7 +20,7 @@ set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 if not defined PMCRWF_PORT set "PMCRWF_PORT=8931"
 set "PORT=%PMCRWF_PORT%"
-set "URL=http://localhost:%PORT%/character-sheet.html"
+set "URL=http://localhost:%PORT%/"
 
 if /i "%~1"=="stop" goto :stop
 if /i "%~1"=="help" goto :help
@@ -28,8 +28,8 @@ if /i "%~1"=="-h" goto :help
 if /i "%~1"=="--help" goto :help
 if not "%~1"=="" echo Unknown argument "%~1" -- ignoring. Try "pmcrwf help".
 
-if not exist "%ROOT%\character-sheet.html" (
-  echo [pmcrwf] character-sheet.html is not in "%ROOT%".
+if not exist "%ROOT%\index.html" (
+  echo [pmcrwf] index.html is not in "%ROOT%".
   echo          Keep pmcrwf.cmd in the same folder as the sheet.
   exit /b 1
 )

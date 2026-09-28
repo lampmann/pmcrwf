@@ -133,7 +133,7 @@
 
   /* ---- collapse ----
      Every module's markup is `<h2>title</h2>` followed by its actual content, with nothing else —
-     that's consistent across all of them, so rather than touch character-sheet.html once per module
+     that's consistent across all of them, so rather than touch index.html once per module
      this wraps the "everything after the h2" part into one `.lay-body` div at runtime and toggles
      that div's display. Must run BEFORE addHandles(): the 8 resize handles are appended as direct
      children of `.module` (position: absolute against the module's own box), and if this ran after

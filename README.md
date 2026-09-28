@@ -21,12 +21,12 @@ Two ways in. **Running it locally** is the original one and is described below: 
 **Or use the hosted copy**, if this repository has GitHub Pages turned on: open the URL, point it at your 5e.tools `data/` directory once, and you're set — the browser remembers it, and after the first visit the sheet works with the network off and can be installed like an app. Same code, same sheet, no server to start. Chrome and Edge can hold a live link to the folder; Firefox stores a copy of it instead, which needs no re-picking either. The one thing to know is that the hosted copy carries no game data of its own — that's what the folder is for; 5e.tools' content is never redistributed here. Browser storage is per site, so characters made locally don't appear on the hosted copy or vice versa; move them with **Export JSON** / **Import**. Full details in [DOCS.md](DOCS.md#running-pmcrwf-as-a-website).
 
 ### 1. Get the files
-Download this repository (green **Code** button → **Download ZIP**, then unzip it) or `git clone` it. You'll end up with a folder containing `character-sheet.html`, `src/`, `css/`, etc.
+Download this repository (green **Code** button → **Download ZIP**, then unzip it) or `git clone` it. You'll end up with a folder containing `index.html`, `src/`, `css/`, etc.
 
 ### 2. Add the 5e.tools data (strongly recommended)
 Most of the sheet (spells, features, equipment) is empty until you supply the game data — it is **not** bundled here, on purpose.
 - Download [5e.tools' 2014 source data](https://github.com/5etools-mirror-3/5etools-2014-src) (its green **Code** button → **Download ZIP**).
-- Inside it, find the **`data`** folder and copy it so it sits **right next to `character-sheet.html`**. When done, the path `…/better character sheet/data/spells/index.json` should exist.
+- Inside it, find the **`data`** folder and copy it so it sits **right next to `index.html`**. When done, the path `…/better character sheet/data/spells/index.json` should exist.
 
 *(You can skip this, but the spell/feature/equipment libraries will be empty.)*
 
@@ -51,7 +51,7 @@ python3 -m http.server 8931
 Leave that terminal open — the server runs until you close it or press **Ctrl+C**.
 
 ### 5. Open the sheet
-Go to **http://localhost:8931/character-sheet.html** in your browser.
+Go to **http://localhost:8931/** in your browser.
 
 ### Shortcut: just type `pmcrwf`
 The repo ships a launcher that does steps 4–5 in one word — it starts the server (or reuses one that's already running), waits for it to come up, then opens the sheet in your browser:
@@ -71,9 +71,9 @@ copy pmcrwf.cmd "%LOCALAPPDATA%\Microsoft\WindowsApps\"
 On macOS/Linux, `ln -s "$PWD/pmcrwf" ~/.local/bin/pmcrwf` does the same job. The launcher finds its own folder, so it keeps working wherever the project lives. Override the port with `PMCRWF_PORT` (default 8931), or set `PMCRWF_NO_OPEN=1` to start the server without opening a browser.
 
 ### Troubleshooting
-- **`404 / File not found`** — the server is running in the wrong folder. Its startup line prints the directory it's serving; make sure you `cd`'d into the folder that actually contains `character-sheet.html`. Visiting `http://localhost:8931/` should list `character-sheet.html`, `src/`, `css/`, `data/`.
-- **`Address already in use` / port busy** — a server is already running on 8931 (reuse it), or pick another port, e.g. `python -m http.server 8080`, then open `http://localhost:8080/character-sheet.html`.
-- **Empty spell/equipment/feature libraries** — the `data` folder isn't next to `character-sheet.html`, or it's nested one level too deep (you want `data/`, not `5etools-…/data/`).
+- **`404 / File not found`** — the server is running in the wrong folder. Its startup line prints the directory it's serving; make sure you `cd`'d into the folder that actually contains `index.html`. Visiting `http://localhost:8931/` should list `index.html`, `src/`, `css/`, `data/`.
+- **`Address already in use` / port busy** — a server is already running on 8931 (reuse it), or pick another port, e.g. `python -m http.server 8080`, then open `http://localhost:8080/`.
+- **Empty spell/equipment/feature libraries** — the `data` folder isn't next to `index.html`, or it's nested one level too deep (you want `data/`, not `5etools-…/data/`).
 - **Opened the file directly and nothing loads** — don't use a `file://` path; you must go through the local server (steps 4–5).
 
 If any of this is confusing, paste a link to this repo into an AI assistant ([Claude](https://claude.ai), [ChatGPT](https://chatgpt.com), [Gemini](https://gemini.google.com), [Grok](https://grok.com)) and ask it to walk you through it.

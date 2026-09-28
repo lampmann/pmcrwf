@@ -12,7 +12,7 @@
      expensive — every number on the sheet is downstream of them — and they were the untested half
      of the codebase.
 
-     Same approach as effects.html: a minimal copy of character-sheet.html's structure, just enough
+     Same approach as effects.html: a minimal copy of index.html's structure, just enough
      DOM for the real src/*.js to run unmodified. No data/ folder here, so the auto-loaders fail
      open exactly as they do in the app, and no library is needed — every function under test reads
      the DOM and the hardcoded SRD tables, not an import. -->

@@ -45,10 +45,10 @@
 const SW_BUILD = "__BUILD__";
 const CACHE = "pmcrwf-" + SW_BUILD;
 
-const SHELL_HTML = "character-sheet.html";
-/* Files no tag in the HTML mentions: the entry redirect, the manifest, the icons, and the docs the
+const SHELL_HTML = "index.html";
+/* Files no tag in the HTML mentions: the old-address redirect, the manifest, the icons, and the docs the
    data bar links to. Short enough to keep by hand, and none of it is load-order-sensitive. */
-const EXTRA = ["./", "index.html", "manifest.webmanifest",
+const EXTRA = ["./", "character-sheet.html", "manifest.webmanifest",
   "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png",
   "DOCS.md", "README.md"];
 
