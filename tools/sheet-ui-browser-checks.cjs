@@ -302,13 +302,51 @@ module.exports = async function checkSheetUi(page) {
 
   // Speed: custom speeds added by name and feet, edited in place and removed; a typed edit isn't redrawn under the cursor.
   await page.fill('#speed-add-name', 'Glide'); await page.fill('#speed-add-ft', '15'); await page.click('#speed-add-btn');
-  await page.locator('#speed-custom-rows .speed-custom-ft').fill('20');
+  await page.locator('#speed-rows .speed-custom-ft').fill('20');
   const spd = await page.evaluate(() => ({ list: document.getElementById('speed-custom').value,
     focused: document.activeElement && document.activeElement.classList.contains('speed-custom-ft'),
-    rows: [...document.querySelectorAll('#speed-table tbody:first-of-type tr td:first-child')].map(td => td.textContent) }));
-  await page.click('#speed-custom-rows .speed-custom-del');
+    rows: [...document.querySelectorAll('#speed-rows tr:not([data-speed-i]) td:nth-child(2)')].map(td => td.textContent) }));
+  await page.click('#speed-rows .speed-custom-del');
   assert.deepEqual(spd, { list: '[{"name":"Glide","ft":"20"}]', focused: true, rows: ['Walk', 'Burrow', 'Climb', 'Fly', 'Swim'] });
-  assert.equal(await page.evaluate(() => document.getElementById('speed-custom').value + document.querySelectorAll('#speed-custom-rows tr').length), '0');
+  assert.equal(await page.evaluate(() => document.getElementById('speed-custom').value + document.querySelectorAll('#speed-rows tr[data-speed-i]').length), '0');
+
+  // Movement rows use real grip drags, retain editable values, and travel with the character.
+  const speedOrder = () => page.evaluate(() => currentSpeedOrder());
+  const dragSpeed = async (from, to) => {
+    const grip = page.locator(`#speed-rows [data-speed-key="${from}"] .speed-grip`);
+    await grip.scrollIntoViewIfNeeded();
+    const start = await grip.boundingBox();
+    const target = await page.locator(`#speed-rows [data-speed-key="${to}"]`).boundingBox();
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(target.x + 10, target.y + 2, { steps: 12 });
+    await page.mouse.up();
+  };
+  await dragSpeed('fly', 'walk');
+  assert.deepEqual(await speedOrder(), ['fly', 'walk', 'burrow', 'climb', 'swim']);
+  await page.fill('#speed-fly-misc', '+10 wings');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'speed-fly-misc');
+  await page.fill('#speed-add-name', 'Glide'); await page.fill('#speed-add-ft', '15'); await page.click('#speed-add-btn');
+  await dragSpeed('custom:0', 'fly');
+  await page.locator('#speed-rows .speed-custom-ft').fill('25');
+  assert.equal(await page.evaluate(() => document.activeElement.classList.contains('speed-custom-ft')), true);
+  const ordered = ['custom:0', 'fly', 'walk', 'burrow', 'climb', 'swim'];
+  assert.deepEqual(await speedOrder(), ordered);
+  await page.evaluate(() => { window.speedSaved = collectState(); applyState({ fields: {} }); });
+  assert.deepEqual(await speedOrder(), ['walk', 'burrow', 'climb', 'fly', 'swim']);
+  await page.evaluate(() => { applyState(window.speedSaved); saveState(); });
+  await page.reload();
+  assert.deepEqual(await speedOrder(), ordered);
+  assert.equal(await page.locator('#speed-rows .speed-custom-ft').inputValue(), '25');
+  await page.fill('#speed-add-name', 'Teleport'); await page.fill('#speed-add-ft', '30'); await page.click('#speed-add-btn');
+  await dragSpeed('custom:1', 'custom:0');
+  await page.locator('#speed-rows [data-speed-key="custom:0"] .speed-custom-del').click();
+  assert.deepEqual(await speedOrder(), ordered);
+  assert.equal(await page.locator('#speed-rows .speed-custom-name').inputValue(), 'Teleport');
+  await page.click('#btn-speed-reset-order');
+  assert.deepEqual(await speedOrder(), ['walk', 'burrow', 'climb', 'fly', 'swim', 'custom:0']);
+  await page.click('#speed-rows .speed-custom-del');
+  await page.fill('#speed-fly-misc', '');
 
   // Duplicate: a copy right after the original, named "(copy)", active, with the same fields.
   const dup = await page.evaluate(() => {
@@ -342,6 +380,24 @@ module.exports = async function checkSheetUi(page) {
   await page.evaluate(() => { __layout.state.free = false; __layout.apply(); });
   await page.locator('[data-module="saves"] .lay-tab[data-tab="senses"]').click();
   assert.deepEqual(await page.evaluate(() => ['saves', 'senses'].filter(k => document.querySelector(`[data-module="${k}"]`).offsetParent)), ['senses']);
+  // A short, narrow merged module scrolls only its body; tabs, title and toggle stay put.
+  await page.evaluate(() => {
+    __layout.switchTab('saves');
+    const p = __layout.state.map.saves; p.h = 180; p.w = 250; __layout.apply();
+  });
+  const pinned = await page.evaluate(() => {
+    const m = document.querySelector('[data-module="saves"]'), body = m.querySelector('.lay-body');
+    const controls = [m.querySelector('h2'), m.querySelector('.lay-collapse-btn'), m.querySelector('.lay-tabs')];
+    const before = controls.map(el => { const r = el.getBoundingClientRect(); return [r.x, r.y]; });
+    body.scrollTop = 100; body.scrollLeft = 100;
+    return { scrolled: body.scrollTop > 0, horizontal: body.scrollLeft > 0,
+      fixed: controls.every((el, i) => { const r = el.getBoundingClientRect(); return r.x === before[i][0] && r.y === before[i][1]; }) };
+  });
+  assert.deepEqual(pinned, { scrolled: true, horizontal: true, fixed: true });
+  await page.locator('[data-module="saves"] .lay-collapse-btn').click();
+  assert.equal(await page.locator('[data-module="saves"] .lay-body').isVisible(), false);
+  await page.locator('[data-module="saves"] .lay-collapse-btn').click();
+  await page.locator('[data-module="saves"] .lay-tab[data-tab="senses"]').click();
   // Tabs reorder by dragging, like the character tabs: drop Senses before Saving Throws.
   {
     const from = await page.locator('.module:not(.lay-stack-hidden) .lay-tab[data-tab="senses"]').boundingBox();

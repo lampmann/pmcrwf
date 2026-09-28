@@ -94,14 +94,16 @@ function setSpeedCustomList(list) {
 }
 let SPEED_CUSTOM_DRAWN = null;   // what the custom rows were last drawn from, so typing in one isn't redrawn under you
 function renderSpeedCustomRows() {
-  const body = $("speed-custom-rows"), field = $("speed-custom"); if (!body || !field) return;
+  const body = $("speed-rows"), field = $("speed-custom"); if (!body || !field) return;
   if (field.value === SPEED_CUSTOM_DRAWN) return;
   SPEED_CUSTOM_DRAWN = field.value;
-  body.innerHTML = speedCustomList().map((c, i) => `<tr data-speed-i="${i}">
+  body.querySelectorAll("[data-speed-i]").forEach(tr => tr.remove());
+  body.insertAdjacentHTML("beforeend", speedCustomList().map((c, i) => `<tr data-speed-i="${i}" data-speed-key="custom:${i}">
+    <td class="speed-grip" aria-label="drag to reorder">&#8942;&#8942;</td>
     <td><input type="text" class="speed-custom-name" value="${escapeHtml(c.name || "")}" aria-label="Speed name"></td>
     <td><input type="text" inputmode="numeric" class="tiny speed-custom-ft" value="${escapeHtml(String(c.ft ?? ""))}" aria-label="Feet"></td>
     <td></td>
-    <td><button type="button" class="speed-custom-del" aria-label="remove">&times;</button></td></tr>`).join("");
+    <td><button type="button" class="speed-custom-del" aria-label="remove">&times;</button></td></tr>`).join(""));
 }
 
 function renderSpeed() {
@@ -112,6 +114,7 @@ function renderSpeed() {
     el.title = b.n || type === "walk" ? b.parts.join(" ") + " = " + b.n + (n !== b.n ? "; " + n + " with conditions" : "") : "";
   });
   renderSpeedCustomRows();
+  applySpeedOrder();
   const extra = $("speed-extra");
   if (extra && typeof effTagsByPrefix === "function") {
     extra.innerHTML = effTagsByPrefix("speed-").map(t => ({ kind: t.kind, items: t.items.filter(i => !i.equalsWalk) }))
@@ -133,18 +136,86 @@ document.addEventListener("DOMContentLoaded", () => {
   box.addEventListener("click", e => {
     const del = e.target.closest(".speed-custom-del");
     if (del) {
-      const list = speedCustomList(); list.splice(Number(del.closest("[data-speed-i]").dataset.speedI), 1);
-      setSpeedCustomList(list); SPEED_CUSTOM_DRAWN = null; renderSpeedCustomRows(); return;
+      const index = Number(del.closest("[data-speed-i]").dataset.speedI);
+      const list = speedCustomList(); list.splice(index, 1);
+      // Custom row keys follow the list indices, including after a deletion.
+      const order = currentSpeedOrder().filter(k => k !== "custom:" + index).map(k => {
+        if (!k.startsWith("custom:")) return k;
+        const i = Number(k.slice(7)); return "custom:" + (i > index ? i - 1 : i);
+      });
+      $("speed-order").value = JSON.stringify(order);
+      setSpeedCustomList(list); SPEED_CUSTOM_DRAWN = null; renderSpeedCustomRows(); applySpeedOrder(); return;
     }
     if (e.target.id === "speed-add-btn") {
       const name = $("speed-add-name"), ft = $("speed-add-ft");
       if (!name.value.trim()) { name.focus(); return; }
       const list = speedCustomList(); list.push({ name: name.value.trim(), ft: ft.value.trim() });
       name.value = ""; ft.value = "";
-      setSpeedCustomList(list); SPEED_CUSTOM_DRAWN = null; renderSpeedCustomRows();
+      setSpeedCustomList(list); SPEED_CUSTOM_DRAWN = null; renderSpeedCustomRows(); applySpeedOrder();
     }
   });
   box.addEventListener("keydown", e => {
     if (e.key === "Enter" && (e.target.id === "speed-add-name" || e.target.id === "speed-add-ft")) { e.preventDefault(); $("speed-add-btn").click(); }
+  });
+});
+
+/* Like skills, movement order belongs to the character and travels in its saved fields. */
+function currentSpeedOrder() {
+  return [...document.querySelectorAll("#speed-rows tr")].map(tr => tr.dataset.speedKey);
+}
+function applySpeedOrder() {
+  const body = $("speed-rows"); if (!body) return;
+  let order;
+  try { order = JSON.parse(($("speed-order") || {}).value || "[]"); } catch (e) { order = []; }
+  if (!Array.isArray(order)) order = [];
+  const rows = new Map([...body.rows].map(tr => [tr.dataset.speedKey, tr]));
+  const defaults = [...SPEED_TYPES, ...speedCustomList().map((c, i) => "custom:" + i)];
+  let index = 0;
+  [...new Set([...order, ...defaults])].forEach(k => {
+    const row = rows.get(k); if (!row) return;
+    if (body.rows[index] !== row) body.insertBefore(row, body.rows[index] || null);
+    index++;
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const body = $("speed-rows"); if (!body) return;
+  let dragged = null;
+  const clear = () => [...body.rows].forEach(tr => tr.classList.remove("drop-before", "drop-after"));
+  const finish = () => {
+    clear(); dragged = null;
+    [...body.rows].forEach(tr => { tr.draggable = false; tr.classList.remove("dragging"); });
+  };
+  body.addEventListener("mousedown", e => {
+    const grip = e.target.closest(".speed-grip"); if (grip) grip.closest("tr").draggable = true;
+  });
+  document.addEventListener("mouseup", () => { if (!dragged) finish(); });
+  body.addEventListener("dragstart", e => {
+    const tr = e.target.closest("tr"); if (!tr || !tr.draggable) return;
+    dragged = tr; tr.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", tr.dataset.speedKey);
+  });
+  body.addEventListener("dragend", finish);
+  body.addEventListener("dragover", e => {
+    if (!dragged) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = "move"; clear();
+    const tr = e.target.closest("tr");
+    if (tr && tr !== dragged) tr.classList.add(skillDropAfter(tr, e.clientY) ? "drop-after" : "drop-before");
+  });
+  body.addEventListener("drop", e => {
+    if (!dragged) return;
+    e.preventDefault();
+    const tr = e.target.closest("tr");
+    if (tr && tr !== dragged) {
+      if (skillDropAfter(tr, e.clientY)) tr.after(dragged); else tr.before(dragged);
+      $("speed-order").value = JSON.stringify(currentSpeedOrder());
+      if (typeof scheduleSave === "function") scheduleSave();
+    }
+    finish();
+  });
+  $("btn-speed-reset-order").addEventListener("click", () => {
+    $("speed-order").value = ""; applySpeedOrder();
+    if (typeof scheduleSave === "function") scheduleSave();
   });
 });

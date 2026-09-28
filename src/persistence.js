@@ -99,6 +99,8 @@ function applyState(state) {
     else if (el.tagName === "SELECT") el.selectedIndex = Math.max(0, [...el.options].findIndex(o => o.defaultSelected));
     else el.value = el.defaultValue;
   });
+  // Hidden inputs mirror value into defaultValue. These lists start empty for older characters.
+  ["speed-custom", "speed-order"].forEach(id => { const el = $(id); if (el) el.value = ""; });
   Object.entries(state.fields || {}).forEach(([id, val]) => {
     const el = $(id); if (!el || !el.matches("[data-persist]")) return;
     if (el.type === "checkbox") el.checked = val; else el.value = val;

@@ -11,9 +11,10 @@
 
 /* --- positioning (the arrangement) --- */
 .modules.lay-active { position: relative; }
-/* overflow:auto → when a resized module is smaller than its content, you get scrollbars (both axes),
+/* The module body owns scrolling, keeping titles and tabs above its content.
+   When a resized module is smaller than its content, you get scrollbars (both axes),
    mouse-wheel scrolling, and native middle-click autoscroll. */
-.modules.lay-active > .module { position: absolute; margin: 0 !important; overflow: auto; }
+.modules.lay-active > .module { position: absolute; margin: 0 !important; overflow: hidden; display: flex; flex-direction: column; }
 /* Arranged modules take the width you drag them to; the resize code has its own floor (140px), and
    the flow layout's 240px minimum would otherwise stop a narrow module like Conditions shrinking. */
 .modules.lay-active > .module { min-width: 0; }
@@ -94,3 +95,9 @@
 .modules.lay-free > .module .lay-tab { pointer-events: auto; cursor: grab; position: relative; z-index: 8; }  /* above the resize handles */
 .modules.lay-free > .module.lay-merge-target { outline: 2px solid var(--select); outline-offset: -2px;
   background-image: linear-gradient(color-mix(in srgb, var(--select) 10%, transparent), color-mix(in srgb, var(--select) 10%, transparent)); }
+
+.modules.lay-active > .module > h2,
+.modules.lay-active > .module > .lay-tabs { flex-shrink: 0; }
+.modules.lay-active > .module > .lay-body { min-height: 0; overflow: auto; }
+
+.modules.lay-free > .module > .lay-body { overflow: hidden; }

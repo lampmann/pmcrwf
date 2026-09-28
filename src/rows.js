@@ -4,12 +4,12 @@ function buildAbilities() {
   ABILITIES.forEach(a => {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${a.name}</td>
+      <td class="derived" id="mod-${a.key}">+0</td>
       <td><input type="text" inputmode="numeric" class="num" data-persist readonly id="score-${a.key}" value="10"
             aria-label="${a.name} base score"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
       <td><input type="text" data-persist class="score-misc" id="scoremisc-${a.key}"
             placeholder="+2 belt, -1 curse"
-            aria-label="${a.name} modifiers"></td>
-      <td class="derived" id="mod-${a.key}">+0</td>`;
+            aria-label="${a.name} modifiers"></td>`;
     tb.appendChild(tr);
   });
 }
@@ -18,11 +18,11 @@ function buildSaves() {
   ABILITIES.forEach(a => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td><button class="roll" data-roll-check="save-${a.key}" data-label="${a.name} save">roll</button></td>
       <td><input type="checkbox" data-persist id="saveprof-${a.key}"></td>
       <td>${a.name}</td>
-      <td><input type="text" data-persist id="savemisc-${a.key}" style="width:4.5rem;text-align:right"></td>
       <td class="derived" id="savebonus-${a.key}">+0</td>
-      <td><button class="roll" data-roll-check="save-${a.key}" data-label="${a.name} save">roll</button></td>`;
+      <td><input type="text" data-persist id="savemisc-${a.key}" style="width:4.5rem;text-align:right"></td>`;
     tb.appendChild(tr);
   });
 }
@@ -132,13 +132,13 @@ function buildSkills() {
     const slug = name.toLowerCase().replace(/[^a-z]/g, "");
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td><button class="roll" data-roll-check="skill-${slug}" data-label="${name}">roll</button></td>
       <td class="skill-grip" aria-label="drag to reorder">&#8942;&#8942;</td>
       <td><input type="checkbox" data-persist id="skillprof-${slug}"></td>
       <td><input type="checkbox" data-persist id="skillexp-${slug}"></td>
       <td>${name}</td><td class="hint skill-ab">(${ab})</td>
       <td><input type="text" data-persist id="skillmisc-${slug}" style="width:4.5rem;text-align:right"></td>
-      <td class="derived" id="skillbonus-${slug}">+0</td>
-      <td><button class="roll" data-roll-check="skill-${slug}" data-label="${name}">roll</button></td>`;
+      <td class="derived" id="skillbonus-${slug}">+0</td>`;
     tr.dataset.ability = ab; tr.dataset.slug = slug;
     /* Draggable from the grip only, not the whole row: the row is full of checkboxes and a text
        field, and a row that starts a drag when you try to select text in Misc is worse than one
