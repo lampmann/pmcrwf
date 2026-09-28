@@ -225,22 +225,27 @@ function sheetRaceSpeed() {
   return n == null ? 30 : n;
 }
 
-/* Keep the Speed box in step with the race WITHOUT ever overwriting a number the player typed.
-   `data-autospeed` records the last value this function put there: if the box still holds it, the
-   player hasn't touched it and we're free to update it; the moment they type anything else the two
-   diverge and this stops touching the field for good. An empty box always refills — a blank Speed
-   is what made Movement read 0/0, and no character actually wants one.
+/* Keep the hidden walking-speed base (#speed) in step with the race. `data-autospeed` records the
+   last value this function put there. A number the player typed before the base was hidden (it was
+   a visible box then) differs from both, and moves to the walking Override so the total doesn't
+   change; that only happens once the race can be read, so a race the data hasn't loaded yet
+   doesn't pin its fallback 30. An empty base always refills: a blank Speed made Movement read 0/0.
 
-   Returns true when it actually changed the field, so a caller that isn't already about to
+   Returns true when it actually changed a field, so a caller that isn't already about to
    recompute (the race box's own change handler) knows it has to. */
 function syncRaceSpeed() {
   const el = $("speed"); if (!el) return false;
   const cur = el.value.trim(), n = String(sheetRaceSpeed());
   // Already exactly what the race says: nothing to change, but adopt it as auto-filled. That's how a
-  // character built by the creation wizard — which writes its own speed, and so arrives here with a
-  // number this function didn't put there — goes on tracking a race change made later on the sheet.
+  // character built by the creation wizard, which writes its own speed, goes on tracking a race
+  // change made later on the sheet.
   if (cur === n) { el.dataset.autospeed = n; return false; }
-  if (cur !== "" && cur !== (el.dataset.autospeed || "")) return false;   // player-set: leave it alone
+  if (cur !== "" && cur !== (el.dataset.autospeed || "")) {
+    const race = (($("char-race") || {}).value || "").trim();
+    if (race && typeof ciFindRace === "function" && !ciFindRace(race)) return false;
+    const ov = $("speed-walk-override");
+    if (ov && ov.value.trim() === "") ov.value = cur;
+  }
   el.dataset.autospeed = n;
   el.value = n;
   return true;

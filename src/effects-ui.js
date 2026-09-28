@@ -159,7 +159,7 @@ function renderEffectsStrip() {
 }
 
 /* ----- audit trail: title tooltips + a dotted underline on every effect-touched derived value,
-   plus the ability-score / AC / speed "base + effects = total" breakdown spans. Required so a
+   plus the ability-score "base + effects = total" breakdown spans (speed has its own, in speed.js). Required so a
    number an LLM-authored DB entry changed is always visibly attributable, never silent. ----- */
 function hasMiscConflict(key) {
   const misc = (typeof miscOf === "function") ? miscOf(key) : "";
@@ -208,15 +208,6 @@ function paintEffectAudit() {
       el.title = `${parts.join(" ")} = ${total}`;
     } else { el.style.display = "none"; el.title = ""; }
   });
-  { // speed is still a plain input (not auto-calculated) — same "base + effects = total" audit span as before
-    const key = "speed", eff = effFlat(key), el = $(key + "-total");
-    if (el) {
-      if (eff) {
-        el.style.display = ""; el.textContent = `= ${speedTotal()}`;
-        el.title = contribTitle("Speed", key);
-      } else { el.style.display = "none"; el.title = ""; }
-    }
-  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

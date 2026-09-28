@@ -34,17 +34,8 @@ function maxHP() {
   return (typeof conditionMaxHp === "function") ? conditionMaxHp(n) : n;   // exhaustion 4 halves it
 }
 
-/* speed is a plain user-typed input (not auto-calculated like AC/initiative), but effects can still
-   add to it — same "base + effects = total" pattern as an ability score (see abilityScore in data.js). */
-/* Variant Encumbrance (DMG/PHB p176) subtracts from Speed once carried weight passes 5x/10x your
-   Strength — see encumbranceState() in variant-rules.js. Clamped at 0: a heavily-encumbered creature
-   with a 20 ft speed is stopped, not moving backwards. */
-function speedTotal() {
-  const enc = (typeof encumbranceState === "function") ? encumbranceState().speedPenalty : 0;
-  const n = Math.max(0, num($("speed")) + effFlat("speed") - enc);
-  // Grappled and Restrained stop you; exhaustion halves at 2 and stops you at 5 (PHB p291).
-  return (typeof conditionSpeed === "function") ? conditionSpeed(n) : n;
-}
+/* Walking speed: base, misc, features, Variant Encumbrance (DMG/PHB p176) and conditions. See speed.js. */
+function speedTotal() { return speedOf("walk"); }
 
 /* ---------- Armor Class (auto-calculated from equipped armor, like initiative) ----------
    No armor equipped: 10 + DEX. Light armor: armor AC + full DEX. Medium: armor AC + DEX (max +2).
@@ -116,8 +107,7 @@ function parseBonus(str) {
   return { flat, dice };
 }
 /* ----- what the effects engine grants that has no box of its own -----
-   Extra movement speeds (a flying or swimming speed rather than a bonus to walking), damage
-   resistances/immunities/vulnerabilities, and advantage on saves against a named condition. Each is
+   Damage resistances/immunities/vulnerabilities, and advantage on saves against a named condition. Each is
    a target the engine writes and nothing else reads, so they are listed here rather than silently
    dropped into snap.unapplied — which is what used to happen to every one of them.
 
@@ -135,14 +125,8 @@ function renderDefenses() {
   // The checklist buttons show what's ticked, so they follow a character switch or an import too.
   if (typeof renderDefenceChecklists === "function" && !DEF_OPEN) renderDefenceChecklists();
   const el = $("defenses-row"); if (!el) return;
-  const spd = $("speed-extra");
-  if (typeof effFlatByPrefix !== "function") { el.textContent = ""; if (spd) spd.textContent = ""; return; }
+  if (typeof effFlatByPrefix !== "function") { el.textContent = ""; return; }
   const bits = [];
-  // Numeric extra speeds ("fly 60 ft") and described ones ("fly equal to your walking speed" — a
-  // value the engine can't compute, since a value expression deliberately can't read another target).
-  const speeds = effFlatByPrefix("speed-").map(s => `<b>${escapeHtml(s.kind)}</b> ${s.n} ft`)
-    .concat(effTagsByPrefix("speed-").map(t => `<b>${escapeHtml(t.kind)}</b> ${escapeHtml(t.items.map(i => i.label).join(", "))}`));
-  if (spd) spd.innerHTML = speeds.join("<br>");
   /* Feature-granted AND hand-entered, in one list per category. Plenty of what a character is
      resistant to on a given evening comes from somewhere the sheet can't see — a spell someone else
      cast on you, a potion, a DM ruling, an item not itemised in Inventory — and a defences line that
@@ -192,6 +176,7 @@ function recompute() {
   });
   $("passive-perc").textContent = 10 + checkBonus("skill-perception") + effFlat("passive-perception");
   if (typeof renderSenses === "function") renderSenses();
+  if (typeof renderSpeed === "function") renderSpeed();
   if (typeof renderBackgroundModule === "function") renderBackgroundModule();
   renderDefenses();
   // Just the two movement numbers, not a re-render of the round tracker — see syncCombatMovement.

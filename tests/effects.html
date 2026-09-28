@@ -46,7 +46,9 @@
     <span id="ac">10</span><input type="text" id="ac-misc"><input type="number" id="ac-override">
     <!-- value/data-autospeed mirror the app's own markup: a blank Speed is what made Movement read
          0/0, so the field ships with a default and applyState restores it (see syncRaceSpeed). -->
-    <input type="text" data-persist data-math data-min="0" data-allow-empty id="speed" value="30" data-autospeed="30"><span id="speed-total" style="display:none"></span>
+    <input type="hidden" data-persist id="speed" value="30" data-autospeed="30"><input type="hidden" data-persist id="speed-custom">
+    <span id="speed-walk-total"></span><input type="text" data-persist id="speed-walk-misc"><input type="number" data-persist id="speed-walk-override">
+    <span id="speed-fly-total"></span><input type="text" data-persist id="speed-fly-misc"><input type="number" data-persist id="speed-fly-override">
     <span id="init">+0</span><input type="text" id="init-misc">
     <input type="text" data-persist id="def-resist"><input type="text" data-persist id="def-immune"><input type="text" data-persist id="def-vuln">
     <div id="defenses-row"></div><div id="speed-extra"></div>
@@ -133,6 +135,7 @@
 <script src="../src/math-fields.js"></script>
 <script src="../src/rows.js"></script>
 <script src="../src/derived.js"></script>
+<script src="../src/speed.js"></script>
 <script src="../src/event-log.js"></script>
 <script src="../src/roll-anim.js"></script>
 <script src="../src/roll-mirror.js"></script>
@@ -2143,14 +2146,20 @@ document.addEventListener("DOMContentLoaded", () => {
       syncRaceSpeed();
       assertEqual("a race whose data omits speed falls back to 30 rather than blanking it", $("speed").value, "30");
 
-      // The moment the player types their own number, this stops touching the field — the flag it
-      // left behind no longer matches, so there's no way for a later race change to eat the edit.
-      $("speed").value = "45";
+      // A number typed into the old visible Speed box moves to the walking Override, so the total
+      // stays theirs while the base goes back to following the race.
+      $("speed").value = "45"; $("speed-walk-override").value = "";
       $("char-race").value = "Halfling";
-      assert("a Speed the player set is never overwritten", !syncRaceSpeed());
-      assertEqual("...and keeps their number", $("speed").value, "45");
-      assert("...still not, on a second race change", (($("char-race").value = "Human"), !syncRaceSpeed()));
-      assertEqual("...still theirs", $("speed").value, "45");
+      assert("a Speed the player set is moved, not lost", syncRaceSpeed());
+      assertEqual("...into the walking Override", $("speed-walk-override").value, "45");
+      assertEqual("...while the base follows the race", $("speed").value, "25");
+      assertEqual("...and the total is still theirs", speedTotal(), 45);
+      assert("...a second race change only moves the base", (($("char-race").value = "Human"), syncRaceSpeed()));
+      assertEqual("...the Override is untouched", $("speed-walk-override").value, "45");
+      $("speed-walk-override").value = "";
+      $("speed").value = "45"; $("char-race").value = "Unloaded Race";
+      assert("a race the data can't read yet leaves a typed Speed alone", !syncRaceSpeed());
+      assertEqual("...unmoved", $("speed-walk-override").value, "");
 
       // A box already holding exactly what its race says can't be told apart from an auto-filled
       // one, so it's adopted. That's the creation wizard's case: it writes the speed itself, so the
@@ -2170,7 +2179,28 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("a character saved with a blank Speed loads with its race's speed", $("speed").value, "25");
       applyState({ v: 1, fields: { "char-name": "Set", "char-race": "Halfling", "speed": "40" },
         classes: [], spells: [], items: [], attacks: [] });
-      assertEqual("...while a saved number is left exactly as saved", $("speed").value, "40");
+      assertEqual("...while a saved number becomes the walking Override", $("speed-walk-override").value, "40");
+      assertEqual("...so the character still moves 40 ft", speedTotal(), 40);
+
+      // Misc, Override and the other movement types.
+      applyState({ v: 1, fields: { "char-name": "Mover", "char-race": "Birdfolk" }, classes: [], spells: [], items: [], attacks: [] });
+      RACE_LIB.Birdfolk = { name: "Birdfolk", source: "TEST", ability: [], entries: [], speed: { walk: 25, fly: 50, swim: true }, subs: {} };
+      syncRaceSpeed(); invalidateEffects(); recompute();
+      assertEqual("a race's walking speed is the base", speedTotal(), 25);
+      assertEqual("a race's own flying speed", speedOf("fly"), 50);
+      assertEqual("a speed equal to walking follows it", speedOf("swim"), 25);
+      assertEqual("a speed the race lacks is 0", speedOf("burrow"), 0);
+      $("speed-walk-misc").value = "+10 boots, -5"; recompute();
+      assertEqual("Misc takes labelled terms", speedTotal(), 30);
+      assertEqual("...shown on hover", $("speed-walk-total").title, "25 base +10 boots -5 = 30");
+      assertEqual("...and a speed equal to walking follows that too", speedOf("swim"), 30);
+      $("speed-walk-override").value = "40"; recompute();
+      assertEqual("Override replaces the base, Misc still adds", speedTotal(), 45);
+      $("speed-fly-override").value = "20"; $("speed-fly-misc").value = "+5"; recompute();
+      assertEqual("each type has its own Override and Misc", speedOf("fly"), 25);
+      assertEqual("...drawn in its row", $("speed-fly-total").textContent, "25");
+      $("speed-custom").value = JSON.stringify([{ name: "Glide", ft: "15" }]); recompute();
+      assertEqual("custom speeds are read back", speedCustomList()[0].name, "Glide");
 
       applyState(sheetBefore2); recompute();
       RACE_LIB = savedRaceLib2; $("char-race").value = savedRace; $("char-subrace").value = savedSub;

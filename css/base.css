@@ -740,7 +740,12 @@ button.linkish {
 /* ----- small stat modules (AC, Speed, Initiative) ----- */
 .module.small { min-width: 140px; }
 .stat-big { display: flex; align-items: center; gap: .4rem; font-size: 1.5rem; font-weight: bold; margin: .1rem 0 .25rem; }
-.stat-big input.num { font: inherit; width: 3.5rem; text-align: right; }
 .stat-big .roll { font-size: .85rem; font-weight: normal; }
-.stat-big .eff-note { font-size: .85rem; font-weight: normal; }
 .hit-dice-row { display: flex; gap: .5rem; align-items: baseline; margin-top: .3rem; }
+
+/* ----- Speed module (src/speed.js) ----- */
+.speed-table td:nth-child(2) { text-align: right; min-width: 2.5rem; }
+.speed-table input.speed-misc { width: 6rem; }
+.speed-table input.speed-custom-name, .speed-table #speed-add-name { width: 5.5rem; }
+.speed-table .speed-add { opacity: .8; }
+.speed-table .speed-add:focus-within { opacity: 1; }

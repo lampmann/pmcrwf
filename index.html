@@ -194,11 +194,23 @@
       override <input type="number" class="tiny" data-persist id="ac-override" placeholder="auto"></div>
   </section>
 
-  <!-- ===== SPEED ===== -->
-  <section class="module small" data-module="speed">
+  <!-- ===== SPEED (src/speed.js) ===== -->
+  <section class="module" data-module="speed">
     <h2>Speed</h2>
-    <div class="stat-big"><input type="text" inputmode="numeric" class="num" data-persist data-math data-min="0" data-allow-empty id="speed" value="30" data-autospeed="30" aria-label="Walking speed"> <span class="hint">ft</span>
-      <span class="derived eff-note" id="speed-total" style="display:none"></span></div>
+    <!-- #speed is the race's walking speed, kept in step by syncRaceSpeed; #speed-custom holds the custom rows as JSON. -->
+    <input type="hidden" data-persist id="speed" value="30" data-autospeed="30"><input type="hidden" data-persist id="speed-custom">
+    <table class="speed-table" id="speed-table">
+      <thead><tr><th></th><th>ft</th><th>Misc</th><th>Override</th></tr></thead>
+      <tbody>
+        <tr><td>Walk</td><td class="derived" id="speed-walk-total">30</td><td><input type="text" class="speed-misc" data-persist id="speed-walk-misc" aria-label="Walking speed misc"></td><td><input type="number" class="tiny" data-persist id="speed-walk-override" placeholder="auto" aria-label="Walking speed override"></td></tr>
+        <tr><td>Burrow</td><td class="derived" id="speed-burrow-total">-</td><td><input type="text" class="speed-misc" data-persist id="speed-burrow-misc" aria-label="Burrowing speed misc"></td><td><input type="number" class="tiny" data-persist id="speed-burrow-override" placeholder="auto" aria-label="Burrowing speed override"></td></tr>
+        <tr><td>Climb</td><td class="derived" id="speed-climb-total">-</td><td><input type="text" class="speed-misc" data-persist id="speed-climb-misc" aria-label="Climbing speed misc"></td><td><input type="number" class="tiny" data-persist id="speed-climb-override" placeholder="auto" aria-label="Climbing speed override"></td></tr>
+        <tr><td>Fly</td><td class="derived" id="speed-fly-total">-</td><td><input type="text" class="speed-misc" data-persist id="speed-fly-misc" aria-label="Flying speed misc"></td><td><input type="number" class="tiny" data-persist id="speed-fly-override" placeholder="auto" aria-label="Flying speed override"></td></tr>
+        <tr><td>Swim</td><td class="derived" id="speed-swim-total">-</td><td><input type="text" class="speed-misc" data-persist id="speed-swim-misc" aria-label="Swimming speed misc"></td><td><input type="number" class="tiny" data-persist id="speed-swim-override" placeholder="auto" aria-label="Swimming speed override"></td></tr>
+      </tbody>
+      <tbody id="speed-custom-rows"></tbody>
+      <tfoot><tr class="speed-add"><td><input type="text" id="speed-add-name" placeholder="speed name"></td><td><input type="text" inputmode="numeric" class="tiny" id="speed-add-ft" placeholder="ft" aria-label="Feet"></td><td colspan="2"><button type="button" id="speed-add-btn">+ Speed</button></td></tr></tfoot>
+    </table>
     <div class="hint" id="speed-extra"></div>
   </section>
 
@@ -632,6 +644,7 @@
 <script src="src/derived.js"></script>
 <script src="src/hp-bar.js"></script>
 <script src="src/senses.js"></script>
+<script src="src/speed.js"></script>
 <script src="src/background.js"></script>
 <script src="src/event-log.js"></script>
 <script src="src/dice.js"></script>

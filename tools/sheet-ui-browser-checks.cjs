@@ -300,6 +300,30 @@ module.exports = async function checkSheetUi(page) {
   });
   assert.deepEqual(bgm, { head: 'Sage PHB Feature: Researcher You know where to look.', groups: ['Appearance', 'Alignment', 'Personality'], persisted: true });
 
+  // Speed: custom speeds added by name and feet, edited in place and removed; a typed edit isn't redrawn under the cursor.
+  await page.fill('#speed-add-name', 'Glide'); await page.fill('#speed-add-ft', '15'); await page.click('#speed-add-btn');
+  await page.locator('#speed-custom-rows .speed-custom-ft').fill('20');
+  const spd = await page.evaluate(() => ({ list: document.getElementById('speed-custom').value,
+    focused: document.activeElement && document.activeElement.classList.contains('speed-custom-ft'),
+    rows: [...document.querySelectorAll('#speed-table tbody:first-of-type tr td:first-child')].map(td => td.textContent) }));
+  await page.click('#speed-custom-rows .speed-custom-del');
+  assert.deepEqual(spd, { list: '[{"name":"Glide","ft":"20"}]', focused: true, rows: ['Walk', 'Burrow', 'Climb', 'Fly', 'Swim'] });
+  assert.equal(await page.evaluate(() => document.getElementById('speed-custom').value + document.querySelectorAll('#speed-custom-rows tr').length), '0');
+
+  // Duplicate: a copy right after the original, named "(copy)", active, with the same fields.
+  const dup = await page.evaluate(() => {
+    document.getElementById('char-name').value = 'Dup Source'; document.getElementById('bg-hair').value = 'red'; saveState();
+    const before = ROSTER.chars.length, srcId = ROSTER.activeId;
+    document.getElementById('char-tab-dup').click();
+    const i = ROSTER.chars.findIndex(c => c.id === ROSTER.activeId);
+    const out = { added: ROSTER.chars.length - before, after: ROSTER.chars[i - 1].id === srcId, name: document.getElementById('char-name').value,
+      hair: document.getElementById('bg-hair').value, own: ROSTER.activeId !== srcId };
+    const copy = ROSTER.activeId; switchCharacter(srcId); ROSTER.chars = ROSTER.chars.filter(c => c.id !== copy); persistRoster(); renderCharacterTabs();
+    document.getElementById('bg-hair').value = ''; saveState();
+    return out;
+  });
+  assert.deepEqual(dup, { added: 1, after: true, name: 'Dup Source (copy)', hair: 'red', own: true });
+
   // Merging modules: the stationary one keeps its box and its tab comes first; tabs switch; detaching dissolves.
   await page.evaluate(() => { const L = __layout; L.state.free = true; L.apply(); });
   // An arranged module can be dragged narrower than the flow layout's 240px minimum (Conditions is narrow).
@@ -331,5 +355,5 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(await page.evaluate(() => { __layout.detach(document.querySelector('[data-module="senses"]')); return Object.keys(__layout.state.stacks).length + document.querySelectorAll('.lay-tab').length; }), 0);
   await page.evaluate(() => { const L = __layout; Object.assign(L.state, { map: {}, stacks: {}, free: false, activated: false }); L.apply(); L.save(); });
 
-  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook, the XP bar, creator spell checklists, the Background module and merged modules passed.');
+  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook, the XP bar, creator spell checklists, the Background module, custom speeds, duplicating a character and merged modules passed.');
 };

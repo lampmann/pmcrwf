@@ -117,6 +117,26 @@ function addCharacter(state, name) {
   return id;
 }
 
+/* A copy of a character as it stands, placed right after it, with its own id and an empty log. The
+   copy starts outside any group, so its rolls don't land in the original's shared log. */
+function duplicateCharacter(id) {
+  const src = ROSTER.chars.find(c => c.id === id); if (!src) return;
+  saveState();
+  const state = JSON.parse(JSON.stringify(src.state || { v: 1, fields: {} }));
+  state.fields = state.fields || {};
+  const name = charDisplayName(src) + " (copy)";
+  state.fields["char-name"] = name;
+  const entry = { id: newCharId(), name, state };
+  ROSTER.chars.splice(ROSTER.chars.indexOf(src) + 1, 0, entry);
+  ROSTER.activeId = entry.id;
+  persistRoster();
+  applyState(state);
+  saveState();
+  renderCharacterTabs();
+  logEvent("info", `Duplicated <b>${escapeHtml(charDisplayName(src))}</b>`);
+  return entry.id;
+}
+
 function renameCharacter(id) {
   const c = ROSTER.chars.find(x => x.id === id); if (!c) return;
   const next = prompt("Character name:", charDisplayName(c));
@@ -361,7 +381,8 @@ function renderCharacterTabs() {
       `role="group" aria-label="Shared event log">` +
       run.map(charTabHtml).join("") + `</span>`;
   }
-  el.innerHTML = html + `<button type="button" id="char-tab-add" aria-label="create a new character">+ New character</button>`;
+  el.innerHTML = html + `<button type="button" id="char-tab-add" aria-label="create a new character">+ New character</button>` +
+    `<button type="button" id="char-tab-dup">Duplicate</button>`;
 }
 
 /* Level shown on a tab. The active character's classes live in the DOM (they may be mid-edit and not
@@ -461,6 +482,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const del = e.target.closest("[data-delid]");
     if (del) { e.stopPropagation(); deleteCharacter(del.dataset.delid); return; }
     if (e.target.closest("#char-tab-add")) { openCreator(); return; }
+    if (e.target.closest("#char-tab-dup")) { duplicateCharacter(ROSTER.activeId); return; }
     const tab = e.target.closest("[data-charid]");
     if (!tab) return;
     if (tab.dataset.charid === ROSTER.activeId) renameCharacter(tab.dataset.charid);
