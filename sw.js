@@ -81,12 +81,21 @@ async function themeUrls() {
   } catch (e) { return []; }
 }
 
+/* Layout presets are listed the same way, for the same reason. */
+async function layoutUrls() {
+  try {
+    const res = await fetch("layouts/index.json", { cache: "reload" });
+    if (!res.ok) return [];
+    return ["layouts/index.json", ...Object.values(await res.json()).filter(Boolean).map(f => "layouts/" + f)];
+  } catch (e) { return []; }
+}
+
 async function precache() {
   const cache = await caches.open(CACHE);
   const res = await fetch(SHELL_HTML, { cache: "reload" });
   if (!res.ok) throw new Error("could not read " + SHELL_HTML + " (" + res.status + ")");
   const html = await res.text();
-  const urls = [...new Set([SHELL_HTML, ...shellUrlsFromHtml(html), ...(await themeUrls()), ...EXTRA])];
+  const urls = [...new Set([SHELL_HTML, ...shellUrlsFromHtml(html), ...(await themeUrls()), ...(await layoutUrls()), ...EXTRA])];
   await cache.put(SHELL_HTML, new Response(html, { headers: res.headers }));
   /* addAll is all-or-nothing, which is what "a version exists entirely or not at all" asks for.
      A single 404 here fails the install and leaves the previous version serving — the right

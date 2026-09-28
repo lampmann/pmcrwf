@@ -473,6 +473,30 @@
     rd.readAsText(file);
   }
 
+  /* ---- presets ----
+     Named arrangements shipped in layouts/, listed in layouts/index.json as { "Label": "file.json" }
+     (same shape as the theme manifest). A preset file is exactly what "save file" writes, so making
+     one is: arrange the sheet, save the file, drop it in layouts/ and list it. The picker stays
+     hidden until the list has something in it. */
+  async function loadPresetList() {
+    const wrap = byId("lay-preset-wrap"), sel = byId("lay-preset"); if (!wrap || !sel) return;
+    try {
+      const res = await fetch("layouts/index.json"); if (!res.ok) return;
+      const list = Object.entries(await res.json()).filter(([, f]) => typeof f === "string" && f);
+      list.forEach(([name, file]) => sel.add(new Option(name, file)));
+      wrap.hidden = !list.length;
+    } catch (e) { /* no presets: the picker stays hidden */ }
+  }
+  async function applyPreset(file, name) {
+    if (!confirm(`Replace your current arrangement with the ${name} layout?`)) return;
+    try {
+      const res = await fetch("layouts/" + file); if (!res.ok) throw new Error(res.status);
+      const d = await res.json(); if (typeof d !== "object" || !d.map) throw new Error("not a layout file");
+      Object.assign(state, { free: false, stacks: {}, collapsed: {} }, d, { free: false });
+      syncControls(); apply(); save();
+    } catch (err) { alert("Could not load the " + name + " layout: " + err.message); }
+  }
+
   /* ---- control bar ---- */
   function syncControls() {
     if (byId("lay-free")) byId("lay-free").checked = state.free;
@@ -489,6 +513,7 @@
       <label><input type="checkbox" id="lay-grid"> snap to grid</label>
       <label>grid <input type="number" id="lay-gridsize" min="1" max="64" style="width:3rem"></label>
       <label><input type="checkbox" id="lay-edge"> snap to modules</label>
+      <label id="lay-preset-wrap" hidden>preset <select id="lay-preset"><option value="">-</option></select></label>
       <button id="lay-reset">reset</button>
       <button id="lay-save">save file</button>
       <label>load <input type="file" id="lay-load" accept="application/json" style="width:8.5rem"></label>
@@ -501,6 +526,8 @@
     byId("lay-gridsize").addEventListener("change", e => { state.grid = Math.max(1, Math.min(64, Number(e.target.value) || 8)); e.target.value = state.grid; updateGrid(); save(); });
     byId("lay-reset").addEventListener("click", () => { if (confirm("Reset module layout back to the default flow? This also expands any collapsed modules.")) { state.map = {}; state.collapsed = {}; state.stacks = {}; state.free = false; state.activated = false; state.zTop = 0; clearSelection(); syncControls(); apply(); save(); updateHint(); } });
     byId("lay-save").addEventListener("click", exportLayout);
+    byId("lay-preset").addEventListener("change", e => { const f = e.target.value; e.target.value = ""; if (f) applyPreset(f, e.target.selectedOptions[0] ? e.target.selectedOptions[0].text : f); });
+    loadPresetList();
     byId("lay-load").addEventListener("change", e => { if (e.target.files[0]) importLayout(e.target.files[0]); e.target.value = ""; });
     updateHint();
   }
