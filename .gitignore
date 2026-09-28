@@ -1,3 +1,6 @@
 data/
 characters/
 node_modules/
+
+# Screenshots from ad-hoc test scripts run in the project root; the icons live in icons/.
+/*.png
