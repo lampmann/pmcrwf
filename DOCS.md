@@ -43,7 +43,7 @@ The sheet draws a line between two kinds of game data:
 When adding a new auto-calculated feature, ask which bucket it falls into: a short, fixed, prose-free table → hardcode it with an override box (see Max HP and Spell Slots below, or the effects database); anything bigger, descriptive, or that reproduces sourcebook text → make it an import, not a bundled dataset.
 
 ### 2014 and 2024 content
-5e.tools ships the 2024 books (XPHB, XDMG, XMM) next to the 2014 ones, often under the same names. The **2024 content** switch in the top bar decides which copy the sheet keeps, everywhere at once (classes, subclasses, races, feats, backgrounds, spells, items, monsters, optional features, languages):
+5e.tools ships the 2024 books next to the 2014 ones, often under the same names. "2024 books" means the core three (XPHB, XDMG, XMM), the later books written for those rules (Heroes of Faerûn, Adventures in Faerûn, Forge of the Artificer), and any other book your data's `books.json` or `adventures.json` dates on or after the 2024 Player's Handbook (2024-09-17), so newer books count without a sheet update. The **2024 content** switch in the top bar decides which copy the sheet keeps, everywhere at once (classes, subclasses, races, feats, backgrounds, spells, items, monsters, optional features, languages):
 
 - **Off** (default): records from the 2024 books are left out entirely.
 - **On**: a 2024 record replaces its 2014 namesake, and anything only one edition has is kept. Subclasses printed against the 2014 class (XGE, TCE...) still attach to the 2024 class.

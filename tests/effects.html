@@ -2218,6 +2218,8 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("filtering a cached list keeps everything when on", editionFilter([fb14, fb24]).length, 2);
     USE_2024 = false;
     assertEqual("...and drops 2024 records when off", editionFilter([fb14, fb24]).length, 1);
+    assert("a later book written for the 2024 rules counts as 2024 content", !editionAllows({ name: "Wardaway", source: "FRHoF" }));
+    assert("...as does a record 5e.tools marks as the new edition", !editionAllows({ name: "X", source: "HB", edition: "one" }));
     USE_2024 = saved;
   }
   // Half feats: the feat record's own `ability` field is the +1, not a hand-written entry per feat.
