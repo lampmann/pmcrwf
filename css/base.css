@@ -706,3 +706,17 @@ button.linkish {
 .xp-group { display: inline-block; position: relative; padding-top: 7px; }
 .xp-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #1b2530; border: 1px solid #000; box-sizing: content-box; }
 .xp-fill { display: block; height: 100%; width: 0; background: #6fd0ff; transition: width .2s ease; }
+
+/* ----- creator spell checklists (src/creator-choices.js) ----- */
+.cr-spelldd { margin: .3rem 0; }
+.cr-spelldd-btn { font: inherit; text-align: left; max-width: 100%; white-space: normal; }
+.cr-spell-panel { margin-top: .25rem; padding: .35rem .45rem; border: 1px solid var(--border-soft); border-radius: var(--radius);
+  max-height: 18rem; overflow-y: auto; }
+.cr-spell-panel .cr-spellfilter { width: 12rem; margin-bottom: .3rem; }
+.cr-spell-lvl { font-weight: bold; font-size: .8rem; margin: .35rem 0 .1rem; }
+.cr-spell-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .05rem .6rem; }
+.cr-spell-opt { display: flex; gap: .3rem; align-items: center; font-size: .88rem; }
+.cr-spell-opt:has(input:disabled) { opacity: .5; }
+.cr-spell-filterbar { margin-bottom: .3rem; }
+#cr-spell-filter-btn.active { background: var(--select); color: var(--select-fg); border-color: var(--select); }
+.cr-spell-filter-area { margin-bottom: .4rem; font-size: .9em; }

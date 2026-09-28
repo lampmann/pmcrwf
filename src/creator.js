@@ -879,6 +879,7 @@ function renderCreatorChrome() {
 function renderCreator() {
   const modal = $("creator-modal"); if (!modal || modal.style.display === "none") return;
   $("cr-body").innerHTML = creatorStepHtml();
+  if (typeof crAfterRender === "function") crAfterRender();
   renderCreatorChrome();
   // The comboboxes are fresh elements after every redraw, and their dropdown panel lives outside
   // cr-body — so it has to be re-attached to whichever field still has focus. See combobox.js.

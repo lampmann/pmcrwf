@@ -252,6 +252,34 @@ module.exports = async function checkSheetUi(page) {
   });
   assert.deepEqual(xpBar, { fill: '50%', above: true, spans: true, centred: true });
 
+  // Creator spell step: a checklist per list, capped at the count, plus the library's filters.
+  const crSpells = await page.evaluate(() => {
+    const saved = SPELL_LIB;
+    localStorage.removeItem('charsheet-crspellfilters'); CR_SPELL_FILTERS = null; CR_SPELL_FILTERS_OPEN = false; CR_SPELL_OPEN = '';
+    const sp = (name, level, school) => ({ name, source: 'PHB', level, school, classes: ['Druid'], comp: {}, dmgTypes: [], conds: [], areaTags: [] });
+    SPELL_LIB = [sp('Guidance', 0, 'Divination'), sp('Produce Flame', 0, 'Conjuration'), sp('Shillelagh', 0, 'Transmutation'),
+      sp('Cure Wounds', 1, 'Evocation'), sp('Entangle', 1, 'Conjuration'), sp('Thunderwave', 1, 'Evocation')];
+    openCreator(); CREATOR.classes = [{ name: 'Druid', sub: '', lvl: 1 }]; goToCreatorStep(CR_STEP.spells);
+    const out = {};
+    document.querySelector('.cr-spelldd-btn[data-dd="Druid|cantrips"]').click();
+    const boxes = () => [...document.querySelectorAll('.cr-spelldd[data-dd="Druid|cantrips"] .cr-spellcheck')];
+    out.options = boxes().map(b => b.value);
+    boxes()[0].click(); boxes()[1].click();
+    out.picked = crSpellStore('Druid').cantrips.join(',');
+    out.thirdDisabled = boxes()[2].disabled;
+    out.stillOpen = !document.querySelector('.cr-spelldd[data-dd="Druid|cantrips"] .cr-spell-panel').hidden;
+    document.getElementById('cr-spell-filter-btn').click();
+    const evo = [...document.querySelectorAll('#cr-spell-filter-area .fbtn')].find(b => b.textContent.trim() === 'Evocation');
+    evo.click();
+    document.querySelector('.cr-spelldd-btn[data-dd="Druid|spells"]').click();
+    out.evocationOnly = [...document.querySelectorAll('.cr-spelldd[data-dd="Druid|spells"] .cr-spellcheck')].map(b => b.value).join(',');
+    out.cantripsKeptPicked = boxes().map(b => b.value).join(',');
+    closeCreator(); SPELL_LIB = saved; localStorage.removeItem('charsheet-crspellfilters'); CR_SPELL_FILTERS = null; CR_SPELL_FILTERS_OPEN = false;
+    return out;
+  });
+  assert.deepEqual(crSpells, { options: ['Guidance', 'Produce Flame', 'Shillelagh'], picked: 'Guidance,Produce Flame', thirdDisabled: true,
+    stillOpen: true, evocationOnly: 'Cure Wounds,Thunderwave', cantripsKeptPicked: 'Guidance,Produce Flame' });
+
   // Merging modules: the stationary one keeps its box and its tab comes first; tabs switch; detaching dissolves.
   await page.evaluate(() => { const L = __layout; L.state.free = true; L.apply(); });
   const merged = await page.evaluate(() => {
@@ -270,5 +298,5 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(await page.evaluate(() => { __layout.detach(document.querySelector('[data-module="senses"]')); return Object.keys(__layout.state.stacks).length + document.querySelectorAll('.lay-tab').length; }), 0);
   await page.evaluate(() => { const L = __layout; Object.assign(L.state, { map: {}, stacks: {}, free: false, activated: false }); L.apply(); L.save(); });
 
-  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook, the XP bar and merged modules passed.');
+  console.log('Sheet UI: HP bar, defence checklists, counters, exhaustion rows, roll-mode badges, Level Up multiclass proficiencies, spell limits, item/feature spells, senses, the spellbook, the XP bar, creator spell checklists and merged modules passed.');
 };

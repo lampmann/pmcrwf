@@ -403,18 +403,50 @@ function crSpellNeeds(r) {
   };
 }
 function crSpellStore(name) { return CREATOR.spells[name] || (CREATOR.spells[name] = { cantrips: [], spells: [], prepared: [] }); }
-function crSpellSelects(name, list, key, count, pool) {
-  const store = crSpellStore(name), picks = store[key];
-  const out = [];
-  for (let i = 0; i < count; i++) {
-    const cur = picks[i] || "";
-    const others = new Set(picks.filter((v, j) => j !== i && v));
-    out.push(`<select class="cr-spell" data-cls="${escapeHtml(name)}" data-list="${key}" data-slot="${i}"><option value="">-</option>` +
-      pool.filter(sp => sp.name === cur || !others.has(sp.name))
-        .map(sp => `<option value="${escapeHtml(sp.name)}"${sp.name === cur ? " selected" : ""}>${escapeHtml(sp.name)}${key === "spells" ? ` (${ordinalLevel(sp.level)})` : ""}</option>`).join("") +
-      `</select>`);
+/* One list (cantrips, or spells) as a button that opens a checklist of every spell the class can
+   take, grouped by level: tick to add, untick to drop, and once the count is reached the rest wait
+   until something is unticked. A filter box narrows the list without redrawing it. */
+let CR_SPELL_OPEN = "";   // "<class>|<list>" whose checklist is open
+/* The Spell Library's own include/exclude filters, as a separate set (its own saved state), narrowing
+   every checklist in the spell step. A spell already ticked stays listed whatever the filters say. */
+let CR_SPELL_FILTERS = null, CR_SPELL_FILTERS_OPEN = false;
+function crSpellFilters() {
+  if (!CR_SPELL_FILTERS && typeof createFilterSet === "function" && typeof SPELL_FGROUPS !== "undefined") {
+    CR_SPELL_FILTERS = createFilterSet({ ns: "crspell", groups: SPELL_FGROUPS, areaId: "cr-spell-filter-area", searchId: null,
+      onChange: () => crRenderKeepingScroll() });
+    CR_SPELL_FILTERS.load();
   }
-  return out.join(" ");
+  return CR_SPELL_FILTERS;
+}
+function crAfterRender() {
+  const area = document.getElementById("cr-spell-filter-area");
+  if (area && !area.hidden && crSpellFilters()) CR_SPELL_FILTERS.renderArea();
+}
+function crRenderKeepingScroll() {
+  const open = document.querySelector(".cr-spelldd .cr-spell-panel:not([hidden])");
+  if (open) { crRenderKeepingSpellPanel(open); return; }
+  const body = document.getElementById("cr-body"), top = body ? body.scrollTop : 0;
+  renderCreator(); if (body) body.scrollTop = top;
+}
+function crSpellChecklist(name, label, key, count, pool) {
+  const store = crSpellStore(name), picks = store[key].filter(Boolean);
+  const id = name + "|" + key, open = CR_SPELL_OPEN === id, full = picks.length >= count;
+  const fs = crSpellFilters(), active = fs ? fs.activeGroups() : [];
+  if (active.length) pool = pool.filter(sp => picks.includes(sp.name) || fs.passes(sp, active));
+  const levels = [...new Set(pool.map(sp => sp.level))].sort((a, b) => a - b);
+  const group = L => {
+    const rows = pool.filter(sp => sp.level === L).map(sp => {
+      const on = picks.includes(sp.name);
+      return `<label class="cr-spell-opt" data-name="${escapeHtml(sp.name.toLowerCase())}"><input type="checkbox" class="cr-spellcheck" data-cls="${escapeHtml(name)}" data-list="${key}" value="${escapeHtml(sp.name)}"${on ? " checked" : ""}${!on && full ? " disabled" : ""}> ${escapeHtml(sp.name)}</label>`;
+    }).join("");
+    return (key === "spells" ? `<div class="cr-spell-lvl">${ordinalLevel(L)} level</div>` : "") + `<div class="cr-spell-grid">${rows}</div>`;
+  };
+  return `<div class="cr-spelldd" data-dd="${escapeHtml(id)}">
+    <button type="button" class="cr-spelldd-btn" data-dd="${escapeHtml(id)}">${label} <b>${picks.length}/${count}</b>${picks.length ? ": " + escapeHtml(picks.join(", ")) : ""} ${open ? "&#9652;" : "&#9662;"}</button>
+    <div class="cr-spell-panel"${open ? "" : " hidden"}>
+      <input type="search" class="cr-spellfilter" placeholder="filter" aria-label="Filter spells">
+      ${levels.map(group).join("")}
+    </div></div>`;
 }
 function crCasterRows() {
   return crRows().filter(r => (r.name || "").trim()).map(r => ({ r, need: crSpellNeeds(r) }))
@@ -424,18 +456,44 @@ function crSpellsStepHtml() {
   const rows = crCasterRows();
   if (!rows.length) return `<div class="hint">No spellcasting at these levels.</div>`;
   if (!(typeof SPELL_LIB !== "undefined" && SPELL_LIB.length)) return `<div class="hint">No spell data loaded.</div>`;
-  return rows.map(({ r, need }) => {
+  const filterBar = `<div class="cr-spell-filterbar"><button type="button" id="cr-spell-filter-btn"${CR_SPELL_FILTERS_OPEN ? ' class="active"' : ""}>Filters</button></div>
+    <div id="cr-spell-filter-area" class="cr-spell-filter-area"${CR_SPELL_FILTERS_OPEN ? "" : " hidden"}></div>`;
+  return filterBar + rows.map(({ r, need }) => {
     const store = crSpellStore(r.name);
     const label = need.wizard ? "Spellbook" : need.style === "prepared" ? "Prepared" : "Spells known";
     const parts = [];
-    if (need.cantrips) parts.push(`<div>Cantrips (${need.cantrips}) ${crSpellSelects(r.name, need.cantripList, "cantrips", need.cantrips, need.cantripList)}</div>`);
-    if (need.maxLvl && need.spells) parts.push(`<div>${label} (${need.spells}) ${crSpellSelects(r.name, need.spellList, "spells", need.spells, need.spellList)}</div>`);
+    if (need.cantrips) parts.push(crSpellChecklist(r.name, "Cantrips", "cantrips", need.cantrips, need.cantripList));
+    if (need.maxLvl && need.spells) parts.push(crSpellChecklist(r.name, label, "spells", need.spells, need.spellList));
     if (need.wizard && need.prepared) {
       const book = store.spells.filter(Boolean);
       parts.push(`<div>Prepared (${need.prepared}) ${book.map(n => `<label><input type="checkbox" class="cr-spellprep" data-cls="${escapeHtml(r.name)}" value="${escapeHtml(n)}"${store.prepared.includes(n) ? " checked" : ""}> ${escapeHtml(n)}</label>`).join(" ")}</div>`);
     }
     return `<div class="cr-classblock"><b>${escapeHtml(r.name)} ${r.lvl}</b>${parts.join("")}</div>`;
   }).join("");
+}
+
+/* Redraws the step with the open checklist left open, scrolled where it was, and still filtered. */
+function crRenderKeepingSpellPanel(from) {
+  const dd = from.closest(".cr-spelldd"), panel = dd && dd.querySelector(".cr-spell-panel");
+  const scroll = panel ? panel.scrollTop : 0, filter = dd ? (dd.querySelector(".cr-spellfilter") || {}).value || "" : "";
+  const body = document.getElementById("cr-body"), bodyScroll = body ? body.scrollTop : 0;
+  renderCreator();
+  const again = dd && document.querySelector(`.cr-spelldd[data-dd="${CSS.escape(dd.dataset.dd)}"]`);
+  if (again) {
+    const f = again.querySelector(".cr-spellfilter");
+    if (f && filter) { f.value = filter; crFilterSpellPanel(f); }
+    const p2 = again.querySelector(".cr-spell-panel"); if (p2) p2.scrollTop = scroll;
+  }
+  if (body) body.scrollTop = bodyScroll;
+}
+function crFilterSpellPanel(input) {
+  const q = input.value.trim().toLowerCase(), panel = input.closest(".cr-spell-panel");
+  panel.querySelectorAll(".cr-spell-opt").forEach(l => { l.style.display = !q || l.dataset.name.includes(q) ? "" : "none"; });
+  panel.querySelectorAll(".cr-spell-grid").forEach(g => {
+    const any = [...g.children].some(l => l.style.display !== "none");
+    g.style.display = any ? "" : "none";
+    const head = g.previousElementSibling; if (head && head.classList.contains("cr-spell-lvl")) head.style.display = any ? "" : "none";
+  });
 }
 
 /* ---------- validation ---------- */
@@ -570,11 +628,12 @@ document.addEventListener("DOMContentLoaded", () => {
       CREATOR.asiScores[t.dataset.fkey] = picks;
       renderCreator(); return;
     }
-    if (t.classList.contains("cr-spell")) {
-      const store = crSpellStore(t.dataset.cls), list = store[t.dataset.list];
-      list[Number(t.dataset.slot)] = t.value;
+    if (t.classList.contains("cr-spellcheck")) {
+      const store = crSpellStore(t.dataset.cls), key = t.dataset.list;
+      const list = store[key].filter(Boolean);
+      store[key] = t.checked ? crUniqueCI([...list, t.value]) : list.filter(n => n !== t.value);
       store.prepared = store.prepared.filter(n => store.spells.includes(n));
-      renderCreator(); return;
+      crRenderKeepingSpellPanel(t); return;
     }
     if (t.classList.contains("cr-spellprep")) {
       const store = crSpellStore(t.dataset.cls);
@@ -584,8 +643,18 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   // Text boxes (the fallbacks when no library data is loaded, and the ASI feat box) never rebuild on
   // `change`, for the reason creator.js's header gives.
+  body.addEventListener("click", e => {
+    if (!CREATOR) return;
+    if (e.target.closest("#cr-spell-filter-btn")) { CR_SPELL_FILTERS_OPEN = !CR_SPELL_FILTERS_OPEN; crRenderKeepingScroll(); return; }
+    if (e.target.closest("#cr-spell-filter-area")) { if (crSpellFilters()) CR_SPELL_FILTERS.handleClick(e); return; }
+    const b = e.target.closest(".cr-spelldd-btn"); if (!b) return;
+    CR_SPELL_OPEN = CR_SPELL_OPEN === b.dataset.dd ? "" : b.dataset.dd;
+    crRenderKeepingSpellPanel(b);
+  });
   body.addEventListener("input", e => {
     const t = e.target; if (!CREATOR) return;
+    if (t.classList.contains("cr-spellfilter")) { crFilterSpellPanel(t); return; }
+    if (t.closest("#cr-spell-filter-area")) { if (crSpellFilters()) CR_SPELL_FILTERS.handleInput(e); return; }
     if (t.classList.contains("cr-pick") && t.tagName === "INPUT") { setPick(t, false); return; }
     if (t.classList.contains("cr-optf") && t.tagName === "INPUT") {
       const list = (CREATOR.optChoices[t.dataset.optkey] || []).slice(); list[Number(t.dataset.slot)] = t.value;
