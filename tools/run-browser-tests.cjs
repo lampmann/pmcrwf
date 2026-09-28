@@ -91,9 +91,10 @@ const server = http.createServer((req, res) => {
     });
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('charsheet-roster')).chars.find(c => c.id === ROSTER.activeId).state.fields['char-name']), 'Hidden save');
 
-    await page.waitForFunction(() => document.querySelector('#theme-select').options.length === 7);
-    assert.deepEqual(await page.locator('#theme-select option').allTextContents(),
-      ['Default', 'Solarized Light', 'Solarized Dark', 'Dracula Light', 'Dracula Dark', 'Grimoire Light', 'Grimoire Dark']);
+    // The theme list is whatever the manifest names, in its order.
+    const themeNames = Object.keys(JSON.parse(require('fs').readFileSync(path.join(root, 'css/themes/index.json'), 'utf8')));
+    await page.waitForFunction(n => document.querySelector('#theme-select').options.length === n, themeNames.length);
+    assert.deepEqual(await page.locator('#theme-select option').allTextContents(), themeNames);
     const palettes = [
       ['solarized-light.css', 'rgb(253, 246, 227)', 'light'],
       ['solarized-dark.css', 'rgb(0, 43, 54)', 'dark'],
@@ -101,6 +102,10 @@ const server = http.createServer((req, res) => {
       ['dracula-dark.css', 'rgb(40, 42, 54)', 'dark'],
       ['grimoire-light.css', 'rgb(238, 227, 204)', 'light'],
       ['grimoire-dark.css', 'rgb(22, 18, 14)', 'dark'],
+      ['gruvbox-dark.css', 'rgb(40, 40, 40)', 'dark'],
+      ['nord.css', 'rgb(46, 52, 64)', 'dark'],
+      ['catppuccin-latte.css', 'rgb(239, 241, 245)', 'light'],
+      ['rose-pine-dawn.css', 'rgb(250, 244, 237)', 'light'],
       ['', 'rgb(255, 255, 255)', 'light'],
     ];
     for (const [theme, background, scheme] of palettes) {
@@ -120,7 +125,7 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(() => document.querySelector('#theme-select').value === 'solarized-dark.css');
     await page.evaluate(() => localStorage.setItem('charsheet-theme', 'blood-moon-gothic.css'));
     await page.reload();
-    await page.waitForFunction(() => document.querySelector('#theme-select').options.length === 7);
+    await page.waitForFunction(n => document.querySelector('#theme-select').options.length === n, themeNames.length);
     assert.equal(await page.locator('#theme-select').inputValue(), '');
     assert.equal(await page.evaluate(() => localStorage.getItem('charsheet-theme')), null);
     await page.emulateMedia({ media: 'print' });
@@ -138,7 +143,7 @@ const server = http.createServer((req, res) => {
       }
     });
     await page.reload();
-    await page.waitForFunction(() => document.querySelector('#theme-select').options.length === 7);
+    await page.waitForFunction(n => document.querySelector('#theme-select').options.length === n, themeNames.length);
     await page.locator('#theme-select').selectOption('dracula-dark.css');
     await page.waitForFunction(() => getComputedStyle(document.body).backgroundColor === 'rgb(40, 42, 54)');
     await page.route('**/css/themes/index.json', route => route.fulfill({ status: 503, body: '' }));
