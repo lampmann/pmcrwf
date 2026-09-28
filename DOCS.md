@@ -508,7 +508,7 @@ Every button, filter chip, tab and clickable name answers the same two questions
 It's one block in [css/base.css](css/base.css) covering every kind of button at once rather than per-component rules, and the colours are theme variables (`--hover-bg`, `--active-bg`, `--focus-ring`) that each theme retunes — a dark theme needs a lighter hover than a light one.
 
 ## Theme
-The **Theme** dropdown offers **Default**, **Solarized Light**, **Solarized Dark**, **Dracula Light**, and **Dracula Dark**. The choice is saved across reloads. A previously selected, removed theme falls back to Default.
+The **Theme** dropdown offers **Default**, **Solarized Light**, **Solarized Dark**, **Dracula Light**, **Dracula Dark**, and pmcrwf's own **Grimoire Light** and **Grimoire Dark** (a spellbook: vellum cards on a darker desk with sepia ink and oxblood accents, or umber pages by lamplight, both in book serif with small-capital headings). The choice is saved across reloads. A previously selected, removed theme falls back to Default.
 
 The palettes follow [Solarized](https://ethanschoonover.com/solarized/) and [Dracula](https://draculatheme.com/spec); Dracula Light uses the Alucard palette. All themes are local CSS files and work offline.
 
