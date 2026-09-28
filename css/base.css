@@ -601,6 +601,7 @@ button.linkish {
 /* The body fills the module here rather than fitting its content, so the bars span the module. */
 .module[data-module="hp"] > .lay-body { width: auto; }
 .hp-bars { margin: .2rem 0 .4rem; }
+.hp-bars > .hint { margin-top: .45rem; }
 .hp-bar, .hp-temp-bar { position: relative; height: 1.55rem; box-sizing: border-box; border: 1px solid #000; margin-top: .2rem;
   display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .hp-bar { background: #2e3436; color: #fff; text-shadow: 0 1px 2px #000; }

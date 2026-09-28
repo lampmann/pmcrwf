@@ -17,7 +17,7 @@
      is where you go to read back through history rather than something that needs to be open. Only
      a fresh install: the Object.assign below replaces `collapsed` wholesale from a saved layout, so
      anyone who already has one keeps exactly what they left. */
-  const state = { free: false, activated: false, grid: 8, snapGrid: true, snapEdge: true, zTop: 0, map: {}, collapsed: { dice: true } };
+  const state = { free: false, activated: false, grid: 16, snapGrid: true, snapEdge: true, zTop: 0, map: {}, collapsed: { dice: true } };
   try { const d = JSON.parse(localStorage.getItem(LKEY)); if (d) Object.assign(state, d); } catch (e) {}
   if (!state.collapsed) state.collapsed = {};   // a layout saved before collapsing existed
   if (!state.stacks) state.stacks = {};         // { id: { members: [key, ...], active: key } }
@@ -523,7 +523,7 @@
     byId("lay-free").addEventListener("change", e => { state.free = e.target.checked; apply(); save(); updateHint(); });
     byId("lay-grid").addEventListener("change", e => { state.snapGrid = e.target.checked; updateGrid(); save(); });
     byId("lay-edge").addEventListener("change", e => { state.snapEdge = e.target.checked; save(); });
-    byId("lay-gridsize").addEventListener("change", e => { state.grid = Math.max(1, Math.min(64, Number(e.target.value) || 8)); e.target.value = state.grid; updateGrid(); save(); });
+    byId("lay-gridsize").addEventListener("change", e => { state.grid = Math.max(1, Math.min(64, Number(e.target.value) || 16)); e.target.value = state.grid; updateGrid(); save(); });
     byId("lay-reset").addEventListener("click", () => { if (confirm("Reset module layout back to the default flow? This also expands any collapsed modules.")) { state.map = {}; state.collapsed = {}; state.stacks = {}; state.free = false; state.activated = false; state.zTop = 0; clearSelection(); syncControls(); apply(); save(); updateHint(); } });
     byId("lay-save").addEventListener("click", exportLayout);
     byId("lay-preset").addEventListener("change", e => { const f = e.target.value; e.target.value = ""; if (f) applyPreset(f, e.target.selectedOptions[0] ? e.target.selectedOptions[0].text : f); });
