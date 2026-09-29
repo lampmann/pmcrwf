@@ -5,6 +5,8 @@
   --font-body: "Times New Roman", Times, serif;
   --font-mono: monospace;
   --bg: #fff;
+  --panel-bg: #fff;
+  --sidebar-bg: transparent;
   --fg: #000;
   --muted-fg: #444;
   --border: #000;
@@ -22,6 +24,10 @@
   --exclude: #b32318;
   --exclude-fg: #fff;
   --ok: #2e7d32;
+  --todo: #8a5a00;
+  --placeholder: #776497;
+  --diff-added: #26734d;
+  --diff-removed: #a43a38;
   --btn-bg: #fff;
   --btn-fg: #000;
   --btn-border: #999;
@@ -47,7 +53,7 @@ h2 { font-size: 1rem; margin: 0 0 .5rem; }
 .toolbar { margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 2px solid var(--border); }
 .toolbar button, .toolbar label { margin-right: .5rem; }
 .modules { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
-.module { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem .75rem; min-width: 240px; background: var(--bg); box-shadow: var(--module-shadow); }
+.module { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem .75rem; min-width: 240px; background: var(--panel-bg, var(--bg)); box-shadow: var(--module-shadow); }
 .module.wide { flex-basis: 100%; }
 /* A number that belongs in a module's title bar, pinned to its right edge (Passive Perception). In
    the h2 so it stays visible when the module is folded. */
@@ -65,11 +71,17 @@ th, td { text-align: left; padding: 1px 4px; }
 .module th, .module td { padding: 3px 6px; }
 .module fieldset { width: fit-content; max-width: 100%; min-width: 0; }
 .module .spell-table .nm { width: auto; }
+.toolbar { background: var(--sidebar-bg, transparent); }
 .character-fields, .class-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .75rem; }
 .character-fields { margin-bottom: .6rem; }
 .character-fields label { display: inline-flex; align-items: baseline; gap: .25rem; }
 #class-table { margin-bottom: .5rem; }
-input[type="number"], input[type="text"] { font: inherit; background: var(--bg); color: var(--fg); }
+input[type="number"], input[type="text"] { font: inherit; background: var(--panel-bg, var(--bg)); color: var(--fg); }
+input::placeholder, textarea::placeholder { color: var(--placeholder, var(--muted-fg)); opacity: 1; }
+a:visited { color: var(--visited-link, var(--link)); }
+.todo, .todo-text, [data-status="todo"] { color: var(--todo); }
+.data-diff-added { color: var(--diff-added); }
+.data-diff-removed { color: var(--diff-removed); }
 input.num { width: 3.6rem; text-align: right; }
 input.tiny { width: 2.6rem; text-align: right; }
 /* The override boxes are `type=number` and 2.6rem wide, and the browser's spinner arrows eat enough

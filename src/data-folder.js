@@ -393,8 +393,8 @@ function diffLine(d) {
   if (!d.total) return `<span class="hint">Copy up to date.</span>`;
   const bits = [];
   if (d.changed.length) bits.push(fmtCount(d.changed.length) + " updated");
-  if (d.added.length) bits.push(fmtCount(d.added.length) + " added");
-  if (d.removed.length) bits.push(fmtCount(d.removed.length) + " removed");
+  if (d.added.length) bits.push(`<span class="data-diff-added">${fmtCount(d.added.length)} added</span>`);
+  if (d.removed.length) bits.push(`<span class="data-diff-removed">${fmtCount(d.removed.length)} removed</span>`);
   return `<span class="hint">Since your last copy: ${bits.join(", ")}.</span>`;
 }
 
