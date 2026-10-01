@@ -554,7 +554,7 @@
       <label id="lay-preset-wrap" hidden>preset <select id="lay-preset"><option value="">-</option></select></label>
       <button id="lay-reset">reset</button>
       <button id="lay-save">save file</button>
-      <label>load <input type="file" id="lay-load" accept="application/json" style="width:8.5rem"></label>
+      <label>load <input type="file" id="lay-load" accept="application/json"></label>
       <span class="hint" id="lay-hint"></span>`;
     const c = container(); c.parentNode.insertBefore(bar, c);
     syncControls();
