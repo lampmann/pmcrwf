@@ -47,6 +47,4 @@ function renderSenses() {
   if (special) special.textContent = (typeof effTags === "function" ? effTags("sense-special") : []).map(t => t.label).join(" | ");
   const pp = $("passive-perc"), pp2 = $("passive-perc-2");
   if (pp2) pp2.textContent = pp ? pp.textContent : String(passiveOf("perception"));
-  if ($("passive-inv")) $("passive-inv").textContent = String(passiveOf("investigation"));
-  if ($("passive-ins")) $("passive-ins").textContent = String(passiveOf("insight"));
 }
