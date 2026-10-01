@@ -4,3 +4,12 @@ node_modules/
 
 # Screenshots from ad-hoc test scripts run in the project root; the icons live in icons/.
 /*.png
+
+# Local credentials and machine-generated files do not belong in release sources.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+Thumbs.db
