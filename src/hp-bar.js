@@ -76,8 +76,8 @@ function defChecklistHtml(def, open) {
   const opts = [...def.options, ...extras].sort((a, b) => a.localeCompare(b));
   const title = s => s.charAt(0).toUpperCase() + s.slice(1);
   return `<span class="dd-check${open ? " open" : ""}" data-field="${def.field}">
-    <button type="button" class="dd-check-btn">${def.label}${vals.length ? `: <b>${escapeHtml(vals.map(title).join(", "))}</b>` : ""} &#9662;</button>
-    <span class="dd-check-panel"${open ? "" : " hidden"}>${opts.map(o =>
+    <button type="button" class="dd-check-btn" aria-expanded="${open}" aria-controls="${def.field}-panel">${def.label}${vals.length ? `: <b>${escapeHtml(vals.map(title).join(", "))}</b>` : ""} &#9662;</button>
+    <span class="dd-check-panel" id="${def.field}-panel" popover="manual"${open ? "" : " hidden"}>${opts.map(o =>
       `<label><input type="checkbox" value="${escapeHtml(o)}"${lower.includes(o.toLowerCase()) ? " checked" : ""}> ${escapeHtml(title(o))}</label>`).join("")}</span>
   </span>`;
 }
@@ -85,6 +85,24 @@ let DEF_OPEN = null;   // the field whose panel is open, so a redraw keeps it op
 function renderDefenceChecklists() {
   const el = document.getElementById("def-manual"); if (!el) return;
   el.innerHTML = DEF_LISTS.map(d => defChecklistHtml(d, DEF_OPEN === d.field)).join("");
+  const panel = el.querySelector(".dd-check.open .dd-check-panel");
+  if (panel) { panel.showPopover(); positionDefenceChecklist(); }
+}
+
+/* A top-layer popover escapes the module's scroll clipping while keeping its event handlers. */
+function positionDefenceChecklist() {
+  const wrap = document.querySelector("#def-manual .dd-check.open"); if (!wrap) return;
+  const button = wrap.querySelector(".dd-check-btn"), panel = wrap.querySelector(".dd-check-panel");
+  const r = button.getBoundingClientRect(), body = wrap.closest(".lay-body");
+  const visible = body ? body.getBoundingClientRect() : { top: 0, bottom: innerHeight };
+  if (!r.height || r.bottom <= Math.max(0, visible.top) || r.top >= Math.min(innerHeight, visible.bottom)) {
+    DEF_OPEN = null; renderDefenceChecklists(); return;
+  }
+  const below = Math.max(0, innerHeight - r.bottom - 8), above = Math.max(0, r.top - 8);
+  const flip = below < Math.min(panel.scrollHeight, 320) && above > below;
+  panel.style.maxHeight = Math.min(320, flip ? above : below) + "px";
+  panel.style.left = Math.max(8, Math.min(r.left, innerWidth - panel.offsetWidth - 8)) + "px";
+  panel.style.top = (flip ? r.top - panel.offsetHeight : r.bottom) + "px";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -113,4 +131,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", e => {
     if (DEF_OPEN && !e.composedPath().includes(box)) { DEF_OPEN = null; renderDefenceChecklists(); }
   });
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape" || !DEF_OPEN) return;
+    const field = DEF_OPEN; DEF_OPEN = null; renderDefenceChecklists();
+    box.querySelector(`[data-field="${field}"] .dd-check-btn`).focus();
+  });
+  window.addEventListener("resize", positionDefenceChecklist);
+  window.addEventListener("scroll", positionDefenceChecklist, true);
 });

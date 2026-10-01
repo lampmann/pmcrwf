@@ -5,7 +5,7 @@
   --font-body: "Times New Roman", Times, serif;
   --font-mono: monospace;
   --bg: #fff;
-  --panel-bg: #fff;
+  --panel-bg: var(--bg);
   --sidebar-bg: transparent;
   --fg: #000;
   --muted-fg: #444;
@@ -25,7 +25,7 @@
   --exclude-fg: #fff;
   --ok: #2e7d32;
   --todo: #8a5a00;
-  --placeholder: #776497;
+  --placeholder: var(--muted-fg);
   --diff-added: #26734d;
   --diff-removed: #a43a38;
   --btn-bg: #fff;
@@ -640,7 +640,7 @@ button.linkish {
 .def-manual { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; font-size: .85rem; }
 .dd-check { position: relative; }
 .dd-check-btn { font: inherit; font-size: .85rem; }
-.dd-check-panel { position: absolute; z-index: 20; left: 0; top: 100%; display: grid; grid-template-columns: repeat(2, max-content); column-gap: .8rem;
+.dd-check-panel { position: fixed; inset: auto; margin: 0; width: max-content; max-width: calc(100vw - 16px); overflow: auto; display: grid; grid-template-columns: repeat(2, max-content); column-gap: .8rem;
   padding: .3rem .5rem; background: var(--menu-bg); color: var(--fg); border: 1px solid var(--border); box-shadow: 2px 2px 4px var(--menu-shadow); }
 .dd-check-panel[hidden] { display: none; }
 .dd-check-panel label { white-space: nowrap; display: flex; align-items: center; gap: .3rem; justify-content: flex-start; }

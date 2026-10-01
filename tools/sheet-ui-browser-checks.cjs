@@ -62,6 +62,28 @@ module.exports = async function checkSheetUi(page) {
   await page.locator('h1, h2').first().click();
   assert.equal(await page.locator('.dd-check[data-field="def-resist"] input[value="fire"]').isVisible(), false);
 
+  // Defense menus escape a small module's scroll area and keep every option reachable.
+  await page.evaluate(() => {
+    window.defLayoutBefore = JSON.parse(JSON.stringify(__layout.state));
+    __layout.state.free = true; __layout.apply(); __layout.state.free = false;
+    __layout.state.map.defenses.w = 220; __layout.state.map.defenses.h = 110; __layout.apply();
+  });
+  for (const [field, last] of [['def-resist', 'thunder'], ['def-immune', 'unconscious'], ['def-vuln', 'thunder']]) {
+    await page.locator(`.dd-check[data-field="${field}"] .dd-check-btn`).click();
+    const panel = page.locator(`.dd-check[data-field="${field}"] .dd-check-panel`);
+    assert.equal(await panel.evaluate(el => el.matches(':popover-open')), true);
+    const fits = await panel.evaluate(el => {
+      const r = el.getBoundingClientRect(), b = el.closest('.lay-body').getBoundingClientRect();
+      return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && r.height > b.height;
+    });
+    assert.equal(fits, true, 'menu fits the viewport and extends beyond the module body');
+    await panel.locator(`input[value="${last}"]`).check();
+    assert((await page.locator('#' + field).inputValue()).includes(last));
+    await page.keyboard.press('Escape');
+    assert.equal(await panel.isVisible(), false);
+  }
+  await page.evaluate(() => { Object.assign(__layout.state, window.defLayoutBefore); __layout.apply(); });
+
   // Counter names sit above their controls.
   const ctr = await page.evaluate(() => { renderBoons(); const c = document.querySelector('.boon-ctr'); if (!c) return null;
     const label = c.querySelector('.boon-label').getBoundingClientRect(), box = c.querySelector('.boon-count').getBoundingClientRect(); return label.bottom <= box.top + 1; });
