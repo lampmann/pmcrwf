@@ -564,7 +564,7 @@
     byId("lay-gridsize").addEventListener("change", e => { state.grid = Math.max(1, Math.min(64, Number(e.target.value) || 16)); e.target.value = state.grid; updateGrid(); save(); });
     byId("lay-reset").addEventListener("click", () => { if (confirm("Reset module layout back to the default flow? This also expands any collapsed modules.")) { state.map = {}; state.collapsed = {}; state.stacks = {}; state.free = false; state.activated = false; state.zTop = 0; clearSelection(); syncControls(); apply(); save(); updateHint(); } });
     byId("lay-save").addEventListener("click", exportLayout);
-    byId("lay-preset").addEventListener("change", e => { const f = e.target.value; e.target.value = ""; if (f) applyPreset(f, e.target.selectedOptions[0] ? e.target.selectedOptions[0].text : f); });
+    byId("lay-preset").addEventListener("change", e => { const f = e.target.value, name = e.target.selectedOptions[0] ? e.target.selectedOptions[0].text : f; e.target.value = ""; if (f) applyPreset(f, name); });
     loadPresetList();
     byId("lay-load").addEventListener("change", e => { if (e.target.files[0]) importLayout(e.target.files[0]); e.target.value = ""; });
     updateHint();
