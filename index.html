@@ -518,6 +518,16 @@
 <div id="creator-modal" class="modal-overlay" style="display:none">
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="cr-title">
     <div class="cr-header"><div class="modal-title" id="cr-title">New character</div><button type="button" id="cr-close" aria-label="Close character creation">×</button></div>
+    <details class="creator-data-help">
+      <summary>How to download the 5etools data folder</summary>
+      <ol>
+        <li>Open the <a href="https://github.com/5etools-mirror-3/5etools-src" target="_blank" rel="noopener noreferrer">5etools source mirror</a>.</li>
+        <li>Choose the green <b>Code</b> button, then <b>Download ZIP</b>.</li>
+        <li>Extract the ZIP and find the <b>data</b> folder inside it (containing <b>spells</b> and <b>bestiary</b>).</li>
+        <li>Use the button below to select that <b>data</b> folder. pmcrwf remembers it in this browser.</li>
+      </ol>
+      <button type="button" id="cr-data-pick">Choose data folder</button>
+    </details>
     <div id="cr-stepper"></div>
     <div id="cr-body"></div>
     <div class="hint cr-blocker" id="cr-blocker"></div>

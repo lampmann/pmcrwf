@@ -15,14 +15,14 @@ const CLASS_SCHEMA = 4;   // 4: keep saves, starting/multiclass proficiencies an
 //                mcReq, startEq, saves, startProf, mcProf, optProg,
 //                subs:{ shortName:{name,shortName,source,feats:[...],optProg} } } }
 let CLASS_LIB = {};
-const RACE_SCHEMA = 8;   // 8: senses; 7: keep language, weapon, tool and feat grants; earlier versions added ability, size, speed and named base subraces
+const RACE_SCHEMA = 9;   // 9: retain skill and armor proficiencies; 8: senses; 7: keep language, weapon, tool and feat grants; earlier versions added ability, size, speed and named base subraces
 // { raceName: { name, source, size:["S","M"], speed:30|{walk,fly,...}, entries:[{name,text,source}],
 //               subs:{ subName:{name,source,entries:[{name,text,source,overwrite}]} } } }
 let RACE_LIB = {};
-const FEAT_SCHEMA = 3;   // 3: keep the ability increases; 2: prefer 2014 records
+const FEAT_SCHEMA = 4;   // 4: retain spell grants; 3: keep the ability increases; 2: prefer 2014 records
 // { featName: { name, source, text, ability } } - ability is 5e.tools' own list ([{ cha: 1 }], [{ choose: { from, amount } }])
 let FEAT_LIB = {};
-const BACKGROUND_SCHEMA = 2;   // 2: prefer 2014 records
+const BACKGROUND_SCHEMA = 3;   // 3: retain feats and spell grants; 2: prefer 2014 records
 /* Backgrounds are imported like everything else — 5e.tools' own data/backgrounds.json, which most
    people won't have unless they copied the whole data/ folder. Everything that reads BACKGROUND_LIB
    degrades to free text when it's empty, so the sheet never depends on the file being there.
@@ -197,6 +197,8 @@ function raceSenses(r) {
 }
 function raceGrants(r) {
   return {
+    skills: r.skillProficiencies || [],
+    armor: r.armorProficiencies || [],
     languages: r.languageProficiencies || [],
     weapons: r.weaponProficiencies || [],
     tools: r.toolProficiencies || [],
@@ -270,7 +272,7 @@ function syncRaceSpeed() {
    so a filter object reached escapeHtml and threw), and collectFilters picks them up separately so
    the grant is still described rather than silently dropped. */
 function isSpellFilterObj(v) {
-  return !!v && typeof v === "object" && !Array.isArray(v) && (typeof v.all === "string" || typeof v.choose === "string");
+  return !!v && typeof v === "object" && !Array.isArray(v) && (typeof v.all === "string" || typeof v.choose === "string" || (v.choose && Array.isArray(v.choose.from)));
 }
 function collectNames(v) {
   if (typeof v === "string") return [v];
@@ -279,7 +281,7 @@ function collectNames(v) {
   return [];
 }
 function collectFilters(v) {
-  if (isSpellFilterObj(v)) return [{ spec: v.all || v.choose, count: Number(v.count) || 0, choose: typeof v.choose === "string" }];
+  if (isSpellFilterObj(v)) return [{ spec: v.all || (typeof v.choose === "string" ? v.choose : undefined), from: v.choose && v.choose.from, count: Number(v.count || (v.choose && v.choose.count)) || (v.choose ? 1 : 0), choose: !!v.choose }];
   if (Array.isArray(v)) return v.flatMap(collectFilters);
   if (v && typeof v === "object") return Object.values(v).flatMap(collectFilters);
   return [];
@@ -312,15 +314,16 @@ function flattenGrantedSpells(additionalSpells) {
   const expandedNames = new Set(); // name -> merely added to the spell list; still needs normal prep
   const filters = new Map(); // spec -> { spec, count, choose, expanded, minLevel } (not literal spells)
   const addFilters = (val, expanded, minLevel) => collectFilters(val).forEach(f => {
-    const prev = filters.get(f.spec);
-    if (!prev || minLevel < prev.minLevel) filters.set(f.spec, { ...f, expanded, minLevel });
+    const key = f.spec || JSON.stringify(f.from);
+    const prev = filters.get(key);
+    if (!prev || minLevel < prev.minLevel) filters.set(key, { ...f, expanded, minLevel });
   });
   (additionalSpells || []).forEach(block => {
     Object.entries(block).forEach(([key, val]) => {
       // Skip the block's scalar metadata ("ability", "name": "Magical Secrets", "resourceName": "Ki").
       // Only the keyed spell groups (prepared/known/innate/expanded) are objects; Object.entries on a
       // string would otherwise spread it into single characters and list them as "spells".
-      if (!val || typeof val !== "object") return;
+      if (!["prepared", "known", "innate", "expanded"].includes(key) || !val || typeof val !== "object") return;
       if (key === "expanded") {
         collectNames(val).forEach(n => expandedNames.add(n));
         addFilters(val, true, 0);
@@ -341,8 +344,8 @@ function flattenGrantedSpells(additionalSpells) {
 function grantedSpellsHtml(spells, header, cls) {
   if (!spells.length) return "";
   const links = spells.map(g => {
-    if (g.spec !== undefined) {   // a filter, not a spell: describe it, don't offer click-to-add
-      const label = describeSpellFilter(g.spec) + (g.choose && g.count ? ` (choose ${g.count})` : "");
+    if (g.spec !== undefined || g.from) {   // a filter, not a spell: describe it, don't offer click-to-add
+      const label = (g.from ? g.from.map(grantSpellName).join(", ") : describeSpellFilter(g.spec)) + (g.choose && g.count ? ` (choose ${g.count})` : "");
       return `<i>${escapeHtml(label)}${g.expanded ? "*" : ""}</i>`;
     }
     const cls2 = "feat-link gsp-link" + (g.expanded ? " gsp-expanded" : "");
@@ -352,7 +355,7 @@ function grantedSpellsHtml(spells, header, cls) {
   return `<div class="hint" style="margin:.15rem 0 .3rem 1.2rem">${escapeHtml(header)} spells${note}: ${links}</div>`;
 }
 function parseFeatFile(j) {
-  (j.feat || []).forEach(f => { if (!preferRulesRecord(FEAT_LIB[f.name], f)) return; FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)), ability: Array.isArray(f.ability) ? f.ability : [] }; });
+  (j.feat || []).forEach(f => { if (!preferRulesRecord(FEAT_LIB[f.name], f)) return; FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)), ability: Array.isArray(f.ability) ? f.ability : [], grantedSpells: f.additionalSpells || [] }; });
 }
 /* Backgrounds. 5e.tools stores the mechanical parts in the same "proficiencies" shapes the classes
    use — a flat list, or a { choose: { from, count } } block. Both are kept as-is and interpreted at
@@ -367,6 +370,7 @@ function parseBackgroundFile(j) {
     const feature = (b.entries || []).find(e => e && e.name && /^Feature:/i.test(e.name));
     BACKGROUND_LIB[b.name] = {
       name: b.name, source: b.source,
+      feats: b.feats || [], grantedSpells: b.additionalSpells || [],
       skills: b.skillProficiencies || [],
       tools: b.toolProficiencies || [],
       languages: b.languageProficiencies || [],
@@ -592,9 +596,10 @@ function activeFeatures() {
     race: ($("char-race") && $("char-race").value || "").trim(),
     subrace: ($("char-subrace") && $("char-subrace").value || "").trim(),
     classes: getClasses(), featChoices: FEAT_CHOICES, optChoices: OPTFEATURE_CHOICES,
+    background: BACKGROUND_GRANTS ? (($("char-bg") || {}).value || "") : "",
   });
 }
-function featuresFor({ race = "", subrace = "", classes = [], featChoices = {}, optChoices = {} } = {}) {
+function featuresFor({ race = "", subrace = "", background = "", classes = [], featChoices = {}, optChoices = {} } = {}) {
   const out = [];
   const raceName = String(race || "").trim();
   const FEAT_CHOICES = featChoices;   // shadows the global so the body below reads the caller's choices
@@ -680,6 +685,14 @@ function featuresFor({ race = "", subrace = "", classes = [], featChoices = {}, 
         });
       });
     });
+  });
+  const bg = typeof ciFindBackground === "function" ? ciFindBackground(background) : null;
+  backgroundFeatSlots(bg).forEach(slot => {
+    const chosen = slot.fixed || featChoices[slot.fkey] || "";
+    const feat = chosen && ciFindFeat(chosen);
+    if (feat) out.push({ fkey: slot.fkey, effKey: effKeyFor({ kind: "feat" }, feat.name),
+      name: feat.name, source: feat.source, text: feat.text, level: 1, isBackgroundFeat: true,
+      origin: { kind: "background", backgroundName: bg.name } });
   });
   return out;
 }
@@ -830,10 +843,9 @@ function renderRaceSection(all) {
       ? featPickerHtml(e.fkey, e.featChosen, "feats are off in this campaign's House Rules.") : "";
     return `<div><a class="feat-link" data-fkey="${e.fkey}"><b>${escapeHtml(label)}</b></a> <span class="hint">${e.source}</span>${picker}${tracker}${renderEffectControls(e)}</div>`;
   }).join("") || "<div class='hint'>&nbsp;&nbsp;no traits</div>";
-  const grantedSrc = (sub && sub.grantedSpells && sub.grantedSpells.length) ? sub.grantedSpells
-    : (rec.grantedSpells && rec.grantedSpells.length) ? rec.grantedSpells : null;
-  const grantedHeader = sub && sub.grantedSpells && sub.grantedSpells.length ? sub.name : rec.name;
-  const grantedHtml = grantedSrc ? grantedSpellsHtml(flattenGrantedSpells(grantedSrc).filter(g => g.minLevel <= totalLevel()), grantedHeader, "") : "";
+  const grantedHtml = [{ key: "race|" + rec.name, name: rec.name, spells: rec.grantedSpells || [] },
+    ...(sub ? [{ key: "subrace|" + sub.name, name: sub.name, spells: sub.grantedSpells || [] }] : [])]
+    .map(source => grantedSpellsHtml(resolvedSpellGrants(source, totalLevel(), GRANT_SPELL_CHOICES), source.name, "") + spellGrantChoicesHtml(source, totalLevel())).join("");
   return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)}</b>${subNote}</div>${items}${grantedHtml}`;
 }
 function ciFindRace(name) { return ciFind(RACE_LIB, name); }
@@ -888,7 +900,14 @@ function renderClassFeatures() {
     }).join("");
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(rec.name)} ${lvl}</b>${subNote}</div>${items}${optHtml}${grantedHtml}`;
   }).join("");
-  el.innerHTML = raceHtml + classHtml;
+  const bg = BACKGROUND_GRANTS && typeof ciFindBackground === "function" ? ciFindBackground((($("char-bg") || {}).value || "")) : null;
+  const bgHtml = bg ? `<div><b>${escapeHtml(bg.name)}</b></div>` + backgroundFeatSlots(bg).map(slot => {
+    const name = slot.fixed || FEAT_CHOICES[slot.fkey] || "";
+    const feature = all.find(f => f.fkey === slot.fkey);
+    if (feature) FEATURE_TEXT_BY_KEY[feature.fkey] = feature.text;
+    return `<div>${slot.fixed ? `<a class="feat-link" data-fkey="${slot.fkey}">${escapeHtml(name)}</a>` : featPickerHtml(slot.fkey, name, "feats are off in this campaign's House Rules.")}${feature ? renderEffectControls(feature) : ""}</div>`;
+  }).join("") + spellGrantChoicesHtml({ key: "background|" + bg.name, name: bg.name, spells: bg.grantedSpells || [] }, totalLevel()) : "";
+  el.innerHTML = raceHtml + classHtml + bgHtml;
   el.querySelectorAll(".asi-input").forEach(inp => {
     // A banned feat still appears, coloured red, rather than vanishing from the list — see
     // house-rules.js for why marking beats removing.
@@ -1028,4 +1047,66 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.closest && (e.target.closest("#class-rows") || e.target.id === "char-race" || e.target.id === "char-subrace")) renderClassFeatures();
   });
   renderClassLibrary();
+});
+
+/* Choices not representable by ordinary proficiency checkboxes follow the character. */
+let ORIGIN_SWAPS = [];
+let GRANT_SPELL_CHOICES = {};
+let BACKGROUND_GRANTS = true;
+
+function backgroundFeatSlots(rec) {
+  const slots = [];
+  (rec && rec.feats || []).forEach(block => Object.entries(block).forEach(([name, count]) => {
+    if (name === "any" || name.startsWith("anyFrom")) {
+      for (let i = 0; i < (Number(count) || 1); i++) slots.push({ fixed: "", fkey: "background|" + rec.name + "|feat|" + slots.length });
+    } else if (count) slots.push({ fixed: name.split("|")[0], fkey: "background|" + rec.name + "|feat|" + slots.length });
+  }));
+  return slots;
+}
+function spellGrantSources(race, subrace, background, feats) {
+  const out = [], add = (kind, rec) => { if (rec && (rec.grantedSpells || []).length) out.push({ key: kind + "|" + rec.name, name: rec.name, spells: rec.grantedSpells }); };
+  const rec = ciFindRace(race), sub = rec && ciFindRaceSub(rec, subrace);
+  add("race", rec); add("subrace", sub);
+  const bg = typeof ciFindBackground === "function" ? ciFindBackground(background) : null;
+  add("background", bg);
+  const backgroundFeats = backgroundFeatSlots(bg).map(slot => slot.fixed || (feats || {})[slot.fkey]).filter(Boolean);
+  [...new Set([...Object.values(feats || {}), ...backgroundFeats])].forEach(name => add("feat", ciFindFeat(name)));
+  return out;
+}
+function grantedSpellPool(grant) {
+  const library = typeof SPELL_LIB !== "undefined" ? SPELL_LIB : [];
+  return library.filter(sp => grant.from
+    ? grant.from.some(name => grantSpellName(name).toLowerCase() === sp.name.toLowerCase())
+    : typeof spellMatchesFilterSpec === "function" && spellMatchesFilterSpec(sp, grant.spec));
+}
+function resolvedSpellGrants(source, level, choices) {
+  return flattenGrantedSpells(source.spells).flatMap((grant, i) => {
+    if (grant.minLevel > level) return [];
+    if (grant.spec === undefined && !grant.from) return [grant];
+    const pool = grantedSpellPool(grant);
+    const names = grant.choose ? (choices[source.key + "|" + i] || []) : pool.map(sp => sp.name);
+    return names.filter(name => pool.some(sp => sp.name === name)).slice(0, grant.choose ? grant.count : Infinity)
+      .map(name => ({ ...grant, name, spec: undefined, from: undefined }));
+  });
+}
+
+function spellGrantChoicesHtml(source, level) {
+  return flattenGrantedSpells(source.spells).map((grant, i) => {
+    if (!grant.choose || grant.expanded || grant.minLevel > level) return "";
+    const key = source.key + "|" + i, picks = GRANT_SPELL_CHOICES[key] || [];
+    const pool = grantedSpellPool(grant);
+    return `<div>${escapeHtml(source.name)} spell choice: ` + Array.from({ length: grant.count }, (_, slot) => {
+      const selected = picks[slot] || "";
+      return `<select class="grant-spell-choice" data-grantkey="${escapeHtml(key)}" data-slot="${slot}"><option value="">- choose -</option>` +
+        pool.filter(sp => sp.name === selected || !picks.includes(sp.name)).map(sp => `<option value="${escapeHtml(sp.name)}"${sp.name === selected ? " selected" : ""}>${escapeHtml(sp.name)}</option>`).join("") + `</select>`;
+    }).join(" ") + `</div>`;
+  }).join("");
+}
+document.addEventListener("change", event => {
+  const select = event.target.closest(".grant-spell-choice");
+  if (!select) return;
+  const key = select.dataset.grantkey, slot = Number(select.dataset.slot);
+  const picks = (GRANT_SPELL_CHOICES[key] || []).slice(); picks[slot] = select.value;
+  GRANT_SPELL_CHOICES[key] = picks;
+  recompute(); scheduleSave();
 });

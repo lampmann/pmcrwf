@@ -277,7 +277,20 @@ document.addEventListener("DOMContentLoaded", () => {
   assertEqual("Resilient grants CON save proficiency (PB +3 at total level 5)", $("savebonus-con").textContent, "+3");
 
 
-  assertEqual("Resilient's +1 CON shows in the score-eff span", $("score-eff-con").textContent, "= 11");
+  assertEqual("Resilient's +1 CON shows in the score-eff span", $("score-eff-con").textContent, "11");
+  {
+    const base = $("score-con").value, misc = $("scoremisc-con").value, asi = ASI_CHOICES;
+    $("score-con").value = "13"; $("scoremisc-con").value = "+2";
+    ASI_CHOICES = { "test ASI": ["con", "con"] };
+    recompute();
+    assertEqual("the displayed score includes every boost and flags Misc", $("score-eff-con").textContent, "18*");
+    assertEqual("the tooltip uses the requested line-by-line format", $("score-eff-con").title,
+      "13 Base\n+1 Resilient\n+2 Ability Score Improvement\n+2 Misc");
+    $("scoremisc-con").value = "+2-2"; recompute();
+    assertEqual("offsetting Misc terms still flag the adjusted score", $("score-eff-con").textContent, "16*");
+    $("score-con").value = base; $("scoremisc-con").value = misc; ASI_CHOICES = asi;
+    recompute();
+  }
 
   /* ----- ability Misc: signed terms, each optionally labelled with what it's from -----
      The base score is what the creator and level-up set and is no longer typed over; everything
@@ -300,16 +313,16 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("Misc folds into the score", abilityScore("str"), 18);
     assertEqual("...and therefore into the modifier", abilityMod("str"), 4);
     recompute();
-    assertEqual("...and is shown as a total", $("score-eff-str").textContent, "= 18");
-    assert("...with every term in the tooltip", /15 base \+4 -1 = 18/.test($("score-eff-str").title));
+    assertEqual("...and is shown as a total", $("score-eff-str").textContent, "18*");
+    assert("...with every term in the tooltip", $("score-eff-str").title === "15 Base\n+3 Misc");
     $("scoremisc-str").value = "+2 belt, -1 curse";
     recompute();
-    assert("...naming what each one is from, when you say", /\+2 \(belt\) -1 \(curse\)/.test($("score-eff-str").title));
+    assert("...naming what each one is from, when you say", $("score-eff-str").title === "15 Base\n+1 Misc");
     $("scoremisc-str").value = "";
     recompute();
     assertEqual("an empty Misc leaves the score alone", abilityScore("str"), 15);
-    assert("...and hides the total span", $("score-eff-str").style.display === "none");
-    assert("the base score can't be typed over", $("score-str").readOnly);
+    assertEqual("...and displays the base without an asterisk", $("score-eff-str").textContent, "15");
+    assert("the underlying base is hidden", $("score-str").type === "hidden");
     assert("...while Misc can", !$("scoremisc-str").readOnly);
     $("score-str").value = savedStr; $("scoremisc-str").value = savedMisc;
     recompute();

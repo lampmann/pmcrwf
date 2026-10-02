@@ -761,3 +761,7 @@ button.linkish {
 .speed-table input.speed-custom-name, .speed-table #speed-add-name { width: 5.5rem; }
 .speed-table .speed-add { opacity: .8; }
 .speed-table .speed-add:focus-within { opacity: 1; }
+
+.ability-score { display: inline-block; min-width: 2.5rem; text-align: right; cursor: help; }
+.creator-data-help { margin: .5rem 0; font-size: .9rem; }
+.creator-data-help ol { padding-left: 1.5rem; }

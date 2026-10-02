@@ -43,10 +43,15 @@ const server = http.createServer((req, res) => {
     page.on('pageerror', error => errors.push(error.message));
     page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.accept(); });
     await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
-    await page.locator('#score-str').waitFor();
+    await page.locator('#creator-modal').waitFor({ state: 'visible' });
+    assert.equal(await page.locator('.creator-data-help a').getAttribute('href'), 'https://github.com/5etools-mirror-3/5etools-src');
+    await page.locator('#cr-cancel').click();
+    assert.equal(await page.locator('#score-str').getAttribute('type'), 'hidden');
+    assert.equal(await page.locator('#score-eff-str').innerText(), '10');
     await page.locator('#char-name').fill('Immediate reload');
     await page.reload();
     assert.equal(await page.locator('#char-name').inputValue(), 'Immediate reload');
+    assert.equal(await page.locator('#creator-modal').isVisible(), false);
     const rejection = page.waitForEvent('dialog');
     await page.locator('#file-import').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{"fields":{"char-name":"Wrong"},"classes":{}}') });
     await rejection;
@@ -177,6 +182,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.locator('#roll-anim-toggle').innerText(), 'Tumble: Off');
     await require("./creator-browser-checks.cjs")(page);
     await require("./sheet-ui-browser-checks.cjs")(page);
+    await require("./origin-browser-checks.cjs")(page);
     if (process.env.PMCRWF_TEST_DATA) await require("./data-folder-browser-checks.cjs")(page, process.env.PMCRWF_TEST_DATA);
     assert.deepEqual(errors, []);
     console.log('Full app: import/rejection, reload persistence, export download, reset, delayed import switching, and hidden-tab save passed; no browser errors.');

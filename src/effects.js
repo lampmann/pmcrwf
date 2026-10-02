@@ -266,6 +266,8 @@ function buildEffectsSnapshot() {
       if (effect.target === "spell-grant") return;   // rendered directly by renderEffectControls, not numeric
       resolveTargetsAll(feature, effect.target).forEach(target => {
       if (!target) return;
+      if (effect.op === "prof" && !feature.isRaceFeat && feature.origin && ["race", "subrace"].includes(feature.origin.kind) &&
+          typeof ORIGIN_SWAPS !== "undefined" && ORIGIN_SWAPS.some(s => s.kind === "skills" && (!s.race || s.race.toLowerCase() === String(feature.origin.raceName || "").toLowerCase()) && target === "skill-" + String(s.from).toLowerCase().replace(/[^a-z]/g, ""))) return;
       if (isReservedTarget(target)) {
         snap.unapplied.push({ source: feature.name, fkey: feature.fkey, target, reason: `not automated yet (no module reads "${target}")` });
         return;

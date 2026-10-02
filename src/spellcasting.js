@@ -105,13 +105,11 @@ function derivedSpellGroups() {
   };
   const free = (list, lvl) => flattenGrantedSpells(list).filter(g => g.spec === undefined && !g.expanded && g.minLevel <= lvl);
   const blockAbility = list => { const b = (list || []).find(x => x && typeof x.ability === "string"); return b ? b.ability : ""; };
-  if (typeof ciFindRace === "function") {
-    const rec = ciFindRace((($("char-race") || {}).value || "").trim());
-    if (rec) {
-      const sub = ciFindRaceSub(rec, (($("char-subrace") || {}).value || "").trim());
-      const src = sub && (sub.grantedSpells || []).length ? sub : (rec.grantedSpells || []).length ? rec : null;
-      if (src) free(src.grantedSpells, totalLevel()).forEach(g => add(feat, src.name, g.name, { mode: "use", ability: blockAbility(src.grantedSpells) }));
-    }
+  if (typeof spellGrantSources === "function") {
+    const sources = spellGrantSources((($("char-race") || {}).value || "").trim(),
+      (($("char-subrace") || {}).value || "").trim(), BACKGROUND_GRANTS ? (($("char-bg") || {}).value || "").trim() : "", FEAT_CHOICES);
+    sources.forEach(source => resolvedSpellGrants(source, totalLevel(), GRANT_SPELL_CHOICES).filter(g => !g.expanded)
+      .forEach(g => add(feat, source.name, g.name, { mode: "use", ability: blockAbility(source.spells) })));
   }
   if (typeof ciFindClass === "function") getClasses().forEach(c => {
     const rec = ciFindClass(c.name), sub = rec && typeof findSubByName === "function" ? findSubByName(rec, c.sub) : null;

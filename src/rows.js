@@ -5,8 +5,8 @@ function buildAbilities() {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${a.name}</td>
       <td class="derived" id="mod-${a.key}">+0</td>
-      <td><input type="text" inputmode="numeric" class="num" data-persist readonly id="score-${a.key}" value="10"
-            aria-label="${a.name} base score"> <span class="derived eff-note" id="score-eff-${a.key}" style="display:none"></span></td>
+      <td><input type="hidden" data-persist readonly id="score-${a.key}" value="10">
+        <span class="derived ability-score" id="score-eff-${a.key}" tabindex="0" aria-label="${a.name} score">10</span></td>
       <td><input type="text" data-persist class="score-misc" id="scoremisc-${a.key}"
             placeholder="+2 belt, -1 curse"
             aria-label="${a.name} modifiers"></td>`;

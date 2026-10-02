@@ -224,3 +224,6 @@ function init() {
   recompute();
 }
 document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof NEEDS_CHARACTER_CREATOR !== "undefined" && NEEDS_CHARACTER_CREATOR && typeof openCreator === "function") openCreator();
+});

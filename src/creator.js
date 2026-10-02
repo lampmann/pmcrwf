@@ -63,6 +63,7 @@ function blankCreator() {
     racialChoice: {},                                    // "<blockIndex>:<slot>" -> ability, for a race's `choose` increases
     raceFeats: {},                                       // trait name -> feat, for races that grant one (Variant Human, Custom Lineage)
     customOrigin: false,                                 // TCE p8: reassign the race's fixed increases freely
+    originSwaps: {}, backgroundFeats: {},
     originChoice: {},                                    // "fixed:<n>" -> ability, when customOrigin is on
     srcOff: { race: {}, class: {}, background: {} },     // books switched off in the pickers
     classes: [{ name: "", sub: "", lvl: 1 }],            // multiclass from the start, same shape as the Classes table
@@ -301,7 +302,7 @@ function racialAsiHtml() {
   const hasFixed = Object.keys(bonus.fixed).length > 0;
   const fixedTxt = Object.entries(bonus.fixed).map(([k, v]) => `${k.toUpperCase()} ${sign(v)}`).join(", ");
 
-  const customToggle = hasFixed ? `<label class="hint" style="margin-left:.6rem">
+  const customToggle = (hasFixed || slots.length) ? `<label class="hint" style="margin-left:.6rem">
       <input type="checkbox" id="cr-custom-origin"${CREATOR.customOrigin ? " checked" : ""}> customise (TCE p8)</label>` : "";
 
   if (!hasFixed && !slots.length) {
@@ -719,6 +720,7 @@ function backgroundSummaryHtml(rec) {
   const lg = profListText(rec.languages); if (lg) parts.push(`<b>Languages</b> ${escapeHtml(lg)}`);
   if (rec.feature) parts.push(`<b>Feature</b> ${escapeHtml(rec.feature.name)}`);
   return `<div class="hint" style="margin-top:.4rem">${parts.join(" | ") || "No background details loaded."}
+    ${typeof crBackgroundFeatsHtml === "function" ? crBackgroundFeatsHtml(rec) : ""}
     ${bgChooseHtml(rec, "skills")}${bgChooseHtml(rec, "tools")}${bgChooseHtml(rec, "languages")}
     ${rec.equipmentText ? `<div><b>Equipment</b> ${escapeHtml(rec.equipmentText)}</div>` : ""}
     </div>`;
@@ -1123,6 +1125,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const t = e.target.closest("[data-crstep]"); if (t && CREATOR) goToCreatorStep(Number(t.dataset.crstep));
   });
   $("cr-create").addEventListener("click", creatorFinish);
+  $("cr-data-pick")?.addEventListener("click", () => {
+    if (typeof dataFolderSupported === "function" && dataFolderSupported()) connectDataFolder();
+    else {
+      const input = $("data-folder-input");
+      if (input) { input.value = ""; input.click(); }
+    }
+  });
   $("cr-cancel").addEventListener("click", closeCreator);
   $("cr-close").addEventListener("click", closeCreator);
   // Closing creation is deliberate: backdrop clicks and Escape retain the draft.
@@ -1135,7 +1144,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (t.id === "cr-race") {
       CREATOR.race = t.value;
       CREATOR.subrace = (e.detail && e.detail.option && e.detail.option.subrace) || "";
-      CREATOR.racialChoice = {}; CREATOR.originChoice = {}; CREATOR.size = "";
+      CREATOR.racialChoice = {}; CREATOR.originChoice = {}; CREATOR.originSwaps = {}; CREATOR.size = "";
       CREATOR.raceFeats = {};
       renderCreatorKeepingFocus(t); return;
     }
@@ -1188,6 +1197,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (t.classList.contains("cr-racial")) { CREATOR[t.dataset.crstore][t.dataset.crslot] = t.value; renderCreator(); return; }
     if (t.id === "cr-custom-origin") {
       CREATOR.customOrigin = t.checked;
+      CREATOR.originSwaps = {};
       CREATOR.originChoice = {};                        // reassignments don't survive turning it off and on
       renderCreator(); return;
     }

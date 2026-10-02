@@ -24,6 +24,7 @@ const ROSTER_KEY = "charsheet-roster";
 const LEGACY_CHAR_KEY = "charsheet-v0";   // pre-roster single-character slot; read once, never written
 
 let ROSTER = { v: 1, activeId: null, chars: [], logs: {} };
+let NEEDS_CHARACTER_CREATOR = false;
 
 function newCharId() { return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
@@ -49,9 +50,11 @@ function persistRoster() {
 /* Load the roster, migrating a pre-roster character in on first run. Returns the state to apply, or
    null for a genuinely fresh install (in which case app.js leaves its default empty sheet alone). */
 function loadRoster() {
+  NEEDS_CHARACTER_CREATOR = false;
   let stored = null;
   try { stored = JSON.parse(localStorage.getItem(ROSTER_KEY)); } catch (e) {}
   if (stored && Array.isArray(stored.chars) && stored.chars.length) {
+    NEEDS_CHARACTER_CREATOR = !stored.chars.some(c => c.state);
     ROSTER = { v: 1, activeId: stored.activeId, chars: stored.chars, logs: stored.logs || {} };
     if (!activeChar()) ROSTER.activeId = ROSTER.chars[0].id;   // stale/missing active id
     return activeChar().state;
@@ -70,6 +73,7 @@ function loadRoster() {
   // Genuinely fresh install. Seed one empty entry so the very first save has somewhere to go —
   // returning null tells app.js to leave the markup's own blank sheet as-is rather than apply state.
   const id = newCharId();
+  NEEDS_CHARACTER_CREATOR = true;
   ROSTER = { v: 1, activeId: id, chars: [{ id, name: "unnamed", state: null }], logs: {} };
   persistRoster();
   return null;

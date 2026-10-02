@@ -159,7 +159,7 @@ function renderEffectsStrip() {
 }
 
 /* ----- audit trail: title tooltips + a dotted underline on every effect-touched derived value,
-   plus the ability-score "base + effects = total" breakdown spans (speed has its own, in speed.js). Required so a
+   plus the ability-score breakdown tooltips (speed has its own, in speed.js). Required so a
    number an LLM-authored DB entry changed is always visibly attributable, never silent. ----- */
 function hasMiscConflict(key) {
   const misc = (typeof miscOf === "function") ? miscOf(key) : "";
@@ -190,23 +190,22 @@ function paintEffectAudit() {
   document.querySelectorAll("#skill-rows tr").forEach(tr => paintEffectSpan($("skillbonus-" + tr.dataset.slug), "skill-" + tr.dataset.slug, "Skill"));
 
   ABILITIES.forEach(a => {
-    /* Three things can move a score and all three are shown here: the base the creator set, the
-       Misc terms you typed (each with whatever you labelled it), and what features grant. The
-       tooltip names every one, so a 20 that should be an 18 is traceable without hunting. */
-    const key = "score-" + a.key, eff = effFlat(key), el = $("score-eff-" + a.key);
+    const key = "score-" + a.key, el = $("score-eff-" + a.key);
     if (!el) return;
-    const terms = (typeof miscTerms === "function") ? miscTerms(a.key) : [];
-    const misc = terms.reduce((s, t) => s + t.n, 0);
-    const asi = (typeof asiTotal === "function") ? asiTotal(a.key) : 0;
-    if (eff || misc || asi) {
-      const base = num($("score-" + a.key)), total = base + asi + misc + eff;
-      const parts = [`${base} base`]
-        .concat(asi ? [`+${asi} (Ability Score Improvement${asi > 1 ? "s" : ""})`] : [])
-        .concat(terms.map(t => `${sign(t.n)}${t.label ? " (" + t.label + ")" : ""}`))
-        .concat(eff ? [`${sign(eff)} (${effContribs(key).map(c => c.source).join(", ")})`] : []);
-      el.style.display = ""; el.textContent = `= ${total}`;
-      el.title = `${parts.join(" ")} = ${total}`;
-    } else { el.style.display = "none"; el.title = ""; }
+    const base = num($(key));
+    const terms = typeof miscTerms === "function" ? miscTerms(a.key) : [];
+    const misc = terms.reduce((sum, term) => sum + term.n, 0);
+    const hasMisc = terms.some(term => term.n !== 0);
+    const asi = typeof asiTotal === "function" ? asiTotal(a.key) : 0;
+    const contributions = effContribs(key).filter(c => typeof c.n === "number" && c.n !== 0);
+    const parts = [`${base} Base`]
+      .concat(contributions.map(c => `${sign(c.n)} ${c.source}`))
+      .concat(asi ? [`${sign(asi)} Ability Score Improvement`] : [])
+      .concat(hasMisc ? [`${sign(misc)} Misc`] : []);
+    el.textContent = String(abilityScore(a.key)) + (hasMisc ? "*" : "");
+    el.title = parts.join("\n");
+    el.classList.toggle("has-eff", contributions.length > 0 || asi !== 0 || hasMisc);
+
   });
 }
 

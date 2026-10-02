@@ -130,12 +130,17 @@ function crPicked(key) { return (CREATOR.picks[key] || []).map(v => (v || "").tr
 /* ---------- features the character will have ---------- */
 function creatorFeatChoices() {
   const out = { ...creatorRaceFeatChoices() };
+  const bg = !CREATOR.customBg ? ciFindBackground(CREATOR.background) : null;
+  backgroundFeatSlots(bg).forEach(slot => {
+    const name = slot.fixed || CREATOR.backgroundFeats[slot.fkey];
+    if (name) out[slot.fkey] = name;
+  });
   Object.entries(CREATOR.asiFeats).forEach(([k, v]) => { if ((v || "").trim()) out[k] = v.trim(); });
   return out;
 }
 function creatorFeatureList() {
   if (typeof featuresFor !== "function") return [];
-  return featuresFor({ race: CREATOR.race, subrace: CREATOR.subrace, classes: crRows(),
+  return featuresFor({ race: CREATOR.race, subrace: CREATOR.subrace, background: CREATOR.customBg ? "" : CREATOR.background, classes: crRows(),
     featChoices: creatorFeatChoices(), optChoices: CREATOR.optChoices });
 }
 
@@ -167,7 +172,11 @@ function crBackgroundSkills() {
 }
 /* Every skill proficiency except the ones stored under `exceptKey`. */
 function crTakenSkills(exceptKey) {
-  const out = [...crBackgroundSkills(), ...crEffectSkillGrants(creatorFeatureList())];
+  const swapped = new Set(crOriginSwaps().filter(s => s.kind === "skills").map(s => crSkillSlug(s.from)));
+  const features = creatorFeatureList();
+  const out = [...crBackgroundSkills(), ...crResolvedRaceProfs().skills,
+    ...crEffectSkillGrants(features.filter(f => !["race", "subrace"].includes((f.origin || {}).kind))),
+    ...crEffectSkillGrants(features.filter(f => ["race", "subrace"].includes((f.origin || {}).kind))).filter(s => !swapped.has(crSkillSlug(s)))];
   Object.keys(CREATOR.picks).filter(k => k.startsWith("skills:") && k !== exceptKey).forEach(k => out.push(...crPicked(k)));
   return out;
 }
@@ -260,6 +269,7 @@ function crFeaturesForStep(step) {
     if (step === 1) return k === "race" || k === "subrace";
     if (step === 2) return (k === "class" || k === "subclass" || k === "optfeature") && !f.isAsi;
     if (step === 3) return !!f.isAsi && !!f.asiChosen;
+    if (step === 5) return !!f.isBackgroundFeat;
     return false;
   });
 }
@@ -283,14 +293,17 @@ function crBackgroundLanguages() {
 }
 function crRaceProfHtml() {
   const langs = crRaceList("languages"), tools = crRaceList("tools"), weapons = crRaceList("weapons");
-  const fixedLangs = crFixedNames(langs), fixedTools = crFixedNames(tools), fixedWeapons = crFixedNames(weapons);
+  const resolved = crResolvedRaceProfs();
+  const fixedLangs = resolved.languages, fixedTools = resolved.tools, fixedWeapons = resolved.weapons;
   const lang = crPickSlotsHtml("langs:race", crLangBlocks(langs), [...fixedLangs, ...crBackgroundLanguages()]);
   const tool = crPickSlotsHtml("tools:race", crToolBlocks(tools), fixedTools);
   const rows = [];
   if (fixedLangs.length || lang.total) rows.push(`<div>Languages ${escapeHtml(fixedLangs.join(", "))} ${lang.html}</div>`);
   if (fixedWeapons.length) rows.push(`<div>Weapons ${escapeHtml(fixedWeapons.join(", "))}</div>`);
   if (fixedTools.length || tool.total) rows.push(`<div>Tools ${escapeHtml(fixedTools.join(", "))} ${tool.html}</div>`);
-  return rows.length ? `<div style="margin-top:.4rem">${rows.join("")}</div>` : "";
+  if (resolved.skills.length) rows.push(`<div>Skills ${escapeHtml(resolved.skills.join(", "))}</div>`);
+  if (resolved.armor.length) rows.push(`<div>Armor ${escapeHtml(resolved.armor.join(", "))}</div>`);
+  return (rows.length ? `<div style="margin-top:.4rem">${rows.join("")}</div>` : "") + crOriginSwapsHtml();
 }
 
 /* ---------- step 2: what each class grants ---------- */
@@ -382,8 +395,9 @@ function crAsiHtml() {
 function crSpellListClass(r) { return SUBCLASS_CASTING_STYLE[(r.sub || "").trim().toLowerCase()] ? "Wizard" : r.name; }
 function crSpellCandidates(r, minLvl, maxLvl) {
   const list = (crSpellListClass(r) || "").toLowerCase();
+  const expanded = crGrantSources().flatMap(source => resolvedSpellGrants(source, creatorTotalLevel(), CREATOR.picks)).filter(g => g.expanded).map(g => grantSpellName(g.name).toLowerCase());
   return (typeof SPELL_LIB !== "undefined" ? SPELL_LIB : [])
-    .filter(sp => sp.level >= minLvl && sp.level <= maxLvl && (sp.classes || []).some(c => c.toLowerCase() === list))
+    .filter(sp => sp.level >= minLvl && sp.level <= maxLvl && ((sp.classes || []).some(c => c.toLowerCase() === list) || expanded.includes(sp.name.toLowerCase())))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 /* What one class row needs picked: { cantrips, spells, prepared, wizard } counts and the lists to pick from. */
@@ -454,11 +468,12 @@ function crCasterRows() {
 }
 function crSpellsStepHtml() {
   const rows = crCasterRows();
-  if (!rows.length) return `<div class="hint">No spellcasting at these levels.</div>`;
+  const grants = crGrantedSpellsHtml();
+  if (!rows.length) return grants || `<div class="hint">No spellcasting at these levels.</div>`;
   if (!(typeof SPELL_LIB !== "undefined" && SPELL_LIB.length)) return `<div class="hint">No spell data loaded.</div>`;
   const filterBar = `<div class="cr-spell-filterbar"><button type="button" id="cr-spell-filter-btn"${CR_SPELL_FILTERS_OPEN ? ' class="active"' : ""}>Filters</button></div>
     <div id="cr-spell-filter-area" class="cr-spell-filter-area"${CR_SPELL_FILTERS_OPEN ? "" : " hidden"}></div>`;
-  return filterBar + rows.map(({ r, need }) => {
+  return grants + filterBar + rows.map(({ r, need }) => {
     const store = crSpellStore(r.name);
     const label = need.wizard ? "Spellbook" : need.style === "prepared" ? "Prepared" : "Spells known";
     const parts = [];
@@ -533,7 +548,18 @@ function creatorChoiceBlocker(step) {
     const f = crFeaturesForStep(3).find(f => crLiveChoices(f).some(c => crChoiceMissing(f, c)));
     if (f) return `Make the choice for ${f.name}.`;
   }
+  if (step === 5 && !CREATOR.customBg) {
+    const slot = backgroundFeatSlots(ciFindBackground(CREATOR.background)).find(s => !s.fixed && !CREATOR.backgroundFeats[s.fkey]);
+    if (slot) return "Choose your background feat.";
+    const missing = crFeaturesForStep(5).find(f => crLiveChoices(f).some(c => crChoiceMissing(f, c)));
+    if (missing) return `Make the choice for ${missing.name}.`;
+  }
   if (step === 4 && typeof SPELL_LIB !== "undefined" && SPELL_LIB.length) {
+    for (const source of crGrantSources()) {
+      const missing = flattenGrantedSpells(source.spells).find((g, i) => g.choose && !g.expanded && g.minLevel <= creatorTotalLevel() &&
+        (CREATOR.picks[source.key + "|" + i] || []).filter(Boolean).length < Math.min(g.count, grantedSpellPool(g).length));
+      if (missing) return `Choose ${source.name} spells.`;
+    }
     for (const { r, need } of crCasterRows()) {
       const store = crSpellStore(r.name);
       const have = key => store[key].filter(Boolean).length;
@@ -566,12 +592,18 @@ function creatorApplyChoices(state) {
     crPicked("skills:" + p.rec.name).forEach(s => { f["skillprof-" + crSkillSlug(s)] = true; });
   });
 
-  addTo(prof.languages, crFixedNames(crRaceList("languages")));
+  const race = crResolvedRaceProfs();
+  state.originSwaps = crOriginSwaps();
+  state.grantSpellChoices = Object.fromEntries(Object.entries(CREATOR.picks).filter(([key]) => key.startsWith("race|") || key.startsWith("subrace|") || key.startsWith("background|") || key.startsWith("feat|")));
+  state.backgroundGrants = !CREATOR.customBg;
+  race.skills.forEach(name => { f["skillprof-" + crSkillSlug(name)] = true; });
+  race.armor.forEach(name => { const key = CR_ARMOR[name.toLowerCase()]; if (key) f["prof-armor-" + key] = true; });
+  addTo(prof.languages, race.languages);
   addTo(prof.languages, crPicked("langs:race"));
-  addTo(prof.weapons, crFixedNames(crRaceList("weapons")));
+  addTo(prof.weapons, race.weapons);
   // Background names arrive in the data's lower case ("vehicles (land)"); everything else is titled.
   ["weapons", "tools", "languages"].forEach(k => { prof[k] = crUniqueCI(prof[k].map(crTitle)); });
-  addTo(prof.tools, crFixedNames(crRaceList("tools")));
+  addTo(prof.tools, race.tools);
   addTo(prof.tools, crPicked("tools:race"));
 
   state.featChoices = creatorFeatChoices();
@@ -609,6 +641,12 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   body.addEventListener("change", e => {
     const t = e.target; if (!CREATOR) return;
+    if (t.classList.contains("cr-origin-swap")) {
+      CREATOR.originSwaps[t.dataset.swapkey] = t.value; renderCreator(); return;
+    }
+    if (t.classList.contains("cr-background-feat")) {
+      CREATOR.backgroundFeats[t.dataset.fkey] = t.value; renderCreator(); return;
+    }
     if (t.classList.contains("cr-pick") && t.tagName === "SELECT") { setPick(t, true); return; }
     if (t.classList.contains("cr-effchoice")) {
       const store = CREATOR.effectChoices[t.dataset.fkey] || (CREATOR.effectChoices[t.dataset.fkey] = {});
@@ -667,3 +705,74 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+/* TCE p8: each racial proficiency is its own optional swap. */
+const CR_ORIGIN_LANGUAGES = ["Abyssal", "Celestial", "Common", "Deep Speech", "Draconic", "Dwarvish", "Elvish", "Giant", "Gnomish", "Goblin", "Halfling", "Infernal", "Orc", "Primordial", "Sylvan", "Undercommon"];
+const CR_SIMPLE_WEAPONS = ["Club", "Dagger", "Greatclub", "Handaxe", "Javelin", "Light Hammer", "Mace", "Quarterstaff", "Sickle", "Spear", "Light Crossbow", "Dart", "Shortbow", "Sling"];
+function crOriginSlots() {
+  const features = creatorFeatureList().filter(f => ["race", "subrace"].includes((f.origin || {}).kind) && !f.isRaceFeat);
+  const lists = Object.fromEntries(["languages", "skills", "armor", "weapons", "tools"].map(kind => [kind, crFixedNames(crRaceList(kind))]));
+  lists.skills = crSort([...lists.skills.map(crSkillName), ...crEffectSkillGrants(features)]);
+  return Object.entries(lists).flatMap(([kind, names]) => names.map(from => ({ kind, from, key: kind + "|" + from })));
+}
+function crOriginOptions(slot) {
+  const tools = proficiencyOptions("tools").map(name => ({ kind: "tools", name }));
+  const weapons = ITEM_LIB.filter(i => i.weaponCategory && !i.rarity).map(i => ({ kind: "weapons", name: i.name, simple: i.weaponCategory === "simple" }));
+  if (!weapons.length) CR_SIMPLE_WEAPONS.forEach(name => weapons.push({ kind: "weapons", name, simple: true }));
+  const original = ITEM_LIB.find(i => i.name.toLowerCase() === slot.from.toLowerCase());
+  const simple = original ? original.weaponCategory === "simple" : CR_SIMPLE_WEAPONS.some(n => n.toLowerCase() === slot.from.toLowerCase());
+  if (slot.kind === "languages") return CR_ORIGIN_LANGUAGES.map(name => ({ kind: "languages", name }));
+  if (slot.kind === "skills") return SKILLS.map(s => ({ kind: "skills", name: s[0] }));
+  if (slot.kind === "tools" || (slot.kind === "weapons" && simple)) return [...tools, ...weapons.filter(w => w.simple)];
+  return [...tools, ...weapons];
+}
+function crOriginSwaps() {
+  if (!CREATOR.customOrigin) return [];
+  return crOriginSlots().flatMap(slot => {
+    const choice = CREATOR.originSwaps[slot.key];
+    const selected = crOriginOptions(slot).find(o => o.kind + "|" + o.name === choice);
+    return selected && (selected.kind !== slot.kind || selected.name.toLowerCase() !== slot.from.toLowerCase())
+      ? [{ kind: slot.kind, from: slot.from, toKind: selected.kind, to: selected.name, race: CREATOR.race }] : [];
+  });
+}
+function crResolvedRaceProfs() {
+  const out = { languages: [], skills: [], armor: [], weapons: [], tools: [] }, swaps = crOriginSwaps();
+  crOriginSlots().forEach(slot => {
+    const swap = swaps.find(s => s.kind === slot.kind && s.from === slot.from);
+    out[swap ? swap.toKind : slot.kind].push(swap ? swap.to : slot.from);
+  });
+  return out;
+}
+function crOriginSwapsHtml() {
+  if (!CREATOR.customOrigin) return "";
+  return `<div class="cr-origin-swaps"><b>Customize racial languages and proficiencies</b>` + crOriginSlots().map(slot => {
+    const cur = CREATOR.originSwaps[slot.key] || "";
+    const options = crOriginOptions(slot).map(o => {
+      const value = o.kind + "|" + o.name;
+      return `<option value="${escapeHtml(value)}"${value === cur ? " selected" : ""}>${escapeHtml(o.name)} (${o.kind})</option>`;
+    }).join("");
+    return `<div><label>${escapeHtml(slot.from)} → <select class="cr-origin-swap" data-swapkey="${escapeHtml(slot.key)}" aria-label="Replace ${escapeHtml(slot.from)}"><option value="">Keep ${escapeHtml(slot.from)}</option>${options}</select></label></div>`;
+  }).join("") + `</div>`;
+}
+function crBackgroundFeatsHtml(rec) {
+  return backgroundFeatSlots(rec).map(slot => {
+    const selected = slot.fixed || CREATOR.backgroundFeats[slot.fkey] || "";
+    const feature = creatorFeatureList().find(f => f.fkey === slot.fkey);
+    return `<div>Background feat: ${slot.fixed ? escapeHtml(crTitle(slot.fixed)) : `<select class="cr-background-feat" data-fkey="${escapeHtml(slot.fkey)}"><option value="">- choose -</option>${Object.values(FEAT_LIB).sort((a,b) => a.name.localeCompare(b.name)).map(f => `<option value="${escapeHtml(f.name)}"${f.name === selected ? " selected" : ""}>${escapeHtml(f.name)}</option>`).join("")}</select>`}${feature ? crChoicesHtml(feature) : ""}</div>`;
+  }).join("");
+}
+function crGrantSources() {
+  return spellGrantSources(CREATOR.race, CREATOR.subrace, CREATOR.customBg ? "" : CREATOR.background, creatorFeatChoices());
+}
+function crGrantedSpellsHtml() {
+  return crGrantSources().map(source => {
+    const rows = flattenGrantedSpells(source.spells).filter(g => g.minLevel <= creatorTotalLevel());
+    const fixed = resolvedSpellGrants(source, creatorTotalLevel(), CREATOR.picks).filter(g => !g.expanded).map(g => grantSpellName(g.name));
+    const choices = flattenGrantedSpells(source.spells).map((g, i) => {
+      if (!g.choose || g.expanded || g.minLevel > creatorTotalLevel()) return "";
+      return crPickSlotsHtml(source.key + "|" + i, [{ count: g.count, from: grantedSpellPool(g).map(sp => sp.name).sort() }], []).html;
+    }).join(" ");
+    const expanded = rows.filter(g => g.expanded).map(g => g.name ? grantSpellName(g.name) : describeSpellFilter(g.spec));
+    return `<div class="cr-classblock"><b>${escapeHtml(source.name)} spells</b><div>${escapeHtml(crUniqueCI(fixed).join(", "))}</div>${choices}${expanded.length ? `<div class="hint">Added to your class spell list; choose and prepare normally: ${escapeHtml(expanded.join(", "))}</div>` : ""}</div>`;
+  }).join("");
+}

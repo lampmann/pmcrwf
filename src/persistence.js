@@ -24,17 +24,19 @@ function validateCharacterState(state) {
     const el = $(id);
     if (el && el.matches("[data-persist]") && el.type === "checkbox" && typeof value !== "boolean") invalid(`fields.${id} must be true or false`);
   }
-  for (const key of ["classes", "spells", "items", "attacks", "routines", "companions"]) {
+  for (const key of ["classes", "spells", "items", "attacks", "routines", "companions", "originSwaps"]) {
     if (state[key] == null) continue;
     if (!Array.isArray(state[key]) || !state[key].every(isRecord)) invalid(`${key} must be a list of objects`);
   }
-  for (const key of ["featChoices", "asiChoices", "optFeatureChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
+  for (const key of ["grantSpellChoices", "featChoices", "asiChoices", "optFeatureChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
     if (state[key] != null && !isRecord(state[key])) invalid(`${key} must be an object`);
   }
   for (const key of ["weapons", "tools", "languages"]) {
     const list = state.proficiencies && state.proficiencies[key];
     if (list != null && (!Array.isArray(list) || !list.every(value => typeof value === "string"))) invalid(`proficiencies.${key} must be a list of names`);
   }
+  if (state.grantSpellChoices && !Object.values(state.grantSpellChoices).every(list => Array.isArray(list) && list.every(name => typeof name === "string"))) invalid("grantSpellChoices must contain lists of spell names");
+  if (state.originSwaps && !state.originSwaps.every(s => ["kind", "from", "toKind", "to"].every(key => typeof s[key] === "string"))) invalid("originSwaps must contain proficiency replacements");
   if (state.skillOrder != null && (!Array.isArray(state.skillOrder) || !state.skillOrder.every(value => typeof value === "string"))) invalid("skillOrder must be a list of skill names");
   return state;
 }
@@ -52,6 +54,7 @@ function collectState() {
     v: 1, effectsSv: 1,
     fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, concentrating: CONCENTRATING, items: CHARACTER_ITEMS,
     proficiencies: PROFICIENCIES,
+    originSwaps: ORIGIN_SWAPS, grantSpellChoices: GRANT_SPELL_CHOICES, backgroundGrants: BACKGROUND_GRANTS,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
     routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
     companions: (typeof COMPANIONS !== "undefined" ? COMPANIONS : []),
@@ -77,6 +80,9 @@ function applyState(state) {
     tools: state.proficiencies?.tools || [],
     languages: state.proficiencies?.languages || [],
   };
+  ORIGIN_SWAPS = state.originSwaps || [];
+  GRANT_SPELL_CHOICES = state.grantSpellChoices || {};
+  BACKGROUND_GRANTS = state.backgroundGrants !== false;
   FEAT_CHOICES = state.featChoices || {};
   ASI_CHOICES = state.asiChoices || {};
   if (typeof OPTFEATURE_CHOICES !== "undefined") OPTFEATURE_CHOICES = state.optFeatureChoices || {};
@@ -100,6 +106,7 @@ function applyState(state) {
     else el.value = el.defaultValue;
   });
   // Hidden inputs mirror value into defaultValue. These lists start empty for older characters.
+  ABILITIES.forEach(a => { const el = $("score-" + a.key); if (el) el.value = "10"; });
   ["speed-custom", "speed-order"].forEach(id => { const el = $(id); if (el) el.value = ""; });
   Object.entries(state.fields || {}).forEach(([id, val]) => {
     const el = $(id); if (!el || !el.matches("[data-persist]")) return;
