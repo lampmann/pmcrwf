@@ -198,7 +198,14 @@ function paintEffectAudit() {
     const hasMisc = terms.some(term => term.n !== 0);
     const asi = typeof asiTotal === "function" ? asiTotal(a.key) : 0;
     const contributions = effContribs(key).filter(c => typeof c.n === "number" && c.n !== 0);
-    const parts = [`${base} Base`]
+    // Legacy characters predate provenance; recover their fixed racial increases from the library.
+    const race = ($("char-race")?.value || "").trim();
+    const racial = RACIAL_ABILITY_INCREASES !== null
+      ? RACIAL_ABILITY_INCREASES[a.key]
+      : { amount: racialAbilityBonus(race, ($("char-subrace")?.value || "").trim()).fixed[a.key] || 0, source: race };
+    const increase = racial?.amount || 0;
+    const parts = [`${base - increase} Base`]
+      .concat(increase ? [`${sign(increase)} ${racial.source}`] : [])
       .concat(contributions.map(c => `${sign(c.n)} ${c.source}`))
       .concat(asi ? [`${sign(asi)} Ability Score Improvement`] : [])
       .concat(hasMisc ? [`${sign(misc)} Misc`] : []);

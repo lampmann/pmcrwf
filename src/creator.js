@@ -1043,6 +1043,9 @@ function creatorBuildState() {
 
   const built = {
     v: 1, effectsSv: 1, fields,
+    racialAbilityIncreases: Object.fromEntries(CREATOR_ABILITIES.map(ab => [ab, {
+      amount: creatorFinalScore(ab) - CREATOR.scores[ab], source: CREATOR.race,
+    }])),
     classes: rows.map(r => {
       const rec = ciFindClass(r.name);
       const locked = rec && rec.subLevel && (Number(r.lvl) || 0) < rec.subLevel;

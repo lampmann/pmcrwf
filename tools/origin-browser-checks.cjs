@@ -68,6 +68,7 @@ module.exports = async function checkOrigin(page) {
     perception: skillProfMult('perception'), performance: skillProfMult('performance'),
     armor: document.getElementById('prof-armor-light').checked,
     alert: activeFeatures().some(f => f.isBackgroundFeat && f.name === 'Alert'),
+    dexTooltip: document.getElementById('score-eff-dex').title,
     init: effFlat('init'), spells: derivedSpellGroups().flatMap(g => g.names),
   }));
   assert.deepEqual(result.langs.sort(), ['Draconic', 'Elvish']);
@@ -78,6 +79,7 @@ module.exports = async function checkOrigin(page) {
   assert.equal(result.armor, false);
   assert.equal(result.alert, true);
   assert.equal(result.init, 5);
+  assert.equal(result.dexTooltip, "10 Base\n+2 Elf");
   for (const name of ['Ancestor Glow', 'Frost Pebble', 'Moon Glow', 'Background Light']) {
     assert(result.spells.some(n => n.toLowerCase() === name.toLowerCase()), name + ' is available');
   }
@@ -86,11 +88,27 @@ module.exports = async function checkOrigin(page) {
   await page.waitForFunction(() => document.getElementById('char-name').value === 'Origin Test');
   assert.equal(await page.evaluate(() => skillProfMult('perception')), 0);
   assert.equal(await page.evaluate(() => effFlat('init')), 5);
+  assert.equal(await page.locator('#score-eff-dex').getAttribute('title'), '10 Base\n+2 Elf');
   assert(await page.evaluate(() => derivedSpellGroups().some(g => g.names.includes('Frost Pebble'))));
-  await page.locator('.grant-spell-choice[data-grantkey^="subrace|High|"]').selectOption('Ancestor Glow');
+  await page.locator('#spell-lib-toggle').click();
+  await page.locator('#spell-feat-results .grant-spell-choice[data-grantkey^="subrace|High|"]').selectOption('Ancestor Glow');
   assert(await page.evaluate(() => !derivedSpellGroups().some(g => g.names.includes('Frost Pebble'))));
   await page.reload();
   await page.waitForFunction(() => Object.values(GRANT_SPELL_CHOICES).some(picks => picks.includes('Ancestor Glow')));
-  assert.equal(await page.locator('.grant-spell-choice[data-grantkey^="subrace|High|"]').inputValue(), 'Ancestor Glow');
+  assert.equal(await page.locator('#spell-feat-results .grant-spell-choice[data-grantkey^="subrace|High|"]').inputValue(), 'Ancestor Glow');
+  await page.evaluate(() => {
+    const saved = collectState();
+    const example = JSON.parse(JSON.stringify(saved));
+    example.fields['score-dex'] = '15';
+    example.fields['scoremisc-dex'] = '+2';
+    example.racialAbilityIncreases.dex = { amount: 2, source: 'Aarakocra' };
+    applyState(example);
+    if (document.getElementById('score-eff-dex').title !== '13 Base\n+2 Aarakocra\n+2 Misc') throw new Error('Racial tooltip breakdown');
+    const legacy = JSON.parse(JSON.stringify(saved));
+    delete legacy.racialAbilityIncreases;
+    applyState(legacy);
+    if (document.getElementById('score-eff-dex').title !== '10 Base\n+2 Elf') throw new Error('Legacy racial tooltip breakdown');
+    applyState(saved);
+  });
   console.log('Origin: legal proficiency swaps, racial spell choices, both race/subrace grants, background feats/spells, expansion eligibility, and reload passed.');
 };

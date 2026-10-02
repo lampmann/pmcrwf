@@ -1,5 +1,7 @@
 /* ---------- Persistence ---------- */
 let saveTimer = null;
+// Backing scores include racial increases; retain their provenance for the score breakdown.
+let RACIAL_ABILITY_INCREASES = null;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 300); }
 
 // Browsers can suspend a background tab before either debounce fires. Flush only pending work,
@@ -28,13 +30,14 @@ function validateCharacterState(state) {
     if (state[key] == null) continue;
     if (!Array.isArray(state[key]) || !state[key].every(isRecord)) invalid(`${key} must be a list of objects`);
   }
-  for (const key of ["grantSpellChoices", "featChoices", "asiChoices", "optFeatureChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
+  for (const key of ["racialAbilityIncreases", "grantSpellChoices", "featChoices", "asiChoices", "optFeatureChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
     if (state[key] != null && !isRecord(state[key])) invalid(`${key} must be an object`);
   }
   for (const key of ["weapons", "tools", "languages"]) {
     const list = state.proficiencies && state.proficiencies[key];
     if (list != null && (!Array.isArray(list) || !list.every(value => typeof value === "string"))) invalid(`proficiencies.${key} must be a list of names`);
   }
+  if (state.racialAbilityIncreases && !Object.values(state.racialAbilityIncreases).every(entry => isRecord(entry) && Number.isFinite(entry.amount) && typeof entry.source === "string")) invalid("racialAbilityIncreases must contain amounts and source names");
   if (state.grantSpellChoices && !Object.values(state.grantSpellChoices).every(list => Array.isArray(list) && list.every(name => typeof name === "string"))) invalid("grantSpellChoices must contain lists of spell names");
   if (state.originSwaps && !state.originSwaps.every(s => ["kind", "from", "toKind", "to"].every(key => typeof s[key] === "string"))) invalid("originSwaps must contain proficiency replacements");
   if (state.skillOrder != null && (!Array.isArray(state.skillOrder) || !state.skillOrder.every(value => typeof value === "string"))) invalid("skillOrder must be a list of skill names");
@@ -54,6 +57,7 @@ function collectState() {
     v: 1, effectsSv: 1,
     fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, concentrating: CONCENTRATING, items: CHARACTER_ITEMS,
     proficiencies: PROFICIENCIES,
+    racialAbilityIncreases: RACIAL_ABILITY_INCREASES,
     originSwaps: ORIGIN_SWAPS, grantSpellChoices: GRANT_SPELL_CHOICES, backgroundGrants: BACKGROUND_GRANTS,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
     routines: (typeof ROUTINES !== "undefined" ? ROUTINES : []),
@@ -80,6 +84,7 @@ function applyState(state) {
     tools: state.proficiencies?.tools || [],
     languages: state.proficiencies?.languages || [],
   };
+  RACIAL_ABILITY_INCREASES = state.racialAbilityIncreases || null;
   ORIGIN_SWAPS = state.originSwaps || [];
   GRANT_SPELL_CHOICES = state.grantSpellChoices || {};
   BACKGROUND_GRANTS = state.backgroundGrants !== false;

@@ -197,17 +197,20 @@ function renderSpellList() {
       .sort((a, b) => ((a.lib ? a.lib.level : 0) - (b.lib ? b.lib.level : 0)) || a.n.localeCompare(b.n));
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(g.header)}</b></div>` + byLevel.map(x => derivedSpellLineHtml(x.n)).join("");
   }).join("");
+  const choiceHtml = spellGrantSources(($("char-race")?.value || "").trim(),
+    ($("char-subrace")?.value || "").trim(), BACKGROUND_GRANTS ? ($("char-bg")?.value || "").trim() : "", FEAT_CHOICES)
+    .map(source => spellGrantChoicesHtml(source, totalLevel())).join("");
   const rowsOf = test => CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(test).sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
   const other = rowsOf(s => !s.grantSrc && !s.cls);
   const otherHtml = other.length ? `<div style="margin:.5rem 0 .1rem"><b>Other</b></div>` + other.map(s => spellLineHtml(s)).join("") : "";
   const orphans = rowsOf(s => !s.grantSrc && s.cls && !assigned.has(s.cls));
   const orphanHtml = orphans.length ? `<div style="margin:.5rem 0 .1rem"><b>Unassigned</b> <span class="hint">- class removed</span></div>` +
     orphans.map(s => spellLineHtml(s)).join("") : "";
-  if (!casterHtml && !grantedHtml && !derivedHtml && !otherHtml && !orphanHtml) {
+  if (!choiceHtml && !casterHtml && !grantedHtml && !derivedHtml && !otherHtml && !orphanHtml) {
     el.innerHTML = concentrationBannerHtml() || "<div class='hint'>No spells.</div>";
     return;
   }
-  el.innerHTML = concentrationBannerHtml() + casterHtml + grantedHtml + derivedHtml + otherHtml + orphanHtml;
+  el.innerHTML = concentrationBannerHtml() + choiceHtml + casterHtml + grantedHtml + derivedHtml + otherHtml + orphanHtml;
 }
 function findLibSpellByName(name) {
   const q = (name || "").trim().toLowerCase(); if (!q) return null;
