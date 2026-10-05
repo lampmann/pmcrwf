@@ -1,0 +1,65 @@
+const assert = require('node:assert/strict');
+module.exports = async function checkLineage(page) {
+  await page.evaluate(() => {
+    applyState({ fields: {}, classes: [] });
+    parseRaceFile({ race: [{ name: 'Custom Lineage', source: 'TCE', size: ['S', 'M'], speed: 30, darkvision: 60,
+      ability: [{ choose: { from: ['str', 'dex', 'con', 'int', 'wis', 'cha'], count: 1, amount: 2 } }],
+      entries: [{ name: 'Variable Trait', entries: ['Choose darkvision or proficiency in one skill of your choice.'] }, { name: 'Feat', entries: ['One feat of your choice.'] }] }] });
+    saveRaceLib();
+    CLASS_LIB['Lineage Fighter'] = { name: 'Lineage Fighter', source: 'PHB', hd: 10, feats: [] };
+    FEAT_LIB.Alert = { name: 'Alert', source: 'PHB', text: '' };
+    saveClassLib(); saveFeatLib();
+    openCreator();
+    Object.assign(CREATOR, { race: 'Custom Lineage', classes: [{ name: 'Lineage Fighter', sub: '', lvl: 1 }], name: 'Lineage Test', method: 'manual', raceFeats: { Feat: 'Alert' }, racialChoice: { '0:0': 'str' } });
+    renderCreator();
+  });
+  const creatorChoice = id => page.locator(`.cr-effchoice[data-choice="${id}"]`);
+  assert.equal(await creatorChoice('trait').count(), 1);
+  assert.equal(await creatorChoice('skill').count(), 0);
+  await creatorChoice('trait').selectOption('skill');
+  assert.equal(await creatorChoice('skill').count(), 1);
+  assert(await page.evaluate(() => creatorChoiceBlocker(1).includes('Variable Trait')));
+  await creatorChoice('skill').selectOption('stealth');
+  assert.equal(await page.evaluate(() => creatorChoiceBlocker(1)), '');
+  await creatorChoice('trait').selectOption('darkvision');
+  assert.equal(await creatorChoice('skill').count(), 0);
+  assert.equal(await page.evaluate(() => creatorChoiceBlocker(1)), '');
+  await creatorChoice('trait').selectOption('skill');
+  await page.evaluate(() => goToCreatorStep(CREATOR_STEPS.length));
+  await page.locator('#cr-create').click();
+  await page.waitForFunction(() => document.getElementById('creator-modal').style.display === 'none');
+  assert.equal(await page.evaluate(() => senseRange('darkvision').n), 0);
+  assert.equal(await page.evaluate(() => skillProfMult('stealth')), 1);
+  const sheetChoice = id => page.locator(`#class-feat-results .eff-choice[data-choice="${id}"]`);
+  await sheetChoice('trait').selectOption('darkvision');
+  assert.equal(await sheetChoice('skill').count(), 0);
+  assert.equal(await page.evaluate(() => senseRange('darkvision').n), 60);
+  assert.equal(await page.evaluate(() => skillProfMult('stealth')), 0);
+  await sheetChoice('trait').selectOption('skill');
+  await sheetChoice('skill').selectOption('perception');
+  assert.equal(await page.evaluate(() => senseRange('darkvision').n), 0);
+  assert.equal(await page.evaluate(() => skillProfMult('perception')), 1);
+  await page.reload();
+  await page.waitForFunction(() => document.getElementById('char-race').value === 'Custom Lineage');
+  assert.equal(await sheetChoice('trait').inputValue(), 'skill');
+  assert.equal(await sheetChoice('skill').inputValue(), 'perception');
+  assert.equal(await page.evaluate(() => senseRange('darkvision').n), 0);
+  await page.evaluate(() => {
+    const saved = collectState(), key = raceFkey('Custom Lineage', 'Variable Trait');
+    const legacy = JSON.parse(JSON.stringify(saved)); legacy.effectChoices[key] = { skill: 'darkvision' };
+    applyState(legacy);
+    if (senseRange('darkvision').n !== 60) throw new Error('Legacy darkvision choice not migrated');
+    legacy.effectChoices[key] = { skill: 'stealth' }; applyState(legacy);
+    if (senseRange('darkvision').n !== 0 || skillProfMult('stealth') !== 1) throw new Error('Legacy skill choice not migrated');
+    document.getElementById('sense-darkvision-other').value = '120'; recompute();
+    if (senseRange('darkvision').n !== 120) throw new Error('Unrelated darkvision lost');
+    applyState(saved);
+    CHARACTER_ITEMS = [{ name: 'Slot test', qty: 1, eq: true, slot: 'armor' }]; renderEquipSlots();
+  });
+  const remove = page.locator('.eq-slot-x[data-unslot="armor"]');
+  const size = await remove.boundingBox();
+  assert(size.width >= 24 && size.height >= 24);
+  await remove.click();
+  assert.equal(await page.evaluate(() => CHARACTER_ITEMS[0].eq), false);
+  console.log('Custom Lineage: two-stage creator/Features choices, validation, conditional darkvision and skill proficiency, legacy migration, reload, unrelated senses and larger slot removal buttons passed.');
+};

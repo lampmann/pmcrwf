@@ -69,20 +69,14 @@ registerEffects({
      creator (racialAbilityBonus reads the `choose` block's amount) and its feat now has a slot of
      its own (traitGrantsFeat, src/class-library.js); this is the third piece.
 
-     Variable Trait is "darkvision 60 ft OR proficiency in one skill of your choice", and only half
-     of that is representable — the sheet models no vision at all. Elsewhere a partly-representable
-     choice is declared wholly unsupported rather than given a misleading picker (see the Transmuter
-     entry in classes-batch-18.js). That call is right when the representable branch is one of four
-     and picking it implies the other three don't exist. Here it is one of two, the other is a flat
-     60 ft of darkvision with no number anywhere on this sheet to put it in, and the skill branch is
-     the one that changes a roll — so the picker earns its place, and the unsupported note says
-     plainly what to do if you took the other branch. Leaving the picker empty costs nothing. */
+     Variable Trait is a two-stage choice: darkvision or a skill, followed by the skill itself. */
   "race|custom lineage|variable trait": {
     name: "Variable Trait", sv: 1,
-    choices: [{ id: "skill", kind: "pick", n: 1, options: ["acrobatics", "animalhandling", "arcana", "athletics", "darkvision", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Darkvision or skill" }],
+    choices: [{ id: "trait", kind: "pick", n: 1, options: ["darkvision", "skill"], label: "Choice 1" },
+      { id: "skill", kind: "pick", n: 1, when: { choice: { id: "trait", is: "skill" } }, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Choice 2: Skill" }],
     effects: [
-      { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" }, when: { choice: { id: "skill", not: "darkvision" } } },
-      { target: "sense-darkvision", op: "min", value: 60, when: { choice: { id: "skill", is: "darkvision" } } },
+      { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" }, when: { choice: { id: "trait", is: "skill" } } },
+      { target: "sense-darkvision", op: "min", value: 60, when: { choice: { id: "trait", is: "darkvision" } } },
     ],
   },
 

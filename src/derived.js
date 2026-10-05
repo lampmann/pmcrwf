@@ -12,7 +12,7 @@ function spellMod() { const ab = spellAbility(); return ab ? abilityMod(ab) : 0;
 function spellAttackBonus() { return profBonus() + spellMod() + parseBonus($("spell-atk-misc").value).flat + effFlat("spellatk"); }
 function spellAttackDice() { return parseBonus($("spell-atk-misc").value).dice + effDice("spellatk"); }
 // One source of truth for the save DC, so the Routines module can show it for save-based spells.
-function spellSaveDC() { return 8 + profBonus() + spellMod() + num($("spell-dc-misc")) + effFlat("spelldc"); }
+function spellSaveDC() { return 8 + profBonus() + spellMod() + parseBonus($("spell-dc-misc").value).flat + effFlat("spelldc"); }
 
 /* ---------- Max HP (assumes fixed/"consistent" HP per level, not rolled) ---------- */
 const HIT_DIE_MAX = { d6: 6, d8: 8, d10: 10, d12: 12 };
@@ -96,13 +96,22 @@ function slotTotal(i) {
    e.g. "10+d4" -> { flat: 10, dice: "+1d4" }  (Pass Without Trace + Guidance) */
 function parseBonus(str) {
   let flat = 0, dice = "";
-  const terms = (str || "").replace(/\s/g, "").match(/[+-]?[^+-]+/g) || [];
-  for (let t of terms) {
-    let s = "+";
-    if (t[0] === "+") t = t.slice(1); else if (t[0] === "-") { s = "-"; t = t.slice(1); }
-    if (!t) continue;
-    if (/d/i.test(t)) { if (/^d/i.test(t)) t = "1" + t; dice += s + t; }   // dice term (bare "d4" -> "1d4")
-    else { const n = Number(t); if (!isNaN(n)) flat += s === "-" ? -n : n; }
+  // Parenthesized notes can contain numbers or signs without becoming extra bonuses.
+  let depth = 0, expression = "";
+  for (const char of String(str || "")) {
+    if (char === "(") { depth++; continue; }
+    if (char === ")" && depth) { depth--; continue; }
+    if (!depth) expression += char;
+  }
+  const terms = /(?:^|([+,\-]))\s*(?:(\d*\s*d\s*\d+[a-z\d<>=!]*)|(\d+(?:\.\d+)?))(?![a-z\d.])/gi;
+  let term;
+  while ((term = terms.exec(expression))) {
+    const negative = term[1] === "-";
+    if (term[2]) {
+      let value = term[2].replace(/\s/g, "");
+      if (/^d/i.test(value)) value = "1" + value;
+      dice += (negative ? "-" : "+") + value;
+    } else flat += (negative ? -1 : 1) * Number(term[3]);
   }
   return { flat, dice };
 }

@@ -342,13 +342,13 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .eq-hands { display: flex; gap: .3rem; margin-bottom: .3rem; }
 .eq-hands > .eq-slot { flex: 1 1 0; }
 .eq-arms { display: block; margin-top: .3rem; }
-.eq-slot { position: relative; min-width: 8.5rem; padding: .2rem .4rem; cursor: pointer;
+.eq-slot { position: relative; min-width: 8.5rem; padding: .2rem 1.7rem .2rem .4rem; cursor: pointer;
   border: 1px dashed var(--border-soft); border-radius: var(--radius); }
 .eq-slot.filled { border-style: solid; border-color: var(--link-border); }
 .eq-slot:hover { background: var(--hover-bg); }
 .eq-slot.drop { outline: 2px solid var(--link-border); outline-offset: 1px; }
 .eq-slot-item { font-size: .85rem; }
-.eq-slot-x { position: absolute; top: 0; right: 0; font-size: .7rem; line-height: 1;
+.eq-slot-x { position: absolute; top: 0; right: 0; font-size: 1.25rem; line-height: 1; min-width: 1.6rem; min-height: 1.6rem; padding: .15rem;
   border: none; background: none; color: var(--danger); cursor: pointer; }
 .eq-picker {
   position: fixed; z-index: 400; min-width: 14rem; max-width: 22rem; max-height: 20rem; overflow-y: auto;
@@ -794,3 +794,13 @@ button.linkish {
 
 .itm-sort { font: inherit; font-weight: bold; border: 0; background: transparent; color: inherit; padding: .1rem .2rem; cursor: pointer; white-space: nowrap; }
 .itm-sort:hover { text-decoration: underline; }
+.editing-expanded { position: fixed !important; z-index: 10010 !important; box-sizing: border-box !important; min-width: 0 !important; max-width: none !important; max-height: none !important; margin: 0 !important; background: var(--panel-bg); color: var(--fg); }
+
+#char-item-list { overflow-x: auto; }
+.inventory-table { width: 100%; border-collapse: collapse; }
+.inventory-table th { text-align: left; font-size: .75rem; white-space: nowrap; }
+.inventory-table td, .inventory-table th { padding: .15rem .3rem; vertical-align: middle; }
+.inventory-table td:not(.inv-name) { white-space: nowrap; }
+.inventory-table .inv-name { min-width: 9rem; }
+.inventory-table .inv-number { text-align: right; }
+.inventory-table .feat-detail td { white-space: normal; }

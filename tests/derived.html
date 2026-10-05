@@ -147,6 +147,11 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...and mix with positives", parseBonus("5-2").flat, 3);
     assertEqual("a subtracted die keeps its sign (Bane)", parseBonus("-1d4").dice, "-1d4");
     assertEqual("whitespace is ignored", parseBonus(" 2 + 1d6 ").flat, 2);
+    assertEqual("a parenthesized source note keeps the flat bonus", parseBonus("+1 (Blessing of the Forge)").flat, 1);
+    assertEqual("a source note containing d is not treated as dice", parseBonus("+1 (Blessing of the Forge)").dice, "");
+    assertEqual("labelled bonuses sum", parseBonus("+2 (shield), -1 (curse)").flat, 1);
+    assertEqual("dice keep their notes without breaking the expression", parseBonus("+1d4 (Bless) -1d4 (Bane)").dice, "+1d4-1d4");
+    assertEqual("numbers inside nested notes do not count", parseBonus("+1 (level 3 (+2 bonus)) +2 (item)").flat, 3);
     assertEqual("empty is zero", parseBonus("").flat, 0);
     assertEqual("garbage contributes nothing rather than NaN", parseBonus("abc").flat, 0);
   }

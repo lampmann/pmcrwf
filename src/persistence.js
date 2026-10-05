@@ -105,7 +105,7 @@ function applyState(state) {
   if (typeof applySkillOrder === "function") applySkillOrder(state.skillOrder || []);
   USES_STATE = state.usesState || {};
   HD_STATE = state.hdState || {};
-  EFFECT_CHOICES = state.effectChoices || {};
+  EFFECT_CHOICES = normalizeCustomLineageChoices(state.effectChoices || {});
   EFFECT_TOGGLES = state.effectToggles || {};
   /* Reset every persisted field to its markup default BEFORE writing the incoming ones. Everything
      else in this function resets when the saved state lacks it (`state.spells || []`), but fields

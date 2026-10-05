@@ -118,6 +118,16 @@ function featEntryWithAbility(key, base) {
    for phrasings at render time: a feature only gets a uses tracker if its DB entry declares one. */
 function usesSpecFor(feature) { const e = dbEntryFor(feature); return e && e.uses ? e.uses : null; }
 function usesMaxFor(feature, maxExpr) { return Math.max(0, evalValue(feature, maxExpr)); }
+function normalizeCustomLineageChoices(choices) {
+  const out = { ...choices };
+  Object.entries(out).forEach(([key, value]) => {
+    if (!/^race\|\|custom lineage\|\|variable trait$/i.test(key) && key !== "race|custom lineage|variable trait") return;
+    if (!value || value.trait || !value.skill) return;
+    const old = [].concat(value.skill)[0];
+    out[key] = old === "darkvision" ? { ...value, trait: "darkvision", skill: "" } : { ...value, trait: "skill", skill: old };
+  });
+  return out;
+}
 function choiceValue(feature, id) { const c = EFFECT_CHOICES[feature.fkey]; return c ? c[id] : undefined; }
 function hasChoiceValue(feature, id) {
   const v = choiceValue(feature, id);

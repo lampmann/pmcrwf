@@ -14,6 +14,9 @@ const SENSE_NAMES = ["blindsight", "darkvision", "tremorsense", "truesight"];
 function raceSenseGrant(sense) {
   if (typeof ciFindRace !== "function") return null;
   const rec = ciFindRace((($("char-race") || {}).value || "").trim()); if (!rec) return null;
+  // This record advertises darkvision even though Variable Trait makes it optional.
+  // The conditional feature effect owns Custom Lineage's darkvision.
+  if (sense === "darkvision" && rec.name.toLowerCase() === "custom lineage") return null;
   const sub = ciFindRaceSub(rec, (($("char-subrace") || {}).value || "").trim());
   const n = (sub && sub.senses && sub.senses[sense]) || (rec.senses && rec.senses[sense]) || 0;
   return n ? { n, source: sub && sub.senses && sub.senses[sense] ? sub.name + " " + rec.name : rec.name } : null;

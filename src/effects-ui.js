@@ -38,6 +38,8 @@ function spellMatchesFilterSpec(sp, spec) {
    keys as the ability's name, anything else as written. Pick lists sort by this. */
 function choiceOptionLabel(o) {
   const s = String(o);
+  if (s === "darkvision") return "Darkvision (60 ft.)";
+  if (s === "skill") return "Skill proficiency";
   const skill = (typeof SKILLS !== "undefined") && SKILLS.find(x => x[0].toLowerCase().replace(/[^a-z]/g, "") === s);
   if (skill) return skill[0];
   const ab = (typeof ABILITIES !== "undefined") && ABILITIES.find(a => a.key === s);
@@ -52,6 +54,7 @@ function renderEffectControls(feature) {
   let html = "";
   const seenToggle = new Set();
   (entry.effects || []).forEach(effect => {
+    if (effect.when?.choice && !whenSatisfied(effect.when, feature)) return;
     if (effect.target === "spell-grant") {
       // Reuses the exact same .gsp-link/.gsp-expanded markup and click handler as the
       // race/subclass additionalSpells-driven grants (grantedSpellsHtml in class-library.js) —
@@ -84,6 +87,7 @@ function renderEffectControls(feature) {
     }
   });
   (entry.choices || []).forEach(c => {
+    if (c.when && !whenSatisfied(c.when, feature)) return;
     if (c.kind === "ability") {
       const cur = choiceValue(feature, c.id) || "";
       const opts = ABILITIES.map(a => `<option value="${a.key}"${cur === a.key ? " selected" : ""}>${a.name}</option>`).join("");

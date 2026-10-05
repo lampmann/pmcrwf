@@ -155,7 +155,7 @@ function crEffectSkillGrants(features) {
     });
     const chosen = CREATOR.effectChoices[f.fkey] || {};
     (entry.choices || []).forEach(c => {
-      if (c.kind !== "pick") return;
+      if (c.kind !== "pick" || (c.when && !crWhen(c.when, f))) return;
       [].concat(chosen[c.id] || []).forEach(v => {
         if (v && SKILLS.some(s => crSkillSlug(s[0]) === crSkillSlug(v)) &&
             (entry.effects || []).some(e => e.op === "prof" && String(e.target).includes("{choice:" + c.id + "}"))) out.push(crSkillName(v));
@@ -204,6 +204,10 @@ function crWhen(when, f) {
       const cls = (v.class === "@self" || v.class == null) ? ((f.origin && f.origin.className) || "") : v.class;
       return k === "minClassLevel" ? crClassLevel(cls) >= v.level : crClassLevel(cls) <= v.level;
     }
+    if (k === "choice") {
+      const values = [].concat((CREATOR.effectChoices[f.fkey] || {})[v.id] || []).filter(Boolean);
+      return values.length > 0 && (v.is != null ? values.includes(v.is) : v.not != null ? !values.includes(v.not) : false);
+    }
     if (k === "armor" || k === "notArmor" || k === "shield") return true;
     return false;
   });
@@ -216,6 +220,7 @@ function crLiveChoices(f) {
   const entry = dbEntryFor(f);
   if (!entry || !entry.choices) return [];
   return entry.choices.filter(c => {
+    if (c.when && !crWhen(c.when, f)) return false;
     if (c.kind === "spellfilter" && !crSpellFilterOptions(c).length) return false;
     if (!["ability", "pick", "spellfilter"].includes(c.kind)) return false;
     const effs = (entry.effects || []).filter(e => crRefsChoice(e, c.id));
@@ -604,7 +609,13 @@ function creatorApplyChoices(state) {
   state.originSwaps = crOriginSwaps();
   state.grantSpellChoices = Object.fromEntries(Object.entries(CREATOR.picks).filter(([key]) => key.startsWith("race|") || key.startsWith("subrace|") || key.startsWith("background|") || key.startsWith("feat|")));
   state.backgroundGrants = !CREATOR.customBg;
-  race.skills.forEach(name => { f["skillprof-" + crSkillSlug(name)] = true; });
+  const dynamicSkills = new Set(crEffectSkillGrants(creatorFeatureList().filter(feature => ["race", "subrace"].includes(feature.origin?.kind) && !feature.isRaceFeat)).map(crSkillSlug));
+  const fixedSkills = new Set(crFixedNames(crRaceList("skills")).map(crSkillSlug));
+  race.skills.forEach(name => {
+    const slug = crSkillSlug(name), swapped = state.originSwaps.some(swap => swap.toKind === "skills" && crSkillSlug(swap.to) === slug);
+    // Feature choices remain derived, so changing the choice on the sheet can remove the grant.
+    if (!dynamicSkills.has(slug) || fixedSkills.has(slug) || swapped) f["skillprof-" + slug] = true;
+  });
   race.armor.forEach(name => { const key = CR_ARMOR[name.toLowerCase()]; if (key) f["prof-armor-" + key] = true; });
   addTo(prof.languages, race.languages);
   addTo(prof.languages, crPicked("langs:race"));

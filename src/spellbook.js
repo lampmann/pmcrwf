@@ -42,7 +42,7 @@ function spellStatsFor(ab) {
   if (!ab) return null;
   const mod = abilityMod(ab);
   const atk = profBonus() + mod + parseBonus(($("spell-atk-misc") || {}).value).flat + effFlat("spellatk");
-  const dc = 8 + profBonus() + mod + num($("spell-dc-misc")) + effFlat("spelldc");
+  const dc = 8 + profBonus() + mod + parseBonus($("spell-dc-misc").value).flat + effFlat("spelldc");
   return { mod, atk, dc, ab };
 }
 

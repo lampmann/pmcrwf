@@ -40,8 +40,8 @@ function removeCharacterItem(idx) {
 function setItemQty(idx, qty) {
   const it = CHARACTER_ITEMS[idx]; if (!it) return;
   it.qty = Math.max(0, Number(qty) || 0);
-  const row = document.querySelector(`.inv-totals[data-idx="${idx}"]`);
-  if (row) row.innerHTML = itemRowTotalsHtml(it);
+  const figures = itemRowFigures(it);
+  document.querySelectorAll(`.inv-totals[data-idx="${idx}"]`).forEach(el => { el.textContent = figures[Number(el.dataset.figure)]; });
   recompute(); scheduleSave();
 }
 function setItemFlag(idx, key, val) {
@@ -73,23 +73,25 @@ function renderItemList() {
   const el = $("char-item-list"); if (!el) return;
   $("attuned-count").textContent = String(CHARACTER_ITEMS.filter(it => it.attuned).length);
   if (!CHARACTER_ITEMS.length) { el.innerHTML = "<div class='hint'>no items yet - use \"+ Add Item\" above</div>"; return; }
-  el.innerHTML = CHARACTER_ITEMS.map((it, i) => {
+  const rows = CHARACTER_ITEMS.map((it, i) => {
     const r = resolvedItem(it);
     const src = r.lib ? r.lib.source : "";
     const missing = r.lib ? "" : ` <span class="hint">(not found in Equipment Library - load it to see weight/value/description)</span>`;
     const attuneBox = r.lib && r.lib.reqAttune
       ? `<label class="hint" style="margin-left:.4rem" title="${escapeHtml(r.lib.reqAttune)}"><input type="checkbox" class="inv-attuned" data-idx="${i}" ${it.attuned ? "checked" : ""}> attuned</label>` : "";
-    return `<div draggable="true" data-invdrag="${i}" aria-label="drag onto an Equipped slot above">
-      <input type="text" inputmode="numeric" class="tiny inv-qty" data-idx="${i}" value="${it.qty}">
-      <a class="feat-link inv-link" data-idx="${i}"><b>${escapeHtml(it.name)}</b></a> <span class="hint">${escapeHtml(src)}</span>${missing}
-      <label class="hint" style="margin-left:.4rem"><input type="checkbox" class="inv-eq" data-idx="${i}" ${it.eq ? "checked" : ""}> equipped</label>${it.slot && typeof slotByKey === "function" && slotByKey(it.slot) ? ` <span class="hint">(${escapeHtml(slotByKey(it.slot).label.toLowerCase())})</span>` : ""}${attuneBox}
-${r.lib && r.lib.spellCarrier != null ? invSpellPickHtml(it, i, r.lib.spellCarrier) : ""}
-      ${r.lib && (it.custom ? it.custom.valueGp : itemValueGp(r.lib)) !== "" ? `<button type="button" class="inv-buy" data-idx="${i}" title="Buy one for ${fmtGP(r.val)} gp">Buy +1</button>` : ""}
-      <span class="hint inv-totals" data-idx="${i}">${itemRowTotalsHtml(it)}</span>
-      ${it.custom ? `<button type="button" data-custom-item-edit="${i}">Edit</button>` : ""}
-      <button class="rowbtn inv-del" data-idx="${i}" aria-label="remove">x</button>
-    </div>`;
+    return `<tr draggable="true" data-invdrag="${i}" aria-label="drag onto an Equipped slot above">
+      <td><input type="text" inputmode="numeric" class="tiny inv-qty" data-idx="${i}" value="${it.qty}" aria-label="Quantity of ${escapeHtml(it.name)}"></td>
+      <td class="inv-name"><a class="feat-link inv-link" data-idx="${i}"><b>${escapeHtml(it.name)}</b></a>${missing}${r.lib && r.lib.spellCarrier != null ? invSpellPickHtml(it, i, r.lib.spellCarrier) : ""}</td>
+      <td class="hint">${escapeHtml(src)}</td>
+      <td><label class="hint"><input type="checkbox" class="inv-eq" data-idx="${i}" ${it.eq ? "checked" : ""} aria-label="Equip ${escapeHtml(it.name)}">${it.slot && typeof slotByKey === "function" && slotByKey(it.slot) ? ` ${escapeHtml(slotByKey(it.slot).label.toLowerCase())}` : ""}</label></td>
+      <td>${attuneBox}</td>
+      <td>${r.lib && (it.custom ? it.custom.valueGp : itemValueGp(r.lib)) !== "" ? `<button type="button" class="inv-buy" data-idx="${i}" title="Buy one for ${fmtGP(r.val)} gp">Buy +1</button>` : ""}</td>
+      ${itemRowTotalsHtml(it, i)}
+      <td>${it.custom ? `<button type="button" data-custom-item-edit="${i}">Edit</button>` : ""}</td>
+      <td><button class="rowbtn inv-del" data-idx="${i}" aria-label="Remove ${escapeHtml(it.name)}">x</button></td>
+    </tr>`;
   }).join("");
+  el.innerHTML = `<table class="inventory-table"><thead><tr>${["Qty", "Item", "Source", "Equipped", "Attunement", "Buy", "Weight each", "Value each", "Total weight", "Total value", "Edit", "Remove"].map(label => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 /* Which spell a scroll or tattoo holds: any spell of its level, or free text before spells load. */
 function invSpellPickHtml(it, i, level) {
@@ -100,23 +102,26 @@ function invSpellPickHtml(it, i, level) {
   return ` <select class="inv-spell" data-idx="${i}"><option value="">- spell -</option>${names.map(n =>
     `<option value="${escapeHtml(n)}"${n === it.spell ? " selected" : ""}>${escapeHtml(n)}</option>`).join("")}</select>`;
 }
-/* The per-row "x lb ea | y gp ea | totals" readout. Its own function so setItemQty can repaint just
-   this span instead of the whole list. */
-function itemRowTotalsHtml(it) {
+/* Repaint numeric cells without replacing editable quantity controls. */
+function itemRowFigures(it) {
   const r = resolvedItem(it);
-  return `- ${fmtGP(r.wt)} lb ea | ${fmtGP(r.val)} gp ea | ${fmtGP(it.qty * r.wt)} lb / ${fmtGP(it.qty * r.val)} gp total`;
+  return [`${fmtGP(r.wt)} lb.`, `${fmtGP(r.val)} gp`, `${fmtGP(it.qty * r.wt)} lb.`, `${fmtGP(it.qty * r.val)} gp`];
+}
+function itemRowTotalsHtml(it, index) {
+  return itemRowFigures(it).map((figure, column) => `<td class="inv-number hint"><span class="inv-totals" data-idx="${index}" data-figure="${column}">${figure}</span></td>`).join("");
 }
 function toggleInvDetail(link) {
-  const div = link.closest("div");
+  const div = link.closest("tr");
   if (div.nextElementSibling && div.nextElementSibling.classList.contains("feat-detail")) { div.nextElementSibling.remove(); return; }
   const it = CHARACTER_ITEMS[Number(link.dataset.idx)]; if (!it) return;
   const lib = it.custom || findLibItemByName(it.name);
-  const d = document.createElement("div"); d.className = "feat-detail";
+  const d = document.createElement("tr"); d.className = "feat-detail";
+  const detail = document.createElement("td"); detail.colSpan = 12; d.appendChild(detail);
   if (!lib) {
-    d.innerHTML = `<div class="hint">No item named "${escapeHtml(it.name)}" found in the Equipment Library - load/import it above to see its description.</div>`;
+    detail.innerHTML = `<div class="hint">No item named "${escapeHtml(it.name)}" found in the Equipment Library - load/import it above to see its description.</div>`;
   } else {
     const meta = [lib.type, lib.rarity, lib.reqAttune].filter(Boolean).join(" | ");
-    d.innerHTML = `<div class="hint">${meta}</div><div>${escapeHtml(lib.text).replace(/\n/g, "<br>")}</div>`;
+    detail.innerHTML = `<div class="hint">${meta}</div><div>${escapeHtml(lib.text).replace(/\n/g, "<br>")}</div>`;
   }
   div.after(d);
 }
