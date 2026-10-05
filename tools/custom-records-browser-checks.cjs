@@ -10,7 +10,7 @@ module.exports = async function checkCustomRecords(page) {
   await item.locator('[name="description"]').fill('Homebrew description <script>bad()</script>');
   await item.locator('[name="rarity"]').selectOption('rare');
   await item.locator('[name="attunement"]').check();
-  await item.locator('[type="submit"]').click();
+  await item.locator('[type="submit"]').filter({ hasText: 'Save item' }).click();
   assert.equal(await page.locator('#items-weight-total').innerText(), '7');
   assert.equal(await page.locator('#items-value-total').innerText(), '50');
   await page.evaluate(() => {
@@ -28,7 +28,7 @@ module.exports = async function checkCustomRecords(page) {
   assert.equal(await item.locator('[name="rarity"]').inputValue(), 'rare');
   await item.locator('[name="rarity"]').selectOption('very rare');
   await item.locator('[name="value"]').fill('30');
-  await item.locator('[type="submit"]').click();
+  await item.locator('[type="submit"]').filter({ hasText: 'Save item' }).click();
   assert.equal(await page.locator('#items-value-total').innerText(), '60');
   await page.locator('#custom-creature-add').click();
   const creature = page.locator('#custom-creature-editor');

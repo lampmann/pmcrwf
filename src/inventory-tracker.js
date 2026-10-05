@@ -52,3 +52,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   renderInventoryTracker();
 });
+
+function recordItemPurchase(name, quantity, unitPrice) {
+  if (unitPrice === "" || unitPrice == null || !Number.isFinite(Number(unitPrice)) || Number(unitPrice) < 0) return false;
+  const now = new Date();
+  const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  INVENTORY_TRANSACTIONS.push({ amount: -Math.round(quantity * Number(unitPrice) * 100) / 100,
+    source: "Purchase: " + (quantity === 1 ? "" : quantity + " × ") + name, date });
+  renderInventoryTracker(); scheduleSave();
+  return true;
+}

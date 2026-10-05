@@ -6,8 +6,8 @@ function customRecordField(label, name, value = '', type = 'text', attrs = '') {
 function customRecordText(label, name, value = '') {
   return `<label>${escapeHtml(label)} <textarea name="${name}" rows="3">${escapeHtml(value)}</textarea></label>`;
 }
-function customRecordButtons(label) {
-  return `<div><button type="submit">${label}</button> <button type="button" data-custom-cancel>Cancel</button></div>`;
+function customRecordButtons(label, offerPurchase = false) {
+  return `<div><button type="submit">${label}</button>${offerPurchase ? ' <button type="submit" data-custom-item-buy>Buy item</button>' : ""} <button type="button" data-custom-cancel>Cancel</button></div>`;
 }
 function closeCustomRecordEditors() {
   ['custom-item-editor', 'custom-creature-editor'].forEach(id => { if ($(id)) { $(id).hidden = true; $(id).innerHTML = ''; } });
@@ -24,7 +24,7 @@ function openCustomItem(index = null) {
     customRecordField('Type', 'type', record.type || '') +
     `<label>Rarity <select name="rarity">${['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact', 'varies', 'unknown', 'unknown (magic)'].map(rarity => `<option value="${rarity}"${rarity === (record.rarity || 'none') ? ' selected' : ''}>${rarity[0].toUpperCase() + rarity.slice(1)}</option>`).join('')}</select></label>` +
     `<label><input name="attunement" type="checkbox"${record.reqAttune ? ' checked' : ''}> Requires attunement</label>` +
-    customRecordText('Description', 'description', record.text || '') + customRecordButtons('Save item');
+    customRecordText('Description', 'description', record.text || '') + customRecordButtons('Save item', index === null);
   form.hidden = false; form.elements.name.focus();
 }
 function customActionEditor(action = {}) {
@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('custom-item-editor').addEventListener('submit', event => {
     event.preventDefault(); const form = event.target, data = new FormData(form), name = data.get('name').trim(); if (!name) return;
     const custom = { name, source: 'Custom', type: data.get('type'), rarity: data.get('rarity') === 'none' ? '' : data.get('rarity'), weight: Number(data.get('weight')), valueGp: Number(data.get('value')), text: data.get('description'), reqAttune: data.has('attunement') ? 'requires attunement' : '' };
+    if (customItemEditing === null && event.submitter?.hasAttribute('data-custom-item-buy')) recordItemPurchase(name, Number(data.get('qty')), custom.valueGp);
     if (customItemEditing === null) CHARACTER_ITEMS.push({ name, custom, qty: Number(data.get('qty')), eq: false, attuned: false, slot: '' });
     else { const item = CHARACTER_ITEMS[customItemEditing]; Object.assign(item, { name, custom, qty: Number(data.get('qty')) }); if (!custom.reqAttune) item.attuned = false; }
     closeCustomRecordEditors(); renderItemList(); if (typeof renderEquipSlots === 'function') renderEquipSlots(); recompute(); scheduleSave();

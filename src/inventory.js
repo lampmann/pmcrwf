@@ -16,6 +16,18 @@ function addCharacterItem(name) {
   CHARACTER_ITEMS.push({ name, qty: 1, eq: false, attuned: false, slot: "" });
   renderItemList(); recompute(); scheduleSave();
 }
+function buyCharacterItem(name, record = null) {
+  const lib = record || findLibItemByName(name);
+  if (!lib || !recordItemPurchase(name, 1, itemValueGp(lib))) return;
+  addCharacterItem(name);
+}
+function buyMoreItem(index) {
+  const item = CHARACTER_ITEMS[index]; if (!item) return;
+  const resolved = resolvedItem(item);
+  const price = item.custom ? item.custom.valueGp : resolved.lib ? itemValueGp(resolved.lib) : "";
+  if (!recordItemPurchase(item.name, 1, price)) return;
+  item.qty += 1; renderItemList(); recompute(); scheduleSave();
+}
 function removeCharacterItem(idx) {
   if (typeof closeCustomRecordEditors === "function") closeCustomRecordEditors();
   CHARACTER_ITEMS.splice(idx, 1);
@@ -72,6 +84,7 @@ function renderItemList() {
       <a class="feat-link inv-link" data-idx="${i}"><b>${escapeHtml(it.name)}</b></a> <span class="hint">${escapeHtml(src)}</span>${missing}
       <label class="hint" style="margin-left:.4rem"><input type="checkbox" class="inv-eq" data-idx="${i}" ${it.eq ? "checked" : ""}> equipped</label>${it.slot && typeof slotByKey === "function" && slotByKey(it.slot) ? ` <span class="hint">(${escapeHtml(slotByKey(it.slot).label.toLowerCase())})</span>` : ""}${attuneBox}
 ${r.lib && r.lib.spellCarrier != null ? invSpellPickHtml(it, i, r.lib.spellCarrier) : ""}
+      ${r.lib && (it.custom ? it.custom.valueGp : itemValueGp(r.lib)) !== "" ? `<button type="button" class="inv-buy" data-idx="${i}" title="Buy one for ${fmtGP(r.val)} gp">Buy +1</button>` : ""}
       <span class="hint inv-totals" data-idx="${i}">${itemRowTotalsHtml(it)}</span>
       ${it.custom ? `<button type="button" data-custom-item-edit="${i}">Edit</button>` : ""}
       <button class="rowbtn inv-del" data-idx="${i}" aria-label="remove">x</button>
@@ -111,6 +124,7 @@ function toggleInvDetail(link) {
 document.addEventListener("DOMContentLoaded", () => {
   const results = $("char-item-list"); if (!results) return;
   results.addEventListener("click", e => {
+    const buy = e.target.closest(".inv-buy"); if (buy) { buyMoreItem(Number(buy.dataset.idx)); return; }
     const del = e.target.closest(".inv-del"); if (del) { removeCharacterItem(Number(del.dataset.idx)); return; }
     // handled on click, not "change" — see the identical comment on .sp2-prep in spellcasting.js
     const eq = e.target.closest(".inv-eq"); if (eq) { setItemFlag(Number(eq.dataset.idx), "eq", eq.checked); return; }

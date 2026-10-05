@@ -399,7 +399,7 @@ function renderItemResults() {
     const valTitle = ruled ? "priced by this campaign's House Rules"
       : (it.valueDefaulted ? "estimated by rarity - no official price in the source data" : "");
     return `<tr${ban ? ' class="lib-banned"' : ""}>
-      <td><button class="itm-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` aria-label="${isGroup ? "Choose item" : "Add to inventory"}"`}>${isGroup ? "&hellip;" : "+"}</button></td>
+      <td><button class="itm-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` aria-label="${isGroup ? "Choose item" : "Add to inventory"}"`}>${isGroup ? "&hellip;" : "+"}</button>${!isGroup && val !== "" ? ` <button type="button" class="itm-lib-buy" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` title="Buy for ${val} gp"`}>Buy</button>` : ""}</td>
       <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
@@ -443,10 +443,10 @@ function addItemFromLib(key, btn) {
   // that doesn't is still offered, because the character may own it even if the book isn't loaded.
   const members = groupMembersOf(it).map(n => {
     const rec = findLibItemByName(n);
-    return { name: n, key: rec ? (rec.name + "|" + rec.source) : "", known: !!rec };
+    return { name: n, key: rec ? (rec.name + "|" + rec.source) : "", known: !!rec, price: rec ? itemValueGp(rec) : "" };
   });
   const row = document.createElement("tr"); row.className = "itm-group-row";
   row.innerHTML = `<td></td><td colspan="6"><div class="hint">${escapeHtml(it.name)}:</div>
-    <div>${members.map(m => `<button class="itm-group-pick" data-name="${escapeHtml(m.name)}"${m.known ? "" : ` aria-label="not in the loaded library - added by name only"`}>${escapeHtml(m.name)}${m.known ? "" : " *"}</button>`).join(" ")}</div></td>`;
+    <div>${members.map(m => `<button class="itm-group-pick" data-name="${escapeHtml(m.name)}"${m.known ? "" : ` aria-label="not in the loaded library - added by name only"`}>${escapeHtml(m.name)}${m.known ? "" : " *"}</button>${m.known && m.price !== "" ? ` <button type="button" class="itm-group-buy" data-name="${escapeHtml(m.name)}" title="Buy for ${m.price} gp">Buy</button>` : ""}`).join(" ")}</div></td>`;
   tr.after(row);
 }

@@ -182,6 +182,9 @@ function init() {
   $("item-filter-area").addEventListener("click", e => ITEM_FILTERS.handleClick(e));
   $("item-filter-area").addEventListener("input", e => ITEM_FILTERS.handleInput(e));
   $("item-results").addEventListener("click", e => {
+    const buy = e.target.closest(".itm-lib-buy");
+    if (buy) { const record = ITEM_LIB.find(item => item.name + "|" + item.source === buy.dataset.key); if (record) buyCharacterItem(record.name, record); return; }
+    const groupBuy = e.target.closest(".itm-group-buy"); if (groupBuy) { buyCharacterItem(groupBuy.dataset.name); return; }
     const b = e.target.closest(".itm-lib-add"); if (b) { addItemFromLib(b.dataset.key, b); return; }
     const pick = e.target.closest(".itm-group-pick"); if (pick) { addCharacterItem(pick.dataset.name); return; }
     const link = e.target.closest(".itm-name-link"); if (link) { e.preventDefault(); toggleItemDetail(link); }
