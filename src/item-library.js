@@ -403,8 +403,8 @@ function renderItemResults() {
       <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
       <td class="hint">${it.type}</td>
       <td class="hint">${it.rarity}</td>
-      <td class="c hint">${it.weight === "" ? "" : it.weight}</td>
-      <td class="c hint"${valTitle ? ` title="${escapeHtml(valTitle)}"` : ""}>${val === "" ? "" : (ruled ? val : (it.valueDefaulted ? "~" + val : val))}</td>
+      <td class="c hint">${it.weight === "" ? "" : escapeHtml(String(it.weight)) + " lb"}</td>
+      <td class="c hint"${valTitle ? ` title="${escapeHtml(valTitle)}"` : ""}>${val === "" ? "" : (ruled ? val : (it.valueDefaulted ? "~" + val : val)) + " gp"}</td>
       <td class="hint">${it.source}</td>
     </tr>`;
   }).join("");
