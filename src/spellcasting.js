@@ -83,6 +83,15 @@ function refreshSpellAddClassSelect() {
     `<option value="${escapeHtml(n)}" ${n === cur ? "selected" : ""}>${escapeHtml(n)}</option>`).join("");
   if (!names.includes(cur)) sel.value = names[0] || "";
 }
+const MANAGED_SPELL_SORT = createListSort([
+  { key: "name", label: "Name" }, { key: "level", label: "Level", numeric: true, get: s => s.lvl },
+  { key: "source", label: "Source", get: s => findLibSpellByName(s.name)?.source },
+  { key: "school", label: "School", get: s => findLibSpellByName(s.name)?.school },
+  { key: "prepared", label: "Prepared", numeric: true, get: s => !!s.prep },
+]);
+function managedSpellCompare(a, b) {
+  return MANAGED_SPELL_SORT.compare(a, b);
+}
 function spellLineHtml(s, prepBox) {
   const lib = findLibSpellByName(s.name), src = lib ? lib.source : "";
   const note = s.note ? ` <span class="hint">(${escapeHtml(s.note)})</span>` : "";
@@ -164,7 +173,7 @@ function renderSpellList() {
     // Granted spells (domain/racial, tagged with grantSrc) get their own header/group below and never
     // count toward a class's normal Known/Prepared/Spellbook totals — see grantSrc handling further down.
     const allRows = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => !s.grantSrc && s.cls === c.name.trim())
-      .sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
+      .sort(managedSpellCompare);
     // Cantrips are tracked separately (their own known-cantrips table) and never count toward a
     // "known"/spellbook/prepared total — e.g. a Wizard's cantrips aren't written in their spellbook.
     const leveled = allRows.filter(s => s.lvl > 0), cantrips = allRows.filter(s => s.lvl === 0);
@@ -193,19 +202,18 @@ function renderSpellList() {
   const grantedGroups = [...new Set(CHARACTER_SPELLS.filter(s => s.grantSrc).map(s => s.grantSrc))];
   const grantedHtml = grantedGroups.map(src => {
     const rows = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => s.grantSrc === src)
-      .sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
+      .sort(managedSpellCompare);
     const items = rows.map(s => spellLineHtml(s)).join("");
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(src)}</b> <span class="hint">- granted spells</span></div>${items}`;
   }).join("");
   const derivedHtml = derivedSpellGroups().map(g => {
-    const byLevel = g.names.map(n => ({ n, lib: findLibSpellByName(n) }))
-      .sort((a, b) => ((a.lib ? a.lib.level : 0) - (b.lib ? b.lib.level : 0)) || a.n.localeCompare(b.n));
+    const byLevel = MANAGED_SPELL_SORT.rows(g.names.map(n => ({ n, name: n, lvl: findLibSpellByName(n)?.level, lib: findLibSpellByName(n) })));
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(g.header)}</b></div>` + byLevel.map(x => derivedSpellLineHtml(x.n)).join("");
   }).join("");
   const choiceHtml = spellGrantSources(($("char-race")?.value || "").trim(),
     ($("char-subrace")?.value || "").trim(), BACKGROUND_GRANTS ? ($("char-bg")?.value || "").trim() : "", FEAT_CHOICES)
     .map(source => spellGrantChoicesHtml(source, totalLevel())).join("");
-  const rowsOf = test => CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(test).sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name));
+  const rowsOf = test => CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(test).sort(managedSpellCompare);
   const other = rowsOf(s => !s.grantSrc && !s.cls);
   const otherHtml = other.length ? `<div style="margin:.5rem 0 .1rem"><b>Other</b></div>` + other.map(s => spellLineHtml(s)).join("") : "";
   const orphans = rowsOf(s => !s.grantSrc && s.cls && !assigned.has(s.cls));
@@ -215,7 +223,7 @@ function renderSpellList() {
     el.innerHTML = concentrationBannerHtml() || "<div class='hint'>No spells.</div>";
     return;
   }
-  el.innerHTML = concentrationBannerHtml() + choiceHtml + casterHtml + grantedHtml + derivedHtml + otherHtml + orphanHtml;
+  el.innerHTML = `<div class="list-sort-toolbar" role="group" aria-label="Sort your spells">${MANAGED_SPELL_SORT.headers(false)}</div>` + concentrationBannerHtml() + choiceHtml + casterHtml + grantedHtml + derivedHtml + otherHtml + orphanHtml;
 }
 function findLibSpellByName(name) {
   const q = (name || "").trim().toLowerCase(); if (!q) return null;
@@ -292,6 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   const results = $("spell-feat-results");
   if (results) results.addEventListener("click", e => {
+    if (MANAGED_SPELL_SORT.click(e, renderSpellList)) return;
     const del = e.target.closest(".sp2-del"); if (del) { removeCharacterSpell(Number(del.dataset.idx)); return; }
     const dropBtn = e.target.closest(".sp2-conc-drop"); if (dropBtn) { dropConcentration(); return; }
     const conc = e.target.closest(".sp2-conc");

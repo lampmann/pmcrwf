@@ -160,6 +160,7 @@ function init() {
   $("spell-filter-area").addEventListener("click", e => SPELL_FILTERS.handleClick(e));
   $("spell-filter-area").addEventListener("input", e => SPELL_FILTERS.handleInput(e));
   $("spell-results").addEventListener("click", e => {
+    if (SPELL_LIBRARY_SORT.click(e, renderSpellResults)) return;
     const b = e.target.closest(".sp-lib-add"); if (b) { addSpellFromLib(b.dataset.key); return; }
     const link = e.target.closest(".sp-name-link"); if (link) { e.preventDefault(); toggleSpellDetail(link); }
   });

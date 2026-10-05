@@ -14,14 +14,15 @@ module.exports = async function checkInventoryColumns(page) {
     const second = await rows.nth(1).locator('td').nth(column).boundingBox();
     assert(Math.abs(first.x - second.x) < 1, 'Column ' + column + ' aligned');
   }
-  await rows.nth(0).locator('.inv-qty').fill('3');
-  assert.equal(await rows.nth(0).locator('[data-figure="2"]').innerText(), '3 lb.');
-  assert.equal(await rows.nth(0).locator('[data-figure="3"]').innerText(), '6 gp');
-  await rows.nth(0).locator('.inv-qty').blur();
-  await rows.nth(0).locator('.inv-link').click();
+  const short = page.locator('#char-item-list tr[data-invdrag="0"]');
+  await short.locator('.inv-qty').fill('3');
+  assert.equal(await short.locator('[data-figure="2"]').innerText(), '3 lb.');
+  assert.equal(await short.locator('[data-figure="3"]').innerText(), '6 gp');
+  await short.locator('.inv-qty').blur();
+  await short.locator('.inv-link').click();
   assert.match(await page.locator('#char-item-list .feat-detail').innerText(), /Description/);
   assert.equal(await page.locator('#char-item-list .feat-detail td').getAttribute('colspan'), '12');
-  await rows.nth(0).locator('.inv-link').click();
+  await short.locator('.inv-link').click();
   assert.equal(await page.locator('#char-item-list .feat-detail').count(), 0);
   console.log('Inventory columns: aligned controls and numeric columns, quantity editing, totals, expanded descriptions and drag rows passed.');
 };

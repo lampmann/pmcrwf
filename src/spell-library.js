@@ -317,16 +317,17 @@ function renderSpellLibrary() {
   SPELL_FILTERS.renderArea();
   renderSpellResults();
 }
+const SPELL_LIBRARY_SORT = createListSort([
+  { key: "level", label: "Level", numeric: true }, { key: "name", label: "Name" },
+  { key: "school", label: "School" }, { key: "hit", label: "Hit / Save", get: s => s.attack ? "atk" : s.save },
+  { key: "dmg", label: "Damage" }, { key: "conc", label: "Concentration", numeric: true },
+  { key: "ritual", label: "Ritual", numeric: true }, { key: "source", label: "Source" },
+]);
 function renderSpellResults() {
   const q = ($("spell-search").value || "").toLowerCase().trim();
   const active = SPELL_FILTERS.activeGroups();
-  const rows = []; let more = 0;
-  for (const s of SPELL_LIB) {
-    if (q && !s.name.toLowerCase().includes(q)) continue;
-    if (!SPELL_FILTERS.passes(s, active)) continue;
-    if (rows.length >= 250) { more++; continue; }
-    rows.push(s);
-  }
+  const matches = SPELL_LIBRARY_SORT.rows(SPELL_LIB.filter(s => (!q || s.name.toLowerCase().includes(q)) && SPELL_FILTERS.passes(s, active)));
+  const rows = matches.slice(0, 250), more = Math.max(0, matches.length - rows.length);
   const el = $("spell-results");
   if (!SPELL_LIB.length) { el.innerHTML = "<div class='hint'>No spells loaded.</div>"; return; }
   if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
@@ -352,7 +353,7 @@ function renderSpellResults() {
       <td class="hint">${s.source}</td>
     </tr>`;
   }).join("");
-  el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
+  el.innerHTML = `<table class="spell-table"><thead><tr><th></th>${SPELL_LIBRARY_SORT.headers()}</tr></thead><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
 }
 // escapeHtml now lives in src/text-utils.js (loaded first), alongside the other shared string
 // helpers - it is used by the roster, inventory, event log and creator, not just by this library.

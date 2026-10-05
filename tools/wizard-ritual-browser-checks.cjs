@@ -25,7 +25,7 @@ module.exports = async function checkWizardRituals(page) {
   assert(await page.evaluate(() => CHARACTER_SPELLS.some(spell => spell.name === 'Magic Missile' && spell.cls === 'Wizard')));
   const familiar = page.locator('#sb-sections .sb-row').filter({ has: page.locator('.sb-name-link').filter({ hasText: /^Find Familiar$/ }) });
   assert.equal(await familiar.count(), 1);
-  assert.equal(await familiar.locator('.sb-ritual').count(), 1);
+  assert.equal(await familiar.locator('.sb-ritual').count(), 0);
   assert.equal(await familiar.locator('.sb-cast:not(.sb-ritual)').count(), 0);
   assert.equal(await page.locator('#sb-sections .sb-name-link').filter({ hasText: /^Cleric Ritual$/ }).count(), 0);
   await page.locator('#spell-feat-results .sp2-prep[data-idx="1"]').check();
@@ -37,12 +37,11 @@ module.exports = async function checkWizardRituals(page) {
   assert(await page.evaluate(() => CHARACTER_SPELLS.some(spell => spell.name === 'Fire Bolt' && spell.cls === 'Wizard')));
   await page.locator('#spell-manage-close').click();
   const used = await page.evaluate(() => slotUsed(1));
-  await familiar.locator('.sb-ritual').click();
-  assert.equal(await page.evaluate(() => slotUsed(1)), used);
-  assert.match(await page.locator('#dicelog').innerText(), /Ritual.*Find Familiar/);
+  assert.equal(await familiar.locator('.sb-act').innerText(), '');
+  assert.equal(await page.locator('#sb-sections .sb-ritual').count(), 0);
   await page.reload();
   await page.waitForFunction(() => document.getElementById('char-name').value === 'Multiclass ritual test');
-  assert.equal(await familiar.locator('.sb-ritual').count(), 1);
+  assert.equal(await familiar.locator('.sb-ritual').count(), 0);
   assert.equal(await page.evaluate(() => slotUsed(1)), used);
-  console.log('Wizard spells: multiclass removal refreshes class/plus buttons, spells and cantrips can be re-added, unprepared Wizard rituals appear and cast without slots, Cleric preparation and reload passed.');
+  console.log('Wizard spells: multiclass removal refreshes class/plus buttons, spells and cantrips can be re-added, unprepared Wizard rituals appear with blank action cells, Cleric preparation and reload passed.');
 };

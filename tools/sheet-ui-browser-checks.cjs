@@ -206,7 +206,7 @@ module.exports = async function checkSheetUi(page) {
     out.third = names(3);
     const cureAt3 = [...sec(3).querySelectorAll('.sb-row')].find(r => r.querySelector('.sb-name-link').textContent === 'Cure Wounds');
     out.cure3 = cureAt3.querySelector('.sb-effect').dataset.dice + ' ' + cureAt3.querySelector('.sb-lvl-badge').textContent;
-    out.fire3 = [...sec(3).querySelectorAll('.sb-row')][0].children[4].textContent.trim();
+    out.fire3 = [...sec(3).querySelectorAll('.sb-row')].find(r => r.querySelector('.sb-name-link').textContent === 'Fireball').children[4].textContent.trim();
     out.slotsAt1 = sec(1).querySelectorAll('.sb-slots[data-kind="slot"] .sb-slot').length + '/' + sec(1).querySelectorAll('.sb-slots[data-kind="pact"] .sb-slot').length;
     const castBtn = (L, name) => [...sec(L).querySelectorAll('.sb-row')].find(r => r.querySelector('.sb-name-link').textContent === name).querySelector('.sb-cast');
     castBtn(3, 'Fireball').click();
@@ -227,7 +227,7 @@ module.exports = async function checkSheetUi(page) {
     out.aligned = new Set([...document.querySelectorAll('.sb-row .sb-name')].map(td => Math.round(td.getBoundingClientRect().left))).size;
     document.querySelector('.sb-q[data-q="all"]').click();
     refreshSpellAddClassSelect(); document.getElementById('spell-add-class').value = 'Wizard'; renderSpellResults();
-    const libBtn = n => [...document.querySelectorAll('#spell-results tr')].find(r => r.querySelector('.nm a').textContent === n).querySelector('.sp-lib-add');
+    const libBtn = n => [...document.querySelectorAll('#spell-results tbody tr')].find(r => r.querySelector('.nm a').textContent === n).querySelector('.sp-lib-add');
     out.libButtons = [libBtn('Fireball').textContent, libBtn('Alarm').textContent];
     libBtn('Fireball').click();
     out.removed = CHARACTER_SPELLS.some(x => x.name === 'Fireball') + ',' + libBtn('Fireball').textContent;
@@ -240,7 +240,7 @@ module.exports = async function checkSheetUi(page) {
   assert.equal(book.parsed, 'BA,60 ft,1 h');
   assert.deepEqual(book.stats, ['+4 | +3 | +2', '+7 | +6 | +5', '15 | 14 | 13']);
   assert.equal(book.statTitles, 'Wizard (INT)');
-  assert.deepEqual(book.third, ['Fireball', 'Alarm', 'Bless', 'Cure Wounds', 'Hex']);
+  assert.deepEqual(book.third, ['Alarm', 'Bless', 'Cure Wounds', 'Fireball', 'Hex']);
   assert.equal(book.cure3, '3d8+3 1st');
   assert.equal(book.fire3, 'DEX 15');
   assert.equal(book.slotsAt1, '4/2');

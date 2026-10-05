@@ -804,3 +804,7 @@ button.linkish {
 .inventory-table .inv-name { min-width: 9rem; }
 .inventory-table .inv-number { text-align: right; }
 .inventory-table .feat-detail td { white-space: normal; }
+
+.list-sort { font: inherit; font-weight: inherit; color: inherit; background: transparent; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+.list-sort:hover { text-decoration: underline; }
+.list-sort-toolbar { display: flex; flex-wrap: wrap; gap: .8rem; margin-bottom: .5rem; font-weight: bold; }

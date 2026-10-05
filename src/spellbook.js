@@ -157,13 +157,6 @@ function castSpell(row, level) {
   logEvent("resource", `<b>Cast</b> ${escapeHtml(row.name)}${level > row.lvl ? ` at ${ordinalLevel(level)} level` : ""} <span class="hint">(${pool === "pact" ? "pact slot" : ordinalLevel(level) + "-level slot"})</span>`);
   recompute(); scheduleSave();
 }
-function castRitualSpell(row) {
-  const origin = row.origins.find(o => o.ritual);
-  if (!row.lib?.ritual || !origin) return;
-  if (row.lib.conc) startConcentrating(row.name, origin.cls || "");
-  logEvent("resource", `<b>Ritual</b> ${escapeHtml(row.name)} <span class="hint">(no spell slot; casting time +10 minutes)</span>`);
-  recompute(); scheduleSave();
-}
 function useSpell(row) {
   if (row.lib && row.lib.conc) startConcentrating(row.name, "");
   const src = row.origins.filter(o => o.mode === "use").map(o => o.label).join(", ");
@@ -219,12 +212,10 @@ function sbRowHtml(row, level, rowId) {
   const upcast = level > row.lvl && row.lvl > 0;
   const slotOrigins = row.origins.filter(o => o.mode === "slot");
   const mode = row.lvl === 0 ? "atwill" : upcast || slotOrigins.length ? "slot" : row.origins.some(o => o.mode === "use") ? "use" : "ritual";
-  const ritualButton = !upcast && row.lvl > 0 && row.origins.some(o => o.ritual)
-    ? `<button type="button" class="sb-cast sb-ritual" data-row="${rowId}" data-level="${level}" title="Cast as a ritual: no spell slot, 10 extra minutes">Ritual</button>` : "";
   const pool = mode === "slot" ? slotForCast(row, level) : "";
-  const action = mode === "ritual" ? ritualButton : (mode === "atwill" ? `<span class="sb-atwill">At will</span>`
+  const action = mode === "ritual" ? "" : (mode === "atwill" ? `<span class="sb-atwill">At will</span>`
     : mode === "use" ? `<button type="button" class="sb-cast sb-use" data-row="${rowId}" data-level="${level}">Use</button>`
-    : `<button type="button" class="sb-cast" data-row="${rowId}" data-level="${level}"${pool ? "" : ` disabled title="No ${ordinalLevel(level)}-level slots left"`}>Cast</button>`) + ritualButton;
+    : `<button type="button" class="sb-cast" data-row="${rowId}" data-level="${level}"${pool ? "" : ` disabled title="No ${ordinalLevel(level)}-level slots left"`}>Cast</button>`);
   const badge = upcast ? `<span class="sb-lvl-badge" title="${ordinalLevel(row.lvl)}-level spell">${ordinalLevel(row.lvl)}</span>` : "";
   const firstStats = spellStatsFor((row.origins.find(o => o.ab) || {}).ab);
   const dice = sbEffectDice(row, level, firstStats);
@@ -257,6 +248,16 @@ function sbDetailHtml(row) {
   return `<tr class="sb-detail"><td></td><td colspan="9"><div class="feat-detail">${body}</div></td></tr>`;
 }
 let SB_ROWS = [];
+const SPELLBOOK_SORT = createListSort([
+  { key: "name", label: "Name" }, { key: "time", label: "Time", get: r => r.lib?.timeStr },
+  { key: "range", label: "Range", get: r => r.lib?.rangeFt, numeric: true },
+  { key: "hit", label: "Hit / DC", get: r => stripTags(sbHitDc(r)).replace(/<[^>]*>/g, "") },
+  { key: "effect", label: "Effect", get: r => r.lib?.dmg },
+  { key: "duration", label: "Duration", get: r => r.lib?.durStr },
+  { key: "upcasting", label: "Upcasting", get: r => r.lib?.upText },
+  { key: "components", label: "Comp.", get: r => ["v", "s", "m"].filter(k => r.lib?.comp?.[k]).join("/") },
+  { key: "class", label: "Class", get: r => r.origins.map(o => o.label).join(" | ") },
+]);
 function renderSpellbook() {
   renderSpellStats();
   const el = $("sb-sections"); if (!el) return;
@@ -272,7 +273,7 @@ function renderSpellbook() {
       (slots > 0 || (pactHere && r.origins.some(o => /^warlock$/i.test(o.cls || ""))))) : [];
     if (!own.length && !up.length && !slots && !pactHere) continue;
     levels.push(L);
-    const visible = [...own.sort((a, b) => a.name.localeCompare(b.name)), ...up.sort((a, b) => a.lvl - b.lvl || a.name.localeCompare(b.name))]
+    const visible = SPELLBOOK_SORT.rows([...own, ...up])
       .filter(r => sbMatchesSearch(r) && sbPassesQuick(r, L) && sbPassesPanel(r));
     const filtering = sbQuickActive() || (($("sb-search") || {}).value || "").trim();
     if (filtering && !visible.length) continue;
@@ -280,8 +281,7 @@ function renderSpellbook() {
     // One table for every level, a tbody per level, so the columns line up all the way down.
     const head = `<tr class="sb-level-row"><td colspan="10"><div class="sb-level-head"><span class="sb-level-title">${L ? ordinalLevel(L) + " Level" : "Cantrip"}</span>
       <span class="sb-level-slots">${sbSlotBoxes("slot", L, slots, slotUsed(L))}${pactHere ? sbSlotBoxes("pact", L, pact.count, pactUsed()) : ""}</span></div></td></tr>`;
-    const cols = body ? `<tr class="sb-colhead"><th></th><th>Name</th><th>Time</th><th>Range</th><th>Hit / DC</th>
-      <th>Effect</th><th>Duration</th><th>Upcasting</th><th>Comp.</th><th>Class</th></tr>` : "";
+    const cols = body ? `<tr class="sb-colhead"><th></th>${SPELLBOOK_SORT.headers()}</tr>` : "";
     sections.push(`<tbody class="sb-level" data-level="${L}">${head}${cols}${body}</tbody>`);
   }
   const html = sections.length ? `<div class="sb-table-wrap"><table class="sb-table">${sections.join("")}</table></div>` : `<div class="hint">No spells.</div>`;
@@ -335,13 +335,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const quick = $("sb-quick"); if (quick) quick.addEventListener("click", e => { const b = e.target.closest(".sb-q"); if (b) sbQuickClick(b); });
   const sections = $("sb-sections");
   if (sections) sections.addEventListener("click", e => {
+    if (SPELLBOOK_SORT.click(e, renderSpellbook)) return;
     const slot = e.target.closest(".sb-slot");
     if (slot) { toggleSlotBox(slot.dataset.kind, Number(slot.dataset.level), slot.dataset.full === "1"); return; }
     const cast = e.target.closest(".sb-cast");
     if (cast && !cast.disabled) {
       const row = SB_ROWS[Number(cast.dataset.row)]; if (!row) return;
-      if (cast.classList.contains("sb-ritual")) castRitualSpell(row);
-      else if (cast.classList.contains("sb-use")) useSpell(row); else castSpell(row, Number(cast.dataset.level));
+      if (cast.classList.contains("sb-use")) useSpell(row); else castSpell(row, Number(cast.dataset.level));
       return;
     }
     if (e.target.closest(".sp2-conc-drop")) { dropConcentration(); return; }

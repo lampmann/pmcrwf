@@ -69,11 +69,22 @@ function resolvedItem(it) {
 }
 function itemsTotalValue() { return CHARACTER_ITEMS.reduce((s, it) => { const r = resolvedItem(it); return s + r.qty * r.val; }, 0); }
 function itemsTotalWeight() { return CHARACTER_ITEMS.reduce((s, it) => { const r = resolvedItem(it); return s + r.qty * r.wt; }, 0); }
+const INVENTORY_SORT = createListSort([
+  { key: "qty", label: "Qty", numeric: true, get: r => r.it.qty },
+  { key: "name", label: "Item", get: r => r.it.name },
+  { key: "source", label: "Source", get: r => resolvedItem(r.it).lib?.source },
+  { key: "eq", label: "Equipped", numeric: true, get: r => !!r.it.eq },
+  { key: "attuned", label: "Attunement", numeric: true, get: r => !!r.it.attuned },
+  { key: "weight", label: "Weight each", numeric: true, get: r => resolvedItem(r.it).wt },
+  { key: "value", label: "Value each", numeric: true, get: r => resolvedItem(r.it).val },
+  { key: "totalWeight", label: "Total weight", numeric: true, get: r => resolvedItem(r.it).wt * r.it.qty },
+  { key: "totalValue", label: "Total value", numeric: true, get: r => resolvedItem(r.it).val * r.it.qty },
+]);
 function renderItemList() {
   const el = $("char-item-list"); if (!el) return;
   $("attuned-count").textContent = String(CHARACTER_ITEMS.filter(it => it.attuned).length);
   if (!CHARACTER_ITEMS.length) { el.innerHTML = "<div class='hint'>no items yet - use \"+ Add Item\" above</div>"; return; }
-  const rows = CHARACTER_ITEMS.map((it, i) => {
+  const rows = INVENTORY_SORT.rows(CHARACTER_ITEMS.map((it, i) => ({ it, i }))).map(({ it, i }) => {
     const r = resolvedItem(it);
     const src = r.lib ? r.lib.source : "";
     const missing = r.lib ? "" : ` <span class="hint">(not found in Equipment Library - load it to see weight/value/description)</span>`;
@@ -91,7 +102,7 @@ function renderItemList() {
       <td><button class="rowbtn inv-del" data-idx="${i}" aria-label="Remove ${escapeHtml(it.name)}">x</button></td>
     </tr>`;
   }).join("");
-  el.innerHTML = `<table class="inventory-table"><thead><tr>${["Qty", "Item", "Source", "Equipped", "Attunement", "Buy", "Weight each", "Value each", "Total weight", "Total value", "Edit", "Remove"].map(label => `<th scope="col">${label}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = `<table class="inventory-table"><thead><tr>${[["qty","Qty"],["name","Item"],["source","Source"],["eq","Equipped"],["attuned","Attunement"],["","Buy"],["weight","Weight each"],["value","Value each"],["totalWeight","Total weight"],["totalValue","Total value"],["","Edit"],["","Remove"]].map(([key,label]) => INVENTORY_SORT.header(key,label)).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 /* Which spell a scroll or tattoo holds: any spell of its level, or free text before spells load. */
 function invSpellPickHtml(it, i, level) {
@@ -129,6 +140,7 @@ function toggleInvDetail(link) {
 document.addEventListener("DOMContentLoaded", () => {
   const results = $("char-item-list"); if (!results) return;
   results.addEventListener("click", e => {
+    if (INVENTORY_SORT.click(e, renderItemList)) return;
     const buy = e.target.closest(".inv-buy"); if (buy) { buyMoreItem(Number(buy.dataset.idx)); return; }
     const del = e.target.closest(".inv-del"); if (del) { removeCharacterItem(Number(del.dataset.idx)); return; }
     // handled on click, not "change" — see the identical comment on .sp2-prep in spellcasting.js

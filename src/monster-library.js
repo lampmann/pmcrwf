@@ -501,17 +501,18 @@
     FILTERS.renderArea();
     renderResults();
   }
+  const MONSTER_SORT = createListSort([
+    { key: "cr", label: "CR", numeric: true, get: m => { const parts = String(m.cr || "").split("/"); return parts.length === 2 ? Number(parts[0]) / Number(parts[1]) : m.cr == null || m.cr === "" ? null : Number(m.cr); } },
+    { key: "name", label: "Name" }, { key: "type", label: "Type" },
+    { key: "ac", label: "AC", numeric: true }, { key: "hpAvg", label: "HP", numeric: true },
+    { key: "speedText", label: "Speed" }, { key: "source", label: "Source" },
+  ]);
   function renderResults() {
     const el = $("mon-results"); if (!el) return;
     const q = ($("mon-search").value || "").toLowerCase().trim();
     const active = FILTERS.activeGroups();
-    const rows = []; let more = 0;
-    for (const m of MON_LIB) {
-      if (q && !(m.name + " " + m.type + " " + m.source + " " + (m.typeTags || []).join(" ")).toLowerCase().includes(q)) continue;
-      if (!FILTERS.passes(m, active)) continue;
-      if (rows.length >= 250) { more++; continue; }
-      rows.push(m);
-    }
+    const matches = MONSTER_SORT.rows(MON_LIB.filter(m => (!q || (m.name + " " + m.type + " " + m.source + " " + (m.typeTags || []).join(" ")).toLowerCase().includes(q)) && FILTERS.passes(m, active)));
+    const rows = matches.slice(0, 250), more = Math.max(0, matches.length - rows.length);
     if (!MON_LIB.length) {
       el.innerHTML = LOAD_STATE === "loading"
         ? "<div class='hint'>loading…</div>"
@@ -519,7 +520,7 @@
       return;
     }
     if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
-    el.innerHTML = `<table class="spell-table"><tbody>${rows.map(rowHtml).join("")}</tbody></table>` +
+    el.innerHTML = `<table class="spell-table"><thead><tr><th></th>${MONSTER_SORT.headers()}</tr></thead><tbody>${rows.map(rowHtml).join("")}</tbody></table>` +
       (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
   }
   function rowHtml(m) {
@@ -636,6 +637,7 @@
     $("mon-filter-area").addEventListener("click", e => FILTERS.handleClick(e));
     $("mon-filter-area").addEventListener("input", e => FILTERS.handleInput(e));
     $("mon-results").addEventListener("click", e => {
+      if (MONSTER_SORT.click(e, renderResults)) return;
       const add = e.target.closest(".mon-lib-add");
       if (add) { if (typeof addCompanion === "function") addCompanion(add.dataset.key); return; }
       const link = e.target.closest(".mon-name-link");
