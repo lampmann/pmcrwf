@@ -107,9 +107,9 @@ function renderEffectControls(feature) {
         const opts = (c.options || []).filter(o => !others.includes(o))
           .map(o => ({ o, label: choiceOptionLabel(o) })).sort((a, b) => a.label.localeCompare(b.label))
           .map(({ o, label }) => `<option value="${o}"${cur === o ? " selected" : ""}>${escapeHtml(label)}</option>`).join("");
-        selects += `<select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"${n > 1 ? ` data-slot="${i}"` : ""}><option value="">-</option>${opts}</select> `;
+        selects += `<select aria-label="${escapeHtml(c.label || feature.name + " " + c.id)}" class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"${n > 1 ? ` data-slot="${i}"` : ""}><option value="">-</option>${opts}</select> `;
       }
-      html += ` <label class="hint">${escapeHtml(c.label || "choice")}: ${selects}</label>`;
+      html += ` <label class="hint">${c.label === "" ? "" : escapeHtml(c.label || "choice") + ": "}${selects}</label>`;
     } else if (c.kind === "spellfilter") {
       // Populates its <select> from the user's own loaded Spell Library (SPELL_LIB, spell-library.js),
       // filtered by the same "level=X|class=Y;Z" spec syntax already used to *describe* class-side

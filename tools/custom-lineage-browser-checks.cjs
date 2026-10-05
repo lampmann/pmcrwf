@@ -33,12 +33,14 @@ module.exports = async function checkLineage(page) {
   const sheetChoice = id => page.locator(`#class-feat-results .eff-choice[data-choice="${id}"]`);
   await sheetChoice('trait').selectOption('darkvision');
   assert.equal(await sheetChoice('skill').count(), 0);
-  assert.match(await sheetChoice('trait').locator('..').innerText(), /^Benefit:/);
+  assert(!/Benefit:|Choice 1/.test(await sheetChoice('trait').locator('..').innerText()));
+  assert.equal(await sheetChoice('trait').getAttribute('aria-label'), 'Variable Trait trait');
   assert.equal(await page.locator('#class-feat-results .eff-chip').filter({ hasText: /^⚙ Darkvision$/ }).count(), 1);
   assert.equal(await page.evaluate(() => senseRange('darkvision').n), 60);
   assert.equal(await page.evaluate(() => skillProfMult('stealth')), 0);
   await sheetChoice('trait').selectOption('skill');
-  assert.match(await sheetChoice('skill').locator('..').innerText(), /^Skill:/);
+  assert(!/Skill:|Choice 2/.test(await sheetChoice('skill').locator('..').innerText()));
+  assert.equal(await sheetChoice('skill').getAttribute('aria-label'), 'Variable Trait skill');
   await sheetChoice('skill').selectOption('perception');
   assert.equal(await page.evaluate(() => senseRange('darkvision').n), 0);
   assert.equal(await page.evaluate(() => skillProfMult('perception')), 1);

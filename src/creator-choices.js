@@ -237,7 +237,7 @@ function crChoicesHtml(f) {
   const live = crLiveChoices(f);
   if (!live.length) return "";
   const cur = CREATOR.effectChoices[f.fkey] || {};
-  const attrs = (c, i) => `class="cr-effchoice" data-fkey="${f.fkey}" data-choice="${c.id}"${i != null ? ` data-slot="${i}"` : ""}`;
+  const attrs = (c, i) => `aria-label="${escapeHtml(c.label || f.name + " " + c.id)}" class="cr-effchoice" data-fkey="${f.fkey}" data-choice="${c.id}"${i != null ? ` data-slot="${i}"` : ""}`;
   const parts = live.map(c => {
     if (c.kind === "ability") {
       const v = cur[c.id] || "";
@@ -264,7 +264,7 @@ function crChoicesHtml(f) {
       selects.push(`<select ${attrs(c, n > 1 ? i : null)}><option value="">-</option>` +
         opts.map(({ o, label }) => `<option value="${escapeHtml(String(o))}"${v === o ? " selected" : ""}>${escapeHtml(label)}</option>`).join("") + `</select>`);
     }
-    return `<label>${escapeHtml(c.label || "Choice")}: ${selects.join(" ")}</label>`;
+    return `<label>${c.label === "" ? "" : escapeHtml(c.label || "Choice") + ": "}${selects.join(" ")}</label>`;
   });
   return `<div class="cr-feature-choice"><b>${escapeHtml(f.name)}</b> ${parts.join(" ")}</div>`;
 }
