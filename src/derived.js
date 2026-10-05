@@ -39,8 +39,8 @@ function speedTotal() { return speedOf("walk"); }
 
 /* ---------- Armor Class (auto-calculated from equipped armor, like initiative) ----------
    No armor equipped: 10 + DEX. Light armor: armor AC + full DEX. Medium: armor AC + DEX (max +2).
-   Heavy: armor AC only. Equipping any shield adds a flat +2 (multiple shields don't stack — same
-   "only one shield at a time" rule as the books). Ties among multiple equipped body-armor pieces
+   Heavy: armor AC only. Add magical armor bonuses and the equipped shield's AC/bonus
+   (multiple shields don't stack — the books allow only one shield at a time). Ties among multiple equipped body-armor pieces
    are broken by table order (an edge case the sheet doesn't try to adjudicate); an override box
    covers anything this formula can't represent (Unarmored Defense, natural armor, etc.). */
 function equippedArmorLibs() {
@@ -49,14 +49,16 @@ function equippedArmorLibs() {
 function armorClassAuto() {
   const equipped = equippedArmorLibs();
   const armor = equipped.find(lib => lib.armor && lib.armorCat !== "shield");
-  const hasShield = equipped.some(lib => lib.armorCat === "shield");
+  const shield = equipped.find(lib => lib.armorCat === "shield");
   const dex = abilityMod("dex");
   let base;
   if (!armor) base = 10 + dex;
   else if (armor.armorCat === "light") base = armor.ac + dex;
   else if (armor.armorCat === "medium") base = armor.ac + Math.min(dex, 2);
   else base = armor.ac; // heavy (or an armor entry with an unrecognized category — treat as flat)
-  return base + (hasShield ? 2 : 0);
+  const armorBonus = armor ? Number(armor.bonusAc) || 0 : 0;
+  const shieldBonus = shield ? (shield.ac == null ? 2 : Number(shield.ac)) + (Number(shield.bonusAc) || 0) : 0;
+  return base + armorBonus + shieldBonus;
 }
 
 /* ---------- Spell slots (multiclass spellcaster table, driven by per-class Casting type) ---------- */

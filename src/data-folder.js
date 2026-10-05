@@ -332,7 +332,7 @@ async function probeServedData() {
    plus whatever you happened to import in some earlier session" is not. */
 function resetDataLibraries() {
   if (typeof SPELL_LIB !== "undefined") SPELL_LIB = [];
-  if (typeof ITEM_LIB !== "undefined") ITEM_LIB = [];
+  if (typeof resetItemLibrary === "function") resetItemLibrary();
   if (typeof CLASS_LIB !== "undefined") CLASS_LIB = {};
   if (typeof RACE_LIB !== "undefined") RACE_LIB = {};
   if (typeof FEAT_LIB !== "undefined") FEAT_LIB = {};

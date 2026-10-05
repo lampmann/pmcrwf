@@ -461,7 +461,7 @@ Some features do more than describe themselves — they change a number elsewher
 
 ## Equipment library (5e.tools import)
 Same zero-click setup as the spell library:
-1. With the same `data/` folder in place (see above), the sheet auto-fetches `data/items-base.json` (mundane gear, weapons, armor) and `data/items.json` (magic items) on load — no format to pick, no per-file settings.
+1. With the same `data/` folder in place (see above), the sheet auto-fetches `data/items-base.json` (mundane gear, weapons, armor) , `data/items.json` (magic items), and `data/magicvariants.json` (+1/+2/+3 equipment templates) on load — no format to pick, no per-file settings.
 2. **Reload from data/ folder** re-runs the fetch; the **import files** picker below it is the fallback for `file://` use or homebrew item files.
 3. The library is cached locally, so this only costs time once.
 

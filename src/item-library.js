@@ -1,7 +1,7 @@
 /* ============================================================
    EQUIPMENT LIBRARY — import & search 5e.tools item JSON
-   Accepts items-base.json ("baseitem"), items.json ("item"), or any file
-   with either array — one search box, one import button, nothing to configure.
+   Accepts items-base.json ("baseitem"), items.json ("item"), magicvariants.json
+   ("magicvariant"), or any file with these arrays — one search box, one import button, nothing to configure.
    ============================================================ */
 const ITEM_TYPES = {
   $:"Treasure", "$A":"Treasure (Art Object)", "$C":"Treasure (Coinage)", "$G":"Treasure (Gemstone)",
@@ -34,10 +34,16 @@ const SCF_CLASSES = {
   druid: ["Druid", "Ranger"],
   holy: ["Cleric", "Paladin"],
 };
-const ITEM_LIB_SCHEMA = 7;  // bump when the parsed-item shape changes (forces a one-time re-import)
+const ITEM_LIB_SCHEMA = 8;  // bump when the parsed-item shape changes (forces a one-time re-import)
                             // 5: groupItems added (generic variants expand into their members)
                             // 6: `consumable` retained (house-rule pricing halves consumables)
 let ITEM_LIB = [];
+// Raw records are needed to expand templates, including when files are imported separately.
+let ITEM_BASE_RECORDS = [];
+let ITEM_MAGIC_VARIANTS = [];
+function resetItemLibrary() {
+  ITEM_LIB = []; ITEM_BASE_RECORDS = []; ITEM_MAGIC_VARIANTS = [];
+}
 
 // Individual magic items in 5e.tools rarely carry an explicit "value" — these are the average gp
 // asking price per rarity from XGE's "Magic Item Price" table (Xanathar's Guide to Everything, p.126,
@@ -176,6 +182,10 @@ function parseItem(raw, sourceArray) {
     armor: !!raw.armor,
     armorCat: ARMOR_CAT_BY_TYPE_CODE[typeCode] || "",
     ac: raw.ac != null ? raw.ac : null,
+    bonusAc: Number(raw.bonusAc) || 0,
+    bonusWeapon: Number(raw.bonusWeapon) || 0,
+    bonusWeaponAttack: Number(raw.bonusWeaponAttack) || 0,
+    bonusWeaponDamage: Number(raw.bonusWeaponDamage) || 0,
     strengthReq: raw.strength ? Number(raw.strength) : null,
     stealthDisadvantage: !!raw.stealth,
     // ----- weapon (see the Attacks module, src/attacks.js) -----
@@ -214,11 +224,56 @@ function parseItem(raw, sourceArray) {
 // Which array an entry came from is itself a filter facet (Basic / Generic Variant / …), so parse
 // each array separately rather than concatenating them first.
 function parseItemArrays(j) {
+  const remember = (target, records) => {
+    const seen = new Set(target.map(r => r.name + "|" + (r.source || r.inherits?.source || "")));
+    for (const raw of records || []) {
+      const key = raw.name + "|" + (raw.source || raw.inherits?.source || "");
+      if (!seen.has(key)) { target.push(raw); seen.add(key); }
+    }
+  };
+  remember(ITEM_BASE_RECORDS, j.baseitem);
+  remember(ITEM_MAGIC_VARIANTS, (j.magicvariant || []).filter(v => /^\+\d+ $/.test(v.inherits?.namePrefix || "")));
   return [].concat(
     (j.baseitem || []).map(r => parseItem(r, "baseitem")),
     (j.item || []).map(r => parseItem(r, "item")),
     (j.itemGroup || []).map(r => parseItem(r, "itemGroup")),
+    expandBonusItemVariants(),
   );
+}
+/* 5e.tools stores +N equipment as templates, not concrete items. Requirements are ORs of
+   objects whose fields are ANDed; exclusions match any field. Expand the simple bonus templates
+   only: other magic variants can have transformations beyond a prefix and inherited properties. */
+function expandBonusItemVariants() {
+  const bases = [];
+  if (typeof editionMerge === "function") editionMerge(bases, ITEM_BASE_RECORDS);
+  else bases.push(...ITEM_BASE_RECORDS);
+  const matches = (base, rule) => Object.entries(rule).every(([key, value]) =>
+    (Array.isArray(value) ? value : [value]).some(v => Array.isArray(base[key]) ? base[key].includes(v) : base[key] === v));
+  const out = [];
+  for (const variant of ITEM_MAGIC_VARIANTS) {
+    const inherits = variant.inherits || {};
+    if (!/^\+\d+ $/.test(inherits.namePrefix || "") ||
+        !(inherits.bonusAc || inherits.bonusWeapon || inherits.bonusWeaponAttack || inherits.bonusWeaponDamage)) continue;
+    const template = { ...variant, ...inherits };
+    if (typeof editionAllows === "function" && !editionAllows(template)) continue;
+    const members = [];
+    for (const base of bases) {
+      if (!(variant.requires || []).some(rule => matches(base, rule))) continue;
+      if (variant.excludes && Object.entries(variant.excludes).some(([key, value]) => matches(base, { [key]: value }))) continue;
+      const raw = { ...base, ...inherits, name: inherits.namePrefix + base.name + (inherits.nameSuffix || ""),
+        source: inherits.source || variant.source, edition: variant.edition,
+        baseItem: base.name + "|" + base.source };
+      // Magic items use their own price and publication metadata, never the mundane item's price.
+      if (inherits.value == null) delete raw.value;
+      for (const key of ["srd", "srd52", "basicRules", "basicRules2024", "reprintedAs", "referenceSources"])
+        if (!(key in inherits)) delete raw[key];
+      const entries = [...(inherits.entries || []), ...(base.entries || [])];
+      raw.entries = JSON.parse(JSON.stringify(entries).replace(/\{=([a-zA-Z]+)\}/g, (_, key) => String(raw[key] ?? "")));
+      out.push(parseItem(raw, "item")); members.push(raw.name);
+    }
+    if (members.length) out.push(parseItem({ ...template, name: variant.name, type: variant.type, items: [...new Set(members)] }, "itemGroup"));
+  }
+  return out;
 }
 function mergeItems(list) {
   const seen = new Set(ITEM_LIB.map(i => i.name + "|" + i.source));
@@ -243,7 +298,7 @@ function loadItemFiles(files) {
 /* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
    Only works when served over http(s) — browsers block fetch() of local files opened via file://.
    dataFetch, not fetch, so a connected data/ folder answers these too (see src/data-folder.js). */
-const ITEM_DATA_FILES = ["data/items-base.json", "data/items.json"];
+const ITEM_DATA_FILES = ["data/items-base.json", "data/items.json", "data/magicvariants.json"];
 async function autoLoadItems() {
   let found = false, blocked = false, filesLoaded = 0;
   for (const url of ITEM_DATA_FILES) {
@@ -260,15 +315,18 @@ async function autoLoadItems() {
   return { found, blocked, filesLoaded, filesTotal: ITEM_DATA_FILES.length };
 }
 function saveItemLib() {
-  try { localStorage.setItem("charsheet-itemlib", JSON.stringify({ v: ITEM_LIB_SCHEMA, items: ITEM_LIB })); }
+  try { localStorage.setItem("charsheet-itemlib", JSON.stringify({ v: ITEM_LIB_SCHEMA, items: ITEM_LIB, bases: ITEM_BASE_RECORDS, variants: ITEM_MAGIC_VARIANTS })); }
   catch (e) { console.warn("Item library too large for localStorage; kept in memory for this session only.", e); }
 }
 function loadItemLib() {
   try {
     const d = JSON.parse(localStorage.getItem("charsheet-itemlib"));
-    if (d && d.v === ITEM_LIB_SCHEMA) ITEM_LIB = typeof editionFilter === "function" ? editionFilter(d.items) : (d.items || []);
-    else { ITEM_LIB = []; if (d) localStorage.removeItem("charsheet-itemlib"); } // stale schema -> re-import
-  } catch (e) { ITEM_LIB = []; }
+    if (d && d.v === ITEM_LIB_SCHEMA) {
+      ITEM_LIB = typeof editionFilter === "function" ? editionFilter(d.items) : (d.items || []);
+      ITEM_BASE_RECORDS = d.bases || []; ITEM_MAGIC_VARIANTS = d.variants || [];
+    }
+    else { resetItemLibrary(); if (d) localStorage.removeItem("charsheet-itemlib"); } // stale schema -> re-import
+  } catch (e) { resetItemLibrary(); }
 }
 function itemSources() { return [...new Set(ITEM_LIB.map(i => i.source))].sort(); }
 function itemLootTables() { return [...new Set(ITEM_LIB.flatMap(i => i.lootTables || []))].sort(); }
@@ -373,6 +431,7 @@ function findLibItemByName(name) {
 /* The character's own item list resolves weight/value/description out of ITEM_LIB by name, so it has
    to be repainted whenever the library itself changes — it is no longer redrawn by recompute(). */
 function renderItemLibrary() {
+  if (typeof recompute === "function") recompute();
   if (typeof renderItemList === "function") renderItemList();
   $("item-lib-count").textContent = ITEM_LIB.length ? (ITEM_LIB.length + " items | " + itemSources().length + " source(s)") : "no equipment loaded";
   ITEM_FILTERS.renderArea();

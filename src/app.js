@@ -198,7 +198,7 @@ function init() {
   });
   $("item-lib-clear").addEventListener("click", () => {
     if (confirm("Clear the imported equipment library? (does not affect your character)")) {
-      ITEM_LIB = []; localStorage.removeItem("charsheet-itemlib");
+      resetItemLibrary(); localStorage.removeItem("charsheet-itemlib");
       renderItemLibrary();
     }
   });
