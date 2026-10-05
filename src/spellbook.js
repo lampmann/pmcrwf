@@ -64,8 +64,11 @@ function spellbookRows() {
   classes.forEach(c => {
     const info = classSpellAllowance(c);
     CHARACTER_SPELLS.filter(s => !s.grantSrc && s.cls === c.name.trim()).forEach(s => {
-      if (s.lvl > 0 && info && info.style === "prepared" && !s.prep) return;   // unprepared: in Manage Spells only
-      add(s.name, s.lvl, { label: c.name.trim(), cls: c.name.trim(), ab: classSpellAbility(c), mode: "slot" });
+      const lib = sbLib(s.name), className = c.name.trim().toLowerCase();
+      const unprepared = s.lvl > 0 && info && info.style === "prepared" && !s.prep;
+      const ritual = !!lib?.ritual && (className === "wizard" || (!unprepared && ["bard", "cleric", "druid", "artificer"].includes(className)));
+      if (unprepared && !ritual) return;
+      add(s.name, s.lvl, { label: c.name.trim(), cls: c.name.trim(), ab: classSpellAbility(c), mode: unprepared ? "ritual" : "slot", ritual });
     });
   });
   CHARACTER_SPELLS.filter(s => !s.grantSrc && !s.cls).forEach(s => add(s.name, s.lvl, { label: "Other", cls: "", ab: defaultSpellAbility(), mode: "slot" }));
@@ -154,6 +157,13 @@ function castSpell(row, level) {
   logEvent("resource", `<b>Cast</b> ${escapeHtml(row.name)}${level > row.lvl ? ` at ${ordinalLevel(level)} level` : ""} <span class="hint">(${pool === "pact" ? "pact slot" : ordinalLevel(level) + "-level slot"})</span>`);
   recompute(); scheduleSave();
 }
+function castRitualSpell(row) {
+  const origin = row.origins.find(o => o.ritual);
+  if (!row.lib?.ritual || !origin) return;
+  if (row.lib.conc) startConcentrating(row.name, origin.cls || "");
+  logEvent("resource", `<b>Ritual</b> ${escapeHtml(row.name)} <span class="hint">(no spell slot; casting time +10 minutes)</span>`);
+  recompute(); scheduleSave();
+}
 function useSpell(row) {
   if (row.lib && row.lib.conc) startConcentrating(row.name, "");
   const src = row.origins.filter(o => o.mode === "use").map(o => o.label).join(", ");
@@ -208,11 +218,13 @@ function sbRowHtml(row, level, rowId) {
   const lib = row.lib || {};
   const upcast = level > row.lvl && row.lvl > 0;
   const slotOrigins = row.origins.filter(o => o.mode === "slot");
-  const mode = row.lvl === 0 ? "atwill" : upcast || slotOrigins.length ? "slot" : "use";
+  const mode = row.lvl === 0 ? "atwill" : upcast || slotOrigins.length ? "slot" : row.origins.some(o => o.mode === "use") ? "use" : "ritual";
+  const ritualButton = !upcast && row.lvl > 0 && row.origins.some(o => o.ritual)
+    ? `<button type="button" class="sb-cast sb-ritual" data-row="${rowId}" data-level="${level}" title="Cast as a ritual: no spell slot, 10 extra minutes">Ritual</button>` : "";
   const pool = mode === "slot" ? slotForCast(row, level) : "";
-  const action = mode === "atwill" ? `<span class="sb-atwill">At will</span>`
+  const action = mode === "ritual" ? ritualButton : (mode === "atwill" ? `<span class="sb-atwill">At will</span>`
     : mode === "use" ? `<button type="button" class="sb-cast sb-use" data-row="${rowId}" data-level="${level}">Use</button>`
-    : `<button type="button" class="sb-cast" data-row="${rowId}" data-level="${level}"${pool ? "" : ` disabled title="No ${ordinalLevel(level)}-level slots left"`}>Cast</button>`;
+    : `<button type="button" class="sb-cast" data-row="${rowId}" data-level="${level}"${pool ? "" : ` disabled title="No ${ordinalLevel(level)}-level slots left"`}>Cast</button>`) + ritualButton;
   const badge = upcast ? `<span class="sb-lvl-badge" title="${ordinalLevel(row.lvl)}-level spell">${ordinalLevel(row.lvl)}</span>` : "";
   const firstStats = spellStatsFor((row.origins.find(o => o.ab) || {}).ab);
   const dice = sbEffectDice(row, level, firstStats);
@@ -328,7 +340,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const cast = e.target.closest(".sb-cast");
     if (cast && !cast.disabled) {
       const row = SB_ROWS[Number(cast.dataset.row)]; if (!row) return;
-      if (cast.classList.contains("sb-use")) useSpell(row); else castSpell(row, Number(cast.dataset.level));
+      if (cast.classList.contains("sb-ritual")) castRitualSpell(row);
+      else if (cast.classList.contains("sb-use")) useSpell(row); else castSpell(row, Number(cast.dataset.level));
       return;
     }
     if (e.target.closest(".sp2-conc-drop")) { dropConcentration(); return; }

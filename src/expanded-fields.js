@@ -49,7 +49,13 @@ document.addEventListener('focusout', event => {
 document.addEventListener('input', event => {
   if (event.target === expandedTextField?.element) sizeExpandedTextField();
 });
-window.addEventListener('resize', restoreExpandedTextField);
-window.addEventListener('scroll', event => {
-  if (event.target !== expandedTextField?.element) restoreExpandedTextField();
-}, true);
+function repositionExpandedTextField(event) {
+  const state = expandedTextField;
+  if (!state || event.target === state.element) return;
+  if (document.activeElement !== state.element) { restoreExpandedTextField(); return; }
+  const anchor = state.placeholder.getBoundingClientRect();
+  state.rect = { ...state.rect, left: anchor.left, top: anchor.top, width: state.rect.width, height: state.rect.height };
+  sizeExpandedTextField();
+}
+window.addEventListener('resize', repositionExpandedTextField);
+window.addEventListener('scroll', repositionExpandedTextField, true);

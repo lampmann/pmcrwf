@@ -62,7 +62,12 @@ function confirmPrepClassModal() {
   closePrepClassModal();
 }
 function removeCharacterSpell(idx) {
+  const removed = CHARACTER_SPELLS[idx];
   CHARACTER_SPELLS.splice(idx, 1);
+  // Keep the library pointed at the class being edited, especially on multiclass sheets.
+  const select = $("spell-add-class");
+  if (removed && !removed.grantSrc && select && [...select.options].some(option => option.value === (removed.cls || ""))) select.value = removed.cls || "";
+  if (typeof renderSpellResults === "function") renderSpellResults();
   renderSpellList(); recompute(); scheduleSave();
 }
 function setCharacterSpellPrep(idx, prep) {
