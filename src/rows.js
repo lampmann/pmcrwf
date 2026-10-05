@@ -137,8 +137,8 @@ function buildSkills() {
       <td><input type="checkbox" data-persist id="skillprof-${slug}"></td>
       <td><input type="checkbox" data-persist id="skillexp-${slug}"></td>
       <td>${name}</td><td class="hint skill-ab">(${ab})</td>
-      <td><input type="text" data-persist id="skillmisc-${slug}" style="width:4.5rem;text-align:right"></td>
-      <td class="derived" id="skillbonus-${slug}">+0</td>`;
+      <td class="derived" id="skillbonus-${slug}">+0</td>
+      <td><input type="text" data-persist id="skillmisc-${slug}" style="width:4.5rem;text-align:right"></td>`;
     tr.dataset.ability = ab; tr.dataset.slug = slug;
     /* Draggable from the grip only, not the whole row: the row is full of checkboxes and a text
        field, and a row that starts a drag when you try to select text in Misc is worse than one
