@@ -389,13 +389,12 @@
       <div class="inv-main">
         <div id="equip-hands"></div>
         <div>
-          Coins:
-          <label>cp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-cp"></label>
-          <label>sp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-sp"></label>
-          <label>ep <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-ep"></label>
-          <label>gp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-gp"></label>
-          <label>pp <input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="coin-pp"></label>
-          &nbsp;=&nbsp;<span class="derived" id="coin-total-gp">0</span> gp
+          <span id="coin-counts">0 cp, 0 sp, 0 ep, 0 gp, 0 pp</span> = <span class="derived" id="coin-total-gp">0</span> gp
+          <input type="hidden" data-persist id="coin-cp" value="0">
+          <input type="hidden" data-persist id="coin-sp" value="0">
+          <input type="hidden" data-persist id="coin-ep" value="0">
+          <input type="hidden" data-persist id="coin-gp" value="0">
+          <input type="hidden" data-persist id="coin-pp" value="0">
         </div>
         <fieldset>
           <legend>Equipment Library </legend>

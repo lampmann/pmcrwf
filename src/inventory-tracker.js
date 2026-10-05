@@ -4,7 +4,11 @@ function trackerAmount(amount) {
 }
 function paintTrackerBalance() {
   const balance = $("tracker-balance");
-  if (balance) balance.textContent = trackerAmount(INVENTORY_TRANSACTIONS.reduce((total, entry) => total + entry.amount, 0));
+  const total = INVENTORY_TRANSACTIONS.reduce((sum, entry) => sum + entry.amount, 0);
+  if (balance) balance.textContent = trackerAmount(total);
+  const gold = $("coin-gp");
+  if (gold) gold.value = String(total);
+  if (typeof recomputeInventory === "function") recomputeInventory();
 }
 function renderInventoryTracker() {
   const rows = $("tracker-rows"); if (!rows) return;

@@ -234,6 +234,8 @@ function coinTotalGP() { return Object.keys(COIN_GP).reduce((s, k) => s + num($(
    quantity box updates its own row's totals in place; see inventory.js. Same rule as the Hit Dice
    pools in rest.js and the character-creator's number boxes. */
 function recomputeInventory() {
+  const counts = $("coin-counts");
+  if (counts) counts.textContent = Object.keys(COIN_GP).map(k => `${fmtGP(num($("coin-" + k)))} ${k}`).join(", ");
   $("items-value-total").textContent = fmtGP(itemsTotalValue());
   $("items-weight-total").textContent = fmtGP(itemsTotalWeight());
   $("coin-total-gp").textContent = fmtGP(coinTotalGP());

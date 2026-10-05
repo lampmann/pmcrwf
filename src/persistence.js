@@ -81,7 +81,6 @@ function applyState(state) {
   $("class-rows").innerHTML = "";
   (state.classes || [{ name: "", sub: "", lvl: 1 }]).forEach(addClassRow);
   INVENTORY_TRANSACTIONS = (state.inventoryTransactions || []).map(entry => ({ ...entry }));
-  if (typeof renderInventoryTracker === "function") renderInventoryTracker();
   CUSTOM_FEATURES = (state.customFeatures || []).map(feature => ({ ...feature }));
   if (typeof closeCustomFeatureEditor === "function") closeCustomFeatureEditor();
   CHARACTER_SPELLS = state.spells || [];
@@ -120,11 +119,18 @@ function applyState(state) {
   });
   // Hidden inputs mirror value into defaultValue. These lists start empty for older characters.
   ABILITIES.forEach(a => { const el = $("score-" + a.key); if (el) el.value = "10"; });
+  ["cp", "sp", "ep", "gp", "pp"].forEach(k => { const el = $("coin-" + k); if (el?.type === "hidden") el.value = "0"; });
   ["speed-custom", "speed-order"].forEach(id => { const el = $(id); if (el) el.value = ""; });
   Object.entries(state.fields || {}).forEach(([id, val]) => {
     const el = $(id); if (!el || !el.matches("[data-persist]")) return;
     if (el.type === "checkbox") el.checked = val; else el.value = val;
   });
+  // Preserve a pre-ledger purse or creator starting gold as an opening transaction.
+  if (typeof renderInventoryTracker === "function") {
+    const startingGold = num($("coin-gp"));
+    if (!INVENTORY_TRANSACTIONS.length && startingGold) INVENTORY_TRANSACTIONS.push({ amount: startingGold, source: "Opening balance", date: "" });
+    renderInventoryTracker();
+  }
   // A character saved with an empty Speed (every one made before the box had a default) would leave
   // the Movement pool reading 0/0. Refill it from the race here, at the one moment it can't fight
   // someone typing — see syncRaceSpeed, which won't touch a number the player set themselves.
