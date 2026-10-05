@@ -62,3 +62,8 @@ function repositionExpandedTextField(event) {
 }
 window.addEventListener('resize', repositionExpandedTextField);
 window.addEventListener('scroll', repositionExpandedTextField, true);
+
+// Removing a focused control during a re-render doesn't always emit focusout.
+new MutationObserver(() => {
+  if (expandedTextField && !expandedTextField.element.isConnected) restoreExpandedTextField();
+}).observe(document.body, { childList: true, subtree: true });

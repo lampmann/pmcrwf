@@ -101,7 +101,7 @@ module.exports = async function checkSheetUi(page) {
   await page.evaluate(() => {
     CLASS_LIB.Rogue = { name: 'Rogue', source: 'PHB', feats: [], subs: {}, mcProf: { armor: ['light'],
       skills: [{ choose: { from: ['acrobatics', 'stealth', 'deception'], count: 1 } }], toolProficiencies: [{ "thieves' tools": true }] } };
-    openLevelUp();
+    document.getElementById("btn-level-up").click();
   });
   await page.locator('#lu-target').selectOption('new');
   await page.locator('#lu-newclass').fill('Rogue');

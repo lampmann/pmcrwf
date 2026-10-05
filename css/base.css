@@ -825,3 +825,6 @@ button.linkish {
 }
 .important-notice a, #data-bar.data-bar-warn a, #data-bar.data-bar-warn .hint { color: var(--notice-fg); }
 #data-bar.data-bar-warn button { background: transparent; color: var(--notice-fg); border-color: var(--notice-fg); }
+
+/* Module layers stay together below dialogs, even while an editing module is raised. */
+.modules { isolation: isolate; }
