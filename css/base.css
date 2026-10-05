@@ -772,3 +772,17 @@ button.linkish {
 .custom-feature-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: .25rem 0; }
 #custom-feature-editor { margin-top: .4rem; }
 #custom-feature-editor input, #custom-feature-editor textarea { display: block; width: 100%; box-sizing: border-box; margin: .15rem 0 .4rem; }
+
+.tracker-scroll { overflow-x: auto; margin: .35rem 0; }
+.tracker-table { width: 100%; border-collapse: collapse; min-width: 26rem; }
+.tracker-table th, .tracker-table td { border: 1px solid var(--border); padding: .15rem .3rem; }
+.tracker-table th { text-align: left; }
+.tracker-table td:first-child { width: 8rem; text-align: right; }
+.tracker-table td:nth-child(3) { width: 8rem; }
+.tracker-table td:last-child { width: 1.5rem; }
+.tracker-table input { width: 100%; min-width: 0; box-sizing: border-box; }
+.tracker-amount { text-align: right; }
+.tracker-amount.spent { color: var(--danger); }
+.tracker-table tr:nth-child(even) { background: var(--hover-bg); }
+.tracker-balance { background: color-mix(in srgb, var(--todo) 18%, var(--panel-bg)); font-weight: bold; }
+.tracker-table input[aria-invalid="true"] { outline: 1px solid var(--danger); }

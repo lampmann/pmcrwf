@@ -1,6 +1,7 @@
 /* ---------- Persistence ---------- */
 let saveTimer = null;
 let CUSTOM_FEATURES = [];
+let INVENTORY_TRANSACTIONS = [];
 // Backing scores include racial increases; retain their provenance for the score breakdown.
 let RACIAL_ABILITY_INCREASES = null;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 300); }
@@ -27,7 +28,7 @@ function validateCharacterState(state) {
     const el = $(id);
     if (el && el.matches("[data-persist]") && el.type === "checkbox" && typeof value !== "boolean") invalid(`fields.${id} must be true or false`);
   }
-  for (const key of ["classes", "spells", "items", "attacks", "routines", "companions", "originSwaps", "customFeatures"]) {
+  for (const key of ["classes", "spells", "items", "attacks", "routines", "companions", "originSwaps", "customFeatures", "inventoryTransactions"]) {
     if (state[key] == null) continue;
     if (!Array.isArray(state[key]) || !state[key].every(isRecord)) invalid(`${key} must be a list of objects`);
   }
@@ -38,6 +39,7 @@ function validateCharacterState(state) {
     const list = state.proficiencies && state.proficiencies[key];
     if (list != null && (!Array.isArray(list) || !list.every(value => typeof value === "string"))) invalid(`proficiencies.${key} must be a list of names`);
   }
+  if (state.inventoryTransactions && !state.inventoryTransactions.every(entry => Number.isFinite(entry.amount) && typeof entry.source === "string" && typeof entry.date === "string")) invalid("inventoryTransactions must contain numeric amounts, sources and dates");
   if (state.customFeatures && !state.customFeatures.every(feature => typeof feature.name === "string" && typeof feature.description === "string")) invalid("customFeatures must contain names and descriptions");
   if (state.racialAbilityIncreases && !Object.values(state.racialAbilityIncreases).every(entry => isRecord(entry) && Number.isFinite(entry.amount) && typeof entry.source === "string")) invalid("racialAbilityIncreases must contain amounts and source names");
   if (state.grantSpellChoices && !Object.values(state.grantSpellChoices).every(list => Array.isArray(list) && list.every(name => typeof name === "string"))) invalid("grantSpellChoices must contain lists of spell names");
@@ -58,7 +60,7 @@ function collectState() {
   const state = {
     v: 1, effectsSv: 1,
     fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, concentrating: CONCENTRATING, items: CHARACTER_ITEMS,
-    proficiencies: PROFICIENCIES, customFeatures: CUSTOM_FEATURES,
+    proficiencies: PROFICIENCIES, customFeatures: CUSTOM_FEATURES, inventoryTransactions: INVENTORY_TRANSACTIONS,
     racialAbilityIncreases: RACIAL_ABILITY_INCREASES,
     originSwaps: ORIGIN_SWAPS, grantSpellChoices: GRANT_SPELL_CHOICES, backgroundGrants: BACKGROUND_GRANTS,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
@@ -78,6 +80,8 @@ function applyState(state) {
   if (!state) return;
   $("class-rows").innerHTML = "";
   (state.classes || [{ name: "", sub: "", lvl: 1 }]).forEach(addClassRow);
+  INVENTORY_TRANSACTIONS = (state.inventoryTransactions || []).map(entry => ({ ...entry }));
+  if (typeof renderInventoryTracker === "function") renderInventoryTracker();
   CUSTOM_FEATURES = (state.customFeatures || []).map(feature => ({ ...feature }));
   if (typeof closeCustomFeatureEditor === "function") closeCustomFeatureEditor();
   CHARACTER_SPELLS = state.spells || [];

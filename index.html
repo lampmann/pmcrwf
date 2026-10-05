@@ -497,6 +497,19 @@
     </div>
   </section>
 
+  <section class="module wide" data-module="inventory-tracker">
+    <h2>Inventory Tracker</h2>
+    <div class="hint">Record gains with + and spending with −.</div>
+    <div class="tracker-scroll">
+      <table class="tracker-table">
+        <thead><tr><th scope="col">Gained / Spent</th><th scope="col">Source or Item</th><th scope="col">Date</th><th scope="col">Actions</th></tr></thead>
+        <tbody><tr class="tracker-balance"><td id="tracker-balance">0</td><th scope="row" colspan="3">Balance</th></tr></tbody>
+        <tbody id="tracker-rows"></tbody>
+      </table>
+    </div>
+    <button type="button" id="tracker-add">Add entry</button>
+  </section>
+
   <!-- ===== HOUSE RULES ===== -->
   <section class="module wide" data-module="house-rules">
     <h2>House Rules <span class="hint" id="hr-status"></span></h2>
@@ -720,6 +733,7 @@
 <script src="src/routines.js"></script>
 <script src="src/persistence.js"></script>
 <script src="src/custom-features.js"></script>
+<script src="src/inventory-tracker.js"></script>
 <script src="src/combobox.js"></script>
 <script src="src/rulings.js"></script>
 <script src="src/variant-rules.js"></script>
