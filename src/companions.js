@@ -2,11 +2,10 @@
    companions.js — Companions & Summons.
 
    The character-side half of the Bestiary Library: statblocks you've added
-   to your own sheet and actually play with. Added only from the library
-   (like items and spells), so the statblock is looked up live by key rather
-   than copied and hand-edited — COMPANIONS stores what's yours to change
-   (how many, their current HP, what level you cast the summon at) and
-   nothing else.
+   to your own sheet and actually play with. Library statblocks are looked
+   up live by key; custom statblocks are kept on the companion as customRaw
+   and parsed through the same monster renderer. COMPANIONS also stores
+   counts, current HP, and summon casting level.
 
    Built around how this table actually uses monsters: summons are
    everybody's business, not the GM's, and they arrive eight at a time.
@@ -43,7 +42,7 @@
   window.COMPANIONS = window.COMPANIONS || [];   // [{id, key, note, spellLevel, maxHpOverride, tokens:[{hp}]}]
   const byId = id => COMPANIONS.find(c => c.id === id);
   const idxOf = id => COMPANIONS.findIndex(c => c.id === id);
-  const statOf = c => (typeof findMonsterByKey === "function" ? findMonsterByKey(c.key) : null);
+  const statOf = c => c.customRaw ? parseCustomMonster(c.customRaw) : (typeof findMonsterByKey === "function" ? findMonsterByKey(c.key) : null);
   const monMod = score => Math.floor(((Number(score) || 10) - 10) / 2);
 
   /* ---------- derived numbers ---------- */
@@ -158,6 +157,7 @@
         ${isSummon ? `<label class="hint">
           cast at level <input type="number" class="tiny cmp-lvl" data-cid="${c.id}" min="1" max="9" value="${c.spellLevel === "" ? "" : c.spellLevel}"></label>` : ""}
         <button class="roll mon-roll" data-bonus="${monMod(m.dex) + 0}" data-rolllabel="${esc(m.name)} initiative">init ${signed(monMod(m.dex))}</button>
+        ${c.customRaw ? `<button type="button" data-custom-creature-edit="${c.id}">Edit</button>` : ""}
         <button class="rowbtn cmp-del" data-cid="${c.id}" aria-label="remove">x</button>
       </legend>
       <div class="hint">${escapeHtml(meta)}${traitNames.length ? " | traits: " + escapeHtml(traitNames.join(", ")) : ""}</div>
@@ -231,7 +231,7 @@
       const del = e.target.closest(".cmp-del");
       if (del) {
         const i = idxOf(del.dataset.cid);
-        if (i >= 0 && confirm("Remove this companion from your sheet?")) { COMPANIONS.splice(i, 1); renderCompanions(); save(); }
+        if (i >= 0 && confirm("Remove this companion from your sheet?")) { if (typeof closeCustomRecordEditors === "function") closeCustomRecordEditors(); COMPANIONS.splice(i, 1); renderCompanions(); save(); }
         return;
       }
       const heal = e.target.closest(".cmp-heal");
@@ -290,7 +290,7 @@
     renderCompanions();
     // If the character already has companions, their statblocks have to resolve on load - that's the
     // other trigger for the bestiary's lazy auto-load (see monster-library.js).
-    if (COMPANIONS.length && typeof ensureBestiary === "function") ensureBestiary();
+    if (COMPANIONS.some(c => !c.customRaw) && typeof ensureBestiary === "function") ensureBestiary();
   });
 
   /* ---------- exposed for the library, persistence.js and recompute() ---------- */
@@ -299,6 +299,6 @@
   window.setCompanions = list => {
     window.COMPANIONS = Array.isArray(list) ? list : [];
     renderCompanions();
-    if (COMPANIONS.length && typeof ensureBestiary === "function") ensureBestiary();
+    if (COMPANIONS.some(c => !c.customRaw) && typeof ensureBestiary === "function") ensureBestiary();
   };
 })();

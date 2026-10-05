@@ -127,7 +127,7 @@ function derivedSpellGroups() {
     });
   });
   CHARACTER_ITEMS.forEach(it => {
-    const lib = typeof findLibItemByName === "function" ? findLibItemByName(it.name) : null;
+    const lib = it.custom || (typeof findLibItemByName === "function" ? findLibItemByName(it.name) : null);
     if (lib && lib.reqAttune && !it.attuned) return;
     // A scroll or tattoo is cast with your own numbers; other items state their own DC in their text.
     const meta = { mode: "use", item: true, own: !!(lib && lib.spellCarrier != null) };

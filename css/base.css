@@ -786,3 +786,8 @@ button.linkish {
 .tracker-table tr:nth-child(even) { background: var(--hover-bg); }
 .tracker-balance { background: color-mix(in srgb, var(--todo) 18%, var(--panel-bg)); font-weight: bold; }
 .tracker-table input[aria-invalid="true"] { outline: 1px solid var(--danger); }
+.custom-record-editor { border: 1px solid var(--border); padding: .4rem; margin: .4rem 0; }
+.custom-record-editor > label { display: inline-block; margin: .2rem .5rem .2rem 0; }
+.custom-record-editor textarea { display: block; width: 100%; box-sizing: border-box; }
+.custom-record-error { color: var(--danger); }
+.custom-action-row { margin: .3rem 0; }

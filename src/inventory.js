@@ -2,8 +2,8 @@
    INVENTORY MODULE — the character's owned items, rendered like the
    Spellcasting module: expandable lines, click a name to show/hide its
    description (looked up from the Equipment Library by name), with an
-   "x" to remove. Items are added only from the Equipment Library (name/
-   weight/value come from there and aren't hand-edited) via
+   "x" to remove. Library items resolve their details by name; custom items
+   keep editable details in their own `custom` record. Library additions use
    addCharacterItem() — same shape as addCharacterSpell() in
    spellcasting.js. CHARACTER_ITEMS is persisted as part of the
    character (see persistence.js), same as CHARACTER_SPELLS.
@@ -17,6 +17,7 @@ function addCharacterItem(name) {
   renderItemList(); recompute(); scheduleSave();
 }
 function removeCharacterItem(idx) {
+  if (typeof closeCustomRecordEditors === "function") closeCustomRecordEditors();
   CHARACTER_ITEMS.splice(idx, 1);
   renderItemList(); if (typeof renderEquipSlots === "function") renderEquipSlots();
   recompute(); scheduleSave();
@@ -45,7 +46,7 @@ function setItemFlag(idx, key, val) {
   recompute(); scheduleSave();
 }
 function resolvedItem(it) {
-  const lib = findLibItemByName(it.name);
+  const lib = it.custom || findLibItemByName(it.name);
   return {
     ...it, lib,
     wt: lib && lib.weight !== "" ? Number(lib.weight) : 0,
@@ -68,10 +69,11 @@ function renderItemList() {
       ? `<label class="hint" style="margin-left:.4rem" title="${escapeHtml(r.lib.reqAttune)}"><input type="checkbox" class="inv-attuned" data-idx="${i}" ${it.attuned ? "checked" : ""}> attuned</label>` : "";
     return `<div draggable="true" data-invdrag="${i}" aria-label="drag onto an Equipped slot above">
       <input type="text" inputmode="numeric" class="tiny inv-qty" data-idx="${i}" value="${it.qty}">
-      <a class="feat-link inv-link" data-idx="${i}"><b>${escapeHtml(it.name)}</b></a> <span class="hint">${src}</span>${missing}
+      <a class="feat-link inv-link" data-idx="${i}"><b>${escapeHtml(it.name)}</b></a> <span class="hint">${escapeHtml(src)}</span>${missing}
       <label class="hint" style="margin-left:.4rem"><input type="checkbox" class="inv-eq" data-idx="${i}" ${it.eq ? "checked" : ""}> equipped</label>${it.slot && typeof slotByKey === "function" && slotByKey(it.slot) ? ` <span class="hint">(${escapeHtml(slotByKey(it.slot).label.toLowerCase())})</span>` : ""}${attuneBox}
 ${r.lib && r.lib.spellCarrier != null ? invSpellPickHtml(it, i, r.lib.spellCarrier) : ""}
       <span class="hint inv-totals" data-idx="${i}">${itemRowTotalsHtml(it)}</span>
+      ${it.custom ? `<button type="button" data-custom-item-edit="${i}">Edit</button>` : ""}
       <button class="rowbtn inv-del" data-idx="${i}" aria-label="remove">x</button>
     </div>`;
   }).join("");
@@ -95,7 +97,7 @@ function toggleInvDetail(link) {
   const div = link.closest("div");
   if (div.nextElementSibling && div.nextElementSibling.classList.contains("feat-detail")) { div.nextElementSibling.remove(); return; }
   const it = CHARACTER_ITEMS[Number(link.dataset.idx)]; if (!it) return;
-  const lib = findLibItemByName(it.name);
+  const lib = it.custom || findLibItemByName(it.name);
   const d = document.createElement("div"); d.className = "feat-detail";
   if (!lib) {
     d.innerHTML = `<div class="hint">No item named "${escapeHtml(it.name)}" found in the Equipment Library - load/import it above to see its description.</div>`;

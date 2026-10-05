@@ -418,6 +418,8 @@
         <fieldset>
           <legend>Items</legend>
           <button id="item-lib-toggle">+ Add Item</button>
+          <button type="button" id="custom-item-add">+ Custom Item</button>
+          <form id="custom-item-editor" class="custom-record-editor" hidden></form>
           <div class="hint">Attunement: <span class="derived" id="attuned-count">0</span>/3.</div>
           <div id="char-item-list" style="margin-top:.35rem"></div>
           <div class="hint" style="margin-top:.35rem">
@@ -455,6 +457,8 @@
     <fieldset>
       <legend>Your creatures</legend>
       <button id="mon-lib-toggle">+ Add Creature</button>
+      <button type="button" id="custom-creature-add">+ Custom Stat Block</button>
+      <form id="custom-creature-editor" class="custom-record-editor" hidden></form>
 
       <div id="companions-list" style="margin-top:.35rem"></div>
     </fieldset>
@@ -733,6 +737,7 @@
 <script src="src/persistence.js"></script>
 <script src="src/custom-features.js"></script>
 <script src="src/inventory-tracker.js"></script>
+<script src="src/custom-records.js"></script>
 <script src="src/combobox.js"></script>
 <script src="src/rulings.js"></script>
 <script src="src/variant-rules.js"></script>

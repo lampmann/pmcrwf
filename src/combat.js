@@ -170,7 +170,7 @@ function syncCombatMovement() {
 function equippedWeapons() {
   if (typeof CHARACTER_ITEMS === "undefined") return [];
   return CHARACTER_ITEMS.filter(it => it.eq).map(it => {
-    const lib = (typeof findLibItemByName === "function") ? findLibItemByName(it.name) : null;
+    const lib = it.custom || ((typeof findLibItemByName === "function") ? findLibItemByName(it.name) : null);
     return { name: it.name, lib };
   }).filter(w => w.lib && w.lib.weapon);
 }

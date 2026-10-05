@@ -185,6 +185,7 @@ const server = http.createServer((req, res) => {
     await require("./origin-browser-checks.cjs")(page);
     await require("./custom-features-browser-checks.cjs")(page);
     await require("./inventory-tracker-browser-checks.cjs")(page);
+    await require("./custom-records-browser-checks.cjs")(page);
     if (process.env.PMCRWF_TEST_DATA) await require("./data-folder-browser-checks.cjs")(page, process.env.PMCRWF_TEST_DATA);
     assert.deepEqual(errors, []);
     console.log('Full app: import/rejection, reload persistence, export download, reset, delayed import switching, and hidden-tab save passed; no browser errors.');

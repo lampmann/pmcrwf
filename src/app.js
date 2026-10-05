@@ -31,7 +31,7 @@ function runItemAutoLoad() {
    controls, file pickers), the modal dialogs (which own their own draft state and commit it
    explicitly), and the dice command line. Anything typed inside these neither feeds a derived number
    nor belongs in a save, so it skips the sheet-wide recompute+autosave — see the listener below. */
-const NON_SHEET_INPUTS = "[data-module=inventory-tracker], #custom-feature-area, .grant-spell-choice, #spell-library-body, #sb-search, #sb-filter-area, #item-library-body, #mon-library-body, .modal-overlay, #cmd-input, #roll-mirror";
+const NON_SHEET_INPUTS = ".custom-record-editor, [data-module=inventory-tracker], #custom-feature-area, .grant-spell-choice, #spell-library-body, #sb-search, #sb-filter-area, #item-library-body, #mon-library-body, .modal-overlay, #cmd-input, #roll-mirror";
 
 /* ---------- Init / wiring ---------- */
 function init() {

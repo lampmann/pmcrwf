@@ -44,7 +44,7 @@ function speedTotal() { return speedOf("walk"); }
    are broken by table order (an edge case the sheet doesn't try to adjudicate); an override box
    covers anything this formula can't represent (Unarmored Defense, natural armor, etc.). */
 function equippedArmorLibs() {
-  return CHARACTER_ITEMS.filter(it => it.eq).map(it => findLibItemByName(it.name)).filter(Boolean);
+  return CHARACTER_ITEMS.filter(it => it.eq).map(it => it.custom || findLibItemByName(it.name)).filter(Boolean);
 }
 function armorClassAuto() {
   const equipped = equippedArmorLibs();

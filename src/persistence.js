@@ -40,6 +40,8 @@ function validateCharacterState(state) {
     if (list != null && (!Array.isArray(list) || !list.every(value => typeof value === "string"))) invalid(`proficiencies.${key} must be a list of names`);
   }
   if (state.inventoryTransactions && !state.inventoryTransactions.every(entry => Number.isFinite(entry.amount) && typeof entry.source === "string" && typeof entry.date === "string")) invalid("inventoryTransactions must contain numeric amounts, sources and dates");
+  if (state.items && !state.items.every(item => !item.custom || (isRecord(item.custom) && typeof item.name === "string" && typeof item.custom.text === "string" && Number.isFinite(item.custom.weight) && Number.isFinite(item.custom.valueGp)))) invalid("custom items must contain names, descriptions, numeric weights and values");
+  if (state.companions && !state.companions.every(companion => !companion.customRaw || (isRecord(companion.customRaw) && typeof companion.customRaw.name === "string"))) invalid("custom companions must contain a named stat block");
   if (state.customFeatures && !state.customFeatures.every(feature => typeof feature.name === "string" && typeof feature.description === "string")) invalid("customFeatures must contain names and descriptions");
   if (state.racialAbilityIncreases && !Object.values(state.racialAbilityIncreases).every(entry => isRecord(entry) && Number.isFinite(entry.amount) && typeof entry.source === "string")) invalid("racialAbilityIncreases must contain amounts and source names");
   if (state.grantSpellChoices && !Object.values(state.grantSpellChoices).every(list => Array.isArray(list) && list.every(name => typeof name === "string"))) invalid("grantSpellChoices must contain lists of spell names");
@@ -78,6 +80,7 @@ function collectState() {
 }
 function applyState(state) {
   if (!state) return;
+  if (typeof closeCustomRecordEditors === "function") closeCustomRecordEditors();
   $("class-rows").innerHTML = "";
   (state.classes || [{ name: "", sub: "", lvl: 1 }]).forEach(addClassRow);
   INVENTORY_TRANSACTIONS = (state.inventoryTransactions || []).map(entry => ({ ...entry }));

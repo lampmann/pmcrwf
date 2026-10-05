@@ -664,6 +664,7 @@
   });
 
   /* ----- exposed for companions.js, persistence.js and app.js ----- */
+  window.parseCustomMonster = parseMonster;
   window.findMonsterByKey = find;
   window.findMonsterByName = findByName;
   window.monsterStatblockHtml = statblockHtml;
