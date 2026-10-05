@@ -28,6 +28,8 @@ function flattenEntries(entries) {
 function stripTags(s) {   // convert 5e.tools {@tag ...} markup to plain text
   return (s || "")
     .replace(/{@(?:h|hit)}/gi, "Hit: ")
+    // Filter tags use the first field as their label; the remaining fields are search rules.
+    .replace(/{@filter ([^}]+)}/gi, (_, fields) => fields.split("|")[0])
     .replace(/{@\w+ ([^}]+)}/g, (m, p) => { const a = p.split("|"); return (a.length > 2 && a[a.length - 1]) ? a[a.length - 1] : a[0]; })
     .replace(/{@\w+}/g, "");
 }

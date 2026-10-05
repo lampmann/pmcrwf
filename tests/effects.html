@@ -3450,6 +3450,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Feature filter links display their label, never the underlying item-search parameters.
+  assertEqual("Blessing of the Forge weapon filter reads naturally",
+    stripTags("a {@filter simple or martial weapon|items|source=phb|category=basic|type=martial weapon;simple weapon}"),
+    "a simple or martial weapon");
+  assertEqual("normal item display names still work", stripTags("{@item longsword|PHB|a sword}"), "a sword");
+
   lines.push("", `${pass} passed, ${fail} failed`);
   const el = document.getElementById("results");
   el.textContent = lines.join("\n");

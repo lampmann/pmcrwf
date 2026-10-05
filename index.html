@@ -246,15 +246,17 @@
   <!-- ===== SENSES (src/senses.js) ===== -->
   <section class="module" data-module="senses">
     <h2>Senses</h2>
+    <input type="hidden" data-persist id="sense-order">
     <table class="senses-table">
       <thead><tr><th></th><th></th><th>ft</th><th>Other</th></tr></thead>
-      <tbody>
-        <tr><td>Blindsight</td><td class="derived" id="sense-blindsight">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-blindsight-other" aria-label="Blindsight from other sources"></td></tr>
-        <tr><td>Darkvision</td><td class="derived" id="sense-darkvision">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-darkvision-other" aria-label="Darkvision from other sources"></td></tr>
-        <tr><td>Tremorsense</td><td class="derived" id="sense-tremorsense">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-tremorsense-other" aria-label="Tremorsense from other sources"></td></tr>
-        <tr><td>Truesight</td><td class="derived" id="sense-truesight">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-truesight-other" aria-label="Truesight from other sources"></td></tr>
+      <tbody id="sense-rows">
+        <tr data-sense-key="blindsight"><td class="sense-grip" aria-label="drag to reorder">&#8942;&#8942;</td><td>Blindsight</td><td class="derived" id="sense-blindsight">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-blindsight-other" aria-label="Blindsight from other sources"></td></tr>
+        <tr data-sense-key="darkvision"><td class="sense-grip" aria-label="drag to reorder">&#8942;&#8942;</td><td>Darkvision</td><td class="derived" id="sense-darkvision">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-darkvision-other" aria-label="Darkvision from other sources"></td></tr>
+        <tr data-sense-key="tremorsense"><td class="sense-grip" aria-label="drag to reorder">&#8942;&#8942;</td><td>Tremorsense</td><td class="derived" id="sense-tremorsense">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-tremorsense-other" aria-label="Tremorsense from other sources"></td></tr>
+        <tr data-sense-key="truesight"><td class="sense-grip" aria-label="drag to reorder">&#8942;&#8942;</td><td>Truesight</td><td class="derived" id="sense-truesight">-</td><td><input type="text" inputmode="numeric" class="tiny" data-persist data-math data-min="0" data-allow-empty id="sense-truesight-other" aria-label="Truesight from other sources"></td></tr>
       </tbody>
     </table>
+    <div class="hint"><button type="button" id="btn-sense-reset-order" class="linkish">reset order</button></div>
     <div id="sense-special" class="hint"></div>
     <table class="senses-table senses-passive">
       <tr><td>Passive Perception</td><td class="derived" id="passive-perc-2">10</td></tr>

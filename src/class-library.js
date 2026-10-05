@@ -10,7 +10,7 @@
    the character (see persistence.js), not just cached locally, since it's
    a character choice, not imported data.
    ============================================================ */
-const CLASS_SCHEMA = 4;   // 4: keep saves, starting/multiclass proficiencies and optional-feature progressions
+const CLASS_SCHEMA = 5;   // 5: rebuild cached feature text with readable filter labels; 4: keep saves, starting/multiclass proficiencies and optional-feature progressions
 // { className: { name, source, hd, caster, feats:[{name,level,source,text}],
 //                mcReq, startEq, saves, startProf, mcProf, optProg,
 //                subs:{ shortName:{name,shortName,source,feats:[...],optProg} } } }

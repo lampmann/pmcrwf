@@ -189,6 +189,7 @@ const server = http.createServer((req, res) => {
     await require("./purchases-browser-checks.cjs")(page);
     await require("./equipment-sort-browser-checks.cjs")(page);
     await require("./custom-lineage-browser-checks.cjs")(page);
+    await require("./senses-order-browser-checks.cjs")(page);
     await require("./annotated-fields-browser-checks.cjs")(page);
     await require("./inventory-columns-browser-checks.cjs")(page);
     await require("./wizard-ritual-browser-checks.cjs")(page);

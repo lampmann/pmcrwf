@@ -78,12 +78,14 @@ function renderEffectControls(feature) {
     const act = effect.activation || { kind: "always" };
     const target = resolveTarget(feature, effect.target);
     const reserved = isReservedTarget(target);
+    const displayTarget = ({ "sense-darkvision": "Darkvision", "sense-blindsight": "Blindsight",
+      "sense-tremorsense": "Tremorsense", "sense-truesight": "Truesight", "sense-special": "Special senses" })[target] || target;
     if (act.kind === "toggle") {
       if (seenToggle.has(act.id)) return; seenToggle.add(act.id);
       const key = feature.fkey + "|" + act.id, on = !!EFFECT_TOGGLES[key];
       html += ` <button type="button" class="eff-toggle${on ? " on" : ""}" data-fkey="${feature.fkey}" data-toggle="${act.id}"${reserved ? " disabled" : ""}${reserved ? ' title="Not automated"' : ""}>${on ? "◉" : "○"} ${escapeHtml(act.label || act.id)}</button>`;
     } else if (act.kind === "always" && !reserved && effect.op !== "note") {
-      html += ` <span class="eff-chip" title="${escapeHtml(effect.op + " " + target)}">⚙ ${escapeHtml(target)}</span>`;
+      html += ` <span class="eff-chip" title="${escapeHtml(effect.op + " " + displayTarget)}">⚙ ${escapeHtml(displayTarget)}</span>`;
     }
   });
   (entry.choices || []).forEach(c => {

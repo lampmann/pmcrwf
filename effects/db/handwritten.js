@@ -72,8 +72,8 @@ registerEffects({
      Variable Trait is a two-stage choice: darkvision or a skill, followed by the skill itself. */
   "race|custom lineage|variable trait": {
     name: "Variable Trait", sv: 1,
-    choices: [{ id: "trait", kind: "pick", n: 1, options: ["darkvision", "skill"], label: "Choice 1" },
-      { id: "skill", kind: "pick", n: 1, when: { choice: { id: "trait", is: "skill" } }, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Choice 2: Skill" }],
+    choices: [{ id: "trait", kind: "pick", n: 1, options: ["darkvision", "skill"], label: "Benefit" },
+      { id: "skill", kind: "pick", n: 1, when: { choice: { id: "trait", is: "skill" } }, options: ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history", "insight", "intimidation", "investigation", "medicine", "nature", "perception", "performance", "persuasion", "religion", "sleightofhand", "stealth", "survival"], label: "Skill" }],
     effects: [
       { target: "skill-{choice:skill}", op: "prof", activation: { kind: "choice", choice: "skill" }, when: { choice: { id: "trait", is: "skill" } } },
       { target: "sense-darkvision", op: "min", value: 60, when: { choice: { id: "trait", is: "darkvision" } } },
