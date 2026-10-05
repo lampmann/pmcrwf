@@ -498,7 +498,8 @@ input.banned-value { color: var(--danger); }
 .combo-empty { padding: .2rem .45rem; }
 
 .cr-ok { color: var(--ok); }
-.cr-choice-trait { border-bottom: 1px dotted currentColor; cursor: help; }
+.cr-trait-description { cursor: help; }
+.cr-choice-trait { border-bottom: 1px dotted currentColor; }
 .cr-racial-slot { margin-right: .5rem; }
 .cr-custom-bg { border-left: 2px solid var(--border); padding-left: .5rem; }
 /* Cancel is pushed away from Back/Next/Create — it discards the character, and sitting next to the

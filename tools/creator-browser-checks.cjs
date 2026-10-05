@@ -20,7 +20,10 @@ module.exports = async function checkCreator(page) {
         { name: 'Druid', source: 'PHB', hd: { faces: 8 }, multiclassing: { requirements: { wis: 13 } } },
       ] },
       'races.json': {
-        race: [{ name: 'Elf', source: 'PHB' }, { name: 'Elf', source: 'XPHB' }, { name: 'Sylph', source: 'TCE' }],
+        race: [{ name: 'Elf', source: 'PHB', entries: [
+          { name: 'Keen Senses', entries: ['You have proficiency in Perception.'] },
+          { name: 'Training', entries: ['Choose a skill of your choice.'] },
+        ] }, { name: 'Elf', source: 'XPHB' }, { name: 'Sylph', source: 'TCE' }],
         subrace: [{ name: 'High', raceName: 'Elf', source: 'PHB' }, { name: 'Moon', raceName: 'Elf', source: 'TCE' },
           { name: 'Moon', raceName: 'Sylph', source: 'TCE' }],
       },
@@ -81,6 +84,8 @@ module.exports = async function checkCreator(page) {
   await page.locator('#cr-race').press('ArrowDown');
   await page.locator('#cr-race').press('Enter');
   assert.equal(await page.locator('#cr-subrace').inputValue(), 'High');
+  assert.equal(await page.locator('.cr-trait-description').filter({ hasText: 'Keen Senses' }).getAttribute('title'), 'You have proficiency in Perception.');
+  assert.equal(await page.locator('.cr-choice-trait').filter({ hasText: 'Training' }).getAttribute('title'), 'Choose a skill of your choice.');
   await page.locator('#cr-race').fill('');
   await page.locator('.combo-expand[aria-label="Expand Elf"]').click();
   await page.locator('.combo-child').filter({ hasText: 'Moon' }).click();

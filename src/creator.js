@@ -343,9 +343,13 @@ function raceTraitsHtml() {
   const traits = [...byName.values()].filter(e => !/^(Age|Alignment|Languages|Size)$/i.test(e.name));
   if (!traits.length) return "";
   return `<div style="margin-top:.5rem"><b>Traits</b>
-    <div class="hint">${traits.map(e => CHOICE_CUE.test(e.text || "")
-      ? `<b class="cr-choice-trait">${escapeHtml(e.name)} &#9998;</b>`
-      : `<span>${escapeHtml(e.name)}</span>`).join(" | ")}</div>
+    <div class="hint">${traits.map(e => {
+      const text = (e.text || "").trim();
+      const choice = CHOICE_CUE.test(text);
+      const tag = choice ? "b" : "span";
+      const hint = text ? ` class="cr-trait-description${choice ? " cr-choice-trait" : ""}" title="${escapeHtml(text)}"` : "";
+      return `<${tag}${hint}>${escapeHtml(e.name)}${choice ? " &#9998;" : ""}</${tag}>`;
+    }).join(" | ")}</div>
     </div>`;
 }
 
