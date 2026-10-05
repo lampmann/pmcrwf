@@ -4,6 +4,7 @@ function restoreExpandedTextField() {
   const state = expandedTextField; if (!state) return;
   state.element.style.cssText = state.style;
   state.element.classList.remove('editing-expanded');
+  state.module?.classList.remove('editing-field-module');
   state.placeholder.remove();
   expandedTextField = null;
 }
@@ -39,7 +40,9 @@ document.addEventListener('focusin', event => {
   placeholder.setAttribute('aria-hidden', 'true');
   placeholder.dataset.editingPlaceholder = ''; 
   element.before(placeholder);
-  expandedTextField = { element, rect, placeholder, style: element.style.cssText };
+  const module = element.closest('.module');
+  expandedTextField = { element, rect, placeholder, module, style: element.style.cssText };
+  module?.classList.add('editing-field-module');
   element.classList.add('editing-expanded');
   sizeExpandedTextField();
 });

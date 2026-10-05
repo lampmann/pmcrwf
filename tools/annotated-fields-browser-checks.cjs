@@ -10,6 +10,14 @@ module.exports = async function checkAnnotatedFields(page) {
   assert.equal(await page.evaluate(() => checkBonus('skill-performance')), 3);
   assert.equal(await page.evaluate(() => spellSaveDC()), 11);
   assert.equal(await page.evaluate(() => spellAttackDice()), '+1d4');
+  // Reproduce neighboring modules with independent z-indexes in an arranged layout.
+  await page.evaluate(() => {
+    const layout = window.__layout;
+    layout.state.activated = true; layout.state.free = false; layout.ensurePositions();
+    layout.state.map.ac = { x: 0, y: 0, w: 140, h: 220, z: 1 };
+    layout.state.map.rest = { x: 150, y: 0, w: 220, h: 220, z: 100 };
+    layout.apply();
+  });
   const field = page.locator('#ac-misc');
   const before = await field.boundingBox();
   await field.click();
@@ -17,11 +25,19 @@ module.exports = async function checkAnnotatedFields(page) {
   assert(expanded.width > before.width * 2);
   assert(await field.evaluate(el => el.scrollWidth <= el.clientWidth + 2));
   assert.equal(await field.inputValue(), '+1 (Blessing of the Forge)');
+  assert(await field.evaluate(el => {
+    const rect = el.getBoundingClientRect();
+    const neighbor = document.querySelector('.module[data-module="rest"]').getBoundingClientRect();
+    return rect.right - 5 > neighbor.left && rect.right - 5 < neighbor.right &&
+      document.elementFromPoint(rect.right - 5, rect.top + rect.height / 2) === el;
+  }), 'Expanded field remains above the neighboring Rest module');
   await field.fill('+2 (Blessing of the Forge, level 3)');
   assert.equal(await page.evaluate(() => checkBonus('ac')), 12);
   await field.blur();
   assert(Math.abs((await field.boundingBox()).width - before.width) < 1);
   assert.equal(await page.locator('[data-editing-placeholder]').count(), 0);
+  assert.equal(await page.locator('.editing-field-module').count(), 0);
+  await page.evaluate(() => { window.__layout.state.activated = false; window.__layout.apply(); });
   await page.locator('#custom-feature-add').click();
   const description = page.locator('#custom-feature-description');
   const small = await description.boundingBox();

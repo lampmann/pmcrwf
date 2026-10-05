@@ -808,3 +808,7 @@ button.linkish {
 .list-sort { font: inherit; font-weight: inherit; color: inherit; background: transparent; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
 .list-sort:hover { text-decoration: underline; }
 .list-sort-toolbar { display: flex; flex-wrap: wrap; gap: .8rem; margin-bottom: .5rem; font-weight: bold; }
+
+/* Arranged modules have their own stacking contexts. Raise the focused field's module too,
+   so its expanded control can extend above neighboring modules. Restored on blur. */
+.module.editing-field-module { z-index: 2147483647 !important; }
