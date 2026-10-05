@@ -766,3 +766,9 @@ button.linkish {
 .ability-score { display: inline-block; min-width: 2.5rem; text-align: right; cursor: help; }
 .creator-data-help { margin: .5rem 0; font-size: .9rem; }
 .creator-data-help ol { padding-left: 1.5rem; }
+
+#custom-feature-list details { margin: .35rem 0; }
+#custom-feature-list summary { cursor: pointer; color: var(--link); }
+.custom-feature-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: .25rem 0; }
+#custom-feature-editor { margin-top: .4rem; }
+#custom-feature-editor input, #custom-feature-editor textarea { display: block; width: 100%; box-sizing: border-box; margin: .15rem 0 .4rem; }

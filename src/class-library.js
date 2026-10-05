@@ -850,6 +850,7 @@ function renderRaceSection(all) {
 }
 function ciFindRace(name) { return ciFind(RACE_LIB, name); }
 function renderClassFeatures() {
+  if (typeof renderCustomFeatures === "function") renderCustomFeatures();
   const el = $("class-feat-results"); if (!el) return;
   const raceName = ($("char-race") && $("char-race").value || "").trim();
   const classes = getClasses().filter(c => c.name.trim());

@@ -1,5 +1,6 @@
 /* ---------- Persistence ---------- */
 let saveTimer = null;
+let CUSTOM_FEATURES = [];
 // Backing scores include racial increases; retain their provenance for the score breakdown.
 let RACIAL_ABILITY_INCREASES = null;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 300); }
@@ -26,7 +27,7 @@ function validateCharacterState(state) {
     const el = $(id);
     if (el && el.matches("[data-persist]") && el.type === "checkbox" && typeof value !== "boolean") invalid(`fields.${id} must be true or false`);
   }
-  for (const key of ["classes", "spells", "items", "attacks", "routines", "companions", "originSwaps"]) {
+  for (const key of ["classes", "spells", "items", "attacks", "routines", "companions", "originSwaps", "customFeatures"]) {
     if (state[key] == null) continue;
     if (!Array.isArray(state[key]) || !state[key].every(isRecord)) invalid(`${key} must be a list of objects`);
   }
@@ -37,6 +38,7 @@ function validateCharacterState(state) {
     const list = state.proficiencies && state.proficiencies[key];
     if (list != null && (!Array.isArray(list) || !list.every(value => typeof value === "string"))) invalid(`proficiencies.${key} must be a list of names`);
   }
+  if (state.customFeatures && !state.customFeatures.every(feature => typeof feature.name === "string" && typeof feature.description === "string")) invalid("customFeatures must contain names and descriptions");
   if (state.racialAbilityIncreases && !Object.values(state.racialAbilityIncreases).every(entry => isRecord(entry) && Number.isFinite(entry.amount) && typeof entry.source === "string")) invalid("racialAbilityIncreases must contain amounts and source names");
   if (state.grantSpellChoices && !Object.values(state.grantSpellChoices).every(list => Array.isArray(list) && list.every(name => typeof name === "string"))) invalid("grantSpellChoices must contain lists of spell names");
   if (state.originSwaps && !state.originSwaps.every(s => ["kind", "from", "toKind", "to"].every(key => typeof s[key] === "string"))) invalid("originSwaps must contain proficiency replacements");
@@ -56,7 +58,7 @@ function collectState() {
   const state = {
     v: 1, effectsSv: 1,
     fields: {}, classes: getClasses(), spells: CHARACTER_SPELLS, concentrating: CONCENTRATING, items: CHARACTER_ITEMS,
-    proficiencies: PROFICIENCIES,
+    proficiencies: PROFICIENCIES, customFeatures: CUSTOM_FEATURES,
     racialAbilityIncreases: RACIAL_ABILITY_INCREASES,
     originSwaps: ORIGIN_SWAPS, grantSpellChoices: GRANT_SPELL_CHOICES, backgroundGrants: BACKGROUND_GRANTS,
     attacks: (typeof getAttacks === "function" ? getAttacks() : []),
@@ -76,6 +78,8 @@ function applyState(state) {
   if (!state) return;
   $("class-rows").innerHTML = "";
   (state.classes || [{ name: "", sub: "", lvl: 1 }]).forEach(addClassRow);
+  CUSTOM_FEATURES = (state.customFeatures || []).map(feature => ({ ...feature }));
+  if (typeof closeCustomFeatureEditor === "function") closeCustomFeatureEditor();
   CHARACTER_SPELLS = state.spells || [];
   CONCENTRATING = state.concentrating || null;
   CHARACTER_ITEMS = state.items || [];

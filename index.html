@@ -486,6 +486,15 @@
     <!-- No height cap: the list is as long as the module lets it be, and a module resized smaller in
          Free layout scrolls as a whole, like every other module. -->
     <div id="class-feat-results" style="border:1px solid var(--border);padding:.25rem;font-size:.85rem;margin-top:.35rem"></div>
+    <div id="custom-feature-area" style="margin-top:.5rem">
+      <b>Custom Features</b> <button type="button" id="custom-feature-add">Add feature</button>
+      <div id="custom-feature-list"></div>
+      <form id="custom-feature-editor" hidden>
+        <label>Name <input id="custom-feature-name" required maxlength="200" autocomplete="off"></label>
+        <label>Description <textarea id="custom-feature-description" rows="6"></textarea></label>
+        <button type="submit">Save feature</button> <button type="button" id="custom-feature-cancel">Cancel</button>
+      </form>
+    </div>
   </section>
 
   <!-- ===== HOUSE RULES ===== -->
@@ -710,6 +719,7 @@
 <script src="src/attacks.js"></script>
 <script src="src/routines.js"></script>
 <script src="src/persistence.js"></script>
+<script src="src/custom-features.js"></script>
 <script src="src/combobox.js"></script>
 <script src="src/rulings.js"></script>
 <script src="src/variant-rules.js"></script>
