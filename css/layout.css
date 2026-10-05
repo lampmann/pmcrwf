@@ -98,6 +98,6 @@
 
 .modules.lay-active > .module > h2,
 .modules.lay-active > .module > .lay-tabs { flex-shrink: 0; }
-.modules.lay-active > .module > .lay-body { min-height: 0; overflow: auto; }
+.modules.lay-active > .module > .lay-body { min-height: 0; width: 100%; box-sizing: border-box; overflow: auto; }
 
 .modules.lay-free > .module > .lay-body { overflow: hidden; }

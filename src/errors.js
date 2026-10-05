@@ -3,7 +3,7 @@
 /* ---------- Visible error surface (so runtime errors are never silent) ---------- */
 function showErrBar(text) {
   let b = document.getElementById("errbar");
-  if (!b) { b = document.createElement("div"); b.id = "errbar"; b.style.cssText = "background:var(--danger, #c00);color:#fff;padding:.5rem;font-family:monospace;white-space:pre-wrap;font-size:.8rem"; document.body.insertBefore(b, document.body.firstChild); }
+  if (!b) { b = document.createElement("div"); b.id = "errbar"; b.setAttribute("role", "alert"); b.style.cssText = "background:var(--notice-bg, #b91c1c);color:#fff;padding:.5rem;font-family:monospace;white-space:pre-wrap;font-size:.8rem"; document.body.insertBefore(b, document.body.firstChild); }
   b.textContent = text;
 }
 window.addEventListener("error", e => {

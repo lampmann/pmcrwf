@@ -184,10 +184,11 @@ function saveState() {
   // or logs that have grown) and the character is then only in memory — losable by closing the tab —
   // so it has to be loud rather than a console line nobody is looking at.
   const st = $("save-status");
+  st.classList.toggle("important-notice", !ok);
   if (ok) { st.textContent = "saved " + new Date().toLocaleTimeString(); st.style.color = ""; st.removeAttribute("title"); }
   else {
     st.textContent = "NOT SAVED - browser storage full (this character is only in memory)";
-    st.style.color = "var(--danger)";
+    st.style.color = "";
     st.title = "Export this character to a file, then delete characters you no longer need or clear old event logs to free space.";
   }
 }

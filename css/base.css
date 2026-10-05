@@ -17,6 +17,8 @@
   --link-border: #1a56c4;
   --danger: #b32318;
   --danger-border: #b32318;
+  --notice-bg: #b91c1c;
+  --notice-fg: #fff;
   /* Meaning, not decoration: the same three colours in every theme. Selected / included / on is blue,
      excluded is red, met / valid is green. Themes may retune the shade, never the hue. */
   --select: #1a56c4;
@@ -261,11 +263,12 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 #update-note {
   position: fixed; left: .6rem; bottom: .6rem; z-index: 1002;
   padding: .35rem .6rem; font-size: .8rem;
-  background: var(--menu-bg); color: var(--fg);
-  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--notice-bg); color: var(--notice-fg);
+  border: 1px solid var(--notice-bg); border-radius: var(--radius);
   box-shadow: 2px 2px 4px var(--menu-shadow);
 }
-#update-note button { font: inherit; font-size: .78rem; margin-left: .35rem; }
+#update-note button { font: inherit; font-size: .78rem; margin-left: .35rem; background: transparent; color: var(--notice-fg); border-color: var(--notice-fg); }
+#update-note button:hover { background: rgba(255, 255, 255, .15); }
 /* ----- concentration indicator (src/spellcasting.js) ----- */
 .conc-banner { margin: -.1rem 0 .5rem; padding: .3rem .5rem; border: 1px solid var(--link-border); border-radius: var(--radius); font-size: .85rem; }
 .sp2-conc { font: inherit; font-size: .8rem; margin-left: .4rem; padding: 0 .3rem; border: 1px solid var(--btn-border); border-radius: var(--radius); background: var(--btn-bg); color: var(--btn-fg); cursor: pointer; }
@@ -812,3 +815,13 @@ button.linkish {
 /* Arranged modules have their own stacking contexts. Raise the focused field's module too,
    so its expanded control can extend above neighboring modules. Restored on blur. */
 .module.editing-field-module { z-index: 2147483647 !important; }
+
+/* Keep important notices red with white text, including in themes with pale danger colors. */
+.important-notice, #data-bar.data-bar-warn, #data-bar .data-bar-err:not(:empty),
+#data-bar .data-bar-stale:not(:empty), .custom-record-error:not(:empty),
+.cr-blocker:not(:empty), .cr-over:not(:empty), .boon-over:not(:empty) {
+  background: var(--notice-bg); color: var(--notice-fg); border-color: var(--notice-bg);
+  padding: .35rem .5rem; border-radius: var(--radius);
+}
+.important-notice a, #data-bar.data-bar-warn a, #data-bar.data-bar-warn .hint { color: var(--notice-fg); }
+#data-bar.data-bar-warn button { background: transparent; color: var(--notice-fg); border-color: var(--notice-fg); }
