@@ -171,10 +171,10 @@ function crBackgroundSkills() {
   return rec ? [...flatProfNames(rec.skills), ...((c.bgChoices && c.bgChoices.skills) || [])].filter(Boolean).map(crSkillName) : [];
 }
 /* Every skill proficiency except the ones stored under `exceptKey`. */
-function crTakenSkills(exceptKey) {
+function crTakenSkills(exceptKey, includeBackground = true) {
   const swapped = new Set(crOriginSwaps().filter(s => s.kind === "skills").map(s => crSkillSlug(s.from)));
   const features = creatorFeatureList();
-  const out = [...crBackgroundSkills(), ...crResolvedRaceProfs().skills,
+  const out = [...(includeBackground ? crBackgroundSkills() : []), ...crResolvedRaceProfs().skills,
     ...crEffectSkillGrants(features.filter(f => !["race", "subrace"].includes((f.origin || {}).kind))),
     ...crEffectSkillGrants(features.filter(f => ["race", "subrace"].includes((f.origin || {}).kind))).filter(s => !swapped.has(crSkillSlug(s)))];
   Object.keys(CREATOR.picks).filter(k => k.startsWith("skills:") && k !== exceptKey).forEach(k => out.push(...crPicked(k)));
@@ -547,6 +547,14 @@ function creatorChoiceBlocker(step) {
     if (over) return `An Ability Score Improvement can't raise ${over.toUpperCase()} above 20.`;
     const f = crFeaturesForStep(3).find(f => crLiveChoices(f).some(c => crChoiceMissing(f, c)));
     if (f) return `Make the choice for ${f.name}.`;
+  }
+  if (step === 5) {
+    const skills = crBackgroundSkills().map(s => s.toLowerCase());
+    if (new Set(skills).size !== skills.length) return "Choose different background skills.";
+    const chosen = CREATOR.customBg ? CREATOR.bgSkills : (CREATOR.bgChoices?.skills || []);
+    const taken = new Set(crTakenSkills(null, false).map(s => s.toLowerCase()));
+    const clash = chosen.filter(Boolean).find(s => taken.has(crSkillName(s).toLowerCase()));
+    if (clash) return `${crSkillName(clash)} is already proficient; choose another background skill.`;
   }
   if (step === 5 && !CREATOR.customBg) {
     const slot = backgroundFeatSlots(ciFindBackground(CREATOR.background)).find(s => !s.fixed && !CREATOR.backgroundFeats[s.fkey]);

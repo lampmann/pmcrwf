@@ -124,10 +124,29 @@ module.exports = async function checkCreator(page) {
   await page.evaluate(() => { CREATOR.background = 'Artisan'; CREATOR.bgChoices = {}; renderCreator(); });
   await page.locator('[data-bgkind="tools"]').selectOption("Carpenter's Tools");
   assert.deepEqual(await page.evaluate(() => creatorBuildState().proficiencies.tools), ["Carpenter's Tools"]);
+  await page.evaluate(() => {
+    BACKGROUND_LIB['Skill Test'] = { name: 'Skill Test', skills: [{ perception: true, choose: { from: ['perception', 'arcana', 'history'], count: 2 } }] };
+    CREATOR.background = 'Skill Test'; CREATOR.bgChoices = {}; renderCreator();
+  });
+  const bgSkill = slot => page.locator('[data-bgkind="skills"]').nth(slot);
+  assert.equal(await bgSkill(0).locator('option[value="perception"]').count(), 0);
+  await bgSkill(0).selectOption('arcana');
+  assert.equal(await bgSkill(1).locator('option[value="arcana"]').count(), 0);
+  await bgSkill(1).selectOption('history');
+  await bgSkill(0).selectOption('');
+  assert.equal(await bgSkill(1).locator('option[value="arcana"]').count(), 1);
+  await page.evaluate(() => { CREATOR.bgChoices.skills = ['arcana', 'arcana']; });
+  assert.match(await page.evaluate(() => creatorChoiceBlocker(5)), /different background skills/);
+  await page.evaluate(() => { CREATOR.background = 'Artisan'; CREATOR.bgChoices = {}; renderCreator(); });
   await page.locator('#cr-custom-bg').check();
   assert.deepEqual(await page.evaluate(() => comboOptionsOf(document.querySelector('.cr-bgtool'))), ['Abyssal', "Carpenter's Tools", 'Common', 'Disguise Kit', 'Elvish']);
   await page.evaluate(() => { CREATOR.bgTools = ['Elvish', 'Disguise Kit']; });
   assert.deepEqual(await page.evaluate(() => creatorBuildState().proficiencies), { weapons: [], tools: ['Disguise Kit'], languages: ['Elvish'] });
+  await page.locator('.cr-bgskill').nth(0).fill('Arcana');
+  assert(!await page.evaluate(() => comboOptionsOf(document.querySelectorAll('.cr-bgskill')[1]).includes('Arcana')));
+  await page.locator('.cr-bgskill').nth(1).fill('arcana');
+  assert.match(await page.evaluate(() => creatorChoiceBlocker(5)), /different background skills/);
+  await page.evaluate(() => { CREATOR.bgSkills = ['', '']; renderCreator(); });
   // A race that grants a feat (Variant Human, Custom Lineage) asks which one in step 1, and hands it
   // to the built character under the same fkey the Features module reads back — one slot seen twice
   // rather than two places a feat can hide. Injected straight into the libraries rather than through

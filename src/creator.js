@@ -693,8 +693,6 @@ function bgChooseHtml(rec, kind) {
   const blocks = chooseBlocks(rec[kind], kind);
   if (!blocks.length) return "";
   const picked = (CREATOR.bgChoices && CREATOR.bgChoices[kind]) || [];
-  const classSkills = kind === "skills" && CREATOR.picks
-    ? Object.keys(CREATOR.picks).filter(k => k.startsWith("skills:")).flatMap(k => CREATOR.picks[k].filter(Boolean)).map(x => x.toLowerCase()) : [];
   let slot = 0;
   const rows = blocks.map(b => {
     const sels = [];
@@ -703,7 +701,13 @@ function bgChooseHtml(rec, kind) {
       const cur = picked[idx] || "";
       sels.push(`<select class="cr-bgchoose" data-bgkind="${kind}" data-bgslot="${idx}">` +
         `<option value=""${cur ? "" : " selected"}>- choose -</option>` +
-        b.from.filter(o => o === cur || !classSkills.includes(String(o).toLowerCase()))
+        b.from.filter(o => {
+          const name = String(o).toLowerCase();
+          const fixed = flatProfNames(rec[kind]).map(x => String(x).toLowerCase());
+          const otherPicks = picked.filter((_, j) => j !== idx).map(x => String(x).toLowerCase());
+          const taken = kind === "skills" ? crTakenSkills(null, false).map(x => x.toLowerCase()) : [];
+          return o === cur || ![...fixed, ...otherPicks, ...taken].includes(name);
+        })
           .map(o => `<option value="${escapeHtml(o)}"${o === cur ? " selected" : ""}>${escapeHtml(o)}</option>`).join("") +
         `</select>`);
     }
@@ -734,7 +738,9 @@ function customBackgroundHtml() {
   const toolLanguages = [...new Set([...proficiencyOptions("tools"), ...proficiencyOptions("languages")])].sort((a, b) => a.localeCompare(b));
   const features = Object.values(BACKGROUND_LIB).filter(b => b.feature).map(b => `${b.feature.name} (${b.name})`).sort();
   const pick = (arr, i, cls, list, ph) =>
-    `${creatorCombo(`cr-${cls}-${i}`, arr[i] || "", list, ph, cls, "11rem")}`;
+    `${creatorCombo(`cr-${cls}-${i}`, arr[i] || "", cls === "cr-bgskill"
+      ? list.filter(name => name === arr[i] || ![...arr.filter((_, j) => j !== i), ...crTakenSkills(null, false)].some(taken => taken.toLowerCase() === name.toLowerCase()))
+      : list, ph, cls, "11rem")}`;
   return `<div style="margin-top:.4rem" class="cr-custom-bg">
 
     <div style="margin-top:.3rem">Skills ${pick(CREATOR.bgSkills, 0, "cr-bgskill", skillNames, "any skill")} ${pick(CREATOR.bgSkills, 1, "cr-bgskill", skillNames, "any skill")}</div>
@@ -1165,7 +1171,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (t.classList.contains("cr-sub")) { CREATOR.classes[Number(t.dataset.crrow)].sub = t.value; renderCreatorChrome(); return; }
     if (t.id === "cr-background") { CREATOR.background = t.value; renderCreatorKeepingFocus(t); return; }
-    if (t.classList.contains("cr-bgskill")) { CREATOR.bgSkills[Number(t.id.slice(-1))] = t.value; renderCreatorChrome(); return; }
+    if (t.classList.contains("cr-bgskill")) { CREATOR.bgSkills[Number(t.id.slice(-1))] = t.value; renderCreatorKeepingFocus(t); return; }
     if (t.classList.contains("cr-bgtool")) { CREATOR.bgTools[Number(t.id.slice(-1))] = t.value; renderCreatorChrome(); return; }
     if (t.id === "cr-bgfeature") { CREATOR.bgFeature = t.value; return; }
     if (t.id === "cr-name") { CREATOR.name = t.value; return; }
