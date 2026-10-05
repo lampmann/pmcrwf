@@ -791,3 +791,6 @@ button.linkish {
 .custom-record-editor textarea { display: block; width: 100%; box-sizing: border-box; }
 .custom-record-error { color: var(--danger); }
 .custom-action-row { margin: .3rem 0; }
+
+.itm-sort { font: inherit; font-weight: bold; border: 0; background: transparent; color: inherit; padding: .1rem .2rem; cursor: pointer; white-space: nowrap; }
+.itm-sort:hover { text-decoration: underline; }

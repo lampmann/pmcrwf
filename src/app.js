@@ -182,6 +182,12 @@ function init() {
   $("item-filter-area").addEventListener("click", e => ITEM_FILTERS.handleClick(e));
   $("item-filter-area").addEventListener("input", e => ITEM_FILTERS.handleInput(e));
   $("item-results").addEventListener("click", e => {
+    const sort = e.target.closest(".itm-sort");
+    if (sort) {
+      const key = sort.dataset.sort;
+      ITEM_SORT = { key, descending: ITEM_SORT.key === key ? !ITEM_SORT.descending : ["weight", "price", "attunement", "rarity"].includes(key) };
+      renderItemResults(); return;
+    }
     const buy = e.target.closest(".itm-lib-buy");
     if (buy) { const record = ITEM_LIB.find(item => item.name + "|" + item.source === buy.dataset.key); if (record) buyCharacterItem(record.name, record); return; }
     const groupBuy = e.target.closest(".itm-group-buy"); if (groupBuy) { buyCharacterItem(groupBuy.dataset.name); return; }

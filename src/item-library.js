@@ -378,16 +378,31 @@ function renderItemLibrary() {
   ITEM_FILTERS.renderArea();
   renderItemResults();
 }
+let ITEM_SORT = { key: "name", descending: false };
+const ITEM_COLUMNS = [["name", "Name"], ["type", "Type"], ["weight", "Weight"], ["attunement", "Attunement"], ["rarity", "Rarity"], ["price", "Price"], ["source", "Source"]];
+function itemSortValue(item, key) {
+  if (key === "price") return itemValueGp(item);
+  if (key === "attunement") return item.reqAttune ? 1 : 0;
+  if (key === "rarity") return ({ none: 0, common: 1, uncommon: 2, rare: 3, "very rare": 4, legendary: 5, artifact: 6 })[item.rarity || "none"] ?? null;
+  return item[key];
+}
+function sortItemResults(items) {
+  const { key, descending } = ITEM_SORT;
+  const numeric = ["weight", "price", "attunement", "rarity"].includes(key);
+  return items.sort((a, b) => {
+    const av = itemSortValue(a, key), bv = itemSortValue(b, key);
+    const missing = value => value == null || value === "" || (numeric && !Number.isFinite(Number(value)));
+    if (missing(av) !== missing(bv)) return missing(av) ? 1 : -1;
+    const comparison = missing(av) ? 0 : numeric ? Number(av) - Number(bv) : String(av).localeCompare(String(bv), undefined, { sensitivity: "base", numeric: true });
+    return (descending ? -comparison : comparison) || a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
+  });
+}
 function renderItemResults() {
   const q = ($("item-search").value || "").toLowerCase().trim();
   const active = ITEM_FILTERS.activeGroups();
-  const rows = []; let more = 0;
-  for (const it of ITEM_LIB) {
-    if (q && !(it.name + " " + it.type + " " + it.rarity + " " + it.source).toLowerCase().includes(q)) continue;
-    if (!ITEM_FILTERS.passes(it, active)) continue;
-    if (rows.length >= 250) { more++; continue; }
-    rows.push(it);
-  }
+  const matches = sortItemResults(ITEM_LIB.filter(it =>
+    (!q || (it.name + " " + it.type + " " + it.rarity + " " + it.source).toLowerCase().includes(q)) && ITEM_FILTERS.passes(it, active)));
+  const rows = matches.slice(0, 250), more = Math.max(0, matches.length - rows.length);
   const el = $("item-results");
   if (!ITEM_LIB.length) { el.innerHTML = "<div class='hint'>Load some equipment files above to get started.</div>"; return; }
   if (!rows.length) { el.innerHTML = "<div class='hint'>no matches</div>"; return; }
@@ -400,15 +415,21 @@ function renderItemResults() {
       : (it.valueDefaulted ? "estimated by rarity - no official price in the source data" : "");
     return `<tr${ban ? ' class="lib-banned"' : ""}>
       <td><button class="itm-lib-add" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` aria-label="${isGroup ? "Choose item" : "Add to inventory"}"`}>${isGroup ? "&hellip;" : "+"}</button>${!isGroup && val !== "" ? ` <button type="button" class="itm-lib-buy" data-key="${key}"${ban ? ` disabled title="${escapeHtml(ban)}"` : ` title="Buy for ${val} gp"`}>Buy</button>` : ""}</td>
-      <td class="nm"><a class="itm-name-link" data-key="${key}">${it.name}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
-      <td class="hint">${it.type}</td>
-      <td class="hint">${it.rarity}</td>
-      <td class="c hint">${it.weight === "" ? "" : escapeHtml(String(it.weight)) + " lb"}</td>
+      <td class="nm"><a class="itm-name-link" data-key="${key}">${escapeHtml(it.name)}</a>${ban ? ` <span class="lib-ban-tag" title="${escapeHtml(ban)}">banned</span>` : ""}</td>
+      <td class="hint">${escapeHtml(it.type || "")}</td>
+      <td class="c hint">${it.weight == null || it.weight === "" ? "" : escapeHtml(String(it.weight)) + " lb."}</td>
+      <td class="hint">${escapeHtml(it.reqAttune || "")}</td>
+      <td class="hint">${escapeHtml(it.rarity || "")}</td>
       <td class="c hint"${valTitle ? ` title="${escapeHtml(valTitle)}"` : ""}>${val === "" ? "" : (ruled ? val : (it.valueDefaulted ? "~" + val : val)) + " gp"}</td>
-      <td class="hint">${it.source}</td>
+      <td class="hint">${escapeHtml(it.source || "")}</td>
     </tr>`;
   }).join("");
-  el.innerHTML = `<table class="spell-table"><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
+  const headers = ITEM_COLUMNS.map(([key, label]) => {
+    const selected = ITEM_SORT.key === key;
+    const direction = selected ? (ITEM_SORT.descending ? "descending" : "ascending") : "none";
+    return `<th scope="col" aria-sort="${direction}"><button type="button" class="itm-sort" data-sort="${key}">${label}${selected ? ` <span aria-hidden="true">${ITEM_SORT.descending ? "▼" : "▲"}</span>` : ""}</button></th>`;
+  }).join("");
+  el.innerHTML = `<table class="spell-table"><thead><tr><th scope="col">Actions</th>${headers}</tr></thead><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
 }
 function toggleItemDetail(link) {
   const tr = link.closest("tr"), next = tr.nextElementSibling;
@@ -416,7 +437,7 @@ function toggleItemDetail(link) {
   const it = ITEM_LIB.find(x => (x.name + "|" + x.source) === link.dataset.key); if (!it) return;
   const meta = [it.type, it.rarity, it.reqAttune].filter(Boolean).join(" | ");
   const det = document.createElement("tr"); det.className = "sp-detail";
-  det.innerHTML = `<td></td><td colspan="6"><div class="hint">${meta}</div><div>${escapeHtml(it.text).replace(/\n/g, "<br>")}</div></td>`;
+  det.innerHTML = `<td></td><td colspan="7"><div class="hint">${meta}</div><div>${escapeHtml(it.text).replace(/\n/g, "<br>")}</div></td>`;
   tr.after(det);
 }
 /* A parsed item's group members, defensively.
@@ -446,7 +467,7 @@ function addItemFromLib(key, btn) {
     return { name: n, key: rec ? (rec.name + "|" + rec.source) : "", known: !!rec, price: rec ? itemValueGp(rec) : "" };
   });
   const row = document.createElement("tr"); row.className = "itm-group-row";
-  row.innerHTML = `<td></td><td colspan="6"><div class="hint">${escapeHtml(it.name)}:</div>
+  row.innerHTML = `<td></td><td colspan="7"><div class="hint">${escapeHtml(it.name)}:</div>
     <div>${members.map(m => `<button class="itm-group-pick" data-name="${escapeHtml(m.name)}"${m.known ? "" : ` aria-label="not in the loaded library - added by name only"`}>${escapeHtml(m.name)}${m.known ? "" : " *"}</button>${m.known && m.price !== "" ? ` <button type="button" class="itm-group-buy" data-name="${escapeHtml(m.name)}" title="Buy for ${m.price} gp">Buy</button>` : ""}`).join(" ")}</div></td>`;
   tr.after(row);
 }
