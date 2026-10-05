@@ -22,6 +22,7 @@ function openCustomItem(index = null) {
     customRecordField('Weight each (lb)', 'weight', record.weight ?? 0, 'number', 'min="0" step="any" required') +
     customRecordField('Value each (gp)', 'value', record.valueGp ?? 0, 'number', 'min="0" step="any" required') +
     customRecordField('Type', 'type', record.type || '') +
+    `<label>Rarity <select name="rarity">${['none', 'common', 'uncommon', 'rare', 'very rare', 'legendary', 'artifact', 'varies', 'unknown', 'unknown (magic)'].map(rarity => `<option value="${rarity}"${rarity === (record.rarity || 'none') ? ' selected' : ''}>${rarity[0].toUpperCase() + rarity.slice(1)}</option>`).join('')}</select></label>` +
     `<label><input name="attunement" type="checkbox"${record.reqAttune ? ' checked' : ''}> Requires attunement</label>` +
     customRecordText('Description', 'description', record.text || '') + customRecordButtons('Save item');
   form.hidden = false; form.elements.name.focus();
@@ -78,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('custom-item-editor').addEventListener('submit', event => {
     event.preventDefault(); const form = event.target, data = new FormData(form), name = data.get('name').trim(); if (!name) return;
-    const custom = { name, source: 'Custom', type: data.get('type'), weight: Number(data.get('weight')), valueGp: Number(data.get('value')), text: data.get('description'), reqAttune: data.has('attunement') ? 'requires attunement' : '' };
+    const custom = { name, source: 'Custom', type: data.get('type'), rarity: data.get('rarity') === 'none' ? '' : data.get('rarity'), weight: Number(data.get('weight')), valueGp: Number(data.get('value')), text: data.get('description'), reqAttune: data.has('attunement') ? 'requires attunement' : '' };
     if (customItemEditing === null) CHARACTER_ITEMS.push({ name, custom, qty: Number(data.get('qty')), eq: false, attuned: false, slot: '' });
     else { const item = CHARACTER_ITEMS[customItemEditing]; Object.assign(item, { name, custom, qty: Number(data.get('qty')) }); if (!custom.reqAttune) item.attuned = false; }
     closeCustomRecordEditors(); renderItemList(); if (typeof renderEquipSlots === 'function') renderEquipSlots(); recompute(); scheduleSave();

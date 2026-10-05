@@ -52,7 +52,7 @@ function resolvedItem(it) {
     wt: lib && lib.weight !== "" ? Number(lib.weight) : 0,
     // Through itemValueGp so a house-rule price (or a worthless trinket) reaches the inventory
     // totals, not just the library's own Cost column — see item-library.js.
-    val: (() => { const v = lib ? itemValueGp(lib) : ""; return v === "" ? 0 : Number(v); })(),
+    val: (() => { const v = it.custom ? it.custom.valueGp : lib ? itemValueGp(lib) : ""; return v === "" ? 0 : Number(v); })(),
   };
 }
 function itemsTotalValue() { return CHARACTER_ITEMS.reduce((s, it) => { const r = resolvedItem(it); return s + r.qty * r.val; }, 0); }

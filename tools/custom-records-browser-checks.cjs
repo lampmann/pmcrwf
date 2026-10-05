@@ -8,6 +8,7 @@ module.exports = async function checkCustomRecords(page) {
   await item.locator('[name="weight"]').fill('3.5');
   await item.locator('[name="value"]').fill('25');
   await item.locator('[name="description"]').fill('Homebrew description <script>bad()</script>');
+  await item.locator('[name="rarity"]').selectOption('rare');
   await item.locator('[name="attunement"]').check();
   await item.locator('[type="submit"]').click();
   assert.equal(await page.locator('#items-weight-total').innerText(), '7');
@@ -21,8 +22,11 @@ module.exports = async function checkCustomRecords(page) {
   });
   await page.locator('#char-item-list .inv-link').click();
   assert.match(await page.locator('#char-item-list .feat-detail').innerText(), /Homebrew description/);
+  assert.match(await page.locator('#char-item-list .feat-detail').innerText(), /rare/);
   assert.equal(await page.locator('#char-item-list script').count(), 0);
   await page.locator('[data-custom-item-edit]').click();
+  assert.equal(await item.locator('[name="rarity"]').inputValue(), 'rare');
+  await item.locator('[name="rarity"]').selectOption('very rare');
   await item.locator('[name="value"]').fill('30');
   await item.locator('[type="submit"]').click();
   assert.equal(await page.locator('#items-value-total').innerText(), '60');
@@ -59,6 +63,7 @@ module.exports = async function checkCustomRecords(page) {
   await page.waitForFunction(() => CHARACTER_ITEMS.some(it => it.custom) && COMPANIONS.some(c => c.customRaw));
   assert.equal(await page.locator('#items-value-total').innerText(), '60');
   assert.match(await page.locator('#companions-list').innerText(), /Revised Clockwork Cat/);
+  assert.equal(await page.evaluate(() => CHARACTER_ITEMS[0].custom.rarity), 'very rare');
   await page.evaluate(() => {
     const saved = JSON.stringify(collectState());
     applyState({ fields: {}, classes: [] });
