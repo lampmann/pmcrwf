@@ -1,5 +1,5 @@
 /* ============================================================
-   companions.js — Companions & Summons.
+   companions.js - Companions & Summons.
 
    The character-side half of the Bestiary Library: statblocks you've added
    to your own sheet and actually play with. Library statblocks are looked
@@ -9,15 +9,15 @@
 
    Built around how this table actually uses monsters: summons are
    everybody's business, not the GM's, and they arrive eight at a time.
-   So a companion is a STACK of tokens, not one creature — Conjure Animals
+   So a companion is a STACK of tokens, not one creature - Conjure Animals
    gives you one entry with eight wolves, each tracking its own HP, and one
    "x8 Bite" button that rolls all eight attacks and reports the total
    damage as a by-AC table (the same summary the Offensive Routines module
    produces for your own turn, reusing its acRangeRows).
 
    Scaling summons work off your sheet rather than a fixed number. A
-   Tasha's summon's statblock ships symbolic values — {@hitYourSpellAttack}
-   for to-hit, "summonSpellLevel"/"PB" inside damage — which monster-library.js
+   Tasha's summon's statblock ships symbolic values - {@hitYourSpellAttack}
+   for to-hit, "summonSpellLevel"/"PB" inside damage - which monster-library.js
    parses through unresolved; they're substituted here, at roll time, from
    spellAttackBonus() / profBonus() and the companion's own cast level, so a
    Bestial Spirit's Maul tracks your stats the way it should.

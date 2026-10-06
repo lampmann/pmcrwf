@@ -1,5 +1,5 @@
 /* ============================================================
-   DATA SNAPSHOT — the data/ folder, copied into this browser once.
+   DATA SNAPSHOT - the data/ folder, copied into this browser once.
 
    src/data-folder.js connects a LIVE folder: the sheet holds a directory
    handle and reads files off the disk as it needs them. That is the better
@@ -8,7 +8,7 @@
    is OPFS, which is a private sandbox the browser owns and cannot see a word
    of your data/ folder.
 
-   What Firefox DOES have is <input type="file" webkitdirectory> — one dialog,
+   What Firefox DOES have is <input type="file" webkitdirectory> - one dialog,
    a whole directory tree, every File tagged with webkitRelativePath. That
    solves picking. It does not solve remembering: the FileList dies with the
    page, and there is no handle to store.
@@ -22,14 +22,14 @@
 
    IT IS A COPY, AND THAT IS THE WHOLE TRADE. A live handle re-reads the disk,
    so editing a JSON file shows up on the next reload. A snapshot doesn't
-   know the disk exists any more. We cannot detect that — no handle, no
-   filesystem, nothing to poll — so the honest design is to make the staleness
+   know the disk exists any more. We cannot detect that - no handle, no
+   filesystem, nothing to poll - so the honest design is to make the staleness
    VISIBLE rather than pretend to catch it: the bar always names the date and
    file count of the copy it is serving, says so out loud once the copy is old,
    and re-picking reports exactly what changed.
 
-   WHY NOT EVERY FILE. 5e.tools' data/ is enormous — adventures, books,
-   generated indexes, artwork manifests — and this sheet reads a small corner
+   WHY NOT EVERY FILE. 5e.tools' data/ is enormous - adventures, books,
+   generated indexes, artwork manifests - and this sheet reads a small corner
    of it. wantedDataPath keeps that corner. The predicate is deliberately a
    little wider than today's loaders (any .json at the top level, not just the
    seven currently named) so adding a loader doesn't silently ship a snapshot
@@ -37,7 +37,7 @@
    and fails if one of them wouldn't be stored.
 
    WHY GZIP. Even that corner is tens of megabytes of JSON, and JSON is mostly
-   air — CompressionStream gets it down by roughly 8x for the cost of a few
+   air - CompressionStream gets it down by roughly 8x for the cost of a few
    milliseconds per file on the way back out. Where CompressionStream is
    missing the text is stored as-is; the reader handles both, so a browser
    without it is slower to fill and bigger on disk, not broken.
@@ -48,7 +48,7 @@ const SNAP_FILES = "files";      // key: "spells/index.json"  ->  { z: Blob } or
 const SNAP_META = "meta";        // key: "current"            ->  the manifest below
 const SNAP_KEY = "current";
 const SNAP_SCHEMA = 1;           // bump to invalidate every stored copy
-const SNAP_WRITE_BATCH = 64;     // files per transaction — see importFolderFiles
+const SNAP_WRITE_BATCH = 64;     // files per transaction - see importFolderFiles
 const SNAP_STALE_DAYS = 90;      // after this the bar says the copy is old
 
 /* The manifest for the copy currently stored, or null. Small enough to keep in memory: it carries a
@@ -82,8 +82,8 @@ function snapTx(store, mode, fn) {
 
 /* ---------- which files are worth keeping ---------- */
 
-/* Directories this sheet reads wholesale. Everything else in 5e.tools' data/ — adventure/, book/,
-   generated/, the art manifests — is content we never touch and would only be taking up the user's
+/* Directories this sheet reads wholesale. Everything else in 5e.tools' data/ - adventure/, book/,
+   generated/, the art manifests - is content we never touch and would only be taking up the user's
    disk to ignore. */
 const SNAP_DIRS = ["spells/", "bestiary/", "class/"];
 
@@ -96,7 +96,7 @@ function wantedDataPath(rel) {
 }
 
 /* webkitRelativePath is always "<the folder they picked>/…". Strip that first segment, then strip a
-   leading "data/" if it's there — people reach for the folder they think of as "the data", and that
+   leading "data/" if it's there - people reach for the folder they think of as "the data", and that
    is sometimes data/ itself and sometimes the folder holding it. Both are the right answer to the
    question the dialog asked, so both work (resolveDataRoot in data-folder.js is forgiving the same
    way for the live-handle path). */
@@ -110,12 +110,12 @@ function relFromPickedPath(webkitRelativePath) {
 
 /* ---------- telling files apart ---------- */
 
-/* FNV-1a over the file's text. The obvious cheap signal — size and mtime — turns out to be worthless
+/* FNV-1a over the file's text. The obvious cheap signal - size and mtime - turns out to be worthless
    here: copying a folder, syncing it, or re-downloading 5e.tools' zip resets every mtime, so a
    re-pick would report "3,214 files updated" every single time and the one sentence that is supposed
    to tell you something real would become noise you learn to ignore. Content is the only signal that
-   answers the question actually being asked. Not a cryptographic hash — nobody is attacking this, and
-   a 32-bit collision would under-report one file, not corrupt anything — and the bytes are already in
+   answers the question actually being asked. Not a cryptographic hash - nobody is attacking this, and
+   a 32-bit collision would under-report one file, not corrupt anything - and the bytes are already in
    hand on the way to being compressed, so it costs one pass over a string we've already read. */
 function snapHash(text) {
   let h = 0x811c9dc5;
@@ -144,7 +144,7 @@ async function snapUnpack(rec) {
 
 /* ---------- reading ---------- */
 
-/* The one function dataFetch needs. Returns the file's text, or null for "not in the copy" — the
+/* The one function dataFetch needs. Returns the file's text, or null for "not in the copy" - the
    same shape of answer a missing file gives on the live-handle path, so the loaders can't tell. */
 async function snapshotFileText(rel) {
   if (!SNAPSHOT || !SNAPSHOT.paths[rel]) return null;   // manifest lookup first: no IDB hit on a miss
@@ -161,7 +161,7 @@ async function loadSnapshotMeta() {
   try {
     const m = await snapTx(SNAP_META, "readonly", s => s.get(SNAP_KEY));
     SNAPSHOT = (m && m.v === SNAP_SCHEMA && m.paths) ? m : null;
-    if (m && !SNAPSHOT) await clearSnapshot();          // written by an older schema — start clean
+    if (m && !SNAPSHOT) await clearSnapshot();          // written by an older schema - start clean
   } catch (e) { SNAPSHOT = null; }
   return SNAPSHOT;
 }
@@ -185,7 +185,7 @@ async function clearSnapshot() {
   SNAPSHOT = null;
 }
 
-/* What changed since the copy we already had. Compares [size, hash], never timestamps — see snapHash
+/* What changed since the copy we already had. Compares [size, hash], never timestamps - see snapHash
    for why. Pure, so it can be tested without a database and so a re-pick can work out what it is
    about to change before it changes it. */
 function diffSnapshotPaths(before, after) {
@@ -201,10 +201,10 @@ function diffSnapshotPaths(before, after) {
 }
 
 /* Reads a picked folder into the database. `files` is the FileList from a webkitdirectory input.
-   onProgress({done, total, phase}) is called as it goes — this reads thousands of files off a disk
+   onProgress({done, total, phase}) is called as it goes - this reads thousands of files off a disk
    and must never look like a hang.
 
-   Returns { stored, skipped, bytes, diff } — diff against whatever copy was there before, which is
+   Returns { stored, skipped, bytes, diff } - diff against whatever copy was there before, which is
    what makes a re-pick able to say "412 files changed" instead of "done". */
 async function importFolderFiles(files, onProgress) {
   const report = onProgress || (() => {});
@@ -263,11 +263,11 @@ function folderNameOf(files) {
 }
 
 /* Ask the browser not to evict this. A data copy that vanishes under storage pressure is worse than
-   no copy at all — it would fail silently, mid-session, looking like the sheet had lost its library.
+   no copy at all - it would fail silently, mid-session, looking like the sheet had lost its library.
    Best-effort by design: Firefox may prompt, Chrome decides on its own, and a "no" is survivable. */
 async function requestPersistentStorage() {
   try {
     if (navigator.storage && navigator.storage.persist) return await navigator.storage.persist();
-  } catch (e) { /* not fatal — the copy still works, it is just evictable */ }
+  } catch (e) { /* not fatal - the copy still works, it is just evictable */ }
   return false;
 }

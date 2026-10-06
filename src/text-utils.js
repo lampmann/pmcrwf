@@ -7,9 +7,12 @@
    ============================================================ */
 /* HTML escaping for everything that interpolates a name into markup. It lives here rather than in a
    feature module because half the sheet depends on it (the roster tab bar, the inventory list, the
-   event log, the creator) — having it in spell-library.js made the spell library a load-order
+   event log, the creator) - having it in spell-library.js made the spell library a load-order
    dependency of the character roster, which it has no business being.
    `&` first, or the entities produced by the later replacements get double-escaped. */
+function normalizeDisplayPunctuation(s) {
+  return String(s == null ? "" : s).replace(/\u2014/g, "-").replace(/\u00b7/g, "|");
+}
 function escapeHtml(s) {
   return String(s == null ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -26,7 +29,7 @@ function flattenEntries(entries) {
   return out.join("\n");
 }
 function stripTags(s) {   // convert 5e.tools {@tag ...} markup to plain text
-  return (s || "")
+  return normalizeDisplayPunctuation(s)
     .replace(/{@(?:h|hit)}/gi, "Hit: ")
     // Filter tags use the first field as their label; the remaining fields are search rules.
     .replace(/{@filter ([^}]+)}/gi, (_, fields) => fields.split("|")[0])

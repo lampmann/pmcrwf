@@ -40,7 +40,7 @@ function speedTotal() { return speedOf("walk"); }
 /* ---------- Armor Class (auto-calculated from equipped armor, like initiative) ----------
    No armor equipped: 10 + DEX. Light armor: armor AC + full DEX. Medium: armor AC + DEX (max +2).
    Heavy: armor AC only. Add magical armor bonuses and the equipped shield's AC/bonus
-   (multiple shields don't stack — the books allow only one shield at a time). Ties among multiple equipped body-armor pieces
+   (multiple shields don't stack - the books allow only one shield at a time). Ties among multiple equipped body-armor pieces
    are broken by table order (an edge case the sheet doesn't try to adjudicate); an override box
    covers anything this formula can't represent (Unarmored Defense, natural armor, etc.). */
 function equippedArmorLibs() {
@@ -55,7 +55,7 @@ function armorClassAuto() {
   if (!armor) base = 10 + dex;
   else if (armor.armorCat === "light") base = armor.ac + dex;
   else if (armor.armorCat === "medium") base = armor.ac + Math.min(dex, 2);
-  else base = armor.ac; // heavy (or an armor entry with an unrecognized category — treat as flat)
+  else base = armor.ac; // heavy (or an armor entry with an unrecognized category - treat as flat)
   const armorBonus = armor ? Number(armor.bonusAc) || 0 : 0;
   const shieldBonus = shield ? (shield.ac == null ? 2 : Number(shield.ac)) + (Number(shield.bonusAc) || 0) : 0;
   return base + armorBonus + shieldBonus;
@@ -72,7 +72,7 @@ const MULTICLASS_SLOTS = [
   [4,3,3,3,3,2,2,1,1],
 ];
 function casterLevel() {
-  // Pact Magic (Warlock) slots aren't part of the multiclass table — "pact" classes don't contribute here.
+  // Pact Magic (Warlock) slots aren't part of the multiclass table - "pact" classes don't contribute here.
   return getClasses().reduce((s, c) => {
     const casting = c.casting === "auto" ? classCasting(c.name, c.sub) : c.casting;
     if (casting === "full") return s + c.lvl;
@@ -120,12 +120,12 @@ function parseBonus(str) {
 /* ----- what the effects engine grants that has no box of its own -----
    Damage resistances/immunities/vulnerabilities, and advantage on saves against a named condition. Each is
    a target the engine writes and nothing else reads, so they are listed here rather than silently
-   dropped into snap.unapplied — which is what used to happen to every one of them.
+   dropped into snap.unapplied - which is what used to happen to every one of them.
 
    Rendered as text because that's what they are: a resistance isn't a number that folds into a
    total, it's a fact about you that the DM asks about. */
 /* A hand-entered defences box: comma-separated damage types. Kept deliberately free-text rather
-   than a picker — "fire", "bludgeoning from nonmagical attacks" and "everything except psychic" are
+   than a picker - "fire", "bludgeoning from nonmagical attacks" and "everything except psychic" are
    all things a table says, and only the first is in any list the sheet could offer. */
 function manualDefences(fieldId) {
   const el = $(fieldId); if (!el) return [];
@@ -139,8 +139,8 @@ function renderDefenses() {
   if (typeof effFlatByPrefix !== "function") { el.textContent = ""; return; }
   const bits = [];
   /* Feature-granted AND hand-entered, in one list per category. Plenty of what a character is
-     resistant to on a given evening comes from somewhere the sheet can't see — a spell someone else
-     cast on you, a potion, a DM ruling, an item not itemised in Inventory — and a defences line that
+     resistant to on a given evening comes from somewhere the sheet can't see - a spell someone else
+     cast on you, a potion, a DM ruling, an item not itemised in Inventory - and a defences line that
      could only ever show what a *feature* granted was read-only for exactly the cases that change
      most. Duplicates collapse, so a resistance you both have and typed shows once. */
   [["resist-", "resistant to", "def-resist"], ["immune-", "immune to", "def-immune"],
@@ -159,7 +159,7 @@ function renderDefenses() {
   if (condSaves.length) {
     bits.push("advantage on saves vs " + condSaves.map(r => `<b>${escapeHtml(r.kind)}</b>`).join(", "));
   }
-  /* Situational advantage and disadvantage — "on Stealth checks in rocky terrain", "on attack rolls
+  /* Situational advantage and disadvantage - "on Stealth checks in rocky terrain", "on attack rolls
      in direct sunlight". Listed rather than applied on purpose: the trigger is terrain, light, or
      what a creature is doing, none of which the sheet can see. Applying them unconditionally would
      be wrong far more often than right, and this is the whole "degrade to manual, never guess" rule. */
@@ -190,7 +190,7 @@ function recompute() {
   if (typeof renderSpeed === "function") renderSpeed();
   if (typeof renderBackgroundModule === "function") renderBackgroundModule();
   renderDefenses();
-  // Just the two movement numbers, not a re-render of the round tracker — see syncCombatMovement.
+  // Just the two movement numbers, not a re-render of the round tracker - see syncCombatMovement.
   if (typeof syncCombatMovement === "function") syncCombatMovement();
   // Likewise the character's own name in the initiative order, written in place.
   if (typeof syncPcOrderName === "function") syncPcOrderName();
@@ -208,16 +208,16 @@ function recompute() {
   $("hp-max").textContent = String(maxHP());
   if (typeof renderHpBar === "function") renderHpBar();
   /* Current HP is deliberately NOT clamped here. recompute() runs on every keystroke, so a max that
-     is momentarily low mid-edit — CON cleared to be retyped, a class level blanked, a class row
-     deleted before being re-added — used to overwrite current HP with that temporary max, and
+     is momentarily low mid-edit - CON cleared to be retyped, a class level blanked, a class row
+     deleted before being re-added - used to overwrite current HP with that temporary max, and
      finishing the edit did not bring it back. hp-cur carries data-max-from="hp-max" in the markup,
      so commitMath() clamps it on commit (blur/Enter), which is the point at which the max is a
      settled number rather than a half-typed one. */
-  // renderHitDice() (src/rest.js) is deliberately NOT called from here — recompute() runs on every
+  // renderHitDice() (src/rest.js) is deliberately NOT called from here - recompute() runs on every
   // keystroke anywhere on the page (see app.js's document-level "input" listener), and its own pool
   // markup contains editable inputs; rebuilding them on every unrelated keystroke would blow away
   // whatever a player is mid-typing into a pool's own spent-count box. Same reason renderClassFeatures()
-  // isn't called from here either — rest.js re-renders itself explicitly after anything that actually
+  // isn't called from here either - rest.js re-renders itself explicitly after anything that actually
   // changes a pool (spend/correct/rest) or the Classes table.
 
   for (let i = 1; i <= 9; i++) $("slot-total-" + i).textContent = String(slotTotal(i));
@@ -225,7 +225,7 @@ function recompute() {
   renderSpellList();
   recomputeInventory();
   // Attack rows fold in the effects snapshot's attack-hit/damage-bonus targets (attacks.js), so they
-  // have to be repainted on the same pass that rebuilds it — an effect toggle fires no input event.
+  // have to be repainted on the same pass that rebuilds it - an effect toggle fires no input event.
   if (typeof updateAttackRows === "function") updateAttackRows();
   if (typeof renderEffectsStrip === "function") renderEffectsStrip();
   if (typeof paintEffectAudit === "function") paintEffectAudit();
@@ -239,7 +239,7 @@ function recompute() {
 function fmtGP(n) { return String(Math.round(n * 100) / 100); }
 function coinTotalGP() { return Object.keys(COIN_GP).reduce((s, k) => s + num($("coin-" + k)) * COIN_GP[k], 0); }
 /* NB: renderItemList() is deliberately NOT called from here. recompute() runs on every keystroke
-   anywhere on the sheet, and the item list contains its own editable quantity box — rebuilding the
+   anywhere on the sheet, and the item list contains its own editable quantity box - rebuilding the
    list mid-edit tore that box out from under the cursor, which read as "you can't change the number
    of items". The list is re-rendered when its *composition* changes (add/remove/applyState) and the
    quantity box updates its own row's totals in place; see inventory.js. Same rule as the Hit Dice
@@ -261,7 +261,7 @@ function miscOf(key) {
   return "";
 }
 // A feature granting proficiency/expertise (Resilient, a subclass "expertise in two skills", etc.)
-// combines with the user's own checkbox as a max over multipliers (0/1/2) — a grant and a checkbox
+// combines with the user's own checkbox as a max over multipliers (0/1/2) - a grant and a checkbox
 // never conflict, the higher one wins.
 function saveProfMult(ab) { return Math.max($("saveprof-" + ab).checked ? 1 : 0, effectsSnapshot().profMult["save-" + ab] || 0); }
 function skillProfMult(slug) {
@@ -286,10 +286,10 @@ function baseOf(key) {   // the fixed part: ability mod + proficiency (no misc, 
 }
 function checkBonus(key) { return baseOf(key) + parseBonus(miscOf(key)).flat + effFlat(key); }   // static numeric bonus
 // Dice from misc + effects + any active boon, e.g. "+1d4". Guidance/Resistance ride along here rather
-// than being added at roll time so the derived display and the roll agree by construction — a skill
+// than being added at roll time so the derived display and the roll agree by construction - a skill
 // showing "+5 +2d4" is stating exactly the expression its button will roll (see boons.js).
 function profDiceOn() { return typeof proficiencyDie === "function" && !!proficiencyDie(); }
-/* The proficiency die a check contributes under DMG p263, or "" — expertise rolls it twice rather
+/* The proficiency die a check contributes under DMG p263, or "" - expertise rolls it twice rather
    than doubling a bonus, which is exactly what a multiplier of 2 produces here. */
 function profDiceFor(key) {
   if (!profDiceOn()) return "";

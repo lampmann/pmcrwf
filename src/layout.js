@@ -1,5 +1,5 @@
 /* ============================================================
-   layout.js — free-form module layout.
+   layout.js - free-form module layout.
    Move, resize (8 handles), snap-to-grid, snap-to-modules, persistent
    z-order, grid overlay, marquee multi-select (group move + group resize),
    scroll-follow + edge auto-scroll while dragging, save/load layout file.
@@ -13,7 +13,7 @@
   "use strict";
   const LKEY = "charsheet-layout";
   /* The Event Log starts collapsed on a FRESH install: the roll mirror in the corner is the primary
-     rolling surface now — it has the same command line and shows the same entries — so the module
+     rolling surface now - it has the same command line and shows the same entries - so the module
      is where you go to read back through history rather than something that needs to be open. Only
      a fresh install: the Object.assign below replaces `collapsed` wholesale from a saved layout, so
      anyone who already has one keeps exactly what they left. */
@@ -132,7 +132,7 @@
   }
 
   /* ---- collapse ----
-     Every module's markup is `<h2>title</h2>` followed by its actual content, with nothing else —
+     Every module's markup is `<h2>title</h2>` followed by its actual content, with nothing else -
      that's consistent across all of them, so rather than touch index.html once per module
      this wraps the "everything after the h2" part into one `.lay-body` div at runtime and toggles
      that div's display. Must run BEFORE addHandles(): the 8 resize handles are appended as direct
@@ -148,7 +148,7 @@
       m.appendChild(body);   // h2 is the only sibling left, so this lands right after it
     });
   }
-  /* One toggle button, prepended into each module's own <h2> — the same place Exhaustion's rules-ref
+  /* One toggle button, prepended into each module's own <h2> - the same place Exhaustion's rules-ref
      button and Combat's status span already live, so a button inside a module title isn't a new
      pattern here. */
   function addCollapseToggles() {
@@ -167,7 +167,7 @@
     /* A collapsed module's height comes from its (now-hidden) content normally; if it was ever
        manually resized in Free mode it also carries an explicit inline height that content-hiding
        alone can't shrink. So each state gets its own remembered height: folding drops to `hc` (or
-       to auto — just the title bar — for one never dragged while folded), and expanding restores
+       to auto - just the title bar - for one never dragged while folded), and expanding restores
        `h`. Dragging the bottom edge writes whichever of the two applies at the time. */
     const p = state.map[key(m)];
     if (p) m.style.height = on ? (p.hc ? p.hc + "px" : "") : (p.h ? p.h + "px" : "");
@@ -486,7 +486,7 @@
   });
   /* Plain click delegation, not routed through the pointerdown handler above: that one only acts
      while state.free (dragging/resizing), and CSS already sets pointer-events:none on every button
-     inside a module while Free is on — including this one — so there's nothing to guard against
+     inside a module while Free is on - including this one - so there's nothing to guard against
      the two handlers fighting over the same click. */
   document.addEventListener("click", e => {
     if (e.target.closest(".lay-tab")) return;   // handled on pointerup by startTabDrag

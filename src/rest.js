@@ -1,8 +1,8 @@
 /* ============================================================
-   RESTING — Hit Dice pool tracking, plus the Short/Long Rest buttons'
+   RESTING - Hit Dice pool tracking, plus the Short/Long Rest buttons'
    full automation (PHB'14 p186). applyRest() in class-library.js already
    owns feature-effect uses trackers (limited-use pips) and stays scoped to
-   exactly that — this file adds everything else a rest actually does
+   exactly that - this file adds everything else a rest actually does
    (temporary HP, current HP, Hit Dice, spell slots) and calls applyRest()
    itself, so the two rest buttons end up doing the whole job in one click.
 
@@ -10,7 +10,7 @@
    pool: a multiclass character's dice are different sizes (a Fighter
    5 / Wizard 3 has 5d10 + 3d6, not 8 of one size), and each row already
    carries its own resolved Hit Die and level. Persisted state records only
-   how many of a pool are spent — the max is always read live from the
+   how many of a pool are spent - the max is always read live from the
    Classes table, the same "derive max live, persist only the counter"
    split every other tracker in this app uses (see USES_STATE).
    ============================================================ */
@@ -19,12 +19,12 @@ function hdKeyFor(className) { return "hd|" + (className || "").trim().toLowerCa
 
 /* One entry per class-table row with at least 1 level, mirroring maxHPAuto()'s own filter (derived.js)
    so "Hit Dice" and "Max HP" never disagree about which rows count. `spent` is clamped for *display*
-   only — like renderUsesTracker's `Math.min(st.used, max)` — so a level dropped below its spent count
+   only - like renderUsesTracker's `Math.min(st.used, max)` - so a level dropped below its spent count
    isn't destructively lost if the level comes back up.
 
    `spent` is what gets persisted (it starts at 0 for a fresh character, so a new pool needs no
    initialisation), but `remaining` is what the UI counts down: 17 Hit Dice reads "17/17", and drops
-   to "16/17" once you roll one — the same direction as every other consumable pool on a sheet. */
+   to "16/17" once you roll one - the same direction as every other consumable pool on a sheet. */
 function hitDicePools() {
   return getClasses().filter(c => c.lvl > 0).map(c => {
     const hitDie = c.hitDie === "auto" ? classHitDie(c.name) : c.hitDie;
@@ -56,8 +56,8 @@ function renderHitDice() {
 }
 
 /* Spend one Hit Die from a pool: roll it (logged, like every other roll in the app), heal for the
-   total (minimum 0 per PHB'14 p186 — a negative CON mod can zero it out but never costs HP), and mark
-   the die spent. This is the only place Hit Dice get spent — short rest itself doesn't force it,
+   total (minimum 0 per PHB'14 p186 - a negative CON mod can zero it out but never costs HP), and mark
+   the die spent. This is the only place Hit Dice get spent - short rest itself doesn't force it,
    since spending is explicitly the player's per-die choice ("the player CAN decide to spend..."). */
 function spendHitDie(key) {
   const pool = hitDicePools().find(p => p.key === key);
@@ -83,7 +83,7 @@ function spendHitDie(key) {
 }
 
 /* Direct correction of a pool's remaining count (e.g. a misclick, or importing a character
-   mid-adventure) — doesn't roll or touch HP, same "always give an override" rule the rest of the
+   mid-adventure) - doesn't roll or touch HP, same "always give an override" rule the rest of the
    sheet follows. The box shows *remaining*, so it's stored back as max - remaining. */
 function correctHitDiceRemaining(input) {
   const key = input.dataset.hdkey;
@@ -94,7 +94,7 @@ function correctHitDiceRemaining(input) {
   recompute(); renderHitDice(); renderShortRestModal(); scheduleSave();
 }
 
-/* Rest Variants (DMG p267) change how LONG a rest takes, not what it restores — so the buttons say
+/* Rest Variants (DMG p267) change how LONG a rest takes, not what it restores - so the buttons say
    the duration rather than behaving differently. Gritty Realism turns a short rest into 8 hours and
    a long rest into 7 days; Epic Heroism makes them 5 minutes and 1 hour. See variant-rules.js. */
 function renderRestButtons() {
@@ -114,12 +114,12 @@ function clearHpField(id) {
 }
 
 /* Full rest automation (PHB'14 p186), on top of applyRest()'s feature-effect uses reset:
-     - Temporary HP "last until they're depleted or you finish A rest" (p197) — cleared on both.
+     - Temporary HP "last until they're depleted or you finish A rest" (p197) - cleared on both.
      - Short rest: nothing else is automatic. Hit Dice healing is the player's per-die choice
        (see spendHitDie above), and normal spell slots don't recover on a short rest.
      - Long rest: full HP, spent Hit Dice regained up to half the total (min 1), all spell slots
        reset. A character "must have at least 1 hit point at the start of the rest to gain its
-       benefits" (p186) — below that, a long rest does nothing at all, so the guard returns before
+       benefits" (p186) - below that, a long rest does nothing at all, so the guard returns before
        touching any state, exactly like getting no benefit from one. */
 function performRest(kind) {
   if (kind === "lr") {
@@ -133,7 +133,7 @@ function performRest(kind) {
   if (($("hp-temp").value || "").trim() !== "") notes.push("Temp HP cleared");
   clearHpField("hp-temp");
   // Guidance and Resistance run a minute, so no rest of any length leaves them standing. Death Ward
-  // runs 8 hours — exactly a long rest — so a short rest leaves it alone (see boons.js).
+  // runs 8 hours - exactly a long rest - so a short rest leaves it alone (see boons.js).
   if (typeof clearBoonsForRest === "function" && clearBoonsForRest(kind === "lr" ? "long" : "short")) {
     notes.push(kind === "lr" ? "Guidance/Resistance/Death Ward ended" : "Guidance/Resistance ended");
   }
@@ -144,7 +144,7 @@ function performRest(kind) {
     if (maxHP() !== hpBefore) notes.push(`HP ${hpBefore} &rarr; ${maxHP()}`);
 
     // Regain spent Hit Dice up to half the total (minimum 1 if you have any at all). RAW doesn't say
-    // which pool a multiclass character regains into when dice of different sizes are mixed — this
+    // which pool a multiclass character regains into when dice of different sizes are mixed - this
     // fills pools in Classes-table order, the same "approximate for multiclass, documented" tradeoff
     // the rest of the sheet already makes for total-level-driven values (see conversion-guide.md).
     const pools = hitDicePools();
@@ -178,7 +178,7 @@ function performRest(kind) {
   }
   // Pact Magic slots come back on any rest (PHB p107).
   if ($("pact-used") && ($("pact-used").value || "").trim() !== "") { clearHpField("pact-used"); notes.push("pact slots restored"); }
-  const recovered = applyRest(kind);   // feature-effect uses trackers (class-library.js) — also renders the Features panel
+  const recovered = applyRest(kind);   // feature-effect uses trackers (class-library.js) - also renders the Features panel
   if (recovered) notes.push(`${recovered} feature${recovered === 1 ? "" : "s"} recovered`);
   logEvent("rest", `<b>${kind === "lr" ? "Long Rest" : "Short Rest"}</b>` +
     (notes.length ? " - " + notes.join(" | ") : " - nothing to restore"));
@@ -190,7 +190,7 @@ function performRest(kind) {
    decide to spend an additional Hit Die after each roll", PHB p186), so the dialog rolls them one at a
    time and shows the running HP total between rolls rather than asking for a count up front.
 
-   Each roll applies immediately — it's a real roll, already in the event log, and undoing it would
+   Each roll applies immediately - it's a real roll, already in the event log, and undoing it would
    mean rewinding HP and the die. "Finish Short Rest" is what applies the *rest* (temp HP, feature
    uses); closing without it leaves any dice you rolled spent, which the dialog says outright. */
 function renderShortRestModal() {
@@ -235,11 +235,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape" && srModal && srModal.style.display !== "none") closeShortRestModal();
   });
   // Re-render only when the Classes table structurally changes (row added/removed, or a name/level/
-  // Hit Die edit commits) — never from the blanket recompute() (see derived.js's comment on why).
+  // Hit Die edit commits) - never from the blanket recompute() (see derived.js's comment on why).
   // Mirrors class-library.js's identical observer for the Features panel exactly. renderHitDice()
   // itself no-ops if #hit-dice-pools isn't on the page, so this is safe to register regardless.
   const cr = $("class-rows");
   if (cr) new MutationObserver(() => renderHitDice()).observe(cr, { childList: true });
   document.addEventListener("input", e => { if (e.target.closest && e.target.closest("#class-rows")) renderHitDice(); });
-  renderHitDice();   // initial paint — a fresh sheet's empty class-rows table still needs its hint shown
+  renderHitDice();   // initial paint - a fresh sheet's empty class-rows table still needs its hint shown
 });

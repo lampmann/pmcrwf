@@ -1,28 +1,28 @@
 /* ============================================================
-   HOUSE RULES — the table's ruleset, not the character's.
+   HOUSE RULES - the table's ruleset, not the character's.
 
    Everything here belongs to the campaign rather than to any one
    character, which is why it persists to its own localStorage key
    instead of riding along in collectState(): switching to your
    familiar's tab must not change what the DM has banned. Exporting a
-   character deliberately does not carry the ruleset with it — a
+   character deliberately does not carry the ruleset with it - a
    character handed to another table is played under that table's rules.
 
    Three things live here, and they are genuinely different:
 
-   1. BANS — named entities that are off the table (a spell, a subclass,
+   1. BANS - named entities that are off the table (a spell, a subclass,
       an item). Checked at the point an entry is offered rather than by
       stripping the libraries, so the sheet can say "banned" instead of
       silently having fewer options. See isBanned/banNote.
 
-   2. SOURCES — a denylist of books. Most tables run "everything official
+   2. SOURCES - a denylist of books. Most tables run "everything official
       except a few", so this starts empty and only names exclusions;
       maintaining an allowlist of a hundred-odd books by hand is work
       nobody wants and that goes stale with every release. A banned source
       bans everything printed in it, which is why banNote distinguishes
       the two reasons.
 
-   3. SETTINGS — campaign defaults (point buy, average HP, whether feats
+   3. SETTINGS - campaign defaults (point buy, average HP, whether feats
       exist). Some of these drive the character creator; the rest are
       recorded so the table has one place to look them up. Each one says
       which it is, so nothing pretends to be enforced when it isn't.
@@ -37,7 +37,7 @@ const HOUSE_RULES_SCHEMA = 1;
 
 /* Ban kinds. Each names a library the sheet already loads, so a ban is checked against real game
    data rather than needing its own copy of it. `other` is the escape hatch for rules with nothing
-   behind them in any library — character-creation options, table conventions, whole strategies. */
+   behind them in any library - character-creation options, table conventions, whole strategies. */
 const BAN_KINDS = [
   { key: "spell", label: "Spells", lib: () => (typeof SPELL_LIB !== "undefined" ? SPELL_LIB.map(s => s.name) : []) },
   { key: "item", label: "Items", lib: () => (typeof ITEM_LIB !== "undefined" ? ITEM_LIB.map(i => i.name) : []) },
@@ -80,7 +80,7 @@ const HR_SETTINGS = [
   { key: "bonusActionSpellStrict", label: "A bonus-action spell always costs a bonus action", kind: "bool", enforced: true, def: true,
     hint: "R47 - with your bonus action spent, such a spell can't be cast at all" },
   /* R21/R22. Default true because that is RAW-as-argued (see boons.js's header), but a table that
-     reads Combining Magical Effects the other way switches it off — and then the Guidance and
+     reads Combining Magical Effects the other way switches it off - and then the Guidance and
      Resistance counters go away with it, since counting to N is the only thing they were for.
      Death Ward is deliberately not covered: it isn't a die you stack onto a roll, it's a number of
      times you get saved from 0 HP, which is worth counting under either reading. */
@@ -134,7 +134,7 @@ function blankHouseRules() {
 }
 
 /* A saved ruleset predating a field gets today's default rather than `undefined`, the same
-   normalizing that combat.js's normalizeCombat does and for the same reason — a stored object is
+   normalizing that combat.js's normalizeCombat does and for the same reason - a stored object is
    whatever shape it was written in, and trusting it crashes the first time something new is read. */
 function normalizeHouseRules(saved) {
   const blank = blankHouseRules();
@@ -187,7 +187,7 @@ function isBannedSource(source) {
   const q = hrNorm(source);
   return !!q && HOUSE_RULES.sourcesOff.some(s => hrNorm(s) === q);
 }
-/* The one call every consumer makes. `source` is optional — pass it and a banned book bans the
+/* The one call every consumer makes. `source` is optional - pass it and a banned book bans the
    entry too, which is what makes the source denylist actually do something at the point of use. */
 function isBanned(kind, name, source) {
   return isBannedName(kind, name) || (source !== undefined && isBannedSource(source));
@@ -218,7 +218,7 @@ function banInfoOf(el) {
   if (!el || !el.dataset || !el.dataset.banKind) return null;
   return { kind: el.dataset.banKind, prefix: el.dataset.banPrefix || "" };
 }
-/* Red the input itself when what's *already* selected is banned — the picker only warns while it's
+/* Red the input itself when what's *already* selected is banned - the picker only warns while it's
    open, and a character carrying a banned choice should keep saying so afterwards. */
 function markBannedInput(el) {
   const info = banInfoOf(el); if (!el.classList) return;
@@ -260,8 +260,8 @@ function hrMagicItemPrice(rarity, isConsumable) {
 /* ----- oversized weapons (R17) -----
    The DMG prices a weapon sized for a bigger creature two ways, and only one of them is a rule:
    you have *disadvantage* on attacks with it (rule), and the DM *can* rule that two or more sizes
-   larger is unusable (suggestion). The extra damage dice belong to the weapon — a greataxe sized
-   for a Large creature is 2d12 for whoever swings it — so nothing here touches damage; that number
+   larger is unusable (suggestion). The extra damage dice belong to the weapon - a greataxe sized
+   for a Large creature is 2d12 for whoever swings it - so nothing here touches damage; that number
    is whatever the attack row says. Only the penalty and the limit depend on who's holding it.
 
    Three settings, because tables land in different places: `allow` takes the rule and drops the
@@ -290,7 +290,7 @@ function oversizedVerdict(weaponSize, wielderSize) {
     note: `sized for a creature ${steps} size${steps === 1 ? "" : "s"} larger - disadvantage on attack rolls` };
 }
 
-/* Every subclass the class library knows, as "Class: Subclass" — the form a DM bans them in, and
+/* Every subclass the class library knows, as "Class: Subclass" - the form a DM bans them in, and
    unambiguous where two classes share a subclass name (Circle of the Land vs. anything else). */
 function hrSubclassNames() {
   if (typeof CLASS_LIB === "undefined") return [];
@@ -365,7 +365,7 @@ function clearHouseRules() {
    the file carries the bans, sources, settings and limits as they stand, so a table that started
    from a preset and then changed six things exports what it actually plays with.
 
-   The rulings themselves are NOT copied in — they're bulk prose that ships with the sheet
+   The rulings themselves are NOT copied in - they're bulk prose that ships with the sheet
    (src/rulings.js), so only the *name* of the set travels. A file naming a set the recipient doesn't
    have still imports cleanly; their Rulings tab just says nothing is loaded. */
 function houseRulesExport() {
@@ -379,7 +379,7 @@ function exportHouseRules() {
   a.download = ((HOUSE_RULES.preset || "house-rules").replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "house-rules") + ".json";
   a.click();
 }
-/* Returns an error string, or null on success — the caller decides how loudly to complain. Anything
+/* Returns an error string, or null on success - the caller decides how loudly to complain. Anything
    shaped like a ruleset is accepted; normalizeHouseRules fills in whatever the file predates, so a
    file written by an older copy of the sheet still loads. */
 function importHouseRules(text) {
@@ -412,7 +412,7 @@ function refreshAfterHouseRules() {
   if (typeof renderRestButtons === "function") renderRestButtons();   // Gritty/Epic durations on the labels
   // The Features module draws the ASI feat picker, which the `feats` setting can remove.
   if (typeof renderClassFeatures === "function" && document.getElementById("class-feat-results")) renderClassFeatures();
-  // Only if the wizard is actually open — renderCreator() throws on a null CREATOR.
+  // Only if the wizard is actually open - renderCreator() throws on a null CREATOR.
   if (typeof renderCreator === "function" && typeof CREATOR !== "undefined" && CREATOR) renderCreator();
   markBannedInputs();   // a name that just became (un)banned should recolour where it's already chosen
   // The oversized-weapon rule changes an attack row's mode and label, and recompute() is what drives
@@ -431,7 +431,7 @@ function hrTabsHtml() {
 }
 
 /* One ban list: a combobox that type-aheads over the matching library, plus the current bans as
-   removable chips. The combobox is why banning is a two-word job rather than typing an exact name —
+   removable chips. The combobox is why banning is a two-word job rather than typing an exact name -
    it is the same widget the creator's race/class pickers use, so it filters as you type and still
    accepts free text for anything the libraries don't know about. */
 function hrBanKindHtml(kind) {
@@ -511,7 +511,7 @@ function renderHouseRules() {
   if (tabs) tabs.innerHTML = hrTabsHtml();
   const status = document.getElementById("hr-status");
   if (status) {
-    // Assigned through textContent below, so this must NOT be escaped — doing both renders the
+    // Assigned through textContent below, so this must NOT be escaped - doing both renders the
     // entities literally ("Lampmann&#39;s House Rules").
     const bits = [];
     if (HOUSE_RULES.preset) bits.push(HOUSE_RULES.preset);
@@ -536,7 +536,7 @@ function renderHouseRules() {
 }
 
 /* ----- wiring ----- */
-/* Any ban-aware input recolours as it changes, wherever it lives — the creator's pickers, the
+/* Any ban-aware input recolours as it changes, wherever it lives - the creator's pickers, the
    Character module's race/class boxes, an ASI feat slot. Delegated at the document so a widget that
    is rebuilt (and every one of them is, constantly) never needs re-binding. */
 document.addEventListener("input", e => { if (e.target && e.target.dataset && e.target.dataset.banKind) markBannedInput(e.target); });
@@ -607,7 +607,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* The rulings search re-renders the tab on every keystroke, which destroys the box it was typed
-     into — so focus and caret are put back afterwards, the same problem (and fix) the character
+     into - so focus and caret are put back afterwards, the same problem (and fix) the character
      creator's own comboboxes have. */
   mod.addEventListener("input", e => {
     const box = e.target.closest("#hr-ruling-search") || e.target.closest("#vr-search");

@@ -27,7 +27,7 @@ function buildSaves() {
   });
 }
 /* ============================================================
-   SKILL ORDER — yours, per character.
+   SKILL ORDER - yours, per character.
 
    Eighteen skills, and on most characters a dozen of them never come up. The
    alphabetical order the book prints them in is the worst one for play: the
@@ -44,7 +44,7 @@ let SKILL_ORDER = [];
 
 function skillRowEls() { return [...document.querySelectorAll("#skill-rows tr")]; }
 
-/* The order as it currently stands on screen — what gets saved. */
+/* The order as it currently stands on screen - what gets saved. */
 function currentSkillOrder() { return skillRowEls().map(tr => tr.dataset.slug); }
 
 /* Reorder the rows to match a stored list. Unknown slugs are ignored and unmentioned rows keep
@@ -76,7 +76,7 @@ function resetSkillOrder() {
 }
 
 /* Drag to reorder. Insertion goes above or below the row you're over depending on which half of it
-   the pointer is in, and the line showing where it will land is drawn while you drag — a drop with
+   the pointer is in, and the line showing where it will land is drawn while you drag - a drop with
    no preview is a guess, the same reasoning the character tabs follow. */
 let SKILL_DRAG_SLUG = null;
 function clearSkillDropMarks() {
@@ -200,7 +200,7 @@ function addClassRow(data = {}) {
   // Banned options show red rather than disappearing (see house-rules.js). A subclass ban is stored
   // qualified by its class ("Fighter: Champion"), and the class in this row can change under the
   // picker, so the prefix is resolved per-open rather than baked in.
-  // ciFindClass lives in class-library.js, which the standalone tests/derived.html doesn't load —
+  // ciFindClass lives in class-library.js, which the standalone tests/derived.html doesn't load -
   // this module has to stay usable without it, so every lookup goes through here.
   const classRec = () => (typeof ciFindClass === "function") ? ciFindClass(nameInput.value) : null;
   attachTypeahead(nameInput, () => Object.keys(typeof CLASS_LIB !== "undefined" ? CLASS_LIB : {}), () => ({ kind: "class", prefix: "" }));

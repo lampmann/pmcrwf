@@ -5,7 +5,7 @@ registerEffects({
     effects: [
       { target: "save-str", op: "adv", activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
       // Rage damage is +2 / +3 (9th) / +4 (16th); the later effects are increments, since `add`
-      // accumulates. Melee Strength attacks only — untick a row's Fx box for anything else.
+      // accumulates. Melee Strength attacks only - untick a row's Fx box for anything else.
       { target: "damage-bonus", op: "add", value: 2, activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
       { target: "damage-bonus", op: "add", value: 1, when: { minLevel: 9 }, activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
       { target: "damage-bonus", op: "add", value: 1, when: { minLevel: 16 }, activation: { kind: "toggle", id: "rage", label: "Raging", default: false } },
@@ -66,7 +66,7 @@ registerEffects({
 
   "class|barbarian|fast movement": {
     name: "Fast Movement", sv: 1,
-    // "+10 feet while you aren't wearing heavy armor" — the `notArmor` predicate reads what's
+    // "+10 feet while you aren't wearing heavy armor" - the `notArmor` predicate reads what's
     // actually equipped (see armorWorn in effects.js), so putting plate on takes the bonus away.
     effects: [{ target: "speed", op: "add", value: 10, when: { minClassLevel: { class: "Barbarian", level: 5 }, notArmor: ["heavy"] } }],
   },

@@ -3,14 +3,14 @@
    Conversion policy used here (see effects/tools/conversion-guide.md):
    - `unsupported` marks a feature that changes a number on *your own* sheet
      (your rolls, saves, skills, AC, HP, speed, action economy) that the
-     engine can't yet represent — these are the gaps worth surfacing in the
+     engine can't yet represent - these are the gaps worth surfacing in the
      effects strip's coverage counter.
    - Features that only act on *other* creatures (Cutting Words subtracting
      from an enemy's roll, Unsettling Words penalising an enemy save) are
      omitted entirely: nothing on this sheet would ever change, so an
      "⚠ not automated" marker would be noise rather than a gap.
    - Spell grants (Guiding Whispers, Magical Secrets, Additional Magical
-     Secrets) are omitted — those are handled by class-library.js's
+     Secrets) are omitted - those are handled by class-library.js's
      grant plumbing, not the effects engine.
 
    Each `pick` choice gets its OWN id: renderEffectControls() draws one

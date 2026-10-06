@@ -1,13 +1,13 @@
 /* ============================================================
-   routines.js — Offensive Routines.
+   routines.js - Offensive Routines.
    A routine is a named sequence of steps you fire in one click: your
    actual turn. Two kinds of step:
 
-     • attack step — references a row in the Attacks module by its stable
+     • attack step - references a row in the Attacks module by its stable
        id, with a count ("2× Halberd" for Extra Attack, "1× Halberd (PAM)"
        for the bonus-action swing). Referencing by id, not by name, means
        renaming or reordering attacks doesn't break a routine.
-     • save step — a save-based effect (Toll the Dead, Fireball). It has no
+     • save step - a save-based effect (Toll the Dead, Fireball). It has no
        to-hit roll; it reports the DC and which save the target makes, then
        rolls its damage. The DC defaults to the sheet's own spell save DC
        (auto, so it tracks your stats) but can be overridden per step, since
@@ -28,7 +28,7 @@
 
    Save steps don't know the target's actual save bonus, so instead of
    guessing pass/fail they roll the target's d20 and report the break-even
-   bonus: "fail at +N or lower, succeed at +N+1 or greater" — mathematically
+   bonus: "fail at +N or lower, succeed at +N+1 or greater" - mathematically
    identical to comparing bonus+roll against the DC, just reframed as a
    threshold on the target's bonus.
 

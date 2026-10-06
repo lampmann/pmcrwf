@@ -153,7 +153,7 @@ module.exports = async function checkCreator(page) {
   assert.match(await page.evaluate(() => creatorChoiceBlocker(5)), /different background skills/);
   await page.evaluate(() => { CREATOR.bgSkills = ['', '']; renderCreator(); });
   // A race that grants a feat (Variant Human, Custom Lineage) asks which one in step 1, and hands it
-  // to the built character under the same fkey the Features module reads back — one slot seen twice
+  // to the built character under the same fkey the Features module reads back - one slot seen twice
   // rather than two places a feat can hide. Injected straight into the libraries rather than through
   // the folder snapshot, so the counts and option lists asserted above stay as they were.
   await page.evaluate(() => {

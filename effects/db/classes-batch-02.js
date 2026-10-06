@@ -108,7 +108,7 @@ registerEffects({
     name: "Battle Ready", sv: 1,
     // INT *replaces* STR/DEX on a magic weapon's attack and damage rolls rather than adding on top,
     // which is what `useability` expresses. It applies to magic weapons only, and the engine has no
-    // per-weapon predicate — so a row it shouldn't touch opts out with that row's own fx checkbox,
+    // per-weapon predicate - so a row it shouldn't touch opts out with that row's own fx checkbox,
     // and the note says so.
     effects: [
       { target: "attack-ability", op: "useability", value: "int" },

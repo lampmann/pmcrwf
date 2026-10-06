@@ -2,7 +2,7 @@
 
    The four Mystic Arcanum features are separate 5e.tools records (one per
    spell level), so they're four separate keys, each with its own 1/long-rest
-   tracker — that matches how the Features panel lists them.
+   tracker - that matches how the Features panel lists them.
 
    Eldritch Invocations are in optional-features.js. */
 registerEffects({

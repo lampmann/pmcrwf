@@ -6,7 +6,7 @@
 
    Bladesong moves here from uses-classes.js: the generated file only carried
    its uses tracker, but the feature also grants advantage on Acrobatics, so
-   the richer entry owns the key now (registerEffects is Object.assign — a key
+   the richer entry owns the key now (registerEffects is Object.assign - a key
    can only live in one file, whole entry wins). */
 registerEffects({
   // ===== School of Divination =====

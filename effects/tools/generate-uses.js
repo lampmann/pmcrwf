@@ -3,11 +3,11 @@
    Generates `uses` blocks (see conversion-guide.md's "Limited uses"
    section) for feats/classes/races by scanning data/*.json text for the
    same finite-use + recharge phrasings the app used to detect live, at
-   render time, via regex (removed from src/class-library.js — see
+   render time, via regex (removed from src/class-library.js - see
    effects/tools/conversion-guide.md). This script keeps the same
    detection logic, but runs it once, offline, over the user's own data/
    folder, and its output is reviewed before being committed as ordinary
-   effects DB entries — not re-run against arbitrary text in the browser.
+   effects DB entries - not re-run against arbitrary text in the browser.
 
    Usage:
      node effects/tools/generate-uses.js feats   > /tmp/uses-feats.json
@@ -15,7 +15,7 @@
      node effects/tools/generate-uses.js races   > /tmp/uses-races.json
 
    Each prints a JSON array of { key, name, uses, text } for manual
-   review — "text" is included only in this intermediate output (to help
+   review - "text" is included only in this intermediate output (to help
    a human sanity-check the detection), never in a committed DB file.
    ============================================================ */
 const fs = require("fs");
@@ -28,7 +28,7 @@ const ABILITY_NAMES = { strength: "str", dexterity: "dex", constitution: "con", 
 const NUM_WORDS = { once: 1, twice: 2, thrice: 3, "three times": 3, "four times": 4, "five times": 5, "six times": 6 };
 
 // A feature whose use-count itself scales with level (Action Surge, Channel Divinity,
-// Indomitable, ...) can't be represented as a single flat `uses.max` — the schema has no
+// Indomitable, ...) can't be represented as a single flat `uses.max` - the schema has no
 // per-level conditional. Rather than commit a number that's wrong for most of the leveling
 // range, detect and skip these entirely (they fall back to "unsupported"/no tracker, same as
 // any other mechanic this sheet can't yet represent).
@@ -39,7 +39,7 @@ function isLevelScaledCount(t) {
   // A base-1 clause ("once you use this feature... again") plus a *separate* higher-level clause
   // naming an explicit count is also scaling, even when only one explicit number word appears in
   // the whole text (e.g. Action Surge: the base is implied by the "can't use it again" phrasing
-  // alone, and "twice" only shows up in the 17th-level clause) — check for the base clause and the
+  // alone, and "twice" only shows up in the 17th-level clause) - check for the base clause and the
   // level clause as independent textual facts, not by which branch happened to set `max`.
   const hasBaseOneClause = /(?:once you use|when (?:it|you) uses?) (?:this feature|this|it)\b/i.test(t) &&
     /(can[’']?t use (?:this|it|the feature) again|must finish an? (?:short or long|long or short|short|long) rest before (?:you|it) can(?:not|'t)? use (?:this|it|the feature) again)/i.test(t);
@@ -79,7 +79,7 @@ function detectUses(rawText) {
   else {
     // "until" matters as much as "when"/"before" here: "you can't use it again until you finish a
     // short or long rest" is the single most common recharge phrasing in the class data, and
-    // missing it silently fell through to the `per = "lr"` default — turning every short-rest
+    // missing it silently fell through to the `per = "lr"` default - turning every short-rest
     // feature phrased that way into a long-rest one (Echo Knight's Shadow Martyr, and others).
     const pm = t.match(/(?:when|before|until) you (?:can use it again,? )?finish an? (short or long|long or short|short|long) rest/i)
       || t.match(/must finish an? (short or long|long or short|short|long) rest/i);
@@ -103,7 +103,7 @@ function genFeats() {
 function genRaces() {
   const d = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "races.json"), "utf8"));
   // Some race names appear more than once in races.json (reprints/parity updates in later
-  // books) — the live app's RACE_LIB[r.name] = {...} (parseRaceFile) fully overwrites on each
+  // books) - the live app's RACE_LIB[r.name] = {...} (parseRaceFile) fully overwrites on each
   // later entry, so only the *last* one in file order is ever actually live. Match that here
   // instead of emitting (and duplicate-keying) traits from a shadowed reprint.
   const raceByName = {};
@@ -126,7 +126,7 @@ function genClasses() {
   const out = [];
   fs.readdirSync(dir).filter(f => /^class-.*\.json$/.test(f)).forEach(file => {
     const d = JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"));
-    // effKeyFor's "subclass" key uses the subclass's full `name`, not `subclassShortName" — same
+    // effKeyFor's "subclass" key uses the subclass's full `name`, not `subclassShortName" - same
     // lookup the live app does (r.subs[f.subclassShortName] = { name: sc.name, ... } in parseClassFile).
     const subclassNameByShort = {};
     (d.subclass || []).forEach(sc => { subclassNameByShort[sc.className + "|" + sc.shortName] = sc.name; });
@@ -152,7 +152,7 @@ function genClasses() {
 
 /* Keys already carried by a hand-written or LLM-converted DB file are dropped from the output.
    registerEffects() assigns whole entries rather than merging fields, so emitting a `uses`-only
-   duplicate of (say) a classes-batch-*.js entry doesn't add a tracker to it — depending on script
+   duplicate of (say) a classes-batch-*.js entry doesn't add a tracker to it - depending on script
    order it erases that entry's effects outright, or is itself erased. The converted entry is the
    richer record and wins; this generator only fills the gaps around it. The uses-<mode>.js file
    being regenerated is excluded from the ownership scan, so re-running doesn't drop everything. */
@@ -176,6 +176,6 @@ if (!fn) { console.error("usage: node generate-uses.js <feats|races|classes>"); 
 const all = fn();
 const owned = ownedElsewhere(mode);
 const kept = all.filter(r => !owned.has(r.key));
-all.filter(r => owned.has(r.key)).forEach(r => console.error(`skipped ${r.key} — already defined in ${owned.get(r.key)}`));
+all.filter(r => owned.has(r.key)).forEach(r => console.error(`skipped ${r.key} - already defined in ${owned.get(r.key)}`));
 if (kept.length !== all.length) console.error(`(${all.length - kept.length} of ${all.length} detected features skipped as already-converted)`);
 console.log(JSON.stringify(kept, null, 2));

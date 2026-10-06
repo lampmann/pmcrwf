@@ -18,7 +18,7 @@ function renderBackgroundModule() {
   const spells = rec && BACKGROUND_GRANTS ? grantedSpellsHtml(flattenGrantedSpells(rec.grantedSpells || []).filter(g => g.minLevel <= totalLevel()), rec.name, "") : "";
   el.innerHTML = `<div class="bgm-name"><b>${escapeHtml(rec ? rec.name : name)}</b>${rec ? ` <span class="hint">${escapeHtml(rec.source)}</span>` : ""}</div>` +
     (f ? `<div class="bgm-feature"><a class="feat-link" id="bgm-feature-link">Feature: ${escapeHtml(f.name)}</a>` +
-      (BGM_FEATURE_OPEN ? `<div class="feat-detail">${escapeHtml(f.text).replace(/\n/g, "<br>")}</div>` : "") + `</div>` : "") + spells;
+      (BGM_FEATURE_OPEN ? `<div class="feat-detail">${escapeHtml(normalizeDisplayPunctuation(f.text)).replace(/\n/g, "<br>")}</div>` : "") + `</div>` : "") + spells;
 }
 document.addEventListener("DOMContentLoaded", () => {
   const el = $("bgm-head"); if (!el) return;

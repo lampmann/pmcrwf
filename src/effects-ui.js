@@ -1,15 +1,15 @@
 /* ============================================================
-   EFFECTS UI — the per-feature inline controls rendered inside the
+   EFFECTS UI - the per-feature inline controls rendered inside the
    Features panel (renderEffectControls, called from class-library.js),
    the always-visible active-effects strip (#effects-strip, between the
-   toolbar and the modules — deliberately not a .module, since layout.js
+   toolbar and the modules - deliberately not a .module, since layout.js
    disables pointer events on module contents while free-layout editing is
    on, which would make the strip unusable exactly when you're mid-drag),
    and the audit trail that makes every effect-touched number traceable
    back to the feature that produced it (paintEffectAudit).
    ============================================================ */
 
-/* ----- "level=X|class=Y;Z" filter-spec matching against a parsed SPELL_LIB entry (spell-library.js) —
+/* ----- "level=X|class=Y;Z" filter-spec matching against a parsed SPELL_LIB entry (spell-library.js) -
    same spec syntax as describeSpellFilter/collectFilters in class-library.js (pipe = AND across
    categories, semicolon = OR within one), just matching instead of describing. Used by the
    "spellfilter" choice kind below. */
@@ -24,7 +24,7 @@ function spellMatchesFilterSpec(sp, spec) {
   if (cats.level && !cats.level.includes(String(sp.level))) return false;
   if (cats.class && !(sp.classes || []).some(c => cats.class.includes(c.toLowerCase()))) return false;
   // 5e.tools' filter specs use single-letter school codes (e.g. "E"/"D"), but SPELL_LIB stores the
-  // full name (parseSpell in spell-library.js already expands raw.school via SPELL_SCHOOLS) — expand
+  // full name (parseSpell in spell-library.js already expands raw.school via SPELL_SCHOOLS) - expand
   // the spec's codes the same way describeSpellFilter does before comparing.
   if (cats.school) {
     const wanted = cats.school.map(s => ((typeof SPELL_SCHOOLS === "object" && SPELL_SCHOOLS[s.toUpperCase()]) || s).toLowerCase());
@@ -57,11 +57,11 @@ function renderEffectControls(feature) {
     if (effect.when?.choice && !whenSatisfied(effect.when, feature)) return;
     if (effect.target === "spell-grant") {
       // Reuses the exact same .gsp-link/.gsp-expanded markup and click handler as the
-      // race/subclass additionalSpells-driven grants (grantedSpellsHtml in class-library.js) —
+      // race/subclass additionalSpells-driven grants (grantedSpellsHtml in class-library.js) -
       // "grant-free" behaves like a domain spell (added via addCharacterSpell w/ grantSrc, never
       // touches a class's Known/Prepared count), "grant-list" like a Dragonmark (opens the
-      // "prepare from which class?" modal — still costs a normal known/prepared slot), "grant-innate"
-      // like Telepathic's Detect Thoughts (renders identically to grant-free — the distinction is
+      // "prepare from which class?" modal - still costs a normal known/prepared slot), "grant-innate"
+      // like Telepathic's Detect Thoughts (renders identically to grant-free - the distinction is
       // purely that it should be paired with an entry-level `uses` block, since it's an at-will/daily
       // cast rather than a permanently-known spell). See effects.js's header comment and
       // conversion-guide.md for why this target is separate from the numeric snapshot pipeline.
@@ -96,7 +96,7 @@ function renderEffectControls(feature) {
       html += ` <label class="hint">${escapeHtml(c.label || "choice")}: <select class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"><option value="">-</option>${opts}</select></label>`;
     } else if (c.kind === "pick") {
       // n > 1 ("pick 2 of these skills") renders one <select> per slot, each excluding whatever
-      // the other slots already picked, so the same option can't be chosen twice — see resolveTargetsAll
+      // the other slots already picked, so the same option can't be chosen twice - see resolveTargetsAll
       // in effects.js for how an array of per-slot values turns into one effect application per slot.
       const n = Math.max(1, c.n || 1);
       const curArr = n > 1 ? (Array.isArray(choiceValue(feature, c.id)) ? choiceValue(feature, c.id) : []) : [choiceValue(feature, c.id) || ""];
@@ -113,7 +113,7 @@ function renderEffectControls(feature) {
     } else if (c.kind === "spellfilter") {
       // Populates its <select> from the user's own loaded Spell Library (SPELL_LIB, spell-library.js),
       // filtered by the same "level=X|class=Y;Z" spec syntax already used to *describe* class-side
-      // filter grants (describeSpellFilter/collectFilters in class-library.js) — this is the same
+      // filter grants (describeSpellFilter/collectFilters in class-library.js) - this is the same
       // syntax, now driving an actual picker instead of just prose. Paired with a spell-grant effect
       // whose value.name is "{choice:<id>}" (see above).
       const cur = choiceValue(feature, c.id) || "";

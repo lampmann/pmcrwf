@@ -1,10 +1,10 @@
 /* Paladin class + Sacred Oath subclass features.
 
    No `when: { minLevel }` gate is used for a feature that's simply granted at
-   a given level — class-library.js already filters features by your actual
+   a given level - class-library.js already filters features by your actual
    class level (`f.level <= lvl`), so a 7th-level aura can't show up before
    7th. `when` is reserved for a mechanic that scales *within* one feature key
-   (where it reads total character level — the documented approximation).
+   (where it reads total character level - the documented approximation).
 
    Several oath features are the clearest legitimate use of the reserved
    attack-/damage- targets on the sheet: Improved Divine Smite, Sacred Weapon,

@@ -1,5 +1,5 @@
 /* Prof. Dr. style: deliberately minimal. Function over form.
-   Themeable via CSS custom properties (see the --var list below) — a theme
+   Themeable via CSS custom properties (see the --var list below) - a theme
    file loaded after this one only needs to redefine these on :root. */
 :root {
   --font-body: "Times New Roman", Times, serif;
@@ -42,7 +42,7 @@
   --color-scheme: light;
   --radius: 0px;
   /* Interaction feedback. Kept as variables so themes can retune them
-     without redefining every :hover rule — a dark theme needs a lighter hover than a light one. */
+     without redefining every :hover rule - a dark theme needs a lighter hover than a light one. */
   --hover-bg: #ececec;
   --active-bg: #d6d6d6;
   --focus-ring: #1a56c4;
@@ -98,12 +98,12 @@ button.roll { font: inherit; cursor: pointer; }
 button { font: inherit; background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--btn-border); border-radius: var(--radius); }
 
 /* ============================================================
-   INTERACTION FEEDBACK — hover, press, focus, disabled.
+   INTERACTION FEEDBACK - hover, press, focus, disabled.
 
    Applied once, here, to every button and clickable link rather than
    per-component: the sheet has a dozen kinds of button (filter chips, roll
    buttons, pips, tabs, row buttons) and they should all answer the same two
-   questions — "is this clickable?" and "did my click land?".
+   questions - "is this clickable?" and "did my click land?".
 
    Hover tints the background. Pressing nudges the control down one pixel and
    darkens it further, so a click is visibly distinct from a hover rather than
@@ -144,7 +144,7 @@ button:focus-visible, .fbtn:focus-visible, .fctrl-btn:focus-visible, .char-tab:f
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
-/* Clickable text — spell/item/feature names, roll links, character-tab close crosses. These are
+/* Clickable text - spell/item/feature names, roll links, character-tab close crosses. These are
    anchors and spans rather than buttons, so they need their own hover; underlining on hover is the
    convention they already half-follow (they're dotted-underlined when they carry a tooltip). */
 .sp-name-link:hover, .itm-name-link:hover, .feat-link:hover, .inv-link:hover, .gsp-link:hover,
@@ -202,7 +202,7 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .typeahead-list div { padding: 2px 6px; cursor: pointer; white-space: nowrap; }
 .typeahead-list div:hover, .typeahead-list div.active { background: var(--menu-hover-bg); }
 .fmode { width: 2.9rem; box-sizing: border-box; text-align: center; }   /* fixed width so OR/AND/XOR never shift the row */
-.frange-inputs input.frange { width: 4rem; }   /* wider than .tiny — placeholders show a real min/max, not just "min"/"max" */
+.frange-inputs input.frange { width: 4rem; }   /* wider than .tiny - placeholders show a real min/max, not just "min"/"max" */
 /* ----- spell results table ----- */
 .spell-table { border-collapse: collapse; width: 100%; }
 .spell-table td { padding: 0 5px; white-space: nowrap; vertical-align: top; }
@@ -221,7 +221,7 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 .uses-tracker { margin-left: .4rem; }
 .use-pip { border: none; background: none; color: var(--link); cursor: pointer; font-size: .9rem; padding: 0 1px; line-height: 1; }
 .use-pip:not(.used) { color: var(--muted-fg); }
-/* ----- granted spell-list-expansion links (Dragonmarks, Eldritch Knight, etc. — still need prep) ----- */
+/* ----- granted spell-list-expansion links (Dragonmarks, Eldritch Knight, etc. - still need prep) ----- */
 .gsp-expanded { border-bottom: 1px dotted var(--link-border); }
 /* ----- generic modal (used by the "prepare from which class?" dialog) ----- */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -250,7 +250,7 @@ code { background: var(--code-bg); color: inherit; padding: 0 2px; }
 #data-bar button { font: inherit; font-size: .8rem; margin-left: .4rem; }
 #data-bar code { font-family: var(--font-mono); }
 #data-bar .hint { margin-left: .4rem; }
-/* Red only while there is genuinely nothing to read from — a stored copy or a live folder is a
+/* Red only while there is genuinely nothing to read from - a stored copy or a live folder is a
    working state, not a warning. Set by renderDataBar rather than inferred from the content. */
 #data-bar.data-bar-warn { border-color: var(--danger); }
 /* The lesser of two offers ("store a copy instead"), kept visibly secondary to the live connect. */
@@ -285,7 +285,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 /* ----- companions & summons (src/companions.js) ----- */
 .cmp-hp-row, .cmp-checks { margin: .2rem 0; display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
 .cmp-token { display: inline-flex; align-items: center; gap: 1px; padding: 0 .2rem; border: 1px solid var(--border-hair); border-radius: var(--radius); }
-/* a token at 0 HP is out of the fight but still on the sheet — dimmed, never removed, since
+/* a token at 0 HP is out of the fight but still on the sheet - dimmed, never removed, since
    "how many are left" is the number that matters when a stack of summons is taking hits */
 .cmp-token.dead { opacity: .5; text-decoration: line-through; }
 .cmp-token input.cmp-hp { width: 2.6rem; text-align: right; }
@@ -304,7 +304,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
   border: 1px dashed var(--link-border); border-radius: var(--radius); }
 /* While a drag is heading somewhere that would take a tab out of this group. The ⛓ button used
    to make leaving a visible, clickable thing; with the gesture doing the work instead, the box
-   has to say so itself or the drop is a guess. Red because a member is about to be lost — the
+   has to say so itself or the drop is a guess. Red because a member is about to be lost - the
    same colour the × that deletes a tab uses. */
 .char-group.losing { border-style: solid; border-color: var(--danger); }
 /* Drag feedback: a ring means "these will be grouped", a bar means "it will land here". */
@@ -328,7 +328,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cr-over, .cr-blocker { color: var(--danger); }
 .cr-blocker:not(:empty) { margin-top: .4rem; }
 
-/* Step strip. The steps are navigable tabs, not a progress readout — any of them can be clicked at
+/* Step strip. The steps are navigable tabs, not a progress readout - any of them can be clicked at
    any time, so they have to look clickable and show which ones still have something wrong. */
 #cr-stepper { display: flex; flex-wrap: wrap; gap: .25rem; margin-bottom: .5rem; }
 .cr-tab { font: inherit; font-size: .85rem; cursor: pointer; padding: .15rem .5rem; }
@@ -381,7 +381,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .cbt-item.disabled:hover { background: none; }
 .cbt-back { font-style: italic; }
 /* The movement box (feet left this turn, directly editable) and the terrain-cost multiplier beside
-   it — both plain inline inputs in .cbt-move-row, not menu items, so they're always visible without
+   it - both plain inline inputs in .cbt-move-row, not menu items, so they're always visible without
    opening anything. */
 .cbt-move-box-wrap { display: inline-flex; align-items: center; gap: .15rem; }
 .cbt-move-box { width: 2.6rem; font: inherit; text-align: right; }
@@ -417,7 +417,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .boon-ctr > .boon-del { grid-column: 4; }
 .boons-row { align-items: end; }
 /* An active boon is stated in text too (the label grows a "+2d4"), so weight rather than colour
-   alone carries it — same rule as the combat tracker's pips. */
+   alone carries it - same rule as the combat tracker's pips. */
 .boon-on { font-weight: bold; }
 /* Over a concurrent-casting limit (H4). Says "over" in words next to the count, so the colour is
    reinforcement; the sheet shows it rather than preventing it. */
@@ -433,7 +433,7 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .hr-ban-kind .fbody { flex: 1; min-width: 18rem; }
 .hr-chips { margin-top: .25rem; display: flex; flex-wrap: wrap; gap: .25rem; }
 /* A ban chip states itself in text ("banned" is the whole point of the list it's in), so the red is
-   reinforcement rather than the only signal — same rule as the combat tracker's spent pips. */
+   reinforcement rather than the only signal - same rule as the combat tracker's spent pips. */
 .hr-chip { display: inline-flex; align-items: center; gap: .2rem; font-size: .8rem;
   border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 0 .1rem 0 .4rem; }
 .hr-chip-x { font: inherit; line-height: 1; padding: 0 .25rem; border: none; background: none; cursor: pointer; }
@@ -446,14 +446,14 @@ button.roll.has-eff { border-bottom-color: var(--link-border); color: var(--link
 .lib-ban-tag { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--danger); border: 1px solid var(--danger); border-radius: var(--radius); padding: 0 .25rem; }
 /* A banned option in a dropdown, and an input already holding one. Both carry the word "banned"
    (as a flag in the list, as a tooltip on the input), so the colour is reinforcement rather than
-   the only signal. Options stay listed and stay pickable — the DM's ban is advice at the point of
+   the only signal. Options stay listed and stay pickable - the DM's ban is advice at the point of
    choosing, not a lock. */
 .banned-opt { color: var(--danger); }
 .banned-flag { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; opacity: .8; }
 input.banned-value { color: var(--danger); }
 /* An oversized weapon (src/house-rules.js, R17). Disadvantage is already carried by the roll button's
    own mode and label; unusable is stated in the Size cell's tooltip. The row tint is a hint, never
-   the only signal, and the button still rolls — the DM is at the table. */
+   the only signal, and the button still rolls - the DM is at the table. */
 #attack-rows tr.atk-oversized .atk-size { color: #a60; }
 #attack-rows tr.atk-unusable .atk-size { color: var(--danger); font-weight: bold; }
 .atk-size { font: inherit; font-size: .8rem; }
@@ -487,7 +487,7 @@ input.banned-value { color: var(--danger); }
 .combo-panel {
   /* Above .modal-overlay (2000, character creator/others): a combobox opened from inside a modal
      (e.g. the creator's race/subrace/background pickers) must draw on top of that modal, not behind
-     it — this is a fixed-position panel appended to document.body, so it isn't naturally stacked
+     it - this is a fixed-position panel appended to document.body, so it isn't naturally stacked
      above the modal just by being later in the DOM. */
   position: fixed; z-index: 2100; max-height: 15rem; overflow-y: auto;
   background: var(--menu-bg); color: var(--fg);
@@ -505,7 +505,7 @@ input.banned-value { color: var(--danger); }
 .cr-choice-trait { border-bottom: 1px dotted currentColor; }
 .cr-racial-slot { margin-right: .5rem; }
 .cr-custom-bg { border-left: 2px solid var(--border); padding-left: .5rem; }
-/* Cancel is pushed away from Back/Next/Create — it discards the character, and sitting next to the
+/* Cancel is pushed away from Back/Next/Create - it discards the character, and sitting next to the
    button you press five times in a row makes a misclick expensive. */
 .cr-actions { display: flex; align-items: center; }
 .cr-actions-gap { flex: 1; }
@@ -567,7 +567,7 @@ input[readonly] { background: rgba(128,128,128,.12); cursor: default; }
 @media (prefers-reduced-motion: reduce) { .ev.rolled { animation: none; } }
 
 /* ===== Roll mirror: resize grip and command line (src/roll-mirror.js) =====
-   The grip is top-left because the panel is pinned bottom-right — dragging up and left makes it
+   The grip is top-left because the panel is pinned bottom-right - dragging up and left makes it
    bigger, which is the only direction that doesn't push its own corner off the screen. */
 #roll-mirror-grip {
   width: 1.1rem; height: 1.1rem; margin-right: .2rem; cursor: nwse-resize; flex: none;
@@ -829,11 +829,13 @@ button.linkish {
 /* Module layers stay together below dialogs, even while an editing module is raised. */
 .modules { isolation: isolate; }
 
-#levelup-modal .modal-box { width: min(54rem, calc(100vw - 2rem)); max-width: none !important; max-height: calc(100dvh - 2rem); box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; }
-#lu-body { overflow: auto; min-height: 0; }
+#levelup-modal .modal-box { width: min(54rem, calc(100vw - 2rem)); max-width: none !important; height: min(46rem, calc(100vh - 2rem)); height: min(46rem, calc(100dvh - 2rem)); box-sizing: border-box; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; min-width: 0; }
+#lu-body { overflow: auto; min-height: 0; padding: 0 .5rem .75rem 0; overscroll-behavior: contain; }
 #levelup-modal .modal-actions { flex-shrink: 0; }
 #lu-options > * { margin-top: .65rem; }
 #lu-options summary { cursor: pointer; font-weight: bold; }
 .lu-spell-list { max-height: 15rem; overflow: auto; display: grid; gap: .2rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
 .lu-spell-list label { display: block; }
 .lu-spell-list label[hidden] { display: none; }
+
+.asi-choice { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }

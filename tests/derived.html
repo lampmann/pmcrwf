@@ -9,12 +9,12 @@
 <!-- Covers the pure-math core: derived.js (proficiency bonus, max HP, AC, the multiclass slot
      table, parseBonus), data.js (known/prepared/cantrip allowances) and math-fields.js (the number
      boxes' arithmetic and clamping). These are the functions where a silent off-by-one is most
-     expensive — every number on the sheet is downstream of them — and they were the untested half
+     expensive - every number on the sheet is downstream of them - and they were the untested half
      of the codebase.
 
      Same approach as effects.html: a minimal copy of index.html's structure, just enough
      DOM for the real src/*.js to run unmodified. No data/ folder here, so the auto-loaders fail
-     open exactly as they do in the app, and no library is needed — every function under test reads
+     open exactly as they do in the app, and no library is needed - every function under test reads
      the DOM and the hardcoded SRD tables, not an import. -->
 <div class="toolbar"><span id="save-status"></span>
   <button id="btn-export"></button><input type="file" id="file-import"><button id="btn-reset"></button>
@@ -52,11 +52,11 @@
     <button id="item-lib-toggle"></button><span id="attuned-count">0</span><div id="char-item-list"></div>
     <span id="items-weight-total">0</span><span id="items-value-total">0</span><span id="wealth-total-gp">0</span>
   </section>
-  <section class="module wide" data-module="dice"><input id="cmd-input"><div id="dicelog"><div>—</div></div></section>
+  <section class="module wide" data-module="dice"><input id="cmd-input"><div id="dicelog"><div>-</div></div></section>
   <section class="module wide" data-module="attacks"><table><tbody id="attack-rows"></tbody></table><button id="btn-add-attack">+</button></section>
   <section class="module wide" data-module="spellcasting">
     <select id="spell-ability"><option value=""></option><option value="str"></option><option value="dex"></option><option value="con"></option><option value="int"></option><option value="wis"></option><option value="cha"></option></select>
-    <span id="spell-dc">—</span><input type="number" id="spell-dc-misc"><span id="spell-atk">—</span><input id="spell-atk-misc">
+    <span id="spell-dc">-</span><input type="number" id="spell-dc-misc"><span id="spell-atk">-</span><input id="spell-atk-misc">
     <table><thead><tr id="slot-head"></tr></thead><tbody><tr id="slot-total"></tr><tr id="slot-override"></tr><tr id="slot-used"></tr></tbody></table>
     <div id="spell-lib-collapsed-hint"></div>
     <div id="spell-library-body" style="display:none">
@@ -102,8 +102,8 @@
 <script src="../src/spellcasting.js"></script>
 <script src="../src/spellbook.js"></script>
 <script>
-/* The effects engine is not loaded here, so effFlat/effDice/effMode/effContribs — which derived.js
-   adds into every total — have to exist as no-ops. That is deliberate: this file tests the base
+/* The effects engine is not loaded here, so effFlat/effDice/effMode/effContribs - which derived.js
+   adds into every total - have to exist as no-ops. That is deliberate: this file tests the base
    math in isolation, and effects.html already tests the overlay on top of it. */
 function effFlat() { return 0; }
 function effDice() { return ""; }
@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...and its spellbook is the separate, larger pool", classSpellAllowance({ name: "Wizard", lvl: 5 }).spellbookMax, 14);
     assertEqual("a Paladin is half-prepared", classSpellAllowance({ name: "Paladin", lvl: 5 }).max, 2 + 3);
     // The floor only bites when level/2 + the ability mod would otherwise be 0 or less, so CHA has
-    // to come down for this one — at CHA 16 a level 1 Paladin legitimately prepares 3.
+    // to come down for this one - at CHA 16 a level 1 Paladin legitimately prepares 3.
     setScore("cha", 10);
     assertEqual("a prepared caster can always prepare at least one", classSpellAllowance({ name: "Paladin", lvl: 1 }).max, 1);
     setScore("cha", 16);
@@ -298,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
     el.value = ""; commitMath(el);
     assertEqual("data-allow-empty keeps an empty box empty", el.value, "");
 
-    // hp-cur carries data-max-from="hp-max", which is what now clamps current HP to max — it is
+    // hp-cur carries data-max-from="hp-max", which is what now clamps current HP to max - it is
     // deliberately no longer done on every recompute() (that overwrote HP mid-edit).
     $("hp-max").textContent = "20";
     const cur = $("hp-cur");

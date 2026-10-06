@@ -1,5 +1,5 @@
 /* ============================================================
-   EFFECTS ENGINE — applies the declarative overlay in EFFECTS_DB (see
+   EFFECTS ENGINE - applies the declarative overlay in EFFECTS_DB (see
    effects/effects-db.js) on top of the live feature list from
    activeFeatures() (class-library.js). See DOCS.md for the full schema
    writeup; the short version:
@@ -9,17 +9,17 @@
      L0  score-*         literal adds only
      L1  profbonus        may reference L0
      L2  prof/expertise   -> profMult, read by L3
-     L3  numeric targets  may reference L0/L1/choices — never another L3 key
+     L3  numeric targets  may reference L0/L1/choices - never another L3 key
      L4  adv/dis/adddice/notes
    Because a value expression can only ever reach L0/L1/choices (see
-   evalValue below — there is deliberately no "read another target" node),
+   evalValue below - there is deliberately no "read another target" node),
    cross-effect cycles are impossible by construction, not by a solver.
 
    "attack-hit" and "damage-bonus" are read by the Attacks module
    (attacks.js): they fold into every attack row's to-hit bonus / damage
    expression the same way a row's own Hit+ / Dmg+ field does, and an
    adv/dis on "attack-hit" forces the to-hit roll's mode. Because the
-   engine has no per-weapon predicate, the bucket is global — a row opts
+   engine has no per-weapon predicate, the bucket is global - a row opts
    out with its own `fx` checkbox (see attacks.js) when the effect doesn't
    apply to that weapon (Sharpshooter on your dagger, Rage on your bow).
 
@@ -30,27 +30,27 @@
    Every OTHER "attack-"/"damage-"-prefixed target is still reserved: no
    module reads it, so it always lands in snap.unapplied instead of being
    applied, however its activation resolves. That's what lets an entry be
-   written once now and "switch on" later without re-conversion — which is
+   written once now and "switch on" later without re-conversion - which is
    exactly how Sharpshooter, Great Weapon Master and then the crit targets
    reached the Attacks module.
 
    WHAT STILL CAN'T BE EXPRESSED: anything needing per-weapon context. The
-   attack buckets are global — every row reads the same ones — so "heavy
+   attack buckets are global - every row reads the same ones - so "heavy
    weapons only", or a crit die the weapon itself defines (Savage Attacks,
    Brutal Critical), has no home here. Each row's `fx` checkbox is the
    manual stand-in.
 
-   "spell-grant" is a different kind of target entirely — not numeric, so
+   "spell-grant" is a different kind of target entirely - not numeric, so
    it's skipped here and rendered directly off entry.effects instead (see
    renderEffectControls in effects-ui.js), the same way toggle buttons and
    always-on chips already bypass the snapshot. Two ops: "grant-free" (the
-   spell is known/prepared for free — a Cleric domain spell, a Mark of
-   Warding's innate grant — never counted against a class's Known/Prepared
-   total) and "grant-list" (merely added to your spell list — a Dragonmark
-   or Eldritch-Knight-style expansion — still costs a normal known/prepared
+   spell is known/prepared for free - a Cleric domain spell, a Mark of
+   Warding's innate grant - never counted against a class's Known/Prepared
+   total) and "grant-list" (merely added to your spell list - a Dragonmark
+   or Eldritch-Knight-style expansion - still costs a normal known/prepared
    slot on whichever class you learn it through). Race/subclass grants
    already work today via a separate, auto-derived pipeline (5e.tools'
-   `additionalSpells` field, parsed in class-library.js) — this target
+   `additionalSpells` field, parsed in class-library.js) - this target
    exists for everything THAT pipeline doesn't reach, chiefly feats (whose
    additionalSpells the app otherwise ignores entirely).
    ============================================================ */
@@ -70,11 +70,11 @@ function effKeyFor(origin, name) {
   }
 }
 /* attack-/damage- targets a module actually reads today (attacks.js). Anything else under those
-   prefixes stays reserved — see the header comment. */
+   prefixes stays reserved - see the header comment. */
 const LIVE_ATTACK_TARGETS = new Set(["attack-hit", "damage-bonus", "damage-crit", "attack-crit-range", "attack-ability"]);
 function isReservedTarget(t) { return /^(attack-|damage-)/.test(t) && !LIVE_ATTACK_TARGETS.has(t); }
 
-/* ----- persisted per-instance state (character choices, not library data — see persistence.js) ----- */
+/* ----- persisted per-instance state (character choices, not library data - see persistence.js) ----- */
 let EFFECT_CHOICES = {};   // { fkey: { choiceId: value } }
 let EFFECT_TOGGLES = {};   // { "fkey|toggleId": true }
 
@@ -109,11 +109,11 @@ function featEntryWithAbility(key, base) {
   return entry;
 }
 
-/* ----- limited-use ("N uses per rest") spec, declared on a DB entry as `uses: { max, per, delayed? }` —
+/* ----- limited-use ("N uses per rest") spec, declared on a DB entry as `uses: { max, per, delayed? }` -
    `max` is an ordinary value expression (see evalValue below), so "proficiency bonus" is
    `{ prof: true }` and "your CON modifier, minimum 1" is `{ max: [{ mod: "con" }, 1] }`. `per` is
    "sr" or "lr" (short-rest recovery also happens on a long rest, same as the 2014 rules). `delayed`
-   is only for the "once expended, roll NdN — that many long rests until it recharges" pattern
+   is only for the "once expended, roll NdN - that many long rests until it recharges" pattern
    (Sorcerous Restoration-style features), as `{ expr: "1d4" }`. This replaces scanning feature text
    for phrasings at render time: a feature only gets a uses tracker if its DB entry declares one. */
 function usesSpecFor(feature) { const e = dbEntryFor(feature); return e && e.uses ? e.uses : null; }
@@ -139,7 +139,7 @@ function resolveTarget(feature, target) {
     return (Array.isArray(v) ? v[0] : v) || "";
   });
 }
-// Like resolveTarget, but a multi-pick choice (an array value, from a `pick n>1` choice — see
+// Like resolveTarget, but a multi-pick choice (an array value, from a `pick n>1` choice - see
 // effects-ui.js) expands into one resolved target per filled slot, so the same effect applies once
 // per skill/save the player actually picked instead of collapsing to a single slot.
 function resolveTargetsAll(feature, target) {
@@ -150,7 +150,7 @@ function resolveTargetsAll(feature, target) {
   return vals.map(val => target.replace(m[0], val));
 }
 
-/* What armour you are actually wearing, as a category — "none" when nothing is equipped. Read from
+/* What armour you are actually wearing, as a category - "none" when nothing is equipped. Read from
    the same equipped-item lookup the AC formula uses (equippedArmorLibs in derived.js), so a predicate
    and the AC it implies can never disagree about what you have on. Shields are separate: a shield is
    not body armour, and "not wearing heavy armour" says nothing about carrying one. */
@@ -169,7 +169,7 @@ function classLevelOf(name) {
 }
 
 /* Conditions the engine can evaluate. An effect carrying an unrecognized key is left INACTIVE rather
-   than silently applied — the "degrade to manual, never guess" rule — and still shows in the audit.
+   than silently applied - the "degrade to manual, never guess" rule - and still shows in the audit.
    Every key here is checkable from state the sheet already owns; nothing infers from feature text. */
 function whenSatisfied(when, feature) {
   if (!when) return true;
@@ -178,7 +178,7 @@ function whenSatisfied(when, feature) {
     if (k === "maxLevel") return totalLevel() <= v;
     if (k === "hasClass") return getClasses().some(c => c.name.trim().toLowerCase() === String(v).trim().toLowerCase());
     if (k === "casting") return getClasses().some(c => (c.casting === "auto" ? classCasting(c.name, c.sub) : c.casting) !== "none");
-    // Level bands within one class — "@self" means the class this feature came from, which is what a
+    // Level bands within one class - "@self" means the class this feature came from, which is what a
     // subclass feature almost always wants.
     if (k === "minClassLevel" || k === "maxClassLevel") {
       const cls = (v.class === "@self" || v.class == null) ? ((feature && feature.origin && feature.origin.className) || "") : v.class;
@@ -201,7 +201,7 @@ function whenSatisfied(when, feature) {
       if (v.not != null) return !vals.includes(v.not);
       return false;
     }
-    return false;   // unrecognized predicate — can't verify, so don't apply
+    return false;   // unrecognized predicate - can't verify, so don't apply
   });
 }
 function isActivated(feature, effect) {
@@ -214,7 +214,7 @@ function isActivated(feature, effect) {
 }
 
 /* value expressions: literal | {mod} | {prof} | {level} | {choice} | {sum}/{mul}/{floor}/{max}/{min}.
-   Deliberately no accessor for an L3 stat (init, save-<ab>, skill-<slug>, etc.) — see the header comment. */
+   Deliberately no accessor for an L3 stat (init, save-<ab>, skill-<slug>, etc.) - see the header comment. */
 function evalValue(feature, v) {
   if (typeof v === "number") return v;
   if (v == null) return 0;
@@ -240,12 +240,12 @@ function evalValue(feature, v) {
   return 0;
 }
 
-/* A dice term, either literal ("1d6") or COMPUTED from a value expression — { count, die } — which is
+/* A dice term, either literal ("1d6") or COMPUTED from a value expression - { count, die } - which is
    what Sneak Attack and friends need: `{ count: { ceil: { div: [{ level: "class", class: "@self" }, 2] } }, die: "d6" }`
    is ceil(level/2)d6. A computed count of zero yields no term at all rather than a bogus "0d6".
 
    NOT called evalDice: dice.js already owns that name for its expression tokenizer, and this file
-   loads after it — defining a second one here would silently replace the dice roller's own. */
+   loads after it - defining a second one here would silently replace the dice roller's own. */
 function evalDiceTerm(feature, v) {
   if (v == null) return "";
   if (typeof v === "string" || typeof v === "number") return String(v);
@@ -264,7 +264,7 @@ function buildEffectsSnapshot() {
   // Published while building so a re-entrant read resolves against the partial snapshot instead of
   // recursing (see effectsSnapshot). An L3 value expression legitimately reaches L1: `{ prof: true }`
   // calls profBonus(), which is itself `base + effFlat("profbonus")`. Without this the first entry to
-  // put { prof: true } on a real target blows the stack — the layering in the header comment is a
+  // put { prof: true } on a real target blows the stack - the layering in the header comment is a
   // rule for authors, not something the single-pass build enforces on itself.
   _effBuilding = snap;
   const features = (typeof activeFeatures === "function") ? activeFeatures() : [];
@@ -315,7 +315,7 @@ function buildEffectsSnapshot() {
           break;
         }
         /* Battle Smith, Hexblade's pact weapon: use a different ability for this roll rather than
-           adding to it. Last writer wins — two features replacing the same modifier is not a case the
+           adding to it. Last writer wins - two features replacing the same modifier is not a case the
            rules produce, and averaging them would be nonsense. */
         case "useability": {
           snap.ability[target] = String(effect.value || "").toLowerCase();
@@ -354,7 +354,7 @@ function buildEffectsSnapshot() {
 /* ----- generation-counted cache: rebuilt once per recompute() pass, not once per keystroke.
    recompute() (derived.js) calls invalidateEffects() first; toggle/choice handlers call it too.
    The Features panel and recompute() are two independent `input` listeners with no guaranteed
-   order — this makes that order irrelevant, since whichever fires first builds the snapshot and
+   order - this makes that order irrelevant, since whichever fires first builds the snapshot and
    the other just reuses it. ----- */
 let _effGen = 0, _effCache = null, _effCacheGen = -1, _effBuilding = null;
 function invalidateEffects() { _effGen++; _effBuilding = null; }
@@ -363,7 +363,7 @@ function effectsSnapshot() {
   // stamped once the build finishes, so without this an effect value that reads back into the
   // snapshot (any { prof: true }, via profBonus -> effFlat("profbonus")) would restart the build
   // and recurse until the stack blows. Reading the partial result means such a value sees the
-  // profbonus contributions applied so far — exact whenever nothing targets profbonus, which is
+  // profbonus contributions applied so far - exact whenever nothing targets profbonus, which is
   // every entry in the database today.
   if (_effBuilding) return _effBuilding;
   if (_effCacheGen !== _effGen) { _effCache = buildEffectsSnapshot(); _effCacheGen = _effGen; }
@@ -375,8 +375,8 @@ function effDieFloor(target) { return effectsSnapshot().dieFloor[target] || 0; }
 function effCritMin(target) { const n = effectsSnapshot().critMin[target]; return n == null ? 20 : n; }
 function effAbility(target) { return effectsSnapshot().ability[target] || null; }
 function effTags(target) { return effectsSnapshot().tags[target] || []; }
-/* Every target under a prefix, for the readouts that list whatever happens to be there — resistances,
-   extra movement speeds, condition-save advantages — rather than asking for each by name. */
+/* Every target under a prefix, for the readouts that list whatever happens to be there - resistances,
+   extra movement speeds, condition-save advantages - rather than asking for each by name. */
 function effTagsByPrefix(prefix) {
   const tags = effectsSnapshot().tags, out = [];
   Object.keys(tags).forEach(t => { if (t.startsWith(prefix)) out.push({ target: t, kind: t.slice(prefix.length), items: tags[t] }); });

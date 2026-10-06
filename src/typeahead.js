@@ -1,5 +1,5 @@
 /* ============================================================
-   TYPEAHEAD — generic search-as-you-type dropdown for a text input.
+   TYPEAHEAD - generic search-as-you-type dropdown for a text input.
    Used by the Race/Subrace/Class/Subclass fields (and the ASI feat
    picker) to suggest names from a lookup library as the user types.
    Matching is substring (not just prefix), so "wi" finds "Wizard".
@@ -35,7 +35,7 @@ function attachTypeahead(input, getOptions, banInfo) {
   function open(matches) {
     items = matches; activeIdx = -1;
     if (!matches.length) { close(); return; }
-    // Banned options stay listed and stay pickable, coloured red — see house-rules.js for why
+    // Banned options stay listed and stay pickable, coloured red - see house-rules.js for why
     // marking beats removing.
     const ban = banInfo ? banInfo() : null;
     list.innerHTML = matches.map((m, i) => {

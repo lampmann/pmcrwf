@@ -1,5 +1,5 @@
 /* ============================================================
-   layout.css — free-form module layout (move / resize / snap /
+   layout.css - free-form module layout (move / resize / snap /
    multi-select). Theme-aware: uses the base.css custom properties.
    Paired with src/layout.js.
    ============================================================ */
@@ -38,8 +38,8 @@
 .lay-h { position: absolute; display: none; z-index: 6; }
 .modules.lay-free > .module > .lay-h { display: block; }
 /* Edges 12px and corners 18px rather than 6/12: at 6px these were a genuinely fiddly target,
-   needing a pixel-accurate stab at a module border. They only exist while Free layout is on — you
-   are arranging the sheet, not playing on it — so trading a little of the module's edge for a
+   needing a pixel-accurate stab at a module border. They only exist while Free layout is on - you
+   are arranging the sheet, not playing on it - so trading a little of the module's edge for a
    grabbable handle costs nothing at the moment it matters. */
 .lay-h.n { top: 0; left: 0; right: 0; height: 12px; cursor: ns-resize; }
 .lay-h.s { bottom: 0; left: 0; right: 0; height: 12px; cursor: ns-resize; }
@@ -51,7 +51,7 @@
 .lay-h.se { bottom: 0; right: 0; cursor: nwse-resize; }
 .lay-h.sw { bottom: 0; left: 0; cursor: nesw-resize; }
 
-/* --- grid overlay (unique id — was colliding with the checkbox) --- */
+/* --- grid overlay (unique id - was colliding with the checkbox) --- */
 #lay-grid-overlay {
   position: absolute; inset: 0; pointer-events: none; z-index: 9990; display: none;
   background-image: linear-gradient(to right, rgba(128,128,128,.32) 1px, transparent 1px),
@@ -68,7 +68,7 @@
 .module.lay-collapsed { overflow: hidden; }
 .module.lay-collapsed > .lay-body { display: none; }
 /* The bottom handles used to be hidden while collapsed, on the reasoning that they'd float in empty
-   space — but a collapsed module still has a bottom edge, and not being able to drag it meant a
+   space - but a collapsed module still has a bottom edge, and not being able to drag it meant a
    folded module's height was fixed. They stay: a folded module remembers its own height separately
    from its open one, so dragging this edge can't clip the content waiting behind it (see
    applyCollapse in layout.js). */

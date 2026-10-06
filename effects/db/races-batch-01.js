@@ -1,5 +1,5 @@
 /* ============================================================
-   Race/lineage feature effects conversion batch 01 — LLM-generated
+   Race/lineage feature effects conversion batch 01 - LLM-generated
    from 5e.tools race data using the conversion guide
    (see effects/tools/conversion-guide.md for patterns and rationale).
    Only includes entries with automatable numeric/mechanical effects;

@@ -1,12 +1,12 @@
 /* ============================================================
-   EQUIPMENT SLOTS — a paper doll for what you're actually wearing.
+   EQUIPMENT SLOTS - a paper doll for what you're actually wearing.
 
    Replaces the flat "equipped" checkbox with named body slots, the way
    BG3 does it: two hands, armour, headwear, cloak, gloves, bracers and
    footwear, each holding one thing. Click a slot to see what fits, or drag
    an item onto it.
 
-   WHY SLOTS EXIST AT ALL — PHB p141, "Multiple Items of the Same Kind":
+   WHY SLOTS EXIST AT ALL - PHB p141, "Multiple Items of the Same Kind":
    you can't normally wear more than one pair of footwear, one pair of
    gloves or gauntlets, one pair of bracers, one suit of armour, one item of
    headwear, and one cloak. A checkbox per item can't say that; a slot can,
@@ -18,7 +18,7 @@
    and will take any item you insist on. The slots are the default reading
    of the rule, not a rules lawyer.
 
-   HOW AN ITEM FINDS ITS SLOT. 5e.tools has no body-slot field — armour and
+   HOW AN ITEM FINDS ITS SLOT. 5e.tools has no body-slot field - armour and
    weapons are typed, but nothing marks Winged Boots as footwear. So slots
    are guessed from the item's type where the data knows (armour, shields,
    weapons) and from its name where it doesn't (/\bboots?\b/ and friends).
@@ -42,7 +42,7 @@ const BODY_SLOTS = [
   { key: "gloves", label: "Gloves", kind: "gloves" },
   { key: "bracers", label: "Bracers", kind: "bracers" },
   { key: "boots", label: "Footwear", kind: "boots" },
-  /* Thri-kreen have four arms, but the lower pair "can't wield weapons or shields" (MPMM) — they
+  /* Thri-kreen have four arms, but the lower pair "can't wield weapons or shields" (MPMM) - they
      hold things. Hidden unless the character has them, and typed so the picker won't offer a
      longsword for a hand that can't hold one. */
   { key: "hand3", label: "Secondary hand", kind: "hand-lesser", extra: true },
@@ -89,7 +89,7 @@ function guessSlot(name) {
   return "";
 }
 
-/* Can this item go in this slot? Only ever a "should we offer it" question — see the header. */
+/* Can this item go in this slot? Only ever a "should we offer it" question - see the header. */
 function fitsSlot(name, slotKey) {
   const slot = slotByKey(slotKey); if (!slot) return false;
   const lib = (typeof findLibItemByName === "function") ? findLibItemByName(name) : null;
@@ -124,7 +124,7 @@ function equipToSlot(idx, slotKey) {
     if (main && main !== it && isTwoHanded(main.name)) unequipItem(main, true);
   }
   it.slot = slotKey;
-  it.eq = true;                          // `eq` still drives AC and the Attacks module — see the header
+  it.eq = true;                          // `eq` still drives AC and the Attacks module - see the header
   afterEquipChange(`Equipped <b>${escapeHtml(it.name)}</b> <span class="hint">(${slotByKey(slotKey).label.toLowerCase()})</span>`);
 }
 function unequipItem(it, quiet) {
@@ -146,7 +146,7 @@ function afterEquipChange(msg) {
 }
 
 /* Characters from before slots existed have `eq` set and no `slot`. Place each one in its guessed
-   slot if that slot is free — purely additive (it never changes `eq`), so the worst case is an item
+   slot if that slot is free - purely additive (it never changes `eq`), so the worst case is an item
    left unslotted and still equipped, exactly as it was. */
 function placeLegacyEquipped() {
   if (typeof CHARACTER_ITEMS === "undefined") return;

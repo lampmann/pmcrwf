@@ -5,7 +5,7 @@
 <title>effects engine tests</title>
 </head>
 <body>
-<!-- Minimal copy of index.html's structure — just enough DOM for the real src/*.js
+<!-- Minimal copy of index.html's structure - just enough DOM for the real src/*.js
      functions (buildAbilities, recompute, activeFeatures, the effects engine, …) to run
      unmodified, so this test exercises the actual app code, not a reimplementation of it.
      No data/ folder is present here; the auto-loaders fail open (as they do in the real app)
@@ -70,7 +70,7 @@
     <span id="items-weight-total">0</span><span id="items-value-total">0</span><span id="wealth-total-gp">0</span>
   </section>
   <section class="module wide" data-module="dice">
-    <input id="cmd-input"><div id="dicelog"><div>—</div></div>
+    <input id="cmd-input"><div id="dicelog"><div>-</div></div>
   </section>
   <section class="module wide" data-module="attacks">
     <table><tbody id="attack-rows"></tbody></table>
@@ -88,8 +88,8 @@
   </section>
   <section class="module wide" data-module="spellcasting">
     <select id="spell-ability"><option value=""></option><option value="str"></option><option value="dex"></option><option value="con"></option><option value="int"></option><option value="wis"></option><option value="cha"></option></select>
-    <span id="spell-dc">—</span><input type="number" id="spell-dc-misc">
-    <span id="spell-atk">—</span><input id="spell-atk-misc">
+    <span id="spell-dc">-</span><input type="number" id="spell-dc-misc">
+    <span id="spell-atk">-</span><input id="spell-atk-misc">
     <table><thead><tr id="slot-head"></tr></thead><tbody><tr id="slot-total"></tr><tr id="slot-override"></tr><tr id="slot-used"></tr></tbody></table>
     <div id="spell-lib-collapsed-hint"></div>
     <div id="spell-library-body" style="display:none">
@@ -206,7 +206,7 @@
 <div id="results">running…</div>
 
 <script>
-/* Runs after app.js's own DOMContentLoaded handler (init()) has finished — script tags execute
+/* Runs after app.js's own DOMContentLoaded handler (init()) has finished - script tags execute
    in order, and DOMContentLoaded listeners fire in registration order, so by the time this
    handler runs the sheet is fully built and interactive, same as in the real page. */
 document.addEventListener("DOMContentLoaded", () => {
@@ -368,7 +368,7 @@ document.addEventListener("DOMContentLoaded", () => {
   assert("to-hit tooltip names the contributing feature", hitBtn(0).title.includes("Sharpshooter"));
   assert("roll label carries the [Feature +N] annotation", hitBtn(0).dataset.rolllabel.includes("Sharpshooter"));
 
-  // A row with fx unticked opts out of the whole bucket — the engine has no per-weapon predicate,
+  // A row with fx unticked opts out of the whole bucket - the engine has no per-weapon predicate,
   // so this checkbox is the only thing keeping Sharpshooter off your dagger.
   assertEqual("fx-off row keeps its own to-hit", hitBtn(1).textContent, "to hit +5");
   assertEqual("fx-off row keeps its own damage", dmgBtn(1).dataset.expr, "1d4+2");
@@ -377,7 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
   assertEqual("fx flag round-trips through getAttacks (persistence)", getAttacks()[1].fx, false);
 
   // A row carrying no dice and no ability mod of its own (an unarmed strike while Raging, say) is
-  // left holding a bare "+10" — evalExpr can't parse a leading unary sign, so damageExpr strips it.
+  // left holding a bare "+10" - evalExpr can't parse a leading unary sign, so damageExpr strips it.
   addAttackRow({ name: "Unarmed", abil: "", prof: false, dmg: "", modDmg: false });
   recompute();
   assertEqual("a row with nothing of its own still rolls the effect bonus alone", dmgBtn(2).dataset.expr, "10");
@@ -414,7 +414,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   USES_STATE[swFkey] = { used: 1, pendingRests: null };
   CLASS_LIB = {};   // simulate the library being cleared/unloaded while USES_STATE still references it
-  renderClassFeatures();   // hits the early-return branch — FEATURE_TEXT_BY_KEY is now stale
+  renderClassFeatures();   // hits the early-return branch - FEATURE_TEXT_BY_KEY is now stale
   applyRest("lr");
   assertEqual("applyRest ignores a feature no longer in activeFeatures() (stale-map bug fix)", USES_STATE[swFkey].used, 1);
 
@@ -431,7 +431,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fakeFeat = key => ({ effKey: key, fkey: "test|" + key, origin: { kind: "subclass", className: "Fighter", subclassName: "Echo Knight" } });
   const usesMaxOf = key => { const f = fakeFeat(key); const s = usesSpecFor(f); return s ? usesMaxFor(f, s.max) : null; };
 
-  // "a number of times equal to your CON modifier (a minimum of once)" — the minimum is the whole
+  // "a number of times equal to your CON modifier (a minimum of once)" - the minimum is the whole
   // point of the expression, and { mod: "con", min: 1 } silently drops it (evalValue reads the
   // first matching key and ignores the rest), so pin both ends of the range.
   $("score-con").value = 10;
@@ -468,7 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
   assertEqual("Aura of Protection gives +4 at CHA 18", evalValue(auraFeat, auraEffects[0].value), 4);
   $("score-cha").value = 10;
 
-  // Every `pick` choice must have its own id — renderEffectControls draws one <select> per id and
+  // Every `pick` choice must have its own id - renderEffectControls draws one <select> per id and
   // ignores `n`, so a single n:2 choice would silently record only one of the two picks.
   const badPick = Object.entries(EFFECTS_DB)
     .filter(([, e]) => (e.choices || []).some(c => c.kind === "pick" && c.n > (c.options || []).length))
@@ -487,7 +487,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Regression: an effect whose value is { prof: true } on a real (non-reserved) target reads back
   // into the snapshot mid-build, because profBonus() is itself `base + effFlat("profbonus")`. Before
   // effectsSnapshot() learned to answer re-entrant reads from the partial snapshot, this recursed
-  // until the stack blew — taking the whole sheet down, not just the effect. Aura of the Sentinel
+  // until the stack blew - taking the whole sheet down, not just the effect. Aura of the Sentinel
   // (+PB to initiative) is the first shipped entry to do it.
   document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
   addClassRow({ name: "Paladin", sub: "Oath of the Watchers", lvl: 7 });
@@ -544,13 +544,13 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...still +25 at Monk 17", monkSpeedAt(17), 55);
     assertEqual("...+30 from Monk 18", monkSpeedAt(18), 60);
     assertEqual("...and 18 is the last band, not a step every four levels", monkSpeedAt(20), 60);
-    // Exactly one band may be live at a time — overlapping bands would stack into 130 ft.
+    // Exactly one band may be live at a time - overlapping bands would stack into 130 ft.
     assertEqual("the bands are exclusive: one contribution to speed, not five",
       effectsSnapshot().contribs.speed.filter(c => c.source === "Unarmored Movement" && c.op === "add").length, 1);
 
     monkSpeedAt(10);
     CHARACTER_ITEMS = [{ name: "T Leather", qty: 1, eq: true }]; invalidateEffects(); recompute();
-    assertEqual("armour cancels Unarmored Movement (light counts — the feature says any armour)", speedTotal(), 30);
+    assertEqual("armour cancels Unarmored Movement (light counts - the feature says any armour)", speedTotal(), 30);
     CHARACTER_ITEMS = [{ name: "T Shield", qty: 1, eq: true }]; invalidateEffects(); recompute();
     assertEqual("...and so does a shield, which is not body armour and needs its own predicate", speedTotal(), 30);
     CHARACTER_ITEMS = []; invalidateEffects(); recompute();
@@ -584,8 +584,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const defences = () => $("defenses-row").textContent;
     assert("a tagged resistance reaches the defences line", /resistant to\s*poison/.test(defences()));
     /* Hand-entered defences sit in the same lists as the feature-granted ones. Plenty of what a
-       character resists on a given evening comes from somewhere the sheet can't see — someone
-       else's spell, a potion, a DM ruling — and the line used to be readable only. */
+       character resists on a given evening comes from somewhere the sheet can't see - someone
+       else's spell, a potion, a DM ruling - and the line used to be readable only. */
     $("def-resist").value = "fire, cold";
     $("def-immune").value = "";
     $("def-vuln").value = "radiant";
@@ -621,7 +621,7 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("a described extra speed is listed as text in the Speed module", /climb\s*\+10 ft, if you have one/.test($("speed-extra").textContent));
     assertEqual("...and doesn't leak into the walking speed as a number", speedTotal(), 30);
 
-    // Situational advantage is listed, never applied — the trigger is terrain or lighting, which the
+    // Situational advantage is listed, never applied - the trigger is terrain or lighting, which the
     // sheet cannot see. This is the "degrade to manual, never guess" rule in its most visible form.
     document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
     CLASS_LIB = {};
@@ -648,7 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /* 5e.tools' 2014 race data has no field saying a trait grants a feat, so the sheet used to have no
      way to record one at all: the feat picker was wired only to class Ability Score Improvements,
      and a Variant Human's feat existed as prose and nothing else. Taking Alert gave no initiative.
-     Fully self-contained — saves and restores everything it touches, because it runs between two
+     Fully self-contained - saves and restores everything it touches, because it runs between two
      fixtures that each assume the sheet is as they left it. */
   {
     const savedClassLib = CLASS_LIB, savedRaceLib = RACE_LIB, savedFeatLib = FEAT_LIB;
@@ -689,7 +689,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const slot = () => activeFeatures().find(f => f.isRaceFeat);
     assert("the trait becomes a feat slot", !!slot());
     assertEqual("...keyed the same way every other race trait is", slot().fkey, raceFkey("Custom Lineage", "Feat"));
-    assert("...and is NOT an ASI — a racial feat is only the feat, never the two +1s", !slot().isAsi);
+    assert("...and is NOT an ASI - a racial feat is only the feat, never the two +1s", !slot().isAsi);
     assertEqual("with nothing chosen it keeps its own effects key, so an entry on the trait still applies",
       slot().effKey, "race|custom lineage|feat");
     assertEqual("...and the picker shows the trait's own name", slot().featSlotName, "Feat");
@@ -727,12 +727,12 @@ document.addEventListener("DOMContentLoaded", () => {
     renderClassLibrary(); invalidateEffects(); recompute();
   }
 
-  // ----- Resting (src/rest.js) — Hit Dice pools + full Short/Long Rest automation, PHB'14 p186 -----
+  // ----- Resting (src/rest.js) - Hit Dice pools + full Short/Long Rest automation, PHB'14 p186 -----
   document.querySelectorAll("#class-rows tr").forEach(tr => tr.remove());
   CLASS_LIB = {};
   addClassRow({ name: "Fighter", sub: "", lvl: 5, hitDie: "auto" });
   addClassRow({ name: "Wizard", sub: "", lvl: 3, hitDie: "auto" });
-  // CON 3 (mod -4) is fixed for this whole section and never changed again — Max HP sums CON mod
+  // CON 3 (mod -4) is fixed for this whole section and never changed again - Max HP sums CON mod
   // per level for every level, so touching CON mid-section would retroactively shift Max HP and
   // contaminate every HP assertion below it. A low-but-fixed mod also lets the floor-at-0 test
   // (right below) force a guaranteed-negative roll purely via Math.random, with nothing else to undo.
@@ -755,7 +755,7 @@ document.addEventListener("DOMContentLoaded", () => {
   assertEqual("spendHitDie marks exactly one Fighter die spent", hitDicePools().find(p => p.className === "Fighter").spent, 1);
   assertEqual("spendHitDie doesn't touch the Wizard pool", hitDicePools().find(p => p.className === "Wizard").spent, 0);
 
-  // minimum-of-0 healing: force every die to roll its lowest face — with CON mod -4, 1d6's worst
+  // minimum-of-0 healing: force every die to roll its lowest face - with CON mod -4, 1d6's worst
   // case (1 - 4 = -3) goes negative before the floor, so the clamp is exercised deterministically.
   {
     const origRandom = Math.random;
@@ -789,7 +789,7 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("spending an exhausted pool is a no-op (no phantom healing)", num($("hp-cur")), hpAtMax);
   }
 
-  // manual correction — the "always give an override" box. The box shows REMAINING, so its value is
+  // manual correction - the "always give an override" box. The box shows REMAINING, so its value is
   // stored back as max - remaining; clamping is in remaining-space at both ends.
   {
     const inp = document.createElement("input");
@@ -806,8 +806,8 @@ document.addEventListener("DOMContentLoaded", () => {
     correctHitDiceRemaining(inp);   // back to full for the assertions below
   }
 
-  // Short Rest: clears Temp HP (PHB p197 — lasts until depleted or "you finish a rest", not just a
-  // long one), but does NOT touch current HP, spell slots, or Hit Dice — spending a die is always the
+  // Short Rest: clears Temp HP (PHB p197 - lasts until depleted or "you finish a rest", not just a
+  // long one), but does NOT touch current HP, spell slots, or Hit Dice - spending a die is always the
   // player's own choice (see spendHitDie above), never something a rest button decides for you.
   {
     HD_STATE = {}; renderClassLibrary(); recompute();
@@ -825,7 +825,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Long Rest: full HP, Temp HP cleared, spell slots cleared, and spent Hit Dice regained up to half
-  // the total (min 1) — RAW doesn't say which pool a mixed-die-size multiclass regains into, so this
+  // the total (min 1) - RAW doesn't say which pool a mixed-die-size multiclass regains into, so this
   // fills pools in Classes-table order (documented as an approximation, same as elsewhere in the app).
   {
     HD_STATE = {}; renderClassLibrary(); recompute();
@@ -847,7 +847,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hitDicePools().find(p => p.className === "Wizard").spent, 3);
   }
 
-  // Long Rest at 0 HP: PHB p186 — no benefit without at least 1 HP at the start of the rest. The
+  // Long Rest at 0 HP: PHB p186 - no benefit without at least 1 HP at the start of the rest. The
   // guard runs before any mutation, so declining it must leave every rest-affected field untouched.
   {
     HD_STATE = {}; renderClassLibrary(); recompute();
@@ -865,7 +865,7 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("declining the 0-HP long rest leaves spell slots alone", $("slot-used-1").value, "2");
     assertEqual("declining the 0-HP long rest leaves Hit Dice alone", hitDicePools().find(p => p.className === "Fighter").spent, fighterSpentBefore);
 
-    window.confirm = () => true;   // accept it this time — should proceed exactly like a normal long rest
+    window.confirm = () => true;   // accept it this time - should proceed exactly like a normal long rest
     performRest("lr");
     assertEqual("accepting the 0-HP long rest still restores HP to max", $("hp-cur").value, String(maxHP()));
     window.confirm = origConfirm;
@@ -965,9 +965,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // A character with no classes yet (fresh sheet) gets a plain hint, not an empty/broken render.
-  // renderHitDice() isn't hooked into recompute() (see derived.js's comment on why — it would blow
+  // renderHitDice() isn't hooked into recompute() (see derived.js's comment on why - it would blow
   // away an in-progress edit in a pool's own spent-count box on every unrelated keystroke), so the
-  // production listener that would normally catch this class-rows mutation is a MutationObserver —
+  // production listener that would normally catch this class-rows mutation is a MutationObserver -
   // async/microtask-queued, so it won't have fired yet by the next line of this synchronous test.
   // Calling it directly here is exactly what that observer would otherwise do.
   {
@@ -1017,7 +1017,7 @@ document.addEventListener("DOMContentLoaded", () => {
       Object.values(racialAbilityBonus("Human", "(base)").fixed).join(","), "1,1,1,1,1,1");
 
     // A subrace block that is already a complete racial increase REPLACES the race's rather than
-    // stacking with it — otherwise a Draconblood Dragonborn would get six points of increases.
+    // stacking with it - otherwise a Draconblood Dragonborn would get six points of increases.
     assertEqual("a complete subrace block replaces the race's",
       JSON.stringify(racialAbilityBonus("Dragonborn", "Draconblood").fixed), '{"int":2,"cha":1}');
     assertEqual("...and the race's own block still applies with no subrace",
@@ -1063,8 +1063,8 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...and null for a race the library doesn't know, left for creatorBuildState to default", creatorRaceSpeed(), null);
     CREATOR = blankCreator(); CREATOR.race = "Human"; CREATOR.subrace = "";
     assertEqual("creatorBuildState carries Speed into the character's fields", creatorBuildState().fields["speed"], "30");
-    // A race the library has no entry for at all — e.g. the sheet was opened via file:// and
-    // races.json never auto-loaded (see autoLoadRaces in class-library.js) — must NOT leave a fresh
+    // A race the library has no entry for at all - e.g. the sheet was opened via file:// and
+    // races.json never auto-loaded (see autoLoadRaces in class-library.js) - must NOT leave a fresh
     // character's Movement pool reading 0/0; 30 ft is the fallback rather than an empty field.
     CREATOR = blankCreator(); CREATOR.race = "Nonexistent"; CREATOR.subrace = "";
     assertEqual("...and still defaults Speed to 30 ft when the race library has nothing for this race",
@@ -1180,7 +1180,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("assigned, the increases land where you put them",
         ["str", "con", "int", "cha"].map(a => racialIncrease(a)).join(","), "0,0,2,2");
       assert("...and step 1 clears", creatorStepValid(1));
-      assertEqual("the total is unchanged — reassigning isn't a buff",
+      assertEqual("the total is unchanged - reassigning isn't a buff",
         CREATOR_ABILITIES.reduce((s, a) => s + racialIncrease(a), 0), 4);
 
       // A race that already had a choose block keeps it, and the two stores don't collide.
@@ -1320,7 +1320,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assert("a different background applies its own skills", sage.fields["skillprof-arcana"] === true);
       assertEqual("...and an 'anyStandard' language count is left open, not invented", sage.proficiencies.languages.length, 0);
 
-      // Custom background, PHB p125 — every pick is explicit, so all of it applies.
+      // Custom background, PHB p125 - every pick is explicit, so all of it applies.
       CREATOR = blankCreator();
       CREATOR.customBg = true; CREATOR.bgSkills = ["Athletics", "Perception"]; CREATOR.bgTools = ["Smith's tools", "Dwarvish"];
       const custom = creatorBuildState();
@@ -1536,7 +1536,7 @@ document.addEventListener("DOMContentLoaded", () => {
     switchCharacter(secondId);
     assertEqual("switching forward again restores the second", $("char-name").value, "Bruenor");
 
-    // A state that simply lacks a field — an older export, or anything hand-built — must blank it
+    // A state that simply lacks a field - an older export, or anything hand-built - must blank it
     // rather than leave the previous character's value standing. Everything else applyState touches
     // resets to a default when absent; fields were written in place, so they didn't.
     const sheetBefore = collectState();
@@ -1547,7 +1547,7 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...while the fields it does carry are applied", $("char-name").value, "Fieldless");
     assertEqual("...and a <select> falls back to its own default, not to blank",
       $("char-size").value, "M");
-    // That state had no classes, so Max HP is 0 — restore the sheet for everything that follows.
+    // That state had no classes, so Max HP is 0 - restore the sheet for everything that follows.
     // Not switchCharacter(): it saves the current sheet over the target first, which would write the
     // blanked state into Bruenor rather than reload him.
     applyState(sheetBefore); recompute();
@@ -1566,7 +1566,7 @@ document.addEventListener("DOMContentLoaded", () => {
     assert("...with each character's own state alongside it", reloaded.chars.every(c => c.state && c.state.fields));
 
     // Migration. loadRoster() adopts a pre-roster charsheet-v0 only when no roster exists, and must
-    // never delete it — it is the user's only copy if anything about the migration is wrong.
+    // never delete it - it is the user's only copy if anything about the migration is wrong.
     const savedRoster = localStorage.getItem("charsheet-roster");
     localStorage.removeItem("charsheet-roster");
     localStorage.setItem("charsheet-v0", JSON.stringify({ v: 1, fields: { "char-name": "Legacy Hero" }, classes: [] }));
@@ -1576,7 +1576,7 @@ document.addEventListener("DOMContentLoaded", () => {
     assertEqual("...and its state is returned for the sheet to apply", migrated.fields["char-name"], "Legacy Hero");
     assert("...leaving the old key on disk as a fallback copy", !!localStorage.getItem("charsheet-v0"));
     loadRoster();
-    assertEqual("migration is idempotent — a second load finds the roster, not the legacy key", ROSTER.chars.length, 1);
+    assertEqual("migration is idempotent - a second load finds the roster, not the legacy key", ROSTER.chars.length, 1);
 
     localStorage.removeItem("charsheet-v0"); localStorage.removeItem("charsheet-roster");
     assertEqual("a genuinely fresh install seeds one empty entry and applies no state", loadRoster(), null);
@@ -1588,7 +1588,7 @@ document.addEventListener("DOMContentLoaded", () => {
     /* --- switching characters is logged only when the log is shared ---
        Its own fixture, so the entry it writes can't shift the counts the group tests below assert.
        On a solo character the log IS that character's, so "Switched to Alice" in Alice's own log
-       says nothing the tab bar doesn't — it was just noise at the top of every session. Inside a
+       says nothing the tab bar doesn't - it was just noise at the top of every session. Inside a
        group the log is shared, and the entry says who is acting now, which the others need. */
     {
       const savedRoster = ROSTER;
@@ -1625,7 +1625,7 @@ document.addEventListener("DOMContentLoaded", () => {
       /* COUNTED OFF THE DOM, not pattern-matched on the digit.
 
          This read `!/class="die"[^>]*>5</`, which matches the d20's OWN face whenever it lands
-         on a 5 — so the assertion went red about one run in twenty because the die did exactly
+         on a 5 - so the assertion went red about one run in twenty because the die did exactly
          what a d20 should. The claim being made has nothing to do with which number came up:
          one die in the expression means one die element, and the +5 is text beside it. */
       const marked = entry(r1.display);
@@ -1687,7 +1687,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       /* The preference: an explicit choice wins over the system's reduced-motion setting.
          Gating on reduced-motion alone meant anyone with it on never saw the feature and had no way
-         to find out why — a worse outcome than a switch they can flip. */
+         to find out why - a worse outcome than a switch they can flip. */
       const wasPref = ROLL_ANIM_PREF;
       ROLL_ANIM_PREF = null;
       assertEqual("with no choice made, the system setting decides", rollAnimAllowed(), !prefersReducedMotion());
@@ -1702,7 +1702,7 @@ document.addEventListener("DOMContentLoaded", () => {
         dropFlagsFor([4, 17], "kh1", 20).join(","), "true,false");
       assertEqual("...and it follows the numbers, not the positions",
         dropFlagsFor([17, 4], "kh1", 20).join(","), "false,true");
-      assertEqual("disadvantage keeps the lower — so here it's the 17 that goes",
+      assertEqual("disadvantage keeps the lower - so here it's the 17 that goes",
         dropFlagsFor([4, 17], "kl1", 20).join(","), "false,true");
       assertEqual("a term with no selection drops nothing", dropFlagsFor([3, 5], "", 6).join(","), "false,false");
       assertEqual("4d6 drop lowest keeps three", dropFlagsFor([6, 1, 4, 3], "kh3", 6).filter(Boolean).length, 1);
@@ -1748,7 +1748,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("...and the two agree exactly, in reverse order", mirrorRows().reverse().join("|"), moduleRows().join("|"));
 
       logEvent("hp", "took 5"); logEvent("rest", "short rest");
-      assertEqual("kinds other than rolls are mirrored too — it mirrors the log, not just dice",
+      assertEqual("kinds other than rolls are mirrored too - it mirrors the log, not just dice",
         mirrorRows().reverse().join("|"), moduleRows().join("|"));
 
       switchCharacter("m2");
@@ -1775,15 +1775,15 @@ document.addEventListener("DOMContentLoaded", () => {
       hideRollMirror();
       assert("hiding is remembered", MIRROR.hidden);
       assertEqual("...and leaves a tab to bring it back", $("roll-mirror-tab").style.display, "");
-      /* Every OTHER kind used to reopen it too — loading a house-rule preset, taking a rest, ticking
-         a condition, none of them a roll — which meant a click somewhere unrelated on the sheet could
+      /* Every OTHER kind used to reopen it too - loading a house-rule preset, taking a rest, ticking
+         a condition, none of them a roll - which meant a click somewhere unrelated on the sheet could
          pop a hidden window back open with no visible cause. */
-      logEvent("info", "House rules — loaded Lampmann's");
+      logEvent("info", "House rules - loaded Lampmann's");
       assert("a non-roll entry does NOT reopen a hidden mirror", MIRROR.hidden);
       logEvent("rest", "short rest"); logEvent("hp", "took 5"); logEvent("condition", "Poisoned ticked");
       assert("...none of the other kinds do either", MIRROR.hidden);
       log("a roll while hidden");
-      assert("a roll arriving while hidden reopens it — that's the moment it's wanted", !MIRROR.hidden);
+      assert("a roll arriving while hidden reopens it - that's the moment it's wanted", !MIRROR.hidden);
       assert("...but folding is left alone, since that was deliberate", MIRROR.folded);
       MIRROR = { folded: false, hidden: false }; renderRollMirror();
 
@@ -1806,7 +1806,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assert("grouping gives both characters the same group id", !!gid && ROSTER.chars[1].group === gid);
       assertEqual("...and the third is untouched", ROSTER.chars[2].group, undefined);
       assertEqual("both now log under the group", logKeyFor(ROSTER.chars[1]), gid);
-      // 4, not 3: grouping announces itself into the log it just created, which is the point —
+      // 4, not 3: grouping announces itself into the log it just created, which is the point -
       // "these now share a log" is itself an event in that shared history.
       assertEqual("their logs merge into one stream", (ROSTER.logs[gid] || []).length, 4);
       assertEqual("...in timestamp order, not concatenated",
@@ -1824,7 +1824,7 @@ document.addEventListener("DOMContentLoaded", () => {
         (ROSTER.logs.b || []).length, 4);
       assertEqual("...and a group of one is dissolved too", ROSTER.chars[0].group, null);
       /* The character LEFT HOLDING the group keeps the history too. Dissolving used to clear
-         `group` and stop, stranding the entries under a group id nothing pointed at any more —
+         `group` and stop, stranding the entries under a group id nothing pointed at any more -
          so the one who walked out kept a copy and the one who stayed lost everything. Barely
          reachable when the only way out was a button that always ejected the first member; the
          everyday case now that any tab leaves by being dragged out of the box. */
@@ -1849,7 +1849,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       /* The anchor bug the old signature carried: an "after" drop derived its anchor as the tab
          FOLLOWING the target, which past the last tab is nothing, and a null anchor meant "the
-         end" — so dropping on the last tab's right edge was a silent no-op when the tab was
+         end" - so dropping on the last tab's right edge was a silent no-op when the tab was
          already there, and could anchor on the moved tab itself. Anchoring on the dropped-on tab
          and splicing into `rest` makes both unreachable. */
       moveCharacter("c", "a", "after");
@@ -1857,7 +1857,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("a tab dropped on itself does not move", moveCharacter("b", "b", "after"), false);
       assertEqual("...and the order is untouched by the refusal", order(), "bac");
 
-      /* Dragging LEFT-TO-RIGHT onto a tab that is not the last one — the case that separates
+      /* Dragging LEFT-TO-RIGHT onto a tab that is not the last one - the case that separates
          "find the target in the list the tab is going back into" from "find it in the list the
          tab is still in". When the mover sits before the target, the two indices differ by one
          and only the former lands where the insertion bar was drawn. */
@@ -1906,7 +1906,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("...and so is empty bar past the end of every tab",
         groupBoxAt(boxRect.right + 400, mid(boxRect)), null);
 
-      /* The gap between two tabs is over the container and over no tab at all — the most natural
+      /* The gap between two tabs is over the container and over no tab at all - the most natural
          place to aim when dropping BETWEEN them. It has to resolve to a real tab and a side, or a
          drop there falls through to "no target". */
       const gapX = (rectOf("b").right + rectOf("c").left) / 2;
@@ -1921,7 +1921,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
          It stays in the bar at its old place while you drag it, so pulling the FIRST or
          LAST tab of a group out past its own end makes it the tab nearest the cursor. That
-         resolved to "you dropped on yourself", which the handlers discard — so pulling an
+         resolved to "you dropped on yourself", which the handlers discard - so pulling an
          end tab out towards its own side did nothing, while hauling it across to the far
          side worked, because some other tab was then nearest. */
       const leftOfA = { target: document.body, clientX: rectOf("a").left - 6, clientY: mid(rectOf("a")) };
@@ -2249,7 +2249,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ----- an Ability Score Improvement is a feat OR two ability bumps -----
      The slot always existed and always offered a feat; taking the +2 instead was listed as a gained
-     feature and left to you. Picks are stored as two slots because that IS the rule — the same
+     feature and left to you. Picks are stored as two slots because that IS the rule - the same
      ability twice is the +2, two different ones is +1 each, and neither needs a special case. */
   // 2014 / 2024: one record per name, the top bar's switch deciding which (src/edition.js).
   {
@@ -2347,7 +2347,7 @@ document.addEventListener("DOMContentLoaded", () => {
     /* --- conditions and exhaustion move the numbers, and say which parts they won't ---
        The split is the whole point: adv/dis on YOUR rolls, your speed and your hit point maximum
        are applied, because nothing else has to be true for them to bite. "Attacks against you have
-       advantage" is someone else's roll, and an auto-failed save is not disadvantage — those get
+       advantage" is someone else's roll, and an auto-failed save is not disadvantage - those get
        listed instead of being dressed up as a number this sheet can hold. */
     {
       const savedExh = $("exhaustion-level").value, savedSpeed2 = $("speed").value;
@@ -2422,7 +2422,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* --- the initiative order: shared across characters, one row per PC ---
        The order is the table's, not the character's. It shipped inside COMBAT, which made it
-       per-character — two PCs each kept a private list, and switching tabs mid-fight showed an
+       per-character - two PCs each kept a private list, and switching tabs mid-fight showed an
        empty one. It now lives in INITIATIVE with its own localStorage key, the same call House
        Rules makes. These pin the parts that made that wrong. */
     {
@@ -2568,7 +2568,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ];
 
       assertEqual("a weapon guesses the main hand", guessSlot("Longsword"), "mainHand");
-      assertEqual("a shield guesses the off hand — it has no `armor` flag, only a category", guessSlot("Shield"), "offHand");
+      assertEqual("a shield guesses the off hand - it has no `armor` flag, only a category", guessSlot("Shield"), "offHand");
       assertEqual("body armour guesses the armour slot", guessSlot("Chain Mail"), "armor");
       assertEqual("footwear is recognised by name, wherever the word sits", guessSlot("Winged Boots"), "boots");
       assertEqual("...as is headwear", guessSlot("Helm of Brilliance"), "head");
@@ -2582,7 +2582,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assert("the armour slot refuses a shield", !fitsSlot("Shield", "armor"));
       assert("...and takes armour", fitsSlot("Chain Mail", "armor"));
       assert("two-handed is read off the weapon's properties", isTwoHanded("Greatsword") && !isTwoHanded("Longsword"));
-      // A thrown melee weapon is still melee — it just also has a range.
+      // A thrown melee weapon is still melee - it just also has a range.
       assert("a dagger is a melee weapon despite having a thrown range", isMeleeWeapon(findLibItemByName("Dagger")));
       assert("...and a longbow is not", !isMeleeWeapon(findLibItemByName("Longbow")));
 
@@ -2686,7 +2686,7 @@ document.addEventListener("DOMContentLoaded", () => {
     CHARACTER_ITEMS = [{ name: "Plate", qty: 1, eq: true }];
     assertEqual("plate reads as heavy", armorWorn(), "heavy");
     assert("...which fails 'not heavy'", !whenSatisfied({ notArmor: ["heavy"] }));
-    // A shield is not body armour — "not wearing heavy armor" says nothing about carrying one.
+    // A shield is not body armour - "not wearing heavy armor" says nothing about carrying one.
     CHARACTER_ITEMS = [{ name: "Buckler", qty: 1, eq: true }];
     assertEqual("a shield alone leaves you unarmoured", armorWorn(), "none");
     assert("...and is reported separately", shieldWorn());
@@ -2733,7 +2733,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- which roll draws on which boon ---
     assertEqual("a skill check draws on Guidance", boonKindFor("skill-athletics"), "guidance");
-    assertEqual("initiative does too — it is a Dex check (PHB p189)", boonKindFor("init"), "guidance");
+    assertEqual("initiative does too - it is a Dex check (PHB p189)", boonKindFor("init"), "guidance");
     assertEqual("a saving throw draws on Resistance", boonKindFor("save-wis"), "resistance");
     assertEqual("AC draws on neither", boonKindFor("ac"), null);
     assertEqual("...and neither does a button with no check key at all", boonKindFor(undefined), null);
@@ -3101,7 +3101,7 @@ document.addEventListener("DOMContentLoaded", () => {
         { name: "Proficiency Dice", source: "DMG", page: 263, ruleType: "O", text: "Replaces the proficiency bonus with a die." },
         { name: "Hero Points", source: "DMG", page: 264, ruleType: "O", text: "5 + half your level, spend to add a d6." },
         { name: "Rest Variants", source: "DMG", page: 267, ruleType: "V", text: "Gritty Realism and Epic Heroism." },
-        { name: "Ship Repairs", source: "GoS", page: 200, ruleType: "", text: "Not an option — plain reference material." },
+        { name: "Ship Repairs", source: "GoS", page: 200, ruleType: "", text: "Not an option - plain reference material." },
       ];
 
       // parsing keeps what the catalogue needs and nothing more
@@ -3165,7 +3165,7 @@ document.addEventListener("DOMContentLoaded", () => {
       assertEqual("110 lb is heavily encumbered", encumbranceState().level, "heavily encumbered");
       assertEqual("...costing 20 ft", encumbranceState().speedPenalty, 20);
       assert("...and the note names the disadvantage the sheet can't apply", /disadvantage/.test(encumbranceState().note));
-      CHARACTER_ITEMS = [{ name: "Lead", qty: 5 }];        // 50 lb — exactly 5x, not "in excess of"
+      CHARACTER_ITEMS = [{ name: "Lead", qty: 5 }];        // 50 lb - exactly 5x, not "in excess of"
       assertEqual("exactly 5x Strength is not yet encumbered", encumbranceState().level, "");
       CHARACTER_ITEMS = [{ name: "Lead", qty: 10 }];       // exactly 10x
       assertEqual("exactly 10x is encumbered but not heavily", encumbranceState().level, "encumbered");

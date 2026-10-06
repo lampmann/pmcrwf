@@ -1,8 +1,8 @@
 /* ============================================================
-   DICE ENGINE — 5ecrawler/Avrae-style command parser
+   DICE ENGINE - 5ecrawler/Avrae-style command parser
    ============================================================ */
 function rollDie(sides) { return 1 + Math.floor(Math.random() * sides); }
-let _d20kept = []; // kept d20 faces from the last evalExpr — used for crit detection (only the d20 crits)
+let _d20kept = []; // kept d20 faces from the last evalExpr - used for crit detection (only the d20 crits)
 let rollSequence = 0; // distinguishes expressions inside a routine or companion stack
 
 function parseSel(s) {
@@ -45,7 +45,7 @@ function applyOp(dice, op, selRaw, sides) {
   if (op === "rr") { dice.forEach(d => { let g = 0; while (!d.dropped && matchSel(d.v, sel) && g < 1000) { d.v = rollDie(sides); d.rer = true; g++; } }); return; }
   if (op === "ra") { const add = []; dice.forEach(d => { if (!d.dropped && matchSel(d.v, sel)) add.push({ v: rollDie(sides), dropped: false, exp: true }); }); dice.push(...add); return; }
 }
-/* Which of a term's dice would be dropped if it were showing these faces — the same keep/drop
+/* Which of a term's dice would be dropped if it were showing these faces - the same keep/drop
    operators the roller itself applies, re-run rather than reimplemented, so a tumbling advantage
    strikes out the same die the finished roll would. Only SELECTION ops are replayed: rerolls and
    explosions changed which dice exist at roll time and can't be redone against faces that are only
@@ -61,7 +61,7 @@ function evalDice(tok, termIdx, rollId) {
   const mm = tok.match(/^(\d*)d(\d+)(.*)$/i);
   const count = mm[1] === "" ? 1 : +mm[1], sides = +mm[2], rest = mm[3] || "";
   // Hard cap on dice per term, so a typo ("1000d6") can't lock the tab up. It is reported in the
-  // roll's own render rather than applied quietly — a silently truncated roll is a wrong number
+  // roll's own render rather than applied quietly - a silently truncated roll is a wrong number
   // presented as a right one, which is the one thing this sheet never does (see DOCS: degrade to
   // manual, never guess).
   const MAX_DICE = 500, rolledCount = Math.min(count, MAX_DICE);
@@ -74,14 +74,14 @@ function evalDice(tok, termIdx, rollId) {
   if (sides === 20) dice.forEach(d => { if (!d.dropped) _d20kept.push(d.v); });
   /* Each face is its own element carrying the die it came off and the number it settled on, which
      is what lets the tumbling animation flash it through other faces of the SAME die and then put
-     it back (see animateRoll in roll-anim.js). Dropped and rerolled faces keep their own markup —
+     it back (see animateRoll in roll-anim.js). Dropped and rerolled faces keep their own markup -
      a dropped die is still a die, and watching the one advantage discarded is half the fun. */
   /* Dropped-ness is a CLASS, not an <s> wrapper, because it has to be able to change while the
      dice are tumbling: with advantage, which of the two is kept depends on what they're currently
      showing, so the strike-through moves between them frame by frame. A wrapper element would mean
      restructuring the DOM mid-animation; a class is one toggle. `data-ops` carries the term's own
      selection operators so the animator can re-run the real keep/drop rule rather than reimplement
-     one — see dropFlagsFor below. */
+     one - see dropFlagsFor below. */
   const selOps = (rest.match(/(kh|kl|ph|pl|k|p)([<>]?\d+|h\d+|l\d+)?/gi) || []).join("");
   const face = d => {
     const cls = "die" + (d.dropped ? " die-dropped" : "") + (d.rer || d.exp ? " die-note" : "");
@@ -100,7 +100,7 @@ function evalExpr(expr) {
   const re = /(\d*d\d+[hlkproaeim<>\d]*|\d+|[+\-*()])/gi;
   const tokens = []; let m; while ((m = re.exec(expr))) tokens.push(m[1]);
   const out = [], ops = [], prec = { "+": 1, "-": 1, "*": 2 }, display = [];
-  let termIdx = 0;   // die terms in source order — the animation keys each face back to its term
+  let termIdx = 0;   // die terms in source order - the animation keys each face back to its term
   for (const t of tokens) {
     if (/^[+\-*]$/.test(t)) {
       while (ops.length && ops[ops.length - 1] !== "(" && prec[ops[ops.length - 1]] >= prec[t]) out.push(ops.pop());
@@ -122,7 +122,7 @@ function evalExpr(expr) {
   const value = run();
   /* How much the total moves per point on each die term, measured rather than assumed: bump the
      term by one, re-run the same RPN, take the difference. That's +1 for "1d20+5", -1 for "10-1d6"
-     and 2 for "2*1d6" — so the tumbling animation can show a live total without re-parsing anything.
+     and 2 for "2*1d6" - so the tumbling animation can show a live total without re-parsing anything.
      It is exact for any expression linear in that term, which is every expression anyone rolls; a
      die multiplied by another die would only be approximate, and only mid-flash. */
   const terms = out.filter(o => o && typeof o === "object" && o.dice);
@@ -160,14 +160,14 @@ function applyMode(expr, mode) {
     return full;
   });
 }
-/* Labels and [bracket annotations] are free text — typed into the command line, or carried on a
+/* Labels and [bracket annotations] are free text - typed into the command line, or carried on a
    button from a weapon/spell/companion name. The log stores its HTML and re-injects it with
    innerHTML on every load (see event-log.js / repaintEventLog), so anything user- or data-supplied
    is escaped on the way in; only engine-built markup (a roll's own `display`) goes through raw. */
 function fmtAnns(anns) { return anns.length ? " <i>[" + anns.map(escapeHtml).join("][") + "]</i>" : ""; }
 /* The total, as an element the tumbling animation can rewrite. It carries the number it settles on
    and how much each die term moves it, so the running total during the flash is computed rather
-   than faked — see animateRoll in roll-anim.js. */
+   than faked - see animateRoll in roll-anim.js. */
 function totalHtml(rolled) {
   const coeffs = (rolled.coeffs || []).join(",");
   return `<b class="roll-total" data-final="${rolled.value}"${rolled.rollId ? ` data-roll="${rolled.rollId}"` : ""}${coeffs ? ` data-coeffs="${coeffs}"` : ""}>${rolled.value}</b>`;
@@ -190,9 +190,9 @@ function attackRollDisplay(rolled, min = 20) {
 
 /* `opts` marks attack rolls and carries changes to the d20 itself rather than its total:
      attack   - only attacks show critical success/failure messages.
-     dieFloor — "treat a roll of N or lower as N" (Reliable Talent). Expressed with the roller's own
+     dieFloor - "treat a roll of N or lower as N" (Reliable Talent). Expressed with the roller's own
                 `mi` operator so it shows in the displayed dice rather than silently adjusting a total.
-     critMin  — a widened crit range (Improved Critical's 19-20).
+     critMin  - a widened crit range (Improved Critical's 19-20).
    Both are read off the effects snapshot by the caller, never inferred here. */
 function runRoll(s, forceMode, opts) {
   let { expr, mode, label } = splitRoll(s);
@@ -235,7 +235,7 @@ function runCommand(input) {
   }
   runRoll(s);
 }
-/* Whether a check button's target is one you add your proficiency bonus to — the precondition
+/* Whether a check button's target is one you add your proficiency bonus to - the precondition
    Reliable Talent and its cousins state. Expertise counts, being a doubled proficiency. */
 function isProficientCheck(key) {
   if (typeof key !== "string") return false;
@@ -246,7 +246,7 @@ function isProficientCheck(key) {
 const D20SEL = "[data-roll-check], .atk-roll, .wpn-roll, .mon-roll";   // buttons that roll a d20 check (adv/dis applies)
 /* The value + check-key of the most recent d20 roll, for callers that need to react to what a roll
    actually came up as (combat.js reads this off an Initiative roll to seed the turn-order tracker)
-   without re-rolling it themselves — a second roll would land on a different number than the one
+   without re-rolling it themselves - a second roll would land on a different number than the one
    already in the log. */
 let LAST_D20_ROLL = null;
 /* Advantage / disadvantage badges beside every d20 roll button: a green triangle with an A, a red
@@ -274,7 +274,7 @@ function rollInfo(btn) {
   if (btn.dataset.rollCheck) {
     const k = btn.dataset.rollCheck;
     return { bonus: checkBonus(k), dice: checkDice(k), label: btn.dataset.label + effAnnotations(k),
-      // Conditions and exhaustion force a mode the same way a feature does — combined, not replaced,
+      // Conditions and exhaustion force a mode the same way a feature does - combined, not replaced,
       // so Poisoned cancelling a feature's advantage lands on a straight roll rather than one winning.
       mode: (typeof conditionMode === "function") ? combineModes(effMode(k), conditionMode(k)) : effMode(k),
       // Reliable Talent floors a check you're proficient in; the engine records the floor per target.
@@ -288,13 +288,13 @@ function rollInfo(btn) {
     return { attack: true, bonus: spellAttackBonus(), dice: spellAttackDice(), label: (btn.dataset.rolllabel || "spell attack") + effAnnotations("spellatk"),
       mode: (typeof conditionMode === "function") ? combineModes(effMode("spellatk"), conditionMode("spellatk")) : effMode("spellatk") };
   }
-  // weapon attack to-hit button (Attacks module) — bonus/dice/label/mode are all set on the button by
+  // weapon attack to-hit button (Attacks module) - bonus/dice/label/mode are all set on the button by
   // attacks.js, which is what already folds that row's feature effects (attack-hit) into them
   if (btn.classList.contains("wpn-roll")) {
     return { attack: true, bonus: Number(btn.dataset.bonus) || 0, dice: btn.dataset.dice || "", label: btn.dataset.rolllabel || "attack",
       mode: btn.dataset.mode || null, critMin: Number(btn.dataset.critmin) || 20 };
   }
-  // a companion/summon's own d20 roll — attack, save, skill or initiative (companions.js). Same
+  // a companion/summon's own d20 roll - attack, save, skill or initiative (companions.js). Same
   // button contract as .wpn-roll above, but the numbers come from a monster statblock rather than
   // from your sheet, so no feature effects apply and there's never a forced mode.
   if (btn.classList.contains("mon-roll")) {
@@ -339,5 +339,5 @@ function showRollMenu(x, y, btn) {
 }
 
 /* ---------- Log ----------
-   log()/clearLog() moved to src/event-log.js when the roll log became a general Event Log —
+   log()/clearLog() moved to src/event-log.js when the roll log became a general Event Log -
    log(html) is now logEvent("roll", html). See that file to add a new kind of event. */

@@ -1,5 +1,5 @@
 /* ============================================================
-   TUMBLING DICE — the brief flash a new roll gets before it settles.
+   TUMBLING DICE - the brief flash a new roll gets before it settles.
 
    Every die face the roller renders is its own element carrying the die it
    came off (`data-sides`), the number it settled on (`data-final`) and which
@@ -32,12 +32,12 @@
    strike-through moving between two dice needs no case of its own.
 
    It runs on every new log entry, which means every path that rolls dice gets
-   it — the command line, roll buttons, attacks, companions, routines, rests,
-   death saves — without any of them knowing this file exists.
+   it - the command line, roll buttons, attacks, companions, routines, rests,
+   death saves - without any of them knowing this file exists.
    ============================================================ */
 
 const ROLL_ANIM_FRAMES = 11;     // flashes before it settles
-const ROLL_ANIM_MS = 45;         // between flashes — ~500ms total. The first version ran in 270ms
+const ROLL_ANIM_MS = 45;         // between flashes - ~500ms total. The first version ran in 270ms
                                  // and was genuinely easy to miss; this is long enough to read as a
                                  // tumble without making a Fireball's eight dice hold up the table.
 const ROLL_ANIM_KEY = "charsheet-rollanim";
@@ -46,7 +46,7 @@ const ROLL_ANIM_KEY = "charsheet-rollanim";
    The distinction matters: gating this on prefers-reduced-motion ALONE meant anyone with that
    setting on simply never saw the feature and had no way to find out why, which is a worse
    accessibility outcome than a visible switch they can flip. The system preference still picks the
-   default — it just no longer has the final word over someone who has asked for the animation. */
+   default - it just no longer has the final word over someone who has asked for the animation. */
 let ROLL_ANIM_PREF = null;
 function prefersReducedMotion() {
   try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
@@ -88,7 +88,7 @@ function refreshAnimatedCriticals(entry) {
 }
 
 /* The running total for a set of currently-showing faces. Starts from the value actually rolled and
-   moves it by each face's distance from where it will land, scaled by that term's coefficient — so
+   moves it by each face's distance from where it will land, scaled by that term's coefficient - so
    this is arithmetic on the real roll rather than a second, invented one. */
 function rollAnimTotal(totalEl, faces) {
   if (totalEl.dataset.roll) faces = faces.filter(f => f.rollId == null || f.rollId === totalEl.dataset.roll);
@@ -112,7 +112,7 @@ function rollAnimTotal(totalEl, faces) {
   return n;
 }
 
-/* Animate one roll across every copy of it on screen — the Event Log module and the corner mirror
+/* Animate one roll across every copy of it on screen - the Event Log module and the corner mirror
    hold the same entry, and both must show the same numbers at the same moment. The frame sequence is
    generated ONCE here and written into all of them; generating it per copy is how they drifted into
    tumbling through different faces, which reads as two different rolls happening.
@@ -155,7 +155,7 @@ function animateRollCopies(entries) {
     });
   };
   /* Re-run the roller's own keep/drop rule against what the dice are currently showing, so a
-     tumbling advantage strikes out whichever die is momentarily lower — the discarded die moves as
+     tumbling advantage strikes out whichever die is momentarily lower - the discarded die moves as
      the numbers do, which is what watching two dice fight over a roll actually looks like. */
   const reselect = () => {
     if (typeof dropFlagsFor !== "function") return;
@@ -170,7 +170,7 @@ function animateRollCopies(entries) {
     if (frame < ROLL_ANIM_FRAMES) {
       faces.forEach(f => {
         // A face never shows a number its own die can't produce, and never lands early on the number
-        // it is about to settle on — a d20 flashing "17, 17, 17" doesn't read as tumbling.
+        // it is about to settle on - a d20 flashing "17, 17, 17" doesn't read as tumbling.
         let v = 1 + Math.floor(Math.random() * f.sides);
         if (v === f.finalV) v = (v % f.sides) + 1;
         f.cur = v;

@@ -1,10 +1,10 @@
 /* ============================================================
-   OFFLINE — registers the service worker, and only where it helps.
+   OFFLINE - registers the service worker, and only where it helps.
 
    NOT ON LOCALHOST. The obvious thing is to register everywhere, and it is
    wrong. sw.js serves cache-first (see its header, and the reason it has to),
    so on the machine where somebody is editing these files it would answer
-   every request with yesterday's copy and quietly ignore their edits — the
+   every request with yesterday's copy and quietly ignore their edits - the
    worst possible bug to hand a person who is mid-change and now cannot trust
    what they're looking at. A local player runs pmcrwf.cmd, which is a server
    sitting on the files; they already have the app offline in the only sense
@@ -25,7 +25,7 @@ function offlineEligible() {
 }
 
 /* A quiet line in the corner. Built here rather than in the HTML because it is about the delivery of
-   the page, not about anything on it — the sheet should not carry markup for its own hosting. */
+   the page, not about anything on it - the sheet should not carry markup for its own hosting. */
 function showUpdateNote(onTake) {
   if (document.getElementById("update-note")) return;
   const d = document.createElement("div");
@@ -56,7 +56,7 @@ function registerOffline() {
 
   /* The new worker took over; the page is now running against a cache it did not load from, so it
      has to be reloaded exactly once. The guard is for the pathological case where a worker activates
-     repeatedly — an endless reload loop is a far worse failure than no offline support. */
+     repeatedly - an endless reload loop is a far worse failure than no offline support. */
   let reloaded = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (reloaded) return;

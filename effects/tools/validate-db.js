@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* ============================================================
-   Static validator for effects/db/*.js entries — checks structural
+   Static validator for effects/db/*.js entries - checks structural
    validity against the schema in src/effects.js without needing a
    browser (no DOM, no activeFeatures()). Run after any manual edit or
    LLM conversion pass, before committing:
@@ -9,7 +9,7 @@
 
    Exits non-zero (and prints every problem found) if any entry is
    malformed. This does NOT check game-rules correctness (that's what
-   the hand-checked fixtures in tests/effects.html are for) — only that
+   the hand-checked fixtures in tests/effects.html are for) - only that
    the shape an entry uses is one the engine in src/effects.js actually
    understands, so a typo'd target/op doesn't silently no-op forever.
    ============================================================ */
@@ -26,7 +26,7 @@ const SKILL_SLUGS = new Set([
 ]);
 const ABILITIES = new Set(["str", "dex", "con", "int", "wis", "cha"]);
 const FIXED_TARGETS = new Set(["init", "hpmax", "profbonus", "spelldc", "spellatk", "passive-perception", "spell-grant", "ac", "speed",
-  // "every check you're proficient in" — the Reliable Talent shape, read by checkDice()/runRoll().
+  // "every check you're proficient in" - the Reliable Talent shape, read by checkDice()/runRoll().
   "check-proficient",
   // Listed rather than applied: the trigger is terrain, lighting, or another creature's behaviour.
   "situational-advantage", "situational-disadvantage"]);
@@ -34,7 +34,7 @@ const OPS = new Set(["add", "adddice", "min", "max", "set", "prof", "expertise",
   "diefloor", "critrange", "useability", "tag", "grant-free", "grant-list", "grant-innate"]);
 // Free-text suffix targets: everything after the prefix is a name the readout prints verbatim
 // ("resist-poison", "resist-all damage except psychic", "save-vs-charmed", "speed-fly"), so there's
-// no closed vocabulary to check against — only that the suffix isn't empty.
+// no closed vocabulary to check against - only that the suffix isn't empty.
 const TAG_PREFIXES = ["resist-", "immune-", "vuln-", "save-vs-", "speed-", "sense-"];
 const ACTIVATION_KINDS = new Set(["always", "toggle", "choice"]);
 const CHOICE_KINDS = new Set(["pick", "ability", "spellfilter"]);
@@ -43,12 +43,12 @@ const ENTRY_FIELDS = new Set(["name", "sv", "effects", "choices", "unsupported",
 const EFFECT_FIELDS = new Set(["target", "op", "value", "text", "activation", "when"]);
 const USES_FIELDS = new Set(["max", "per", "delayed"]);
 // whenSatisfied() in src/effects.js returns false for any predicate it doesn't recognize, so an
-// effect carrying a typo'd/invented key is silently inert forever — catch it here instead.
+// effect carrying a typo'd/invented key is silently inert forever - catch it here instead.
 const WHEN_PREDICATES = new Set(["minLevel", "maxLevel", "minClassLevel", "maxClassLevel", "hasClass", "casting",
   "armor", "notArmor", "shield", "choice"]);
 const ARMOR_CATEGORIES = new Set(["none", "light", "medium", "heavy"]);
 // evalValue() dispatches on the FIRST matching key and ignores every other field on the node, so
-// `{ mod: "con", min: 1 }` quietly evaluates to a bare CON modifier — the "minimum 1" vanishes.
+// `{ mod: "con", min: 1 }` quietly evaluates to a bare CON modifier - the "minimum 1" vanishes.
 // Each node shape therefore declares exactly which sibling keys are legal.
 const VALUE_NODE_FIELDS = [
   ["mod", new Set(["mod"])],
@@ -72,7 +72,7 @@ function isKnownTarget(t) {
   if (t.includes("{choice:")) return true; // resolved at runtime; can't statically verify the slug
   if (FIXED_TARGETS.has(t)) return true;
   // "attack-hit"/"damage-bonus" are read by the Attacks module (src/attacks.js); every other
-  // attack-/damage- name is still reserved — valid to write, but it lands in `unapplied` until
+  // attack-/damage- name is still reserved - valid to write, but it lands in `unapplied` until
   // something reads it. Both cases are accepted here; see isReservedTarget() in src/effects.js.
   if (/^attack-|^damage-/.test(t)) return true;
   const tagPrefix = TAG_PREFIXES.find(p => t.startsWith(p));
@@ -96,7 +96,7 @@ function isValidValueExpr(v, choiceIds) {
   if ("floor" in v) return isValidValueExpr(v.floor, choiceIds);
   if ("ceil" in v) return isValidValueExpr(v.ceil, choiceIds);
   if ("round" in v) return isValidValueExpr(v.round, choiceIds);
-  // evalValue destructures div as [a, b] — anything else yields b === undefined and a silent 0.
+  // evalValue destructures div as [a, b] - anything else yields b === undefined and a silent 0.
   if ("div" in v) return Array.isArray(v.div) && v.div.length === 2 && v.div.every(x => isValidValueExpr(x, choiceIds));
   if ("max" in v) return Array.isArray(v.max) && v.max.every(x => isValidValueExpr(x, choiceIds));
   if ("min" in v) return Array.isArray(v.min) && v.min.every(x => isValidValueExpr(x, choiceIds));
@@ -112,7 +112,7 @@ function checkValueFields(where, v, errors) {
   if (node) {
     const stray = unknownFields(v, node[1]);
     if (stray.length) {
-      errors.push(`${where} value expression {${node[0]}: …} has field(s) ${stray.map(s => `"${s}"`).join(", ")} that evalValue() ignores — ${JSON.stringify(v)}`);
+      errors.push(`${where} value expression {${node[0]}: …} has field(s) ${stray.map(s => `"${s}"`).join(", ")} that evalValue() ignores - ${JSON.stringify(v)}`);
     }
   }
   ["sum", "mul", "div", "max", "min"].forEach(k => { if (Array.isArray(v[k])) v[k].forEach(x => checkValueFields(where, x, errors)); });
@@ -146,23 +146,23 @@ function validateEntry(key, entry, errors) {
     if (!OPS.has(eff.op)) errors.push(`${w} unknown op "${eff.op}"`);
     if (eff.when) {
       unknownFields(eff.when, WHEN_PREDICATES).forEach(p =>
-        errors.push(`${w} unrecognized "when" predicate "${p}" — whenSatisfied() will never let this effect apply`));
+        errors.push(`${w} unrecognized "when" predicate "${p}" - whenSatisfied() will never let this effect apply`));
       // A predicate whose *payload* is the wrong shape is the same silent-inert failure as a
       // misspelt key: whenSatisfied() compares against undefined and the effect never fires.
       ["minClassLevel", "maxClassLevel"].forEach(k => {
         const v = eff.when[k];
         if (v == null) return;
         if (typeof v !== "object" || !Number.isInteger(v.level)) {
-          errors.push(`${w} "when.${k}" needs { class, level } with an integer level — got ${JSON.stringify(v)}`);
+          errors.push(`${w} "when.${k}" needs { class, level } with an integer level - got ${JSON.stringify(v)}`);
         }
       });
       ["armor", "notArmor"].forEach(k => {
         if (eff.when[k] == null) return;
         const bad = [].concat(eff.when[k]).filter(c => !ARMOR_CATEGORIES.has(c));
-        if (bad.length) errors.push(`${w} "when.${k}" lists unknown armour categor(ies) ${bad.map(b => `"${b}"`).join(", ")} — armorWorn() only ever returns ${[...ARMOR_CATEGORIES].join("/")}`);
+        if (bad.length) errors.push(`${w} "when.${k}" lists unknown armour categor(ies) ${bad.map(b => `"${b}"`).join(", ")} - armorWorn() only ever returns ${[...ARMOR_CATEGORIES].join("/")}`);
       });
       if (eff.when.shield != null && typeof eff.when.shield !== "boolean") {
-        errors.push(`${w} "when.shield" must be true or false — it is compared against shieldWorn()`);
+        errors.push(`${w} "when.shield" must be true or false - it is compared against shieldWorn()`);
       }
     }
     if (["add", "min", "max", "set"].includes(eff.op) && !isValidValueExpr(eff.value, choiceIds)) {
@@ -175,7 +175,7 @@ function validateEntry(key, entry, errors) {
       if (typeof v === "string") {
         if (!/^\d+d\d+$/i.test(v.trim())) errors.push(`${w} op "adddice" literal "${v}" is not dice notation like "2d6"`);
       } else if (v && typeof v === "object") {
-        if (!/^d\d+$/i.test(String(v.die || ""))) errors.push(`${w} op "adddice" computed term needs a "die" like "d6" — got ${JSON.stringify(v.die)}`);
+        if (!/^d\d+$/i.test(String(v.die || ""))) errors.push(`${w} op "adddice" computed term needs a "die" like "d6" - got ${JSON.stringify(v.die)}`);
         if (v.count != null && !isValidValueExpr(v.count, choiceIds)) errors.push(`${w} op "adddice" has an invalid "count" value expression`);
         checkValueFields(w, v.count, errors);
       } else {
@@ -185,7 +185,7 @@ function validateEntry(key, entry, errors) {
     if (eff.op === "note" && typeof eff.text !== "string") errors.push(`${w} op "note" needs a string "text"`);
     // `tag` records a standing fact; the value is the label the readout prints, so it must be text.
     if (eff.op === "tag" && !(typeof eff.value === "string" && eff.value.trim())) {
-      errors.push(`${w} op "tag" needs a non-empty string "value" — it is what the defences line prints`);
+      errors.push(`${w} op "tag" needs a non-empty string "value" - it is what the defences line prints`);
     }
     if (eff.op === "diefloor" && !Number.isInteger(eff.value)) errors.push(`${w} op "diefloor" needs an integer "value" (the lowest die result you may treat as rolled)`);
     if (eff.op === "critrange" && !(Number.isInteger(eff.value) && eff.value >= 2 && eff.value <= 20)) {
@@ -229,7 +229,7 @@ function validateEntry(key, entry, errors) {
     }
   }
 
-  if (!entry.effects && !entry.unsupported && !entry.uses) errors.push(`${where} has neither "effects", "unsupported", nor "uses" — nothing for this entry to do`);
+  if (!entry.effects && !entry.unsupported && !entry.uses) errors.push(`${where} has neither "effects", "unsupported", nor "uses" - nothing for this entry to do`);
 }
 
 function loadDbFile(file) {
@@ -242,7 +242,7 @@ function loadDbFile(file) {
 }
 
 /* A DB file with no <script> tag is inert: it parses, it validates, and the app never sees a byte
-   of it. That's a silent failure the schema checks below can't reach, so check the wiring too —
+   of it. That's a silent failure the schema checks below can't reach, so check the wiring too -
    every effects/db/*.js must be loaded by the app page AND by the test page. */
 function checkWiring(files, errors) {
   [["index.html", "effects/db/"], ["tests/effects.html", "../effects/db/"]].forEach(([page, prefix]) => {
@@ -251,11 +251,11 @@ function checkWiring(files, errors) {
     try {
       html = fs.readFileSync(full, "utf8");
     } catch (e) {
-      errors.push(`${page}: can't read to verify DB wiring — ${e.message}`);
+      errors.push(`${page}: can't read to verify DB wiring - ${e.message}`);
       return;
     }
     files.forEach(f => {
-      if (!html.includes(`src="${prefix}${f}"`)) errors.push(`${page} has no <script> tag for effects/db/${f} — its entries are loaded by nothing and can never fire`);
+      if (!html.includes(`src="${prefix}${f}"`)) errors.push(`${page} has no <script> tag for effects/db/${f} - its entries are loaded by nothing and can never fire`);
     });
   });
 }
@@ -271,7 +271,7 @@ function main() {
     try {
       entries = loadDbFile(full);
     } catch (e) {
-      errors.push(`${file}: failed to load/parse — ${e.message}`);
+      errors.push(`${file}: failed to load/parse - ${e.message}`);
       continue;
     }
     for (const [key, entry] of Object.entries(entries)) {
@@ -283,11 +283,11 @@ function main() {
     }
   }
   if (errors.length) {
-    console.error(`FAILED — ${errors.length} problem(s):\n`);
+    console.error(`FAILED - ${errors.length} problem(s):\n`);
     errors.forEach(e => console.error("  " + e));
     process.exit(1);
   }
-  console.log(`OK — validated ${seenKeys.size} entries across ${files.length} file(s).`);
+  console.log(`OK - validated ${seenKeys.size} entries across ${files.length} file(s).`);
 }
 
 main();

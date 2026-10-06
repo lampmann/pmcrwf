@@ -1,5 +1,5 @@
 /* ============================================================
-   CHARACTER CREATOR — the "+ New character" wizard, and the Level Up
+   CHARACTER CREATOR - the "+ New character" wizard, and the Level Up
    dialog. Both walk PHB'14 chapter 1 ("Step-by-Step Characters", p11-15)
    in its own order, since that's the order the book teaches and the order
    the choices actually depend on each other in: your race sets ability
@@ -23,18 +23,18 @@
 
    Everything the wizard collects is written through collectState()'s own
    shape, so a created character is indistinguishable from a hand-built one
-   — no separate "created by wizard" flavour of state to maintain.
+   - no separate "created by wizard" flavour of state to maintain.
 
    ---------------------------------------------------------------
-   INPUT HANDLING — the rule that keeps this dialog usable.
+   INPUT HANDLING - the rule that keeps this dialog usable.
 
    Two bugs came out of redrawing the dialog body at the wrong moment, and
    both are easy to reintroduce:
 
      - Rebuilding on `input` replaces the field you are typing into, so it
        loses focus after one character.
-     - Rebuilding on `change` for a TEXT or NUMBER box fires on blur — i.e.
-       as you click the next control — which detaches that control before
+     - Rebuilding on `change` for a TEXT or NUMBER box fires on blur - i.e.
+       as you click the next control - which detaches that control before
        its own click resolves, so the click silently does nothing.
 
    The rule: text boxes rebuild on `input` and then restore focus and caret
@@ -52,7 +52,7 @@ const CREATOR_STEPS = ["Race", "Class", "Ability Scores", "Spells", "Description
 const CR_STEP = { race: 1, cls: 2, scores: 3, spells: 4, desc: 5, equip: 6 };
 const SIZE_NAMES = { T: "Tiny", S: "Small", M: "Medium", L: "Large", H: "Huge", G: "Gargantuan", V: "Varies" };
 
-/* Wizard state. Rebuilt from scratch on every open — a half-finished character is never persisted,
+/* Wizard state. Rebuilt from scratch on every open - a half-finished character is never persisted,
    so closing the dialog genuinely discards it rather than leaving a partial entry on the tab bar. */
 let CREATOR = null;
 
@@ -108,13 +108,13 @@ function creatorTotalLevel() { return CREATOR.classes.reduce((s, c) => s + (Numb
 
    2. A subrace's block sometimes ADDS to the race's and sometimes REPLACES
       it, and the data does not say which. Dwarf gives CON +2 and Mountain
-      Dwarf adds STR +2 — additive, and correct RAW at +4 total. But
+      Dwarf adds STR +2 - additive, and correct RAW at +4 total. But
       Dragonborn gives STR +2/CHA +1 and its Draconblood subrace (EGW)
       gives INT +2/CHA +1, which is that subrace's *whole* increase, not an
       extra +3 on top.
 
       The rule used here: a subrace block that is already a complete racial
-      increase — totalling 3 or more, or containing a `choose` — replaces;
+      increase - totalling 3 or more, or containing a `choose` - replaces;
       anything smaller adds. That is right for every PHB and EGW case, and
       where it is wrong the numbers are visible and editable in step 1
       rather than silently baked in.
@@ -164,7 +164,7 @@ function racialAbilityBonus(raceName, subraceName) {
 
    So with the option on, a race's FIXED increases become free picks that keep their sizes: a Mountain
    Dwarf's CON +2 / STR +2 turns into two +2s you assign, and a Tiefling's CHA +2 / INT +1 into a +2
-   and a +1. Blocks the race already leaves to choice are unaffected — they were already free.
+   and a +1. Blocks the race already leaves to choice are unaffected - they were already free.
 
    The rule is per-increase, not per-point: a +2 stays a +2 and can't be split into two +1s. And no
    two increases may land on the same ability, which is what makes the pickers disable a taken score. */
@@ -173,7 +173,7 @@ function fixedIncreaseSlots() {
   return Object.entries(bonus.fixed).map(([ab, amount], i) => ({ key: "fixed:" + i, from: CREATOR_ABILITIES, amount, was: ab }));
 }
 
-/* Every increase you have to choose an ability for, as a flat list — one entry per pick, so a
+/* Every increase you have to choose an ability for, as a flat list - one entry per pick, so a
    "+1 to two of your choice" race yields two slots and each gets its own dropdown. Keys are what
    CREATOR.racialChoice / CREATOR.originChoice are keyed by, and are stable as long as the race is. */
 function racialChoiceSlots() {
@@ -209,17 +209,17 @@ function pointsSpent() {
 
 /* ----- pickers -----
    A combobox: a text box you can type in, with a datalist so the browser filters the full list as
-   you type. It is deliberately NOT a plain <select> — the lists here run to ninety-odd races, and
+   you type. It is deliberately NOT a plain <select> - the lists here run to ninety-odd races, and
    typing three letters beats scrolling. It is also not a bare text box: everything valid is one
    keystroke and a click away, and the list is the documentation for what the loaded data contains.
 
    Free text is still accepted, on purpose. The libraries are user-supplied (see DOCS' "Where game
    data comes from") and may be absent entirely, so a race the sheet has never heard of has to remain
-   typeable — the datalist is a convenience, never a gate. */
+   typeable - the datalist is a convenience, never a gate. */
 function creatorCombo(id, value, options, placeholder, extraClass, width, banKind, banPrefix) {
   return comboboxHtml({ id, value, options, placeholder, extraClass, width: width || "12rem", banKind, banPrefix });
 }
-/* Same control for one row of the class table — ids have to be per-row, so these carry a data-crrow
+/* Same control for one row of the class table - ids have to be per-row, so these carry a data-crrow
    index and a class instead of an id. */
 function creatorRowCombo(cls, row, value, options, placeholder, banKind, banPrefix) {
   return comboboxHtml({ value, options, placeholder, extraClass: cls, width: "11rem",
@@ -233,7 +233,7 @@ function creatorRowCombo(cls, row, value, options, placeholder, banKind, banPref
    everything else disappears from the pickers.
 
    Deliberately simpler than filters.js' tri-state engine: there is nothing here to exclude *and*
-   include *and* combine — one flat list of books, all on by default, click to toggle. A tri-state
+   include *and* combine - one flat list of books, all on by default, click to toggle. A tri-state
    chip row would be more machinery than the question needs. Selections are per-wizard-session, not
    persisted, since they're a browsing aid rather than part of the character. */
 function creatorSources(lib) {
@@ -272,7 +272,7 @@ function sourceFilterHtml(kind, lib) {
       </div></details>`;
 }
 /* Names from `lib`, minus anything from a book that's been switched off. The currently-selected
-   value always survives the filter — hiding a book shouldn't silently blank a choice already made. */
+   value always survives the filter - hiding a book shouldn't silently blank a choice already made. */
 function filteredNames(kind, lib, keep) {
   const off = CREATOR.srcOff[kind] || {};
   return Object.values(lib)
@@ -281,7 +281,7 @@ function filteredNames(kind, lib, keep) {
 }
 
 /* Subrace / subclass names, defensively. 5e.tools data has entries this sheet can't assume are
-   well-formed (a subrace with no name at all is a real shape — see BASE_SUBRACE in class-library.js),
+   well-formed (a subrace with no name at all is a real shape - see BASE_SUBRACE in class-library.js),
    and one malformed record used to throw out of the whole render, which reads to the user as "Back
    and Next don't work" rather than as an error. */
 function subNames(rec) {
@@ -327,7 +327,7 @@ function racialAsiHtml() {
 }
 
 /* Traits the race and subrace grant. Shown in step 1 so the choices a race makes you responsible for
-   are visible while you're picking it — Simic Hybrid's Animal Enhancement, a Variant Human's feat,
+   are visible while you're picking it - Simic Hybrid's Animal Enhancement, a Variant Human's feat,
    any "of your choice" language or skill. The sheet can't resolve those into fields (they're prose,
    and each one is different), so they're flagged rather than automated; the Features module shows
    the full text once the character exists. */
@@ -347,7 +347,7 @@ function raceTraitsHtml() {
       const text = (e.text || "").trim();
       const choice = CHOICE_CUE.test(text);
       const tag = choice ? "b" : "span";
-      const hint = text ? ` class="cr-trait-description${choice ? " cr-choice-trait" : ""}" title="${escapeHtml(text)}"` : "";
+      const hint = text ? ` class="cr-trait-description${choice ? " cr-choice-trait" : ""}" title="${escapeHtml(normalizeDisplayPunctuation(text))}"` : "";
       return `<${tag}${hint}>${escapeHtml(e.name)}${choice ? " &#9998;" : ""}</${tag}>`;
     }).join(" | ")}</div>
     </div>`;
@@ -355,7 +355,7 @@ function raceTraitsHtml() {
 
 /* ----- the feat a race hands you -----
    Variant Human and Custom Lineage grant a feat, and until now the wizard marked that trait with a
-   pencil and moved on — which meant the character was created with the feat unrecorded, and the
+   pencil and moved on - which meant the character was created with the feat unrecorded, and the
    sheet had nowhere to record it either. The sheet has a slot for it now (traitGrantsFeat in
    src/class-library.js); this is the same choice, offered at the moment you pick the race that
    grants it, and handed to the character through featChoices like any other feat.
@@ -409,7 +409,7 @@ function raceSizeHtml() {
 /* ----- multiclassing prerequisites, PHB p163 -----
    5e.tools stores these as { str: 13 } or { or: [{ str: 13 }, { dex: 13 }] }. RAW you must meet the
    prerequisite for BOTH the class you're leaving and the one you're entering, so with three classes
-   every one of them has to qualify — which is what checking each row independently amounts to.
+   every one of them has to qualify - which is what checking each row independently amounts to.
    Only checked when there is more than one class: a single-class character has no prerequisite. */
 function mcRequirementText(req) {
   if (!req) return "";
@@ -438,7 +438,7 @@ function mcFailures(rows, scoreOf) {
    5e.tools' `startingEquipment.defaultData` is a list of lines, each an { a: [...], b: [...] } pair
    ("(a) chain mail or (b) leather armor, longbow, and 20 arrows"). Leaves are either "item|source"
    strings or { item, quantity } / { equipmentType } objects. An equipmentType is a *filter* ("any
-   martial weapon"), not an item, so it can't be resolved to something addable — those lines are
+   martial weapon"), not an item, so it can't be resolved to something addable - those lines are
    listed for you to pick from the Equipment Library yourself, the same way granted-spell filters are
    handled in the Features module. */
 function eqLeafName(leaf) {
@@ -474,7 +474,7 @@ function startingGoldDice() {
 }
 
 /* DMG p38, "Starting at Higher Level". gp is a flat amount plus 1d10 × mult; items is the book's own
-   wording for what magic items the DM hands out, which this sheet reports rather than grants — it has
+   wording for what magic items the DM hands out, which this sheet reports rather than grants - it has
    no random-magic-item table and inventing one would be worse than saying what you're owed. */
 const HIGHER_LEVEL_START = [
   { min: 1, max: 4, gp: 0, mult: 0, items: { low: "", standard: "", high: "" } },
@@ -650,7 +650,7 @@ function profListText(list) {
   });
   return out.join("; ");
 }
-/* The names a proficiency block grants outright — `choose`/`any` blocks contribute nothing, since
+/* The names a proficiency block grants outright - `choose`/`any` blocks contribute nothing, since
    they're an outstanding decision rather than a grant. */
 function flatProfNames(list) {
   const out = [];
@@ -664,7 +664,7 @@ function flatProfNames(list) {
 }
 /* The `choose` blocks in a background's proficiency data, as actual pickers. The data says "choose
    two from this list of six"; showing that sentence and leaving the character without the
-   proficiencies was the gap — this resolves it, one <select> per slot. */
+   proficiencies was the gap - this resolves it, one <select> per slot. */
 function proficiencyOptions(kind, category = "any") {
   if (kind === "skills") return SKILLS.map(s => s[0]);
   if (kind === "languages") return Object.values(LANGUAGE_LIB)
@@ -819,16 +819,16 @@ function creatorStep5Html() {
 }
 
 /* Validity is asked about a *named* step rather than the current one, because the steps are freely
-   navigable tabs — Create has to know whether step 3 is finished while you're standing on step 5. */
+   navigable tabs - Create has to know whether step 3 is finished while you're standing on step 5. */
 function creatorStepBlockerFor(step) {
   const c = CREATOR;
   if (step === 1) {
-    // slotValue, not racialChoice directly — a TCE custom-origin slot stores in originChoice, and
+    // slotValue, not racialChoice directly - a TCE custom-origin slot stores in originChoice, and
     // reading only one of the two stores left the step permanently blocked.
     const unset = racialChoiceSlots().filter(s => !slotValue(s)).length;
     if (unset) return `Choose ${unset} more racial ability increase${unset === 1 ? "" : "s"}.`;
     // Blocked for the same reason the increases are: this is a choice the race makes you responsible
-    // for, and one that used to get lost entirely. Free text, so it is never a hard stop — anything
+    // for, and one that used to get lost entirely. Free text, so it is never a hard stop - anything
     // you type is accepted, including a feat your data doesn't have.
     const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
     if (!featsOff) {
@@ -872,7 +872,7 @@ function creatorStepperHtml() {
   }).join("");
 }
 
-/* Chrome only — the stepper, blocker line and button states. Split out from renderCreator so an edit
+/* Chrome only - the stepper, blocker line and button states. Split out from renderCreator so an edit
    that changes nothing about the step's own controls can refresh what's derived from it WITHOUT
    replacing cr-body. */
 function renderCreatorChrome() {
@@ -894,12 +894,12 @@ function renderCreator() {
   if (typeof crAfterRender === "function") crAfterRender();
   renderCreatorChrome();
   // The comboboxes are fresh elements after every redraw, and their dropdown panel lives outside
-  // cr-body — so it has to be re-attached to whichever field still has focus. See combobox.js.
+  // cr-body - so it has to be re-attached to whichever field still has focus. See combobox.js.
   if (typeof initComboboxes === "function") initComboboxes($("cr-body"));
 }
 
-/* Redraw, then put the cursor back where it was. Typing in a combobox has to redraw — the subrace
-   list, the ability increases and the traits all depend on the race you're halfway through typing —
+/* Redraw, then put the cursor back where it was. Typing in a combobox has to redraw - the subrace
+   list, the ability increases and the traits all depend on the race you're halfway through typing -
    but redrawing replaces the box itself, so focus and caret are restored afterwards. */
 function renderCreatorKeepingFocus(el) {
   const id = el.id, cls = el.className, row = el.dataset.crrow, pos = el.selectionStart;
@@ -909,7 +909,7 @@ function renderCreatorKeepingFocus(el) {
   again.focus();
   try { again.setSelectionRange(pos, pos); } catch (e) { /* not a text input; focus alone is enough */ }
   // The dropdown is reopened by combobox.js's own deferred input handler, which resolves against
-  // whatever ends up focused — this function's job is only to make sure that's the right field.
+  // whatever ends up focused - this function's job is only to make sure that's the right field.
 }
 
 function goToCreatorStep(n) {
@@ -928,7 +928,7 @@ function openCreator() {
 function closeCreator() { comboClose(); const m = $("creator-modal"); if (m) m.style.display = "none"; CREATOR = null; }
 
 /* Roll 4d6-drop-lowest six times, logging each set so the numbers are auditable afterwards rather
-   than appearing from nowhere — same principle as every other roll on the sheet. */
+   than appearing from nowhere - same principle as every other roll on the sheet. */
 function creatorRollScores() {
   const sets = [];
   for (let i = 0; i < 6; i++) {
@@ -946,7 +946,7 @@ function parseGoldSpec(spec) {
   const m = (spec || "").match(/(\d+)d(\d+)\s*(?:[×x*]\s*(\d+))?/i);
   return m ? { n: Number(m[1]), faces: Number(m[2]), mult: Number(m[3] || 1) } : null;
 }
-/* The average of the class's starting-gold dice, rounded down — the same "take the fixed value
+/* The average of the class's starting-gold dice, rounded down - the same "take the fixed value
    instead of rolling" choice the rules offer for hit points, applied to the one other roll character
    creation asks for. A Fighter's 5d4 × 10 averages 125 gp. */
 function averageGold() {
@@ -976,7 +976,7 @@ function creatorRollHigherGold() {
   logEvent("roll", `<b>${CREATOR.higherGold} gp</b> &larr; starting at higher level (DMG p38: ${band.gp} + 1d10 (${d}) × ${band.mult})`);
 }
 
-/* The chosen race/subrace's walking speed, in feet — or null if the race isn't recognized or its
+/* The chosen race/subrace's walking speed, in feet - or null if the race isn't recognized or its
    data doesn't say. Left for the player to fill in by hand in that case, same as everything else
    the wizard can't resolve; see raceWalkSpeed in class-library.js for the two shapes 5e.tools uses. */
 function creatorRaceSpeed() {
@@ -996,7 +996,7 @@ function creatorBuildState() {
     "char-bg": c.background + (c.customBg && c.background ? " (custom)" : (c.customBg ? "Custom" : "")),
   };
   // Falls back to 30 ft (the walking speed of most PHB races) rather than leaving Speed blank when
-  // the race library has no entry for the chosen race — most commonly because the sheet was opened
+  // the race library has no entry for the chosen race - most commonly because the sheet was opened
   // straight from disk (file://), where a browser blocks the auto-load fetch that races.json needs
   // (see autoLoadRaces in class-library.js) and nothing has been imported manually yet. A newly
   // created character's Movement pool should never read 0/0; 30 is closer to right than 0 for nearly
@@ -1004,7 +1004,7 @@ function creatorBuildState() {
   const raceSpeed = creatorRaceSpeed();
   fields["speed"] = String(raceSpeed != null ? raceSpeed : 30);
   // Size: the wizard has been collecting this since step 1 (CREATOR.size, plus raceSizeHtml's picker
-  // for the races that genuinely let you choose) and was throwing it away — the character came out
+  // for the races that genuinely let you choose) and was throwing it away - the character came out
   // Medium whatever you picked. Races that state a single size supply it even though there was no
   // picker to touch; anything unknown stays Medium, which is the field's own default.
   const sizes = (ciFindRace(c.race) || {}).size || [];
@@ -1020,7 +1020,7 @@ function creatorBuildState() {
   // "(unnamed class)" line on the Classes table, so drop it rather than carrying it across.
   const rows = c.classes.filter((r, i) => i === 0 || r.name.trim() || r.lvl > 1);
 
-  /* Background proficiencies. Only what the data states OUTRIGHT is applied — a `choose` block is a
+  /* Background proficiencies. Only what the data states OUTRIGHT is applied - a `choose` block is a
      decision the player still has to make, and silently picking one for them would be worse than
      leaving it visible in the Skills / Proficiencies modules. A custom background is all
      outright picks by definition, so all of it applies. */
@@ -1084,7 +1084,7 @@ function creatorRaceFeatChoices() {
   return out;
 }
 
-/* Items from the chosen equipment package. Only leaves that name a real item are added — an
+/* Items from the chosen equipment package. Only leaves that name a real item are added - an
    "any martial weapon" line has no single answer, so it's left for the Equipment Library. Quantities
    come from the data; everything else about an item (weight, value, AC) is looked up by name at
    render time, exactly as it is for an item added by hand. */
@@ -1110,7 +1110,7 @@ function creatorFinish() {
     n + ((line[c.equipPick[i] || "a"] || []).filter(l => !eqLeafName(l)).length), 0);
   closeCreator();
   addCharacter(state, name);
-  // Current HP starts at max — a newly created character is undamaged, and Max HP is only known once
+  // Current HP starts at max - a newly created character is undamaged, and Max HP is only known once
   // the state is live (it depends on the class table and CON that were just applied).
   $("hp-cur").value = String(maxHP()); commitMath($("hp-cur"));
   recompute(); saveState();
@@ -1150,7 +1150,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Closing creation is deliberate: backdrop clicks and Escape retain the draft.
 
   /* Text boxes: redraw (their value feeds the rest of the step) and put the cursor back.
-     Number boxes: never redraw — update only the readouts derived from them. See this file's header. */
+     Number boxes: never redraw - update only the readouts derived from them. See this file's header. */
   $("cr-body").addEventListener("input", e => {
     const t = e.target; if (!CREATOR) return;
 
@@ -1196,7 +1196,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* `change` rebuilds, so ONLY <select>s and checkboxes are handled here. A text or number box also
-     fires `change`, but on blur — as you click the next control — which would tear that control out
+     fires `change`, but on blur - as you click the next control - which would tear that control out
      of the document before its own click resolved. Those are handled entirely by `input` above. */
   $("cr-body").addEventListener("change", e => {
     const bgc = e.target.closest(".cr-bgchoose");
@@ -1270,26 +1270,26 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ============================================================
-   LEVEL UP — PHB'14 p15, "Beyond 1st Level".
+   LEVEL UP - PHB'14 p15, "Beyond 1st Level".
 
    Levelling is a much shorter walk than creation, and the same order:
    pick which class gains the level (or add a new one, i.e. multiclass),
    then take the hit points. The book offers two ways to take HP and this
    offers both: roll the class's Hit Die, or take "the fixed value shown
    in your class entry, which is the average result of the die roll
-   (rounded up)" — HIT_DIE_FIXED in derived.js, the same numbers maxHPAuto()
+   (rounded up)" - HIT_DIE_FIXED in derived.js, the same numbers maxHPAuto()
    already assumes.
 
    What the sheet does NOT do here, deliberately: Max HP is *computed* from
    your classes and CON (maxHPAuto), so it already changes the moment the
-   level does — there's nothing to write. A rolled Hit Die therefore has to
+   level does - there's nothing to write. A rolled Hit Die therefore has to
    go somewhere that survives that recomputation, which is the Max HP
    override box; taking the average needs no write at all, since that's
    exactly what the formula assumes. This is explained in the dialog rather
    than left for the player to discover.
 
    Features gained at the new level come from the Features panel, which
-   re-renders off the Classes table automatically — the dialog lists them
+   re-renders off the Classes table automatically - the dialog lists them
    as a preview so you know what you're picking up.
    ============================================================ */
 let LEVELUP = null;
@@ -1298,7 +1298,7 @@ function levelUpClasses() {
   return getClasses().map((c, i) => ({ i, name: c.name, sub: c.sub, lvl: c.lvl, hitDie: c.hitDie === "auto" ? classHitDie(c.name) : c.hitDie }));
 }
 
-/* Features the chosen class grants at the level being entered — same lookup the Features panel does,
+/* Features the chosen class grants at the level being entered - same lookup the Features panel does,
    so what's previewed here is exactly what will appear there. */
 function featuresAtLevel(className, subName, level) {
   const rec = ciFindClass(className); if (!rec) return [];
@@ -1309,7 +1309,7 @@ function featuresAtLevel(className, subName, level) {
 }
 
 /* Multiclassing prerequisites for the class you're entering AND every class you already have
-   — checked against the live sheet's scores rather than the wizard's. Reported, not
+   - checked against the live sheet's scores rather than the wizard's. Reported, not
    enforced: the numbers may legitimately be about to change (an ASI on this very level), and the
    sheet's job here is to tell you what RAW asks for, not to refuse the level. */
 function luMcHtml() {
@@ -1425,7 +1425,7 @@ function renderLevelUp() {
   if (typeof initComboboxes === "function") initComboboxes($("lu-body"));
 }
 
-/* Confirm's enabled state, without redrawing the body — so the free-text class fallback can update it
+/* Confirm's enabled state, without redrawing the body - so the free-text class fallback can update it
    on every keystroke without destroying the field being typed into. */
 function renderLevelUpChrome() {
   if (!LEVELUP) return;
@@ -1470,7 +1470,7 @@ function levelUpConfirm() {
   const conMod = abilityMod("con");
 
   /* Max HP. The automatic formula already assumes the fixed average for every level, so a
-     fixed-average level-up on an un-overridden sheet needs no write at all — recompute() above
+     fixed-average level-up on an un-overridden sheet needs no write at all - recompute() above
      has already produced the right number.
 
      Two cases do need a write, and both go through the override box because a literal number is
@@ -1478,7 +1478,7 @@ function levelUpConfirm() {
 
        - a ROLLED hit die, which deviates from the average by `rollDelta`;
        - ANY level-up while an override is already in force, because the override shadows the
-         formula entirely — leave it alone and the character gains a level with no hit points.
+         formula entirely - leave it alone and the character gains a level with no hit points.
 
      The override case adds what the formula thinks this level is worth (autoAfter - autoBefore,
      which picks up per-level bonuses like Hill Dwarf's Dwarven Toughness, not just die + CON)
@@ -1530,8 +1530,8 @@ document.addEventListener("DOMContentLoaded", () => {
       LEVELUP.picks[e.target.dataset.key] = list; renderLevelUp(); return;
     }
   });
-  /* The class box is a combobox (a text input with a datalist), so it redraws on `input` — the
-     feature preview and the prerequisite check both depend on it — and never on `change`, which for
+  /* The class box is a combobox (a text input with a datalist), so it redraws on `input` - the
+     feature preview and the prerequisite check both depend on it - and never on `change`, which for
      a text box fires on blur and would detach whatever you clicked next. Same rule as the creator. */
   $("lu-body").addEventListener("input", e => {
     if (!LEVELUP || e.target.id !== "lu-newclass") return;

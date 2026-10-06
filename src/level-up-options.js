@@ -74,16 +74,12 @@ function luOptionsHtml() {
     const r = luRow(), rec = ciFindClass(r.name), before = new Set(activeFeatures().map(f => f.fkey));
     const subclass = rec && Object.keys(rec.subs || {}).length && r.lvl >= (rec.subLevel || 1) && !levelUpClasses().find(c => c.name === r.name)?.sub
       ? `<label>Subclass <select id="lu-subclass"><option value="">- choose -</option>${Object.values(rec.subs || {}).map(s => `<option value="${escapeHtml(s.shortName || s.name)}"${r.sub === (s.shortName || s.name) ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}</select></label>` : '';
-    const asis = luNewAsis().map((f, i) => {
-      const feat = d.asiFeats[f.fkey] || '', picks = d.asiScores[f.fkey] || [];
-      const select = slot => `<select class="lu-asi" data-fkey="${f.fkey}" data-slot="${slot}"${feat ? ' disabled' : ''}><option value="">- ability -</option>${ABILITIES.map(a => `<option value="${a.key}"${picks[slot] === a.key ? ' selected' : ''}>${a.name}</option>`).join('')}</select>`;
-      const feats = typeof hrSetting === 'function' && hrSetting('feats') === false ? '' : comboboxHtml({ id: 'lu-feat-' + i, value: feat, options: filteredNames('feat', FEAT_LIB, feat), extraClass: 'lu-feat', placeholder: 'Feat instead', dataAttr: `data-fkey="${f.fkey}"`, banKind: 'feat' });
-      return `<fieldset><legend>Ability Score Improvement / Feat</legend>${feats} ${select(0)} ${select(1)}</fieldset>`;
-    }).join('');
+    const asis = luNewAsis().map((f, i) => `<fieldset><legend>Ability Score Improvement / Feat</legend>${asiChoiceHtml(d, f, i, 'lu')}</fieldset>`).join('');
     const options = luOptionGroups().map(g => `<fieldset><legend>${escapeHtml(g.name)}</legend>${optSlotsHtml(g, r.lvl, d.optChoices, 'lu-opt')}</fieldset>`).join('');
     const newlyActive = f => (dbEntryFor(f)?.effects || []).some(e => e.when?.minLevel > totalLevel() && e.when.minLevel <= creatorTotalLevel());
-    const features = luFeatures().filter(f => !before.has(f.fkey) || newlyActive(f) || crLiveChoices(f).some(c => crChoiceMissing(f, c)));
-    const choices = features.map(f => `<details${crLiveChoices(f).length ? ' open' : ''}><summary>${escapeHtml(f.name)}${f.origin?.raceName ? ' (racial)' : ''}</summary><div>${escapeHtml(f.text || '').replace(/\n/g, '<br>')}</div>${crChoicesHtml(f)}</details>`).join('');
+    const newAsiKeys = new Set(luNewAsis().map(f => f.fkey));
+    const features = luFeatures().filter(f => !newAsiKeys.has(f.fkey) && (!before.has(f.fkey) || newlyActive(f) || crLiveChoices(f).some(c => crChoiceMissing(f, c))));
+    const choices = features.map(f => `<details${crLiveChoices(f).length ? ' open' : ''}><summary>${escapeHtml(f.name)}${f.origin?.raceName ? ' (racial)' : ''}</summary><div>${escapeHtml(normalizeDisplayPunctuation(f.text || '')).replace(/\n/g, '<br>')}</div>${crChoicesHtml(f)}</details>`).join('');
     const automaticGrants = luSources().flatMap(source => flattenGrantedSpells(source.spells).filter(g => !g.choose && !g.expanded && g.minLevel > totalLevel() && g.minLevel <= creatorTotalLevel()).map(g => `<div>${escapeHtml(source.name)}: ${escapeHtml(grantSpellName(g.name))} (automatically granted)</div>`)).join('');
     const grants = luSources().map(source => flattenGrantedSpells(source.spells).map((grant, index) => {
       if (!grant.choose || grant.expanded || grant.minLevel > creatorTotalLevel()) return '';
@@ -100,7 +96,7 @@ function luOptionsHtml() {
       }).join('')}</div></details>`;
       const cantrips = crSpellCandidates(r, 0, 0), leveled = crSpellCandidates(r, 1, plan.maxLevel);
       spells = (plan.cantrips ? list('cantrips', 'Cantrips', plan.cantrips, cantrips, true) : '') +
-        (plan.maxLevel ? list('spells', plan.wizard ? 'Spellbook — learn two spells each Wizard level' : plan.style === 'known' ? 'Spells known — you may replace one existing spell' : 'Prepared spells', plan.spells, leveled, plan.wizard) : '');
+        (plan.maxLevel ? list('spells', plan.wizard ? 'Spellbook - learn two spells each Wizard level' : plan.style === 'known' ? 'Spells known - you may replace one existing spell' : 'Prepared spells', plan.spells, leveled, plan.wizard) : '');
       if (plan.wizard) spells += list('prepared', 'Prepared', plan.prepared, leveled.filter(s => store.spells.includes(s.name)), false);
     } else if (plan) spells = '<div class="hint">Load the Spell Library to select spells for this level.</div>';
     return `<div id="lu-options">${subclass}${asis}${options}${choices}${automaticGrants}${grants}${spells}<div id="lu-option-error" class="cr-blocker"></div></div>`;
@@ -113,6 +109,7 @@ function luOptionsBlocker() {
     if (rec && Object.keys(rec.subs || {}).length && r.lvl >= (rec.subLevel || 1) && !r.sub) return 'Choose a subclass.';
     for (const f of luNewAsis()) {
       const feat = d.asiFeats[f.fkey];
+      if (asiChoiceMode(d, f.fkey) === 'feat' && !feat) return 'Choose a feat.';
       if (feat) { if (!ciFindFeat(feat)) return 'Choose a feat from the loaded library.'; }
       else {
         const picks = d.asiScores[f.fkey] || [];
@@ -158,7 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!LEVELUP) return; const t = e.target, d = luDraft();
     const listPick = (store, key, slot, value) => { const a = [...(store[key] || [])]; a[slot] = value; store[key] = a; };
     if (t.id === 'lu-subclass') { const r = luRow(); LEVELUP.subclass = t.value; d.classes[LEVELUP.target === 'new' ? d.classes.length - 1 : LEVELUP.target].sub = t.value; LEVELUP.draftSignature = LEVELUP.target + '|' + r.name + '|' + r.lvl + '|' + t.value; LEVELUP.draft = d; redraw(); return; }
-    if (t.classList.contains('cr-effchoice')) {
+    if (t.classList.contains('lu-asimode')) { setAsiChoiceMode(d, t.dataset.fkey, t.value); }
+    else if (t.classList.contains('cr-effchoice')) {
       const choices = d.effectChoices[t.dataset.fkey] || (d.effectChoices[t.dataset.fkey] = {});
       if (t.dataset.slot != null) listPick(choices, t.dataset.choice, Number(t.dataset.slot), t.value); else choices[t.dataset.choice] = t.value;
     } else if (t.classList.contains('lu-asi')) listPick(d.asiScores, t.dataset.fkey, Number(t.dataset.slot), t.value);

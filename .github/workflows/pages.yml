@@ -6,7 +6,7 @@
 # cache never refreshed (see sw.js's header).
 #
 # What does NOT go up: data/ and characters/, which .gitignore keeps out of the repository in the
-# first place — game data is the user's own and this project never redistributes it. The exclusions
+# first place - game data is the user's own and this project never redistributes it. The exclusions
 # below are belt-and-braces in case someone force-adds a file some day; if you find yourself
 # wondering why the hosted site has no spells, that is the reason and it is deliberate.
 #

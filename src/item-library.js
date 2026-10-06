@@ -1,7 +1,7 @@
 /* ============================================================
-   EQUIPMENT LIBRARY — import & search 5e.tools item JSON
+   EQUIPMENT LIBRARY - import & search 5e.tools item JSON
    Accepts items-base.json ("baseitem"), items.json ("item"), magicvariants.json
-   ("magicvariant"), or any file with these arrays — one search box, one import button, nothing to configure.
+   ("magicvariant"), or any file with these arrays - one search box, one import button, nothing to configure.
    ============================================================ */
 const ITEM_TYPES = {
   $:"Treasure", "$A":"Treasure (Art Object)", "$C":"Treasure (Coinage)", "$G":"Treasure (Gemstone)",
@@ -13,7 +13,7 @@ const ITEM_TYPES = {
   SHP:"Vehicle (Water)", WD:"Wand",
 };
 // 5e.tools weapon/armor property codes (data/items-base.json "property"), suffixed with |SOURCE
-// for the non-core ones (e.g. "Vst|EGW") — split on "|" the same way item type codes are.
+// for the non-core ones (e.g. "Vst|EGW") - split on "|" the same way item type codes are.
 const ITEM_PROPS = {
   "2H":"Two-Handed", A:"Ammunition", AF:"Ammunition (Firearm)", BF:"Burst Fire", F:"Finesse", H:"Heavy",
   L:"Light", LD:"Loading", R:"Reach", RLD:"Reload", S:"Special", T:"Thrown", V:"Versatile", Vst:"Vestige of Divergence",
@@ -27,7 +27,7 @@ const DMG_TYPE_NAMES = {
 };
 // resist/immune/vulnerable are stored as full lowercase names, not codes
 const DMG_FILTER_TYPES = ["acid","bludgeoning","cold","fire","force","lightning","necrotic","piercing","poison","psychic","radiant","slashing","thunder"];
-// Which classes each spellcasting-focus type serves — 5e.tools presents this category by class
+// Which classes each spellcasting-focus type serves - 5e.tools presents this category by class
 // rather than by the raw arcane/druid/holy code the data stores.
 const SCF_CLASSES = {
   arcane: ["Artificer", "Sorcerer", "Warlock", "Wizard"],
@@ -45,7 +45,7 @@ function resetItemLibrary() {
   ITEM_LIB = []; ITEM_BASE_RECORDS = []; ITEM_MAGIC_VARIANTS = [];
 }
 
-// Individual magic items in 5e.tools rarely carry an explicit "value" — these are the average gp
+// Individual magic items in 5e.tools rarely carry an explicit "value" - these are the average gp
 // asking price per rarity from XGE's "Magic Item Price" table (Xanathar's Guide to Everything, p.126,
 // data/book/book-xge.json ~L5628), halved for consumables per that table's own footnote, applied when
 // an item's data marks it as one via a "consumable" flag.
@@ -69,10 +69,10 @@ function parseItemType(raw) {
    Two rulings can move the number:
    - Magic item pricing (S8) replaces a printed price with the fixed mean of XGtE's asking-price roll.
      Distinct from RARITY_DEFAULT_GP above, which uses the same figures but only as a *fallback* when
-     the source data names no price at all — the house rule overrides a printed one too.
+     the source data names no price at all - the house rule overrides a printed one too.
    - Trinkets are worth 0 (R9). 5e.tools' trinkets already carry no value, so this changes nothing
      for the official ones; it's here so a homebrew trinket with a price on it still lands at zero. */
-/* 5e.tools tags trinket-table entries with miscTag "TT", which itemMisc turns into "Trinket Table" —
+/* 5e.tools tags trinket-table entries with miscTag "TT", which itemMisc turns into "Trinket Table" -
    a far better test than the name, since it catches the ones not called "… Trinket". The name check
    stays as a fallback for data (or homebrew) carrying no tag. */
 function isTrinketItem(it) {
@@ -209,7 +209,7 @@ function parseItem(raw, sourceArray) {
     immune: raw.immune || [],
     conditionImmune: raw.conditionImmune || [],
     misc: itemMisc(raw),
-    /* A "generic variant" (5e.tools' itemGroup) is a CATEGORY, not something you own — "Armor of
+    /* A "generic variant" (5e.tools' itemGroup) is a CATEGORY, not something you own - "Armor of
        Resistance" lists the ten concrete items it stands for. Keeping those names is what lets the
        library offer them when you try to add the group, instead of putting an un-resolvable line
        with no weight, value or AC into your inventory. */
@@ -296,7 +296,7 @@ function loadItemFiles(files) {
   });
 }
 /* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
-   Only works when served over http(s) — browsers block fetch() of local files opened via file://.
+   Only works when served over http(s) - browsers block fetch() of local files opened via file://.
    dataFetch, not fetch, so a connected data/ folder answers these too (see src/data-folder.js). */
 const ITEM_DATA_FILES = ["data/items-base.json", "data/items.json", "data/magicvariants.json"];
 async function autoLoadItems() {
@@ -347,12 +347,12 @@ function itemNormalRange(i) {
 
 /* Filter categories, mirroring 5e.tools' own item filter panel. Range-valued facets it also
    offers (Cost, Weight, Armor Class, Range) need a slider rather than tri-state buttons and
-   aren't here yet — see DOCS. Free-text facets over huge value sets (Base Item, Attached
+   aren't here yet - see DOCS. Free-text facets over huge value sets (Base Item, Attached
    Spells) are likewise left to the search box. */
 const ITEM_FGROUPS = [
   { key:"source", label:"Source", dynamic:true, get:i=>[i.source],
     dynOpts:()=>itemSources().map(src=>[src, escapeHtml((typeof SOURCE_NAMES !== "undefined" && SOURCE_NAMES[src]) || src)]) },
-  // Shared with the Spell Library's own "Source Group" filter — see sourceGroupOf() in spell-library.js.
+  // Shared with the Spell Library's own "Source Group" filter - see sourceGroupOf() in spell-library.js.
   { key:"srcgroup", label:"Source Group", get:i=>[typeof sourceGroupOf === "function" ? sourceGroupOf(i.source) : "supplement"],
     opts:[["core","Core"],["supplement","Supplement"],["adventure","Adventure"]] },
   { key:"type", label:"Type", dynamic:true, get:i=>i.type?[i.type]:[], dynOpts:()=>[...new Set(ITEM_LIB.map(i=>i.type).filter(Boolean))].sort() },
@@ -389,7 +389,7 @@ const ITEM_FGROUPS = [
   { key:"weight", label:"Weight", kind:"range", unit:"lb", min:0, max:2000, getNum:i=>i.weight===""?null:i.weight },
   { key:"ac", label:"Armor Class", kind:"range", unit:"AC", min:0, max:25, getNum:i=>i.armor?i.ac:null },
   { key:"wrange", label:"Range", kind:"range", unit:"ft (normal)", min:0, max:600, getNum:i=>itemNormalRange(i) },
-  // House-rule bans — see the identical group in SPELL_FGROUPS for why this is a filter rather than
+  // House-rule bans - see the identical group in SPELL_FGROUPS for why this is a filter rather than
   // a hard exclusion.
   { key:"banned", label:"House Rules", get:i=>[(typeof isBanned === "function" && isBanned("item", i.name, i.source)) ? "banned" : "allowed"],
     opts:[["allowed","Allowed"],["banned","Banned"]] },
@@ -402,7 +402,7 @@ const ITEM_FILTERS = createFilterSet({
 /* Name -> item index, rebuilt lazily whenever the library changes.
    This is on the hot path in a way that is not obvious from the call site: the inventory resolves
    every line's weight/value through here, and it does so from itemsTotalValue(), itemsTotalWeight()
-   AND armorClassAuto() — three passes — inside recompute(), which runs on every keystroke. As a
+   AND armorClassAuto() - three passes - inside recompute(), which runs on every keystroke. As a
    linear .find() over a full 5e.tools equipment import (thousands of entries) that was three
    library scans per item per character typed anywhere on the sheet.
 
@@ -429,7 +429,7 @@ function findLibItemByName(name) {
 }
 
 /* The character's own item list resolves weight/value/description out of ITEM_LIB by name, so it has
-   to be repainted whenever the library itself changes — it is no longer redrawn by recompute(). */
+   to be repainted whenever the library itself changes - it is no longer redrawn by recompute(). */
 function renderItemLibrary() {
   if (typeof recompute === "function") recompute();
   if (typeof renderItemList === "function") renderItemList();
@@ -496,12 +496,12 @@ function toggleItemDetail(link) {
   const it = ITEM_LIB.find(x => (x.name + "|" + x.source) === link.dataset.key); if (!it) return;
   const meta = [it.type, it.rarity, it.reqAttune].filter(Boolean).join(" | ");
   const det = document.createElement("tr"); det.className = "sp-detail";
-  det.innerHTML = `<td></td><td colspan="7"><div class="hint">${meta}</div><div>${escapeHtml(it.text).replace(/\n/g, "<br>")}</div></td>`;
+  det.innerHTML = `<td></td><td colspan="7"><div class="hint">${meta}</div><div>${escapeHtml(normalizeDisplayPunctuation(it.text)).replace(/\n/g, "<br>")}</div></td>`;
   tr.after(det);
 }
 /* A parsed item's group members, defensively.
 
-   ITEM_LIB_SCHEMA guards the cache against exactly this — a library parsed by an older build won't
+   ITEM_LIB_SCHEMA guards the cache against exactly this - a library parsed by an older build won't
    have `groupItems` at all - but a version bump only takes effect once the page reloads and
    re-imports, and reading the field directly meant a stale cache didn't degrade, it threw out of
    renderItemResults() and took the whole Equipment Library UI with it. A missing field should cost
@@ -509,7 +509,7 @@ function toggleItemDetail(link) {
 function groupMembersOf(it) { return (it && it.groupItems) || []; }
 
 /* Adding from the library. A generic variant ("Armor of Resistance", "Cast-Off Armor") is a category
-   rather than a thing you can own — adding its name would put a line in your inventory with no
+   rather than a thing you can own - adding its name would put a line in your inventory with no
    weight, value, AC or description, since nothing in the data describes the category itself. So the
    "…" button expands the category's members inline and each of those is addable, the same
    click-to-expand idiom the rest of the sheet uses. */

@@ -1,5 +1,5 @@
 /* ============================================================
-   DATA FOLDER — one shim so "where does data/ come from" is asked once.
+   DATA FOLDER - one shim so "where does data/ come from" is asked once.
 
    Every library in this sheet reads the user's own copy of 5e.tools' data/
    directory: spells, equipment, classes, races, feats, backgrounds, the
@@ -29,7 +29,7 @@
    run identical code down to the parse.
 
    WHY A HANDLE AND NOT A FILE PICKER. <input type="file" multiple> already
-   exists next to every library and still does — it is the fallback and it
+   exists next to every library and still does - it is the fallback and it
    works everywhere. But it forgets. Every session you would re-pick several
    thousand JSON files, and the bestiary in particular is deliberately never
    cached (~14 MB parsed; see monster-library.js), so "re-import by hand"
@@ -38,8 +38,8 @@
    thing that makes a hosted copy usable at a table.
 
    WHY INDEXEDDB. A FileSystemDirectoryHandle is structured-cloneable but not
-   JSON-serialisable, so localStorage — where every other preference in this
-   project lives — physically cannot hold one. IndexedDB can. That is the
+   JSON-serialisable, so localStorage - where every other preference in this
+   project lives - physically cannot hold one. IndexedDB can. That is the
    entire reason this file talks to a second storage API, and it stores
    exactly one value.
 
@@ -47,12 +47,12 @@
    read it are separate. After a browser restart the handle is still there
    and its permission is back to "prompt", and a browser will only upgrade
    that inside a user gesture. So a returning visitor gets a button, not a
-   silent read — one click, no re-picking. When the permission did survive
+   silent read - one click, no re-picking. When the permission did survive
    (Chrome keeps it for installed apps and for folders you use repeatedly)
    the connection is restored with no click at all.
 
    Chromium only, today. Firefox and Safari have no showDirectoryPicker, and
-   there is no polyfill worth the name — so the bar says so plainly and
+   there is no polyfill worth the name - so the bar says so plainly and
    points at the manual importers rather than pretending.
    ============================================================ */
 
@@ -64,7 +64,7 @@ const DATA_IDB_KEY = "root";
 let DATA_DIR = null;
 /* Why there is no folder: "unsupported" | "none" | "needs-permission" | "denied" | null (connected). */
 let DATA_DIR_STATE = "none";
-/* True when a plain fetch() of data/ works — i.e. the sheet is served next to a real data/ folder.
+/* True when a plain fetch() of data/ works - i.e. the sheet is served next to a real data/ folder.
    Set by probeServedData() at startup. When it's true the bar stays out of the way entirely. */
 let DATA_SERVED = false;
 
@@ -111,7 +111,7 @@ function idbDel(key) {
 /* ---------- resolving a data/ path against the connected folder ---------- */
 
 /* "data/bestiary/index.json" -> ["bestiary", "index.json"]. Returns null for anything that isn't a
-   data/ path, and for anything containing ".." — a loader has no business escaping the folder the
+   data/ path, and for anything containing ".." - a loader has no business escaping the folder the
    user pointed at, and the check is cheaper than reasoning about whether one ever could. */
 function dataRelPath(url) {
   if (typeof url !== "string") return null;
@@ -123,7 +123,7 @@ function dataRelPath(url) {
 }
 
 /* Walks the handle tree to a file. Returns null rather than throwing when any segment is missing,
-   because "this file isn't in your data/ folder" is the ordinary case for every optional library —
+   because "this file isn't in your data/ folder" is the ordinary case for every optional library -
    the loaders are all written to treat a miss as "nothing to load", not as an error. */
 async function dataDirFile(parts) {
   if (!DATA_DIR) return null;
@@ -135,8 +135,8 @@ async function dataDirFile(parts) {
   } catch (e) { return null; }
 }
 
-/* A response-shaped object. Only the four members the loaders actually use are implemented — ok,
-   status, json(), text() — so this is honestly not a Response and isn't pretending to be one for
+/* A response-shaped object. Only the four members the loaders actually use are implemented - ok,
+   status, json(), text() - so this is honestly not a Response and isn't pretending to be one for
    any other purpose. Anything else reaching for .headers would be a bug worth seeing loudly. */
 function dataFileResponse(text) {
   return {
@@ -171,7 +171,7 @@ function dataReady() {
      3. THE NETWORK. A local server with a real data/ folder sitting next to the sheet.
 
    The network outranks the stored copy whenever there IS one, because the server is live and a copy
-   is not — somebody running pmcrwf.cmd should never be served a month-old snapshot of files that are
+   is not - somebody running pmcrwf.cmd should never be served a month-old snapshot of files that are
    right there on the disk. */
 async function dataFetch(url) {
   await dataReady();
@@ -191,7 +191,7 @@ async function dataFetch(url) {
 /* ---------- connecting ---------- */
 
 /* People click the folder they think of as "the data", and that is sometimes data/ itself and
-   sometimes the folder that CONTAINS data/ (pmcrwf's own directory, say — which is exactly what the
+   sometimes the folder that CONTAINS data/ (pmcrwf's own directory, say - which is exactly what the
    file dialog opens on if they navigate there). Both are the right answer to the question they were
    asked, so accept both: if the picked folder looks like a data/ directory, use it; if it holds one,
    descend into it; otherwise use it anyway and let the status line report zero files, which is a
@@ -241,7 +241,7 @@ async function forgetDataFolder() {
   await idbDel(DATA_IDB_KEY).catch(() => {});
   renderDataBar();
   // Dropping the live handle can uncover a stored copy underneath it, which dataFetch will now start
-  // answering from — so the libraries have to be re-read rather than left holding the handle's data.
+  // answering from - so the libraries have to be re-read rather than left holding the handle's data.
   await reloadAllLibraries();
   renderDataBar();
 }
@@ -292,7 +292,7 @@ async function dropSnapshot() {
   renderDataBar();
 }
 
-/* Startup: is there a handle, and may we still read it? Never prompts — a permission dialog with no
+/* Startup: is there a handle, and may we still read it? Never prompts - a permission dialog with no
    click behind it is exactly the thing browsers forbid, and would be obnoxious even if they didn't. */
 async function restoreDataFolder() {
   if (!dataFolderSupported()) { DATA_DIR_STATE = "unsupported"; return; }
@@ -313,14 +313,14 @@ const DATA_PROBES = ["data/spells/index.json", "data/items.json", "data/bestiary
 async function probeServedData() {
   for (const url of DATA_PROBES) {
     try { const r = await fetch(url, { method: "GET" }); if (r.ok) return true; }
-    catch (e) { /* file:// or offline — try the next, then give up */ }
+    catch (e) { /* file:// or offline - try the next, then give up */ }
   }
   return false;
 }
 
 /* ---------- re-running the loaders ---------- */
 
-/* Empties every imported library. Needed because the loaders MERGE — they are built for "import
+/* Empties every imported library. Needed because the loaders MERGE - they are built for "import
    another book on top of what I have", which is right for the per-library file pickers and wrong for
    a folder. Without this, re-picking a folder that no longer contains something leaves it behind:
    pick a folder with Halflings, re-pick one without, and your race list still has Halflings, from a
@@ -328,7 +328,7 @@ async function probeServedData() {
    folders has to be able to take things away as well as add them.
 
    The cost is that anything hand-imported through a library's own file picker goes too. That is the
-   right trade — "this folder is the truth" is a rule someone can hold in their head, and "the folder
+   right trade - "this folder is the truth" is a rule someone can hold in their head, and "the folder
    plus whatever you happened to import in some earlier session" is not. */
 function resetDataLibraries() {
   if (typeof SPELL_LIB !== "undefined") SPELL_LIB = [];
@@ -347,7 +347,7 @@ function resetDataLibraries() {
 
 /* Connecting a folder mid-session has to reach every library, including the two that don't have a
    visible reload button (conditions text, variant rules) and the one that is lazy (the bestiary,
-   which memoises its load and so needs its own reset — see resetBestiary in monster-library.js).
+   which memoises its load and so needs its own reset - see resetBestiary in monster-library.js).
    Kept tolerant of missing functions because the test harnesses load a subset of these files. */
 async function reloadAllLibraries() {
   resetDataLibraries();
@@ -386,7 +386,7 @@ function fmtWhen(ts) {
 
 /* What a re-pick actually changed. The point of saying it out loud is that a stored copy is the one
    thing in this sheet that can silently be wrong, so the moment we DO know something about it is
-   worth spending a sentence on — including, especially, "nothing changed", which tells the user
+   worth spending a sentence on - including, especially, "nothing changed", which tells the user
    their copy was already current and the re-pick was unnecessary. */
 function diffLine(d) {
   if (!d) return "";
@@ -438,7 +438,7 @@ function dataBarHtml() {
   }
 
   // 3. A stored copy, and it is what the sheet is reading. Everything about it that could be stale is
-  //    on screen, because nothing here can check it for you — see the header in src/data-snapshot.js.
+  //    on screen, because nothing here can check it for you - see the header in src/data-snapshot.js.
   if (SNAPSHOT) {
     const age = snapshotAgeDays();
     const stale = snapshotIsStale()
@@ -463,8 +463,8 @@ function dataBarHtml() {
     <a href="DOCS.md#connecting-your-data-folder">Setup</a>${err}`;
 }
 
-/* One line under the toolbar, and only when it has something to say. The local case — sheet served
-   next to its own data/, with nothing connected or stored — renders nothing at all, because telling
+/* One line under the toolbar, and only when it has something to say. The local case - sheet served
+   next to its own data/, with nothing connected or stored - renders nothing at all, because telling
    someone their data loaded is not news. */
 function renderDataBar() {
   const el = dataBarEl(); if (!el) return;
@@ -488,7 +488,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ? reconnectDataFolder() : connectDataFolder();
     } else if (id === "data-bar-pick") {
       const input = document.getElementById("data-folder-input");
-      // Cleared first so re-picking the SAME folder still fires a change event — which is exactly
+      // Cleared first so re-picking the SAME folder still fires a change event - which is exactly
       // what someone does after updating their 5e.tools data, i.e. the case this button is for.
       if (input) { input.value = ""; input.click(); }
     }
@@ -503,8 +503,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (files && files.length) importPickedFolder(files);
   });
 
-  // Paint once DATA_READY has settled every question the bar depends on — is a folder connected, is
-  // there a stored copy, does the server have data/ — so it never flashes a wrong state on the way
+  // Paint once DATA_READY has settled every question the bar depends on - is a folder connected, is
+  // there a stored copy, does the server have data/ - so it never flashes a wrong state on the way
   // to the right one.
   dataReady().then(renderDataBar);
 });

@@ -35,7 +35,7 @@ registerEffects({
   "subclass|cleric|death domain|channel divinity: touch of death": {
     name: "Channel Divinity: Touch of Death", sv: 1,
     effects: [
-      // Spends a Channel Divinity use on one melee hit, so it's toggled rather than always-on —
+      // Spends a Channel Divinity use on one melee hit, so it's toggled rather than always-on -
       // left unconditional it would quietly inflate every attack row's damage.
       { target: "damage-bonus", op: "add",
         value: { sum: [5, { mul: [2, { level: "class", class: "@self" }] }] },
@@ -46,7 +46,7 @@ registerEffects({
   "subclass|cleric|death domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
-      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      // 1d8 at 8th, 2d8 at 14th - the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
       { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit; necrotic" },

@@ -1,5 +1,5 @@
 /* ============================================================
-   BESTIARY LIBRARY — import & search 5e.tools monster JSON.
+   BESTIARY LIBRARY - import & search 5e.tools monster JSON.
 
    Same shape as the Spell and Equipment libraries (parse once into a flat
    record, filter with the shared tri-state engine in filters.js, click a
@@ -14,7 +14,7 @@
       way spells and items do. See resolveCopy() for which _mod modes are
       supported.
 
-   2. LAZY AUTO-LOAD, NO CACHE. The bestiary is ~9 MB across ~96 files —
+   2. LAZY AUTO-LOAD, NO CACHE. The bestiary is ~9 MB across ~96 files -
       an order of magnitude more than the spell (1 MB) and item (2 MB)
       libraries, which load eagerly on every page load. Fetching that for
       every player on every reload, when many will never open the module,
@@ -23,17 +23,17 @@
       companions whose statblocks need resolving. It's still zero-click in
       both cases, just deferred, and takes about a second from a local
       server. It is also the one library that isn't cached to localStorage
-      — see saveLib() for why.
+      - see saveLib() for why.
 
    3. SCALING SUMMONS. Tasha's-style summons (Summon Beast, Summon Fey, …)
-      ship their statblock with placeholders instead of numbers —
+      ship their statblock with placeholders instead of numbers -
       {@hitYourSpellAttack} for the to-hit, and "summonSpellLevel"/"PB"
       inside damage expressions. Those are parsed through to the record
       unresolved and only substituted at roll time against the caster's own
       sheet (see companions.js), so a Bestial Spirit's Maul actually reads
       the caster's spell attack bonus and the level it was cast at.
 
-   Nothing from 5e.tools is bundled — data/bestiary/ is user-supplied and
+   Nothing from 5e.tools is bundled - data/bestiary/ is user-supplied and
    gitignored, exactly like data/spells/ and data/items.json.
    ============================================================ */
 (function () {
@@ -41,16 +41,16 @@
   const $ = id => document.getElementById(id);
   const MON_LIB_SCHEMA = 1;   // bump when the parsed-monster shape changes (forces a one-time re-import)
   let MON_LIB = [];
-  let LOAD_STATE = "idle";    // idle | loading | loaded — drives lazy auto-load (see ensureBestiary)
+  let LOAD_STATE = "idle";    // idle | loading | loaded - drives lazy auto-load (see ensureBestiary)
 
-  /* ---------- 5e.tools code tables (short, fixed, prose-free — see DOCS "Where game data comes from") ---------- */
+  /* ---------- 5e.tools code tables (short, fixed, prose-free - see DOCS "Where game data comes from") ---------- */
   const SIZES = { T: "Tiny", S: "Small", M: "Medium", L: "Large", H: "Huge", G: "Gargantuan" };
   const ALIGN = {
     L: "lawful", N: "neutral", C: "chaotic", G: "good", E: "evil",
     U: "unaligned", A: "any alignment", NX: "neutral", NY: "neutral",
   };
   const SENSE_TAGS = { B: "Blindsight", D: "Darkvision", SD: "Superior Darkvision", T: "Tremorsense", U: "Truesight" };
-  // DMG (2014) p.274 "Experience Points by Challenge Rating" — a number per CR, no prose.
+  // DMG (2014) p.274 "Experience Points by Challenge Rating" - a number per CR, no prose.
   const CR_XP = {
     "0": 10, "1/8": 25, "1/4": 50, "1/2": 100, "1": 200, "2": 450, "3": 700, "4": 1100, "5": 1800,
     "6": 2300, "7": 2900, "8": 3900, "9": 5000, "10": 5900, "11": 7200, "12": 8400, "13": 10000,
@@ -70,7 +70,7 @@
      what the 2014 bestiary actually uses; the spell-list modes
      (replaceSpells/addSpells/removeSpells, ~20 monsters) and _templates
      (~190 monsters, which graft on a whole creature template) are not
-     applied — those records still resolve to a correct base statblock and
+     applied - those records still resolve to a correct base statblock and
      are flagged with `partial` so the UI can say so rather than quietly
      presenting an incomplete block as authoritative.
      ============================================================ */
@@ -87,7 +87,7 @@
     if (Array.isArray(node)) return node.map(n => replaceTxtDeep(n, find, repl));
     if (node && typeof node === "object") {
       const out = {};
-      // "name" is a string like any other here — 5e.tools' replaceTxt deliberately renames actions too.
+      // "name" is a string like any other here - 5e.tools' replaceTxt deliberately renames actions too.
       Object.keys(node).forEach(k => { out[k] = replaceTxtDeep(node[k], find, repl); });
       return out;
     }
@@ -127,7 +127,7 @@
       const find = String(mod.replace && mod.replace.name || mod.replace || "").toLowerCase();
       const i = arr.findIndex(e => String(e && e.name || e).toLowerCase() === find);
       if (i >= 0) { arr.splice(i, 1, ...modItems(mod)); target[prop] = arr; }
-      else target[prop] = arr.concat(modItems(mod));   // base changed shape upstream — append rather than drop
+      else target[prop] = arr.concat(modItems(mod));   // base changed shape upstream - append rather than drop
     }
     // unsupported (spell-list) modes fall through untouched; the record is flagged `partial` by resolveCopy
   }
@@ -207,7 +207,7 @@
       else if (a && a.special) words.push(stripTags(a.special));
       else if (a && a.alignment) words.push(asArray(a.alignment).map(c => ALIGN[c] || c).join(" ") + (a.chance ? ` (${a.chance}%)` : ""));
     });
-    // ["N"] is "neutral", but ["N","G"] is "neutral good" — dedupe only the doubled-neutral case
+    // ["N"] is "neutral", but ["N","G"] is "neutral good" - dedupe only the doubled-neutral case
     const joined = words.join(" ");
     return joined === "neutral neutral" ? "neutral" : joined;
   }
@@ -232,10 +232,10 @@
   /* ----- actions: pull the rollable parts out of 5e.tools' attack sentence -----
      "{@atk mw} {@hit 4} to hit, reach 5 ft., one target. {@h}7 ({@damage 2d4 + 2}) piercing damage."
      A summon's version instead reads "{@atk mw} {@hitYourSpellAttack} to hit … {@damage 1d8 + 4 +
-     summonSpellLevel}" — both the to-hit and the damage stay symbolic here and are resolved against
+     summonSpellLevel}" - both the to-hit and the damage stay symbolic here and are resolved against
      the caster's sheet at roll time (companions.js). */
   const ATK_KIND = { mw: "Melee Weapon Attack", rw: "Ranged Weapon Attack", ms: "Melee Spell Attack", rs: "Ranged Spell Attack", m: "Melee Attack" };
-  // An action's own name can carry tags — almost always {@recharge N}, which stripTags would reduce to
+  // An action's own name can carry tags - almost always {@recharge N}, which stripTags would reduce to
   // a bare "4". Spell it out first ("Whirlwind (Recharge 4-6)"), since when an ability comes back is
   // exactly the kind of thing you need on the button, not buried in the statblock text.
   function actionName(name) {
@@ -406,8 +406,8 @@
   }
   /* The other three libraries cache their parsed form in localStorage. This one deliberately does
      not: the full parsed bestiary is ~14 MB, about 7x the equipment library and larger than every
-     other cache combined, so keeping it would spend most of the origin's storage budget — and risk
-     evicting the spell and item caches, which are read far more often — to save a load that the
+     other cache combined, so keeping it would spend most of the origin's storage budget - and risk
+     evicting the spell and item caches, which are read far more often - to save a load that the
      lazy fetch already defers and that takes about a second from a local server. Files imported by
      hand through the picker live for the session only, same as any other uncached library. */
   function saveLib() { localStorage.removeItem("charsheet-monsterlib"); }   // also clears the key older builds wrote
@@ -435,11 +435,11 @@
   }
   function setStatus(txt) { const el = $("mon-lib-autostatus"); if (el) el.textContent = txt; }
 
-  /* Connecting a data/ folder mid-session invalidates whatever this module concluded earlier —
+  /* Connecting a data/ folder mid-session invalidates whatever this module concluded earlier -
      usually "there is no bestiary here". Throw away the memoised load and the parsed monsters and
      go back to idle, so the next thing that needs a monster loads from the new folder. Deliberately
      does NOT start that load: the bestiary is ~9 MB and stays lazy for the same reason it always
-     was — someone who never opens the module shouldn't pay for it. */
+     was - someone who never opens the module shouldn't pay for it. */
   function resetBestiary() {
     MON_LIB = []; LOAD_STATE = "idle"; _loadPromise = null;
     setStatus("");
@@ -448,7 +448,7 @@
   }
 
   /* ============================================================
-     Filters — mirrors 5e.tools' own bestiary filter panel, minus the facets
+     Filters - mirrors 5e.tools' own bestiary filter panel, minus the facets
      that need data we don't parse. The numeric ones (CR/AC/HP/speed) matter
      most in practice: "beast, CR <= 2, has a fly speed" is the Conjure
      Animals shopping list.

@@ -1,5 +1,5 @@
 /* ============================================================
-   SERVICE WORKER — makes the hosted copy work with the network off.
+   SERVICE WORKER - makes the hosted copy work with the network off.
 
    pmcrwf has always been an offline tool; it just happened to need a local
    server to be one. Hosting it takes that away and hands back a URL, and a
@@ -7,14 +7,14 @@
    own shell and serves itself from disk afterwards.
 
    WHAT IS CACHED. The app: the HTML, every script and stylesheet it names,
-   the themes, the icons. That's it — about a megabyte.
+   the themes, the icons. That's it - about a megabyte.
 
    WHAT IS NOT. Anything under data/. The user's game data is thousands of
    files and can be hundreds of megabytes; it comes from their own disk via
    the folder connection (src/data-folder.js), which reads files directly and
    never goes through the network, so there is nothing here to cache in the
    first place. The one case where a data/ request DOES hit the network is a
-   local server that has a real data/ next to it — and that machine already
+   local server that has a real data/ next to it - and that machine already
    has the files. Either way, caching them would be storing a copy of
    somebody's sourcebook data, which is the one thing this project doesn't do.
 
@@ -26,21 +26,21 @@
    swapped in as a unit. A version either exists entirely or not at all.
 
    WHICH MEANS UPDATES WAIT. A new build installs into a new cache while the
-   running page keeps serving from the old one — swapping under a page that
+   running page keeps serving from the old one - swapping under a page that
    has already loaded half its scripts is exactly the mixed state above. The
    page is told, shows a "reload" line, and the swap happens when you take
    it (src/offline.js).
 
    The precache list is READ OUT OF THE HTML rather than written down here.
    A hand-maintained list would go stale the first time someone added a
-   script and forgot, and the failure — one missing file, offline only — is
+   script and forgot, and the failure - one missing file, offline only - is
    about as quiet as failures get. tests/hosting.html asserts the extraction
    finds every tag in the real page.
    ============================================================ */
 
 /* Stamped by .github/workflows/pages.yml with the commit being deployed. Left as the literal
    placeholder in the repo, which is correct for local use: a version that never changes is a
-   service worker that never updates, and locally you want the server, not the cache — which is why
+   service worker that never updates, and locally you want the server, not the cache - which is why
    src/offline.js doesn't register this at all on localhost. */
 const SW_BUILD = "__BUILD__";
 const CACHE = "pmcrwf-" + SW_BUILD;
@@ -53,7 +53,7 @@ const EXTRA = ["./", "character-sheet.html", "manifest.webmanifest",
   "DOCS.md", "README.md"];
 
 /* Pulls every src="…"/href="…" out of the page. Deliberately a regex and not DOMParser: a service
-   worker has no DOM. The page is ours and its tags are plain, so this is a fair trade — and the
+   worker has no DOM. The page is ours and its tags are plain, so this is a fair trade - and the
    test harness runs this exact function against the real file so a hand-written tag that breaks it
    fails a test rather than an offline load six months later. */
 function shellUrlsFromHtml(html) {
@@ -62,7 +62,7 @@ function shellUrlsFromHtml(html) {
   let m;
   while ((m = re.exec(html))) {
     const u = m[1].trim();
-    if (!u) continue;                              // <link id="theme-css" href=""> — filled in at runtime
+    if (!u) continue;                              // <link id="theme-css" href=""> - filled in at runtime
     if (/^[a-z]+:/i.test(u) || u.startsWith("//")) continue;   // off-origin, data:, mailto:
     if (u.startsWith("#")) continue;
     if (u.startsWith("data/")) continue;           // never the user's game data
@@ -72,7 +72,7 @@ function shellUrlsFromHtml(html) {
 }
 
 /* The theme files are chosen at runtime from a manifest, so no tag names them. Offline with only
-   the theme you happened to be using would be a poor showing — they're a few KB each. */
+   the theme you happened to be using would be a poor showing - they're a few KB each. */
 async function themeUrls() {
   try {
     const res = await fetch("css/themes/index.json", { cache: "reload" });
@@ -98,7 +98,7 @@ async function precache() {
   const urls = [...new Set([SHELL_HTML, ...shellUrlsFromHtml(html), ...(await themeUrls()), ...(await layoutUrls()), ...EXTRA])];
   await cache.put(SHELL_HTML, new Response(html, { headers: res.headers }));
   /* addAll is all-or-nothing, which is what "a version exists entirely or not at all" asks for.
-     A single 404 here fails the install and leaves the previous version serving — the right
+     A single 404 here fails the install and leaves the previous version serving - the right
      outcome, and a visible one in DevTools rather than a silent hole in the cache. */
   await cache.addAll(urls.filter(u => u !== SHELL_HTML));
   return urls.length;
@@ -129,7 +129,7 @@ self.addEventListener("fetch", e => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   // nothing off-origin is ours to serve
 
-  if (/(^|\/)data\//.test(url.pathname)) return;     // the user's game data is never cached — see header
+  if (/(^|\/)data\//.test(url.pathname)) return;     // the user's game data is never cached - see header
 
   e.respondWith((async () => {
     const cached = await caches.match(req, { ignoreSearch: true });

@@ -88,7 +88,7 @@ registerEffects({
     unsupported: [{ reason: "bonus-action weapon attack after casting spell", tags: ["attacks", "action-economy"] }],
   },
 
-  // ----- Psi Warrior (all unsupported — resource pool system) -----
+  // ----- Psi Warrior (all unsupported - resource pool system) -----
   "subclass|fighter|psi warrior|protective field": {
     name: "Protective Field", sv: 1,
     unsupported: [{ reason: "damage reduction (die roll + INT mod) using Psionic Energy die resource", tags: ["resource-pool", "die-roll", "reaction"] }],

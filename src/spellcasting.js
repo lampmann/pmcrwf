@@ -1,5 +1,5 @@
 /* ============================================================
-   SPELLCASTING MODULE — the character's chosen spells, rendered like
+   SPELLCASTING MODULE - the character's chosen spells, rendered like
    the Features panel: grouped by class, click a name to expand its
    description (with 5e.tools-style inline clickable dice/attack text),
    a checkbox to mark it prepared, and an "x" to remove it. Spells are
@@ -13,7 +13,7 @@ let CONCENTRATING = null; // { name, cls } of the one spell currently being conc
 
 /* ----- concentration: 5e only allows one concentration spell at a time, so starting a new one
    always drops whatever came before. Identified by name+cls rather than a CHARACTER_SPELLS array
-   index, since indices shift whenever an earlier spell is removed — this stays valid across
+   index, since indices shift whenever an earlier spell is removed - this stays valid across
    reloads/edits regardless of array position. */
 function isConcentratingOn(s) { return !!CONCENTRATING && CONCENTRATING.name === s.name && CONCENTRATING.cls === (s.cls || ""); }
 function startConcentrating(name, cls) { CONCENTRATING = { name, cls: cls || "" }; scheduleSave(); renderSpellList(); }
@@ -36,9 +36,9 @@ function addCharacterSpell(cls, lvl, name, opts = {}) {
 }
 /* ----- "prepare from which class?" modal -----
    Used for spell-list-expansion grants (Dragonmarks, Eldritch Knight, Divine Soul, Warlock
-   patrons, Wizard subschools — the ".gsp-expanded" links built in class-library.js's
+   patrons, Wizard subschools - the ".gsp-expanded" links built in class-library.js's
    grantedSpellsHtml()). Unlike a domain/innate grant (free, its own header, never prepared),
-   these spells are only *eligible* to be learned/prepared — they still cost a normal known/
+   these spells are only *eligible* to be learned/prepared - they still cost a normal known/
    prepared slot on a real class, so the user has to say which one. The chosen spell is tagged
    with a `note` (the granting trait's name) purely for display, so its origin isn't lost once
    it's sitting in that class's ordinary spell list. */
@@ -171,11 +171,11 @@ function renderSpellList() {
   const casterHtml = casters.map(c => {
     const info = classSpellAllowance(c);
     // Granted spells (domain/racial, tagged with grantSrc) get their own header/group below and never
-    // count toward a class's normal Known/Prepared/Spellbook totals — see grantSrc handling further down.
+    // count toward a class's normal Known/Prepared/Spellbook totals - see grantSrc handling further down.
     const allRows = CHARACTER_SPELLS.map((s, i) => ({ ...s, i })).filter(s => !s.grantSrc && s.cls === c.name.trim())
       .sort(managedSpellCompare);
     // Cantrips are tracked separately (their own known-cantrips table) and never count toward a
-    // "known"/spellbook/prepared total — e.g. a Wizard's cantrips aren't written in their spellbook.
+    // "known"/spellbook/prepared total - e.g. a Wizard's cantrips aren't written in their spellbook.
     const leveled = allRows.filter(s => s.lvl > 0), cantrips = allRows.filter(s => s.lvl === 0);
     const subNote = c.sub.trim() ? ` <span class="hint">/ ${escapeHtml(c.sub)}</span>` : "";
     const notes = [];
@@ -189,14 +189,14 @@ function renderSpellList() {
         : `Prepared ${prepHave}/${info.max}`);
     }
     const items = allRows.map(s => {
-      // Cantrips are always "on" — 5e has no cantrip-preparation step — so only leveled spells get the checkbox.
+      // Cantrips are always "on" - 5e has no cantrip-preparation step - so only leveled spells get the checkbox.
       const prepBox = (info.style === "prepared" && s.lvl > 0)
         ? `<label class="hint" style="margin-left:.4rem"><input type="checkbox" class="sp2-prep" data-idx="${s.i}" ${s.prep ? "checked" : ""}> prepared</label>` : "";
       return spellLineHtml(s, prepBox);
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no spells added yet</div>";
     return `<div style="margin:.5rem 0 .1rem"><b>${escapeHtml(c.name)} ${c.lvl}</b>${subNote} <span class="hint">- ${notes.join(" | ")}</span></div>${items}`;
   }).join("");
-  // Granted spells (Cleric domain, Mark of X, etc. — see class-library.js's .gsp-link) are grouped by
+  // Granted spells (Cleric domain, Mark of X, etc. - see class-library.js's .gsp-link) are grouped by
   // their own source name instead of by class, and are always-available so they never show a "prepared"
   // checkbox or count against any class's Known/Prepared total.
   const grantedGroups = [...new Set(CHARACTER_SPELLS.filter(s => s.grantSrc).map(s => s.grantSrc))];
@@ -251,7 +251,7 @@ function toggleSpell2Detail(link) {
    Turns {@damage X}/{@dice X}/{@hit X} tags into click-to-roll links, and bare
    "(melee/ranged) spell attack" phrases into a link that rolls like the row's
    own "to hit" button used to (same spellAttackBonus(), routed through the
-   D20SEL adv/dis machinery in dice.js — see the ".atk-roll" case in rollInfo()). */
+   D20SEL adv/dis machinery in dice.js - see the ".atk-roll" case in rollInfo()). */
 const ATK_PHRASE_RE = /\b(melee or ranged spell attack|melee spell attack|ranged spell attack|spell attack)\b/gi;
 function splitSpellTags(raw) {
   const nodes = [];
@@ -310,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     // Handled on click (not "change"): a checkbox's native "input" event fires before "change", and the
-    // app's global input-listener triggers a full recompute()/re-render that replaces this very checkbox —
+    // app's global input-listener triggers a full recompute()/re-render that replaces this very checkbox -
     // by the time "change" would bubble here it's already detached and the event never arrives. Click fires
     // first, and a checkbox's .checked has already flipped by the time a delegated click listener sees it
     // (that's the browser's own "activation behavior", not something we set), so it's safe to read here.

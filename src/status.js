@@ -1,5 +1,5 @@
 /* ============================================================
-   status.js — Death Saves, Exhaustion, and Conditions trackers.
+   status.js - Death Saves, Exhaustion, and Conditions trackers.
    Self-contained. The checkboxes / select live in the HTML with
    data-persist, so they save & load through the normal persistence
    path; this file only adds the death-save roll logic + the

@@ -381,19 +381,31 @@ function creatorScoreWithAsi(ab) {
   const withAsi = creatorFinalScore(ab) + creatorAsiIncrease(ab);
   return Math.min(30, withAsi + Math.min(creatorFeatIncrease(ab), Math.max(0, 20 - withAsi)));
 }
+function asiChoiceMode(draft, key) {
+  return draft.asiModes?.[key] || (draft.asiFeats[key] ? "feat" : "asi");
+}
+function setAsiChoiceMode(draft, key, mode) {
+  (draft.asiModes || (draft.asiModes = {}))[key] = mode;
+  draft.asiFeats[key] = "";
+  draft.asiScores[key] = [];
+  delete draft.effectChoices[key];
+}
+/* Choose ASI or feat first, then show only the controls for that benefit. */
+function asiChoiceHtml(draft, feature, index, prefix) {
+  const key = feature.fkey, mode = asiChoiceMode(draft, key);
+  const feat = draft.asiFeats[key] || "", picks = draft.asiScores[key] || [];
+  const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
+  const modeClass = prefix + "-asimode", abilityClass = prefix === 'lu' ? 'lu-asi' : 'cr-asiscore';
+  const featClass = prefix === 'lu' ? 'lu-feat' : 'cr-asifeat';
+  const select = slot => `<label>+1 <select aria-label="Ability increase ${slot + 1}" class="${abilityClass}" data-fkey="${key}" data-slot="${slot}"><option value="">- ability -</option>${ABILITIES.map(a => `<option value="${a.key}"${picks[slot] === a.key ? ' selected' : ''}>${a.name}</option>`).join('')}</select></label>`;
+  const featBox = comboboxHtml({ id: prefix + '-asifeat-' + index, value: feat, options: filteredNames('feat', FEAT_LIB, feat), extraClass: featClass,
+    placeholder: 'Choose feat', dataAttr: `data-fkey="${key}"`, banKind: 'feat' });
+  return `<div class="asi-choice"><select aria-label="Ability Score Improvement or Feat" class="${modeClass}" data-fkey="${key}"><option value="asi"${mode === 'asi' ? ' selected' : ''}>Ability Score Improvement</option>${featsOff ? '' : `<option value="feat"${mode === 'feat' ? ' selected' : ''}>Feat</option>`}</select>
+    ${mode === 'feat' && !featsOff ? featBox : select(0) + ' ' + select(1)}</div>${mode === 'feat' && feat ? crChoicesHtml(feature) : ''}`;
+}
 function crAsiHtml() {
   const slots = crAsiSlots(); if (!slots.length) return "";
-  const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
-  const rows = slots.map((f, n) => {
-    const feat = CREATOR.asiFeats[f.fkey] || "";
-    const picks = CREATOR.asiScores[f.fkey] || ["", ""];
-    const sel = i => `<select class="cr-asiscore" data-fkey="${f.fkey}" data-slot="${i}"${feat.trim() ? " disabled" : ""}><option value="">-</option>` +
-      ABILITIES.map(a => `<option value="${a.key}"${picks[i] === a.key ? " selected" : ""}>${a.key.toUpperCase()}</option>`).join("") + `</select>`;
-    const featBox = featsOff ? "" : comboboxHtml({ id: "cr-asifeat-" + n, value: feat, options: filteredNames("feat", FEAT_LIB, feat),
-      placeholder: "feat", extraClass: "cr-asifeat", width: "11rem", dataAttr: `data-fkey="${f.fkey}"`, banKind: "feat" }) + " or ";
-    return `<div>${escapeHtml(f.origin.className)} ${f.level}: ${featBox}+1 ${sel(0)} +1 ${sel(1)}</div>${feat.trim() ? crChoicesHtml(f) : ""}`;
-  }).join("");
-  return `<div style="margin-top:.5rem"><b>Ability Score Improvements</b>${rows}</div>`;
+  return `<div style="margin-top:.5rem"><b>Ability Score Improvements</b>${slots.map((f, n) => `<div>${escapeHtml(f.origin.className)} ${f.level}: ${asiChoiceHtml(CREATOR, f, n, 'cr')}</div>`).join('')}</div>`;
 }
 
 /* ---------- step 4: spells ---------- */
@@ -679,6 +691,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const list = (CREATOR.optChoices[t.dataset.optkey] || []).slice(); list[Number(t.dataset.slot)] = t.value;
       CREATOR.optChoices[t.dataset.optkey] = list;
       renderCreator(); return;
+    }
+    if (t.classList.contains("cr-asimode")) {
+      setAsiChoiceMode(CREATOR, t.dataset.fkey, t.value); renderCreator(); return;
     }
     if (t.classList.contains("cr-asiscore")) {
       const picks = (CREATOR.asiScores[t.dataset.fkey] || ["", ""]).slice(); picks[Number(t.dataset.slot)] = t.value;

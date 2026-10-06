@@ -1,7 +1,7 @@
 /* ============================================================
-   attacks.js — Attacks / Weapons (DRAFT).
+   attacks.js - Attacks / Weapons (DRAFT).
    A table of weapon/attack rows. Per row: name, ability (Str / Dex /
-   Finesse=higher of the two / —), proficient toggle, an "fx" toggle (see
+   Finesse=higher of the two / -), proficient toggle, an "fx" toggle (see
    below), an attack "misc" field, damage dice, "add ability mod to damage"
    toggle, and a damage "misc" field. From those it computes a to-hit bonus
    and a damage expression, and gives you roll buttons: to hit, damage, or
@@ -9,7 +9,7 @@
 
    To-hit buttons use class "wpn-roll" so the shared dice engine
    (dice.js D20SEL / rollInfo / fireRoll) handles advantage/disadvantage,
-   the right-click menu, and the modifier tooltip for free — attacks.js
+   the right-click menu, and the modifier tooltip for free - attacks.js
    just keeps each button's data-bonus / data-dice / data-rolllabel current.
    The combined button (.wpn-both) is handled here instead, since it fires
    two rolls and reports them as one log entry.
@@ -27,8 +27,8 @@
    Curse, …) fold into every row's to-hit and damage exactly like that
    row's own Hit+ / Dmg+ field, and an adv/dis on "attack-hit" (Reckless
    Attack, Vow of Enmity, Steady Aim) forces the to-hit roll's mode. The
-   engine has no per-weapon predicate — one global bucket is all it can
-   express — so each row carries an "fx" checkbox to opt out when a bonus
+   engine has no per-weapon predicate - one global bucket is all it can
+   express - so each row carries an "fx" checkbox to opt out when a bonus
    doesn't belong to that weapon (Sharpshooter on your dagger, Rage on your
    longbow). New rows default to fx on. Whenever effects are folded in, the
    affected button is marked .has-eff and its tooltip names every
@@ -40,14 +40,14 @@
    damage dice are doubled and any "damage-crit" dice added on top. Both
    apply to a routine's swings as well as a single attack. What still can't
    be expressed is a crit die the WEAPON defines (Savage Attacks, Brutal
-   Critical) — the engine has no per-weapon context, which is the same
+   Critical) - the engine has no per-weapon context, which is the same
    reason there's no weapon-property predicate.
    ============================================================ */
 (function () {
   "use strict";
   const $ = id => document.getElementById(id);
   // The shared escaper (text-utils.js), not a local quotes-only one: these values are written into
-  // both HTML attributes and, via the roll log, into element bodies — a `"`-only escape is safe for
+  // both HTML attributes and, via the roll log, into element bodies - a `"`-only escape is safe for
   // the former and not for the latter, and one attack name feeds both.
   const esc = v => escapeHtml(v || "");
   const signed = n => (n >= 0 ? "+" + n : "" + n);
@@ -86,7 +86,7 @@
   function getAttacks() { return allRows().map(rowData); }
   function rowById(id) { return allRows().find(tr => tr.dataset.atkid === id) || null; }
 
-  /* ----- feature effects (see the header comment) — every read is gated on the row's own fx flag,
+  /* ----- feature effects (see the header comment) - every read is gated on the row's own fx flag,
      so a row with fx off computes exactly as it did before the effects engine reached this module. */
   const fxFlat = (d, t) => (d.fx ? effFlat(t) : 0);
   const fxDice = (d, t) => (d.fx ? effDice(t) : "");
@@ -100,7 +100,7 @@
     if (!parts.length && !notes.length) return "";
     return [parts.length ? `${label}: ${parts.join(", ")}` : "", ...notes].filter(Boolean).join("\n");
   }
-  // The underline means "a number here was changed", so it tracks contributions only — a feature
+  // The underline means "a number here was changed", so it tracks contributions only - a feature
   // that contributes nothing but a `note` still gets its reminder in the tooltip, unmarked.
   function paintFx(btn, d, target, label) {
     const title = fxTitle(d, target, label);
@@ -109,7 +109,7 @@
   }
 
   /* Proficiency Dice (DMG p263) applies to attack rolls as well as checks and saves, so a proficient
-     row trades its flat bonus for the die — see proficiencyDiceTerm in variant-rules.js. */
+     row trades its flat bonus for the die - see proficiencyDiceTerm in variant-rules.js. */
   function toHit(d) {
     const pb = parseBonus(d.atkMisc);
     const profDie = (d.prof && typeof proficiencyDiceTerm === "function") ? proficiencyDiceTerm(1) : "";
@@ -137,7 +137,7 @@
   function hitMode(d) {
     /* Three things can force a weapon roll's mode and they all cancel against each other the same
        way: this row's feature effects, an oversized weapon, and whatever conditions you're under.
-       Conditions apply whether or not the row's Fx box is ticked — Fx opts a weapon out of your
+       Conditions apply whether or not the row's Fx box is ticked - Fx opts a weapon out of your
        FEATURES, not out of being poisoned. */
     let fx = fxMode(d, "attack-hit") || "";
     if (typeof conditionMode === "function") fx = combineModes(fx, conditionMode("attack-hit")) || "";
@@ -158,7 +158,7 @@
       (over && over.disadvantage ? " (oversized)" : "");
     hitBtn.textContent = "to hit " + signed(th.bonus) + (th.dice || "");
     paintFx(hitBtn, d, "attack-hit", "To hit");
-    /* Unusable is stated and styled, never blocked — the button still rolls. Same rule as the rest of
+    /* Unusable is stated and styled, never blocked - the button still rolls. Same rule as the rest of
        the sheet: the DM is at the table and this one is explicitly a "you can rule that…" suggestion. */
     tr.classList.toggle("atk-oversized", !!(over && over.disadvantage));
     tr.classList.toggle("atk-unusable", !!(over && over.unusable));
@@ -193,7 +193,7 @@
      engine keeps the lowest, and the row's fx flag gates it like every other effect read. */
   function critMinFor(d) { return (d.fx && typeof effCritMin === "function") ? effCritMin("attack-crit-range") : 20; }
   function isCrit(d20, min) { return d20.length === 1 && d20[0] >= (min || 20); }
-  /* Crit damage: double every dice term (the standard rule), then add whatever `damage-crit` grants —
+  /* Crit damage: double every dice term (the standard rule), then add whatever `damage-crit` grants -
      Savage Attacks and Brutal Critical add dice ONLY on a crit, which is why they can't live in the
      ordinary damage expression. Those extra dice are added once, not doubled: the feature already
      says how many dice a crit adds. */
@@ -284,7 +284,7 @@
     const add = $("btn-add-attack");
     if (add) add.addEventListener("click", () => { addAttackRow(); scheduleSave(); if (typeof renderRoutines === "function") renderRoutines(); });
     // Row fields, ability scores, level and proficiency all reach these numbers through recompute()
-    // (derived.js), which calls updateAttackRows() below — the same pass that rebuilds the effects
+    // (derived.js), which calls updateAttackRows() below - the same pass that rebuilds the effects
     // snapshot, so a feature toggle flipped in the effects strip lands here too, not just typing.
     document.addEventListener("click", e => {
       const del = e.target.closest(".atk-del");
@@ -304,12 +304,12 @@
   window.getAttacks = getAttacks;
   window.addAttackRow = addAttackRow;
   window.updateAttackRows = () => { if ($("attack-rows")) updateAllDerived(); };
-  // [{id, name, bonus, dice, dmg}] computed live — the Routines module's attack picker reads this
+  // [{id, name, bonus, dice, dmg}] computed live - the Routines module's attack picker reads this
   window.attacksForRoutines = () => getAttacks().map(d => {
     const th = toHit(d);
     return { id: d.id, name: d.name || "(unnamed)", bonus: th.bonus, dice: th.dice, dmg: damageExpr(d) };
   });
-  // one swing of the attack with this id, as text + damage total (no logging — the caller presents it)
+  // one swing of the attack with this id, as text + damage total (no logging - the caller presents it)
   window.rollAttackById = (id, mode) => { const tr = rowById(id); return tr ? rollAttackOnce(rowData(tr), mode) : null; };
   // same, but for the Routines module: also reports the raw hit total and auto-doubles crit damage dice
   window.rollAttackForRoutineById = (id, mode) => { const tr = rowById(id); return tr ? rollAttackForRoutine(tr, mode) : null; };

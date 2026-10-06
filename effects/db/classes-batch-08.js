@@ -25,7 +25,7 @@ registerEffects({
   "subclass|cleric|tempest domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
-      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      // 1d8 at 8th, 2d8 at 14th - the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
       { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
@@ -60,7 +60,7 @@ registerEffects({
   "subclass|cleric|trickery domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
-      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      // 1d8 at 8th, 2d8 at 14th - the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
       { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
@@ -108,7 +108,7 @@ registerEffects({
   "subclass|cleric|twilight domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
-      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      // 1d8 at 8th, 2d8 at 14th - the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
       { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
@@ -153,7 +153,7 @@ registerEffects({
   "subclass|cleric|war domain|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
-      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      // 1d8 at 8th, 2d8 at 14th - the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
       { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },
@@ -196,7 +196,7 @@ registerEffects({
   "subclass|cleric|zeal domain (psa)|divine strike": {
     name: "Divine Strike", sv: 1,
     effects: [
-      // 1d8 at 8th, 2d8 at 14th — the second effect is the *increment*, since adddice accumulates.
+      // 1d8 at 8th, 2d8 at 14th - the second effect is the *increment*, since adddice accumulates.
       { target: "damage-bonus", op: "adddice", value: "1d8" },
       { target: "damage-bonus", op: "adddice", value: "1d8", when: { minLevel: 14 } },
       { target: "damage-bonus", op: "note", text: "once per turn, on a weapon hit" },

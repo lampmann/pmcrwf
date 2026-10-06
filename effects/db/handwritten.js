@@ -1,5 +1,5 @@
 /* ============================================================
-   Hand-authored effects entries — proves the schema end to end before any
+   Hand-authored effects entries - proves the schema end to end before any
    LLM conversion pipeline exists. Small and curated on purpose; bulk
    coverage (the rest of feats.json, every class/subclass, races.json) is
    meant to come later from an offline Haiku 4.5 conversion pass over the
@@ -44,8 +44,8 @@ registerEffects({
       { target: "score-{choice:ability}", op: "add", value: 1, activation: { kind: "choice", choice: "ability" } },
     ],
   },
-  // Written against attack-hit/damage-bonus while both were still reserved, and applied — with no
-  // re-conversion — the day the Attacks module learned to read them. The working example of why
+  // Written against attack-hit/damage-bonus while both were still reserved, and applied - with no
+  // re-conversion - the day the Attacks module learned to read them. The working example of why
   // the reserved-target scheme exists (see the header comment in src/effects.js).
   "feat|sharpshooter": {
     name: "Sharpshooter", sv: 1,

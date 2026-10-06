@@ -1,5 +1,5 @@
 /* ============================================================
-   FEATURES — import 5e.tools class-*.json / races.json / feats.json,
+   FEATURES - import 5e.tools class-*.json / races.json / feats.json,
    show the features your Race+Subrace and Classes table (name / subclass /
    level) entitle you to. For any class/subclass feature literally named
    "Ability Score Improvement", also offer a feat picker (from feats.json)
@@ -23,7 +23,7 @@ const FEAT_SCHEMA = 4;   // 4: retain spell grants; 3: keep the ability increase
 // { featName: { name, source, text, ability } } - ability is 5e.tools' own list ([{ cha: 1 }], [{ choose: { from, amount } }])
 let FEAT_LIB = {};
 const BACKGROUND_SCHEMA = 3;   // 3: retain feats and spell grants; 2: prefer 2014 records
-/* Backgrounds are imported like everything else — 5e.tools' own data/backgrounds.json, which most
+/* Backgrounds are imported like everything else - 5e.tools' own data/backgrounds.json, which most
    people won't have unless they copied the whole data/ folder. Everything that reads BACKGROUND_LIB
    degrades to free text when it's empty, so the sheet never depends on the file being there.
    { name: { name, source, skills:[..], tools:[..], languages:n|[..], feature:{name,text}, equipment } } */
@@ -68,14 +68,14 @@ function loadLanguageLib() {
 // Persisted as part of the character (collectState/applyState in persistence.js).
 let FEAT_CHOICES = {};
 /* An Ability Score Improvement that was spent on scores rather than on a feat:
-   { fkey: ["dex", "dex"] } is +2 DEX, { fkey: ["str", "con"] } is +1 to each — which is exactly how
+   { fkey: ["dex", "dex"] } is +2 DEX, { fkey: ["str", "con"] } is +1 to each - which is exactly how
    the rule reads ("increase one ability score by 2, or two ability scores by 1"), so picking the
    same ability twice and picking two different ones need no separate cases. Kept apart from
    FEAT_CHOICES because an ASI is one or the other, never both. */
 let ASI_CHOICES = {};
 
 /* The total an ability has gained from ASIs taken on features you currently have. Only counts slots
-   with no feat chosen — a slot spent on a feat gave you the feat instead. */
+   with no feat chosen - a slot spent on a feat gave you the feat instead. */
 function asiTotal(ab) {
   let n = 0;
   Object.entries(ASI_CHOICES).forEach(([fkey, picks]) => {
@@ -95,14 +95,14 @@ function asiSources(ab) {
   return out;
 }
 // Limited-use tracking, keyed by the same feature key as FEAT_CHOICES/feat-link.
-// { used: number, pendingRests: number|null } — pendingRests is only set for a DB entry's
+// { used: number, pendingRests: number|null } - pendingRests is only set for a DB entry's
 // `uses.delayed` ("until you finish NdN long rests") recharge. The uses spec itself (whether a
 // feature has limited uses at all, and its max/recharge) comes from EFFECTS_DB (see usesSpecFor in
-// effects.js) — declared per-entry, not guessed from the feature's text at render time.
+// effects.js) - declared per-entry, not guessed from the feature's text at render time.
 // Persisted as part of the character (collectState/applyState in persistence.js).
 let USES_STATE = {};
 // Populated at render time: featureKey -> the exact text that was displayed for it
-// (the class/subclass/race trait text, or — for an ASI slot with a feat chosen — the
+// (the class/subclass/race trait text, or - for an ASI slot with a feat chosen - the
 // feat's text). Used by the rest buttons to re-scan for limited-use features without
 // re-walking the whole render tree.
 let FEATURE_TEXT_BY_KEY = {};
@@ -176,7 +176,7 @@ function parseRaceFile(j) {
     // whose base version competes with named ones (Human, Half-Elf, Half-Orc, Dragonborn, Tiefling).
     // It is not empty filler: the nameless PHB Human subrace is where that race's +1-to-everything
     // lives, since the race record itself carries no `ability` at all. So it needs a name to be
-    // selectable and to key state off — without one it landed under the literal key "undefined" and
+    // selectable and to key state off - without one it landed under the literal key "undefined" and
     // anything reading `sub.name` threw.
     const name = s.name || BASE_SUBRACE;
     // Speed is usually only set at the race level; a subrace carries its own `speed` only when it
@@ -216,7 +216,7 @@ function raceWalkSpeed(speed) {
 }
 
 /* The walking speed implied by whatever is in the Race/Subrace boxes, or 30 when the race isn't
-   recognized — most often because the sheet was opened straight from disk (file://), where the
+   recognized - most often because the sheet was opened straight from disk (file://), where the
    browser blocks the fetch autoLoadRaces() needs. 30 is the walking speed of most PHB races and is
    closer to right than nothing for nearly all the rest. */
 function sheetRaceSpeed() {
@@ -254,17 +254,17 @@ function syncRaceSpeed() {
 }
 /* ----- granted spells (Cleric domain spells, Mark of X subraces, Eldritch Knight/Divine Soul/
    Warlock-patron/Wizard-subschool spell-list expansions, etc.) -----
-   5e.tools' "additionalSpells" blocks come in a few shapes — "prepared"/"known"/"innate" keyed
+   5e.tools' "additionalSpells" blocks come in a few shapes - "prepared"/"known"/"innate" keyed
    by the level (class level for a subclass, character level for a subrace) at which the spell
    unlocks, values either a flat name array or nested one level deeper (e.g. innate "daily"/"rest"
    counts); these are auto-granted and free (no slot, no preparation). "expanded" keyed by spell
-   level ("s1","s2",...) means something different — "added to your spell list" — the spell is
+   level ("s1","s2",...) means something different - "added to your spell list" - the spell is
    merely *eligible* to be learned/prepared through the class's own normal mechanic, same as any
    other spell on that list; it still costs a known/prepared slot. Some grants list the same spell
-   in both shapes (e.g. Mark of Warding's "alarm" is both innately known AND list-expanded) — the
+   in both shapes (e.g. Mark of Warding's "alarm" is both innately known AND list-expanded) - the
    free/innate version wins in that case, since it's strictly better. collectNames() recurses
    through either shape uniformly. */
-/* A grant's leaves are usually literal spell names, but 5e.tools also uses *filter objects* —
+/* A grant's leaves are usually literal spell names, but 5e.tools also uses *filter objects* -
    { all: "level=0|class=Wizard" } ("every spell matching this is added to your list", e.g. Eldritch
    Knight, Chronurgy Magic's "source=EGW") and { choose: "level=0;1;2;3", count: 1 } ("pick this many
    from the matching spells", e.g. College of Lore, Death Domain). Those aren't spells, so they can't
@@ -358,7 +358,7 @@ function parseFeatFile(j) {
   (j.feat || []).forEach(f => { if (!preferRulesRecord(FEAT_LIB[f.name], f)) return; FEAT_LIB[f.name] = { name: f.name, source: f.source, text: stripTags(flattenEntries(f.entries)), ability: Array.isArray(f.ability) ? f.ability : [], grantedSpells: f.additionalSpells || [] }; });
 }
 /* Backgrounds. 5e.tools stores the mechanical parts in the same "proficiencies" shapes the classes
-   use — a flat list, or a { choose: { from, count } } block. Both are kept as-is and interpreted at
+   use - a flat list, or a { choose: { from, count } } block. Both are kept as-is and interpreted at
    render time (see creator.js), rather than flattened here, because a `choose` is a decision the
    player has to make and the sheet needs to know that it's outstanding.
 
@@ -422,7 +422,7 @@ function loadClassFiles(files) {
   });
 }
 /* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
-   Only works when served over http(s) — browsers block fetch() of local files opened via file://.
+   Only works when served over http(s) - browsers block fetch() of local files opened via file://.
    dataFetch, not fetch, so a connected data/ folder answers these too (see src/data-folder.js). */
 // 5e.tools' data/class/ has no index.json, so we probe the known 2014-class filenames directly.
 const CLASS_DATA_FILES = ["artificer", "barbarian", "bard", "cleric", "druid", "fighter", "monk", "mystic",
@@ -585,7 +585,7 @@ function optGroupPicks(group, optChoices) {
 /* ----- the single source of truth for "what features does this character currently have" -----
    Used by renderClassFeatures()/renderRaceSection() (to build the Features panel), by applyRest()
    (to re-scan for limited-use recovery), and by the effects engine (effects.js) to know which
-   EFFECTS_DB entries are live. None of those three depends on either of the others having run —
+   EFFECTS_DB entries are live. None of those three depends on either of the others having run -
    each calls this fresh. Race/subrace-trait entries always carry text; class/subclass features do
    too, except an "Ability Score Improvement" slot with no feat chosen yet, whose `text` is null
    (isAsi is true either way, so callers can still render its picker). */
@@ -625,7 +625,7 @@ function featuresFor({ race = "", subrace = "", background = "", classes = [], f
           : { kind: "race", raceName: rec.name };
         /* A trait that grants a feat becomes a slot: same picker, same FEAT_CHOICES storage, same
            effects wiring a class ASI gets, so a Variant Human's Alert reaches the initiative box by
-           the same path a Fighter's does. NOT isAsi, though — an ASI is "a feat OR two +1s" and this
+           the same path a Fighter's does. NOT isAsi, though - an ASI is "a feat OR two +1s" and this
            is only the feat, so it carries no score pickers.
 
            Until a feat is chosen the trait keeps its own effKey, so an effects entry written against
@@ -724,7 +724,7 @@ function optSlotsHtml(g, lvl, optChoices, cls) {
    (see traitGrantsFeat). One control, one class, one storage map, so the change handler and the
    typeahead below don't have to learn that racial feats exist.
 
-   A table can switch feats off entirely — see src/house-rules.js. The picker goes away, but an
+   A table can switch feats off entirely - see src/house-rules.js. The picker goes away, but an
    already-chosen feat still shows, because turning the rule on later must not silently strip a feat
    off a character who was built under the old ruleset. `offText` differs by caller: an ASI still
    does something useful with feats off (the +1s), a racial feat slot does not. */
@@ -736,7 +736,7 @@ function featPickerHtml(fkey, chosen, offText) {
 
 /* The other half of an Ability Score Improvement: two "+1 to..." pickers, which together express
    both shapes of the rule (the same ability twice is the +2). Greyed out once a feat is chosen for
-   that slot, because it's one or the other — and the feat box is what you clear to get them back. */
+   that slot, because it's one or the other - and the feat box is what you clear to get them back. */
 function asiScoreHtml(e) {
   const picks = ASI_CHOICES[e.fkey] || ["", ""];
   const taken = !!e.asiChosen;
@@ -750,7 +750,7 @@ function asiScoreHtml(e) {
 }
 
 /* ----- limited-use tracker rendering: the *spec* (whether a feature has finite uses, its max, and
-   its recharge) comes from the feature's EFFECTS_DB entry via usesSpecFor() (src/effects.js) — see
+   its recharge) comes from the feature's EFFECTS_DB entry via usesSpecFor() (src/effects.js) - see
    effects/tools/conversion-guide.md's "Limited uses" section for the schema. This is purely the
    render/state half: pip UI and the delayed-recharge dice roll. */
 function rollDiceExpr(expr) {
@@ -779,7 +779,7 @@ function togglePip(pip) {
   scheduleSave(); renderClassFeatures();
 }
 function applyRest(kind) {   // kind: "sr" or "lr"
-  // Deliberately scoped to ONLY feature-effect uses trackers (limited-use pips) — everything else a
+  // Deliberately scoped to ONLY feature-effect uses trackers (limited-use pips) - everything else a
   // rest actually does (current/temp HP, Hit Dice, spell slots, the PHB p186 "no benefit below 1 HP"
   // guard) lives in performRest() (src/rest.js), which wraps this function and is what the two Rest
   // buttons actually call. Keeping this narrow matches its own tests, which call it directly.
@@ -788,7 +788,7 @@ function applyRest(kind) {   // kind: "sr" or "lr"
   // works even if the Features panel hasn't rendered since the library/character last changed.
   //
   // Returns how many features actually got uses back, so performRest() can report it in the event
-  // log — counted rather than inferred, since "recovered" means a tracker that was genuinely spent.
+  // log - counted rather than inferred, since "recovered" means a tracker that was genuinely spent.
   let recovered = 0;
   activeFeatures().forEach(feature => {
     const key = feature.fkey;
@@ -835,7 +835,7 @@ function renderRaceSection(all) {
   const items = entries.map(e => {
     FEATURE_TEXT_BY_KEY[e.fkey] = e.text;
     const usesSpec = usesSpecFor(e), tracker = usesSpec ? renderUsesTracker(e, usesSpec) : "";
-    // A feat-granting trait keeps ITS name on the link ("Feat"), not the chosen feat's — the trait is
+    // A feat-granting trait keeps ITS name on the link ("Feat"), not the chosen feat's - the trait is
     // what the race gave you and what you'd go looking for; the feat is what you put in the box, and
     // clicking through shows its text. Everything else renders as any other trait.
     const label = e.isRaceFeat ? e.featSlotName : e.name;
@@ -882,7 +882,7 @@ function renderClassFeatures() {
         const usesSpec = usesSpecFor(e);
         if (usesSpec) tracker = renderUsesTracker(e, usesSpec);
       }
-      // A table can switch feats off entirely (ASI only) — see src/house-rules.js. The picker goes
+      // A table can switch feats off entirely (ASI only) - see src/house-rules.js. The picker goes
       // away, but an already-chosen feat still shows, because turning the rule on later must not
       // silently strip a feat off a character who was built under the old ruleset.
       const picker = featPickerHtml(e.fkey, e.asiChosen, "ASI only - feats are off in this campaign's House Rules.");
@@ -910,7 +910,7 @@ function renderClassFeatures() {
   }).join("") + spellGrantChoicesHtml({ key: "background|" + bg.name, name: bg.name, spells: bg.grantedSpells || [] }, totalLevel()) : "";
   el.innerHTML = raceHtml + classHtml + bgHtml;
   el.querySelectorAll(".asi-input").forEach(inp => {
-    // A banned feat still appears, coloured red, rather than vanishing from the list — see
+    // A banned feat still appears, coloured red, rather than vanishing from the list - see
     // house-rules.js for why marking beats removing.
     inp.dataset.banKind = "feat";
     attachTypeahead(inp, () => Object.keys(FEAT_LIB).sort(), () => ({ kind: "feat", prefix: "" }));
@@ -953,12 +953,12 @@ function toggleFeatDetail(link) {
   }
   if (text == null) return;
   const d = document.createElement("div"); d.className = "feat-detail";
-  d.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+  d.innerHTML = escapeHtml(normalizeDisplayPunctuation(text)).replace(/\n/g, "<br>");
   div.after(d);
 }
 function runClassAutoLoad() {
   $("class-lib-autostatus").textContent = "loading from data/ …";
-  // Returns the promise so reloadAllLibraries can actually wait on it — see runSpellAutoLoad's note.
+  // Returns the promise so reloadAllLibraries can actually wait on it - see runSpellAutoLoad's note.
   return Promise.all([autoLoadClasses(), autoLoadRaces(), autoLoadFeats(), autoLoadBackgrounds(), autoLoadLanguages(), autoLoadOptFeatures()]).then(([cls, race, feat, bg, lang, opt]) => {
     renderClassLibrary();
     const parts = [
@@ -998,8 +998,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const l = e.target.closest(".feat-link"); if (l) { e.preventDefault(); toggleFeatDetail(l); }
   });
-  // performRest() (src/rest.js) wraps applyRest() with the rest of what a rest actually does —
-  // temp HP, current HP, Hit Dice, spell slots — see DOCS.md's "Resting" section.
+  // performRest() (src/rest.js) wraps applyRest() with the rest of what a rest actually does -
+  // temp HP, current HP, Hit Dice, spell slots - see DOCS.md's "Resting" section.
   // Short Rest opens a dialog first, since spending Hit Dice is a per-die decision made at the end
   // of the rest (PHB p186); "Finish Short Rest" in there is what calls performRest("sr"). A long
   // rest has no such choice to make, so it applies straight away. Both live in src/rest.js.

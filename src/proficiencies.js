@@ -1,5 +1,5 @@
 /* ============================================================
-   PROFICIENCIES MODULE — armor/weapon category proficiencies are
+   PROFICIENCIES MODULE - armor/weapon category proficiencies are
    plain persisted checkboxes (same as Conditions); specific weapons,
    tools, and languages are freeform add/remove lists (same shape as
    CHARACTER_ITEMS in inventory.js) since they're open-ended names,

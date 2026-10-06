@@ -6,12 +6,12 @@ function autoStatusText(res, what) {
 }
 /* Both loaders report failure into their own status line. Without a .catch, a throw anywhere in the
    load or the render that follows it leaves "loading from data/ …" on screen for good, with nothing
-   in the error bar either (errors.js listens for `error`, and a rejected promise is not one) — the
+   in the error bar either (errors.js listens for `error`, and a rejected promise is not one) - the
    silent failure the visible-error-surface rule exists to prevent.
 
    Both RETURN the promise. Nothing needed that while these only ran once at startup, but connecting
    a data/ folder mid-session re-runs every loader and waits for them (reloadAllLibraries in
-   src/data-folder.js) — and a runner that returns undefined is awaited instantly, so the wait
+   src/data-folder.js) - and a runner that returns undefined is awaited instantly, so the wait
    silently did nothing and the status line was still reading "loading …" when the caller believed
    it was finished. */
 function runSpellAutoLoad() {
@@ -30,7 +30,7 @@ function runItemAutoLoad() {
 /* Containers whose inputs are not character data: the three import libraries (search boxes, filter
    controls, file pickers), the modal dialogs (which own their own draft state and commit it
    explicitly), and the dice command line. Anything typed inside these neither feeds a derived number
-   nor belongs in a save, so it skips the sheet-wide recompute+autosave — see the listener below. */
+   nor belongs in a save, so it skips the sheet-wide recompute+autosave - see the listener below. */
 const NON_SHEET_INPUTS = ".eff-choice, .custom-record-editor, [data-module=inventory-tracker], #custom-feature-area, .grant-spell-choice, #spell-library-body, #sb-search, #sb-filter-area, #item-library-body, #mon-library-body, .modal-overlay, #cmd-input, #roll-mirror";
 
 /* ---------- Init / wiring ---------- */
@@ -48,7 +48,7 @@ function init() {
   }, () => ({ kind: "race", prefix: "" }));
   raceInput.dataset.banKind = "race";
   subraceInput.dataset.banKind = "race";
-  // Picking a race sets the Speed box to that race's walking speed — halflings and dwarves are 25,
+  // Picking a race sets the Speed box to that race's walking speed - halflings and dwarves are 25,
   // not 30. Only while the box still holds what this last put there: type your own number and it
   // stops following the race (see syncRaceSpeed).
   [raceInput, subraceInput].forEach(el => el.addEventListener("change", () => {
@@ -92,7 +92,7 @@ function init() {
     }
   });
 
-  // roll-check buttons (saves, skills, initiative, spell attack) — left-click rolls; Shift=adv, Ctrl=dis
+  // roll-check buttons (saves, skills, initiative, spell attack) - left-click rolls; Shift=adv, Ctrl=dis
   document.addEventListener("click", e => {
     if (_menuOpen) closeRollMenu();
     const btn = e.target.closest(D20SEL);
@@ -140,7 +140,7 @@ function init() {
     e.target.value = "";   // so re-picking the SAME file fires `change` again (mirrors spell/item import)
   });
   /* Resets the character you're looking at, not the browser's storage. The old implementation removed
-     the "charsheet-v0" key, which stopped being where characters live when the roster landed — so it
+     the "charsheet-v0" key, which stopped being where characters live when the roster landed - so it
      reset nothing, and the one thing it did delete was the deliberately-preserved pre-roster backup
      (see the header comment in characters.js). Other characters on the tab bar are untouched. */
   $("btn-reset").addEventListener("click", () => {
@@ -214,7 +214,7 @@ function init() {
     }
   });
 
-  // Load saved state LAST and guarded — if it throws, start fresh but keep the sheet alive.
+  // Load saved state LAST and guarded - if it throws, start fresh but keep the sheet alive.
   try {
     const saved = loadState();
     if (saved) applyState(saved);

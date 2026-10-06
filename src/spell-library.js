@@ -1,5 +1,5 @@
 /* ============================================================
-   SPELL LIBRARY — import & search 5e.tools spell JSON
+   SPELL LIBRARY - import & search 5e.tools spell JSON
    ============================================================ */
 const SPELL_SCHOOLS = { A:"Abjuration", C:"Conjuration", D:"Divination", E:"Enchantment", V:"Evocation", I:"Illusion", N:"Necromancy", T:"Transmutation" };
 // Full book names (from 5e.tools parser.js) for hover tooltips on the source toggles
@@ -13,7 +13,7 @@ const SOURCE_NAMES = {
   EFA:"Eberron: Forge of the Artificer", "AitFR-AVT":"Adventures in the Forgotten Realms: A Verdant Tomb",
   XPHB:"Player's Handbook (2024)",
   /* The rest of 2014-era D&D. This list started spell-shaped, which is why the Equipment Library's
-     book filter used to show bare abbreviations for most of its chips — items come from far more
+     book filter used to show bare abbreviations for most of its chips - items come from far more
      books than spells do (65 sources against about 30). Same rule as everywhere else in this file:
      short, fixed, prose-free lookup, no sourcebook text. */
   DMG:"Dungeon Master's Guide (2014)", MM:"Monster Manual (2014)", MTF:"Mordenkainen's Tome of Foes",
@@ -58,21 +58,21 @@ const SOURCE_GROUP = {
 function sourceGroupOf(src) { return SOURCE_GROUP[src] || "supplement"; }
 const LIB_SCHEMA = 7;  // bump when the parsed-spell shape changes (forces a one-time re-import)
 function castCat(u) { return (u === "action" || u === "bonus" || u === "reaction" || u === "minute" || u === "hour") ? u : ""; }
-// 5e.tools' Parser.SPELL_AREA_TYPE_TO_FULL — short area-of-effect shape codes from a spell's own
+// 5e.tools' Parser.SPELL_AREA_TYPE_TO_FULL - short area-of-effect shape codes from a spell's own
 // areaTags field (not every spell has one; single-target spells usually don't).
 const SPELL_AREA_TYPES = {
   ST:"Single Target", MT:"Multiple Targets", C:"Cube", N:"Cone", Y:"Cylinder", S:"Sphere",
   R:"Circle", Q:"Square", L:"Line", H:"Hemisphere", W:"Wall", E:"Emanation",
 };
 // Categorized range (Parser.SPELL_ATTACK_TYPE_TO_FULL groups distance into a handful of buckets;
-// exact distances are a numeric-range filter, tracked separately — see DOCS.md's Range-valued filters).
+// exact distances are a numeric-range filter, tracked separately - see DOCS.md's Range-valued filters).
 function rangeCat(raw) {
   const r = raw.range; if (!r) return "";
   const d = r.distance; if (!d) return "special";
   if (d.type === "self" || d.type === "touch" || d.type === "sight" || d.type === "unlimited") return d.type;
   return "ranged"; // feet or miles
 }
-// Exact numeric range in feet, for the Range-valued (numeric) filter — only meaningful for a
+// Exact numeric range in feet, for the Range-valued (numeric) filter - only meaningful for a
 // feet-based range (miles/touch/self/sight/unlimited have no comparable "how far" number).
 function rangeFeet(raw) {
   const d = raw.range && raw.range.distance;
@@ -83,7 +83,7 @@ function durationCat(raw) { const du = raw.duration && raw.duration[0]; return d
 const SPELL_FGROUPS = [
   { key:"source", label:"Source", dynamic:true, get:s=>[s.source], dynOpts:()=>spellSources().map(src=>[src, escapeHtml(SOURCE_NAMES[src]||src)]) },
   { key:"srcgroup", label:"Source Group", get:s=>[sourceGroupOf(s.source)], opts:[["core","Core"],["supplement","Supplement"],["adventure","Adventure"]] },
-  // Not every 5e.tools data dump includes per-spell class lists ("classes.fromClassList") —
+  // Not every 5e.tools data dump includes per-spell class lists ("classes.fromClassList") -
   // when it's missing this group just has no options to show (see DOCS re: import-not-hardcode).
   { key:"cls",    label:"Class",  dynamic:true, get:s=>s.classes||[], dynOpts:spellClassesInLib },
   { key:"level",  label:"Level",  get:s=>[String(s.level)], opts:[["0","0"],["1","1"],["2","2"],["3","3"],["4","4"],["5","5"],["6","6"],["7","7"],["8","8"],["9","9"]] },
@@ -95,7 +95,7 @@ const SPELL_FGROUPS = [
     opts:["blinded","charmed","deafened","exhaustion","frightened","grappled","incapacitated","invisible","paralyzed","petrified","poisoned","prone","restrained","stunned","unconscious"]
       .map(x=>[x, x[0].toUpperCase()+x.slice(1)]) },
   { key:"range",  label:"Range",  get:s=>s.rangeCat?[s.rangeCat]:[], opts:[["self","Self"],["touch","Touch"],["ranged","Ranged"],["sight","Sight"],["unlimited","Unlimited"],["special","Special"]] },
-  // Exact-distance filter — only spells with a plain feet-based range have a value here (see
+  // Exact-distance filter - only spells with a plain feet-based range have a value here (see
   // rangeFeet() above); the categorical Range group just above covers Self/Touch/Sight/Unlimited/Special.
   { key:"rangeft", label:"Range (ft)", kind:"range", unit:"ft", min:5, max:1000, getNum:s=>s.rangeFt },
   { key:"area",   label:"Area of Effect", get:s=>s.areaTags||[], opts:Object.entries(SPELL_AREA_TYPES).map(([v,lab])=>[v,lab]) },
@@ -105,7 +105,7 @@ const SPELL_FGROUPS = [
   { key:"misc",   label:"Misc",   get:s=>["conc","ritual","attack","srd"].filter(k=> k==="conc"?s.conc : k==="ritual"?s.ritual : k==="attack"?s.attack : s.srd), opts:[["conc","Concentration"],["ritual","Ritual"],["attack","Attack roll"],["srd","SRD"]] },
   // House-rule bans (src/house-rules.js). A filter group rather than a hard exclusion, so the default
   // is "show them, marked" and a player who wants them gone excludes with the same control they use
-  // for everything else — no separate hide-banned mode to learn.
+  // for everything else - no separate hide-banned mode to learn.
   { key:"banned", label:"House Rules", get:s=>[(typeof isBanned === "function" && isBanned("spell", s.name, s.source)) ? "banned" : "allowed"],
     opts:[["allowed","Allowed"],["banned","Banned"]] },
 ];
@@ -236,7 +236,7 @@ function mergeSpells(list) {
   else list.forEach(s => { const k = s.name + "|" + s.source; if (!seen.has(k)) { SPELL_LIB.push(s); seen.add(k); } });
   SPELL_LIB.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
 }
-// 5e.tools ships per-spell class lists separately, in data/spells/sources.json — keyed by
+// 5e.tools ships per-spell class lists separately, in data/spells/sources.json - keyed by
 // [source][spellName] -> { class:[{name,source}], classVariant:[{name,source,definedInSource}] }
 // (classVariant = the same spell added to a class's list by a *different* sourcebook than the
 // spell's own). Both count as "this class can cast this spell" for the Class filter.
@@ -272,7 +272,7 @@ function loadSpellFiles(files) {
   });
 }
 /* ----- auto-load from a local data/ folder (a copy of 5e.tools' own data/ dir, dropped next to the sheet) -----
-   Only works when served over http(s) — browsers block fetch() of local files opened via file://.
+   Only works when served over http(s) - browsers block fetch() of local files opened via file://.
    Goes through dataFetch rather than fetch so a data/ folder the user connected off their own disk
    answers these paths too, unchanged, when the sheet is hosted (see src/data-folder.js). */
 const SPELL_DATA_INDEX = "data/spells/index.json";
@@ -368,7 +368,7 @@ function toggleSpellDetail(link) {
   const meta = ["Level " + s.level, s.school, s.cast ? ("Cast: " + s.cast) : "", "Comp: " + comp,
     s.conc ? "Concentration" : "", s.ritual ? "Ritual" : "", s.save ? (s.save + " save") : "", s.attack ? "spell attack" : ""].filter(Boolean).join(" | ");
   const det = document.createElement("tr"); det.className = "sp-detail";
-  det.innerHTML = `<td></td><td colspan="8"><div class="hint">${meta}</div><div>${escapeHtml(s.text).replace(/\n/g, "<br>")}</div>` +
+  det.innerHTML = `<td></td><td colspan="8"><div class="hint">${meta}</div><div>${escapeHtml(normalizeDisplayPunctuation(s.text)).replace(/\n/g, "<br>")}</div>` +
     (s.higher ? `<div style="margin-top:3px"><b>At Higher Levels:</b> ${escapeHtml(s.higher).replace(/\n/g, "<br>")}</div>` : "") + `</td>`;
   tr.after(det);
 }

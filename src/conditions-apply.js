@@ -5,12 +5,12 @@
    Poisoned recorded that you were poisoned and changed nothing. This applies
    the parts a character sheet can honestly apply, and lists the rest.
 
-   WHAT GETS APPLIED — advantage/disadvantage on your own d20 rolls, your
+   WHAT GETS APPLIED - advantage/disadvantage on your own d20 rolls, your
    speed, and your hit point maximum. Those are the effects that are purely a
    function of the condition being ticked: nothing else has to be true for
    Poisoned to give you disadvantage on an attack.
 
-   WHAT GETS LISTED INSTEAD, AND WHY — three kinds of effect are deliberately
+   WHAT GETS LISTED INSTEAD, AND WHY - three kinds of effect are deliberately
    shown rather than applied:
 
      - "Attack rolls against you have advantage" (Blinded, Paralyzed, Prone,
@@ -22,7 +22,7 @@
        disadvantage, and dressing it as disadvantage would be a lie that
        sometimes succeeds. The save button says it instead.
      - "You can't take actions or reactions" (Incapacitated). The round
-       tracker is advisory by design — it never blocks a spend — so zeroing
+       tracker is advisory by design - it never blocks a spend - so zeroing
        your action here would be the one place the sheet started refusing.
 
    CONDITIONAL CONDITIONS. Frightened only applies "while the source of your
@@ -69,7 +69,7 @@ function exhaustionLevel() {
   return Math.max(0, Math.min(6, Math.floor(Number(el && el.value)) || 0));
 }
 
-/* adv + dis = neither, however many of each — PHB p173. Sources don't accumulate. */
+/* adv + dis = neither, however many of each - PHB p173. Sources don't accumulate. */
 function combineModes(a, b) {
   const has = m => x => x === m;
   const list = [a, b].filter(Boolean).filter(m => m !== "normal");
@@ -81,7 +81,7 @@ function combineModes(a, b) {
 }
 
 /* Which bucket a roll target falls into. "init" is a Dexterity check (PHB p189), so anything that
-   hits ability checks hits initiative too — the same rule Guidance already follows here. */
+   hits ability checks hits initiative too - the same rule Guidance already follows here. */
 function rollBucket(target) {
   const t = target || "";
   if (t === "attack-hit" || t === "spellatk" || t === "attack") return "attack";
@@ -112,7 +112,7 @@ function conditionMode(target) {
   return mode;
 }
 
-/* Which conditions are behind that mode, for the tooltip — a forced roll should always be able to
+/* Which conditions are behind that mode, for the tooltip - a forced roll should always be able to
    say what forced it, the same way an effect-driven one names its feature. */
 function conditionReasons(target) {
   const bucket = rollBucket(target); if (!bucket) return [];
@@ -133,7 +133,7 @@ function conditionReasons(target) {
 }
 function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 
-/* Saves an active condition makes you fail outright. Listed, never applied — see the header. */
+/* Saves an active condition makes you fail outright. Listed, never applied - see the header. */
 function autoFailedSaves() {
   const out = {};
   activeConditions().forEach(key => {

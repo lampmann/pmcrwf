@@ -1,17 +1,17 @@
 /* ============================================================
-   BOONS — Guidance, Resistance and Death Ward, as counts rather than
+   BOONS - Guidance, Resistance and Death Ward, as counts rather than
    toggles, because at this table they stack.
 
    WHY COUNTS. Combining Magical Effects (PHB p205) says two castings of
    the same spell don't stack: the most recent applies and the earlier is
    *suppressed*. A spell's block of information lists its duration; the
-   rest of the entry is its effect — so Guidance's "The spell then ends"
+   rest of the entry is its effect - so Guidance's "The spell then ends"
    is part of its EFFECT, not its duration, and a suppressed Guidance has
    its end condition suppressed along with everything else. Expend the
    active one and it ends; the suppressed one wakes up, "after making the
    ability check" is still true, and it can be expended on the same check.
    Hence N d4 on one roll. Same reasoning for Resistance and Death Ward.
-   This is house rule R21/R22 — see house-rules/lampmann.md §4.9.
+   This is house rule R21/R22 - see house-rules/lampmann.md §4.9.
 
    WHAT EACH ONE TOUCHES:
    - Guidance   -> ability checks. That's every skill, and initiative,
@@ -23,7 +23,7 @@
    A ROLL SPENDS EVERY ACTIVE DIE. Stacking three Guidances is something
    you do on purpose, immediately before the check you care about, so
    "spend them all" is the case worth optimizing and "spend one of three"
-   is the rare one — reachable by editing the count down, rolling, and
+   is the rare one - reachable by editing the count down, rolling, and
    putting it back. Every spend is logged, and the counts are ordinary
    editable boxes (the same correct-it-directly rule as Hit Dice), so a
    spend you didn't mean is one keystroke to undo rather than a mode to
@@ -37,7 +37,7 @@
    companion's own rolls, AC). Keyed by the same data-roll-check strings dice.js dispatches on. */
 function boonKindFor(key) {
   const k = key || "";
-  // With stacking off there are no Guidance/Resistance counters, so nothing here draws on them —
+  // With stacking off there are no Guidance/Resistance counters, so nothing here draws on them -
   // closing it at this one gate means a count left behind from before the ruling flipped can't
   // quietly keep adding dice to rolls.
   if (!boonStackingOn()) return null;
@@ -62,7 +62,7 @@ function blankBoons() { return { guidance: 0, resistance: 0, deathward: 0, heroP
    settable under House Rules). Guidance and Resistance are counters ONLY because they stack: take
    that away and "how many are running" collapses to a yes/no, so the counters come off the sheet
    rather than sitting there able to count to three in a game where three is meaningless. Death Ward
-   is not covered — it was never a die stacked onto a roll, it's how many times you get pulled back
+   is not covered - it was never a die stacked onto a roll, it's how many times you get pulled back
    from 0 HP, which is worth counting under either reading. */
 function boonStackingOn() {
   return (typeof hrSetting === "function") ? hrSetting("boonStacking") !== false : true;
@@ -91,7 +91,7 @@ function normalizeBoons(saved) {
 /* ----- concurrent castings (H4) -----
    How many of a capped spell you currently have running. Which spells are capped, and at what, is a
    property of the ruleset rather than of you (see spellLimits in house-rules.js); the counts are
-   yours. Going over is shown, not prevented — the DM is at the table, and a limit the sheet enforced
+   yours. Going over is shown, not prevented - the DM is at the table, and a limit the sheet enforced
    would be wrong the moment they said "this one's fine". */
 function castingCount(name) { return Math.max(0, Math.floor(Number((BOONS.castings || {})[name])) || 0); }
 function setCastingCount(name, n) {
@@ -122,7 +122,7 @@ function newCounterId() { return "k" + Date.now().toString(36) + Math.random().t
    Anything a table needs to count that the sheet doesn't model: Sorcery Points on a homebrew
    subclass, charges on a DM-invented item, "arrows left", "favours owed to the archfey". Per
    character, like every other counter in this row. An optional max shows as /N and goes red over
-   it — shown, never enforced, same as the concurrent-casting limits beside it. */
+   it - shown, never enforced, same as the concurrent-casting limits beside it. */
 function customCounters() { return Array.isArray(BOONS.custom) ? BOONS.custom : (BOONS.custom = []); }
 function addCustomCounter(name, max) {
   name = String(name || "").trim(); if (!name) return null;
@@ -150,7 +150,7 @@ function boonDice(key) {
   return n > 0 ? `+${n}d4` : "";
 }
 
-/* Called by dice.js once a check has actually been rolled — not from rollInfo(), which also runs for
+/* Called by dice.js once a check has actually been rolled - not from rollInfo(), which also runs for
    the hover tooltip and the right-click menu and must not spend anything. */
 function spendBoonsFor(key) {
   const kind = boonKindFor(key); if (!kind) return;
@@ -170,7 +170,7 @@ function spendBoonsFor(key) {
    Fires on the transition to 0, not on being at 0, so sitting at 0 doesn't burn a second ward and
    re-entering the sheet doesn't fire one at all. `_hpBefore` is re-synced by renderBoons() rather
    than tracked on every keystroke, which is also why renderBoons() must never be called from
-   recompute() — that runs on every keystroke and would make the "before" value always equal the
+   recompute() - that runs on every keystroke and would make the "before" value always equal the
    "after" one, so no drop would ever be visible. */
 let _hpBefore = null;
 function syncHpWatch() {
@@ -210,7 +210,7 @@ function checkDeathWardTrigger() {
 }
 
 /* Guidance and Resistance last a minute, so no rest of any length leaves them running. Death Ward
-   runs 8 hours — exactly a long rest — so a short rest leaves it alone and a long one ends it. */
+   runs 8 hours - exactly a long rest - so a short rest leaves it alone and a long one ends it. */
 function clearBoonsForRest(kind) {
   const had = boonCount("guidance") + boonCount("resistance") + (kind === "long" ? boonCount("deathward") : 0);
   BOONS.guidance = 0; BOONS.resistance = 0;
@@ -229,7 +229,7 @@ function boonRowHtml(def) {
     <span class="boon-label${n ? " boon-on" : ""}">${escapeHtml(def.label)}${n && def.die ? ` <b>+${n}${def.die}</b>` : ""}</span>
   </span>`;
 }
-/* One counter per capped spell, appearing only when the ruleset caps something — a table with no
+/* One counter per capped spell, appearing only when the ruleset caps something - a table with no
    limits sees nothing here at all. */
 function castingRowHtml(name, limit) {
   const n = castingCount(name), over = n > limit;
@@ -241,7 +241,7 @@ function castingRowHtml(name, limit) {
   </span>`;
 }
 /* Hero Points (DMG p264), only while that optional rule is switched on. A point is spent AFTER the
-   d20 lands but before the result applies, so there is no die to fold into a roll in advance — this
+   d20 lands but before the result applies, so there is no die to fold into a roll in advance - this
    is a counter and nothing more, showing the level-scaled maximum beside it. */
 function heroPointHtml() {
   const max = (typeof heroPointMax === "function") ? heroPointMax() : null;
@@ -261,7 +261,7 @@ function encumbranceHtml() {
   return `<span class="boon boon-over" title="${escapeHtml(enc.note)}"><b>${escapeHtml(enc.level)}</b>
     <span class="hint">${enc.carried} lb vs Str ${enc.str} - speed &minus;${enc.speedPenalty} ft</span></span>`;
 }
-/* A counter the player invented. `max` is optional and advisory — over it goes red, nothing stops. */
+/* A counter the player invented. `max` is optional and advisory - over it goes red, nothing stops. */
 function customRowHtml(c) {
   const over = c.max != null && c.n > c.max;
   return `<span class="boon boon-ctr" aria-label="a counter you added - the &times; removes it">
@@ -311,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (step.dataset.casting) { setCastingCount(step.dataset.casting, castingCount(step.dataset.casting) + Number(step.dataset.delta)); return; }
     setBoonCount(step.dataset.boon, boonCount(step.dataset.boon) + Number(step.dataset.delta));
   });
-  // Commits on change (blur/Enter), never on input — the same rule as Hit Dice's remaining box and
+  // Commits on change (blur/Enter), never on input - the same rule as Hit Dice's remaining box and
   // the movement box: re-rendering mid-keystroke would take the caret with it.
   el.addEventListener("change", e => {
     const box = e.target.closest(".boon-count"); if (!box) return;
@@ -320,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setBoonCount(box.dataset.boon, box.value);
   });
 
-  /* Deferred so math-fields' own commit has clamped and normalized the box first — read too early
+  /* Deferred so math-fields' own commit has clamped and normalized the box first - read too early
      and the value is still whatever was typed ("12-20"), not the number it resolves to. */
   const hp = document.getElementById("hp-cur");
   if (hp) hp.addEventListener("change", () => setTimeout(checkDeathWardTrigger, 0));

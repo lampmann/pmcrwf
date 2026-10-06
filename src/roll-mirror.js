@@ -1,21 +1,21 @@
 /* ============================================================
-   ROLL MIRROR — the tail of the Event Log, pinned to the corner.
+   ROLL MIRROR - the tail of the Event Log, pinned to the corner.
 
    The Event Log is a module like any other, which means it can be anywhere
-   in your layout — and once you have a few modules open it is usually a
+   in your layout - and once you have a few modules open it is usually a
    scroll away from the button you just clicked. That's fine for reading
    history and useless for the thing you actually want, which is seeing what
    the die did a second ago without leaving the roll you're in the middle of.
 
    So: a small fixed panel in the bottom-right that mirrors the newest
-   entries. It is a MIRROR and nothing else — no state of its own, no second
+   entries. It is a MIRROR and nothing else - no state of its own, no second
    copy of the log to keep in step. Every entry it shows was put there by
    logEvent(), and switching characters repaints it from the same stored log
    the module reads. Deleting it would lose nothing but convenience.
 
    Fold rolls it up to its title bar; the × hides it entirely and leaves a
    small tab to bring it back. Both are per browser rather than per
-   character — it's a preference about your screen, not a fact about your
+   character - it's a preference about your screen, not a fact about your
    character, so it sits in its own localStorage key next to the theme.
    ============================================================ */
 
@@ -29,7 +29,7 @@ function loadMirrorPrefs() {
     const d = JSON.parse(localStorage.getItem(MIRROR_KEY));
     if (d && typeof d === "object") MIRROR = { folded: !!d.folded, hidden: !!d.hidden,
       w: Math.max(0, Math.floor(Number(d.w)) || 0), h: Math.max(0, Math.floor(Number(d.h)) || 0) };
-  } catch (e) { /* a corrupt pref is not worth a broken sheet — keep the defaults */ }
+  } catch (e) { /* a corrupt pref is not worth a broken sheet - keep the defaults */ }
 }
 function saveMirrorPrefs() {
   try { localStorage.setItem(MIRROR_KEY, JSON.stringify(MIRROR)); }
@@ -40,7 +40,7 @@ function mirrorEl() { return document.getElementById("roll-mirror"); }
 function mirrorBody() { return document.getElementById("roll-mirror-body"); }
 
 /* Paints the frame (folded/hidden state, buttons). The entries themselves are added one at a time
-   by mirrorLogEntry so a roll doesn't cost a full rebuild — see repaintRollMirror for the
+   by mirrorLogEntry so a roll doesn't cost a full rebuild - see repaintRollMirror for the
    character-switch case, which does rebuild because the whole log has changed underneath it. */
 function renderRollMirror() {
   const el = mirrorEl(); if (!el) return;
@@ -65,7 +65,7 @@ function hideRollMirror() { MIRROR.hidden = true; saveMirrorPrefs(); renderRollM
 function showRollMirror() { MIRROR.hidden = false; saveMirrorPrefs(); renderRollMirror(); }
 
 /* One new entry, newest at the bottom next to the command line (like a chat), oldest trimmed off the top. Called from logEvent, so
-   anything that reaches the Event Log reaches here — rolls, rests, HP changes, resource spends. */
+   anything that reaches the Event Log reaches here - rolls, rests, HP changes, resource spends. */
 function mirrorLogEntry(kind, html) {
   const body = mirrorBody(); if (!body) return;
   const d = document.createElement("div");
@@ -74,18 +74,18 @@ function mirrorLogEntry(kind, html) {
   body.appendChild(d);
   while (body.children.length > MIRROR_MAX) body.removeChild(body.firstChild);
   body.scrollTop = body.scrollHeight;
-  /* A ROLL arriving while the panel is hidden shouldn't silently vanish — that's exactly the moment
+  /* A ROLL arriving while the panel is hidden shouldn't silently vanish - that's exactly the moment
      it's wanted. Restricted to kind "roll": every OTHER kind (info, rest, hp, resource, condition)
      used to reopen the panel too, so loading a house-rule preset, taking a rest, or ticking a
-     condition could pop a hidden window back open with no visible cause — from the outside, "some
+     condition could pop a hidden window back open with no visible cause - from the outside, "some
      unrelated click reopened this window" with no explanation. Not narrowed further to "roll entries
      that actually show a die": the creator's own ability-score/gold/hit-die rolls log as kind "roll"
      with hand-built HTML that carries no <span class="die">, and are exactly the rolls you'd want the
-     panel to surface. Folded is left alone either way — that's a deliberate "I know it's there". */
+     panel to surface. Folded is left alone either way - that's a deliberate "I know it's there". */
   if (MIRROR.hidden && kind === "roll") showRollMirror();
 }
 
-/* Rebuild from the active character's stored log — switching characters replaces the whole history,
+/* Rebuild from the active character's stored log - switching characters replaces the whole history,
    so appending is meaningless and the panel has to start again from what that character has. */
 function repaintRollMirror() {
   const body = mirrorBody(); if (!body) return;
@@ -103,7 +103,7 @@ function repaintRollMirror() {
 function wireMirrorResize() {
   const grip = document.getElementById("roll-mirror-grip"); if (!grip) return;
   const el = mirrorEl(), body = mirrorBody();
-  const MIN_W = 14, MIN_H = 4;   // rem — below this it stops being readable
+  const MIN_W = 14, MIN_H = 4;   // rem - below this it stops being readable
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
   let start = null;
 

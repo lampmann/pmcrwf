@@ -39,6 +39,7 @@ module.exports = async function checkAdvancement(page) {
     openLevelUp();
   });
   assert(await page.locator('#lu-confirm').isDisabled());
+  assert.equal(await page.locator('#lu-options details summary').filter({ hasText: /^Ability Score Improvement$/ }).count(), 0);
   await page.locator('.lu-asi[data-slot="0"]').selectOption('con');
   await page.locator('.lu-asi[data-slot="1"]').selectOption('con');
   const hpBefore = await page.evaluate(() => maxHP());
@@ -64,6 +65,16 @@ module.exports = async function checkAdvancement(page) {
     applyState({ fields: { 'char-name': 'Feat test', 'score-con': '14' }, classes: [{ name: 'Fighter', lvl: 3 }] });
     openLevelUp();
   });
+  assert.equal(await page.locator('.lu-feat').count(), 0);
+  await page.locator('.lu-asimode').selectOption('feat');
+  assert.equal(await page.locator('.lu-asi').count(), 0);
+  assert(await page.locator('#lu-confirm').isDisabled());
+  await page.locator('.lu-feat').fill('Resilient');
+  await page.locator('.lu-asimode').selectOption('asi');
+  assert.equal(await page.locator('.lu-feat').count(), 0);
+  assert.equal(await page.locator('.lu-asi').count(), 2);
+  assert.equal(await page.evaluate(() => Object.values(luDraft().asiFeats)[0]), '');
+  await page.locator('.lu-asimode').selectOption('feat');
   await page.locator('.lu-feat').fill('Resilient');
   await page.locator('#lu-options .cr-effchoice[data-choice="ability"]').selectOption('con');
   assert(await page.locator('#lu-confirm').isEnabled());
@@ -100,10 +111,30 @@ module.exports = async function checkAdvancement(page) {
     const b = document.getElementById('lu-body'), confirm = document.getElementById('lu-confirm').getBoundingClientRect();
     return b.scrollHeight > b.clientHeight && confirm.bottom <= innerHeight;
   }), 'choices scroll while confirmation stays inside the viewport');
+  await page.evaluate(() => {
+    const b = document.getElementById('lu-body'); b.scrollTop = b.scrollHeight;
+  });
+  assert(await page.evaluate(() => {
+    const box = document.querySelector('#levelup-modal .modal-box').getBoundingClientRect();
+    const buttons = [...document.querySelectorAll('#levelup-modal .modal-actions button')].map(b => b.getBoundingClientRect());
+    const body = document.getElementById('lu-body').getBoundingClientRect();
+    return buttons.every(b => b.top >= body.bottom && b.bottom < box.bottom && b.bottom < innerHeight);
+  }), 'entire footer stays below the scroll area and inside the dialog');
   await page.locator('#lu-cancel').click();
   await page.setViewportSize({ width: 1280, height: 720 });
   const saved = await page.evaluate(() => collectState());
   await page.evaluate(state => applyState(state), saved);
   assert.equal(await page.evaluate(() => skillProfMult('stealth')), 1);
+  await page.evaluate(() => {
+    openCreator(); CREATOR.classes = [{ name: 'Fighter', lvl: 4, sub: '' }]; goToCreatorStep(3);
+  });
+  assert.equal(await page.locator('.cr-asifeat').count(), 0);
+  await page.locator('.cr-asimode').selectOption('feat');
+  assert.equal(await page.locator('.cr-asiscore').count(), 0);
+  await page.locator('.cr-asifeat').fill('Resilient');
+  await page.locator('.cr-asimode').selectOption('asi');
+  assert.equal(await page.locator('.cr-asiscore').count(), 2);
+  await page.locator('#cr-cancel').click();
+  assert.equal(await page.evaluate(() => stripTags('Left \u2014 right \u00b7 next')), 'Left - right | next');
   console.log('Level Up: cancellable drafts, Wizard learning/preparation, subclasses, ASIs with retroactive CON HP, invocation slots, known spells, half-feat choices and level-gated racial choices passed.');
 };

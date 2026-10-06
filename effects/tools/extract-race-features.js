@@ -12,19 +12,19 @@
    Mirrors parseRaceFile()'s rules in src/class-library.js exactly, so a
    record only exists here if the live app would actually surface it:
      - only named trait blocks with `entries` count as features (plain
-       flavor-text strings are skipped) — see parseRaceEntries().
+       flavor-text strings are skipped) - see parseRaceEntries().
      - a race name repeated across the file (reprints/parity updates)
        collapses to the *last* occurrence in file order, since RACE_LIB[name]
        is fully overwritten on each later parse.
      - `_copy`-based subraces (5e.tools' copy-inheritance for reprints/
-       variants) are skipped entirely — parseRaceFile() never resolves them.
+       variants) are skipped entirely - parseRaceFile() never resolves them.
 
    Key scheme matches effKeyFor() in src/effects.js: a base race trait is
    "race|" + raceName + "|" + traitName; a subrace trait is "subrace|" +
-   subraceName + "|" + traitName (no race name in the subrace key — that's
+   subraceName + "|" + traitName (no race name in the subrace key - that's
    the engine's actual scheme, not an oversight here).
 
-   Not committed output — run it yourself:
+   Not committed output - run it yourself:
      node effects/tools/extract-race-features.js > /tmp/race-features.json
    ============================================================ */
 const fs = require("fs");

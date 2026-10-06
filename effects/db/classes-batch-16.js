@@ -3,7 +3,7 @@
    Almost everything a sorcerer does is powered by sorcery points, which the
    sheet has no resource model for (the uses tracker counts discrete uses,
    not a spendable pool), so this class converts thinly on purpose. Draconic
-   Resilience is the notable exception — its per-level max HP bump is exactly
+   Resilience is the notable exception - its per-level max HP bump is exactly
    what `{ level: "class", class: "@self" }` exists for. */
 registerEffects({
   // ===== Sorcerer (base class) =====

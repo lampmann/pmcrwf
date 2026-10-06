@@ -4,7 +4,7 @@
    its die *count* scales with rogue level (ceil(level/2)d6) and `adddice`
    takes a literal string, so there's no way to express a computed number of
    dice. Same reason Psychic Blades / Dreadful Strikes are unsupported in the
-   bard and ranger batches — this is the single biggest recurring gap in
+   bard and ranger batches - this is the single biggest recurring gap in
    class coverage. */
 (function () {
   const SKILLS = ["acrobatics", "animalhandling", "arcana", "athletics", "deception", "history",
@@ -33,7 +33,7 @@
     "class|rogue|sneak attack": {
       name: "Sneak Attack", sv: 1,
       // ceil(rogue level / 2)d6, as a computed dice count. A toggle rather than always-on: Sneak
-      // Attack needs advantage or an ally adjacent, and applies once per turn — conditions the sheet
+      // Attack needs advantage or an ally adjacent, and applies once per turn - conditions the sheet
       // can't see, so you say when it lands.
       effects: [
         { target: "damage-bonus", op: "adddice",
@@ -64,8 +64,8 @@
 
     "class|rogue|reliable talent": {
       name: "Reliable Talent", sv: 1,
-      // "check-proficient" is every check you add your proficiency bonus to — the rule's own
-      // precondition — so this doesn't have to be restated per skill. dice.js turns it into the
+      // "check-proficient" is every check you add your proficiency bonus to - the rule's own
+      // precondition - so this doesn't have to be restated per skill. dice.js turns it into the
       // roller's `mi` operator, so the floor shows in the rolled dice rather than adjusting a total.
       effects: [{ target: "check-proficient", op: "diefloor", value: 10 }],
     },
@@ -141,7 +141,7 @@
     "subclass|rogue|inquisitive|ear for deceit": {
       name: "Ear for Deceit", sv: 1,
       // The floor is unconditional on the sheet, but the rule limits it to Insight checks made to
-      // detect a lie — a purpose the sheet can't see — so the note carries that half.
+      // detect a lie - a purpose the sheet can't see - so the note carries that half.
       effects: [
         { target: "skill-insight", op: "diefloor", value: 8 },
         { target: "skill-insight", op: "note", text: "the floor applies only to Insight checks made to detect a lie" },

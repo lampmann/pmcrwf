@@ -1,14 +1,14 @@
 /* ============================================================
-   INVENTORY MODULE — the character's owned items, rendered like the
+   INVENTORY MODULE - the character's owned items, rendered like the
    Spellcasting module: expandable lines, click a name to show/hide its
    description (looked up from the Equipment Library by name), with an
    "x" to remove. Library items resolve their details by name; custom items
    keep editable details in their own `custom` record. Library additions use
-   addCharacterItem() — same shape as addCharacterSpell() in
+   addCharacterItem() - same shape as addCharacterSpell() in
    spellcasting.js. CHARACTER_ITEMS is persisted as part of the
    character (see persistence.js), same as CHARACTER_SPELLS.
    ============================================================ */
-// [{name, qty, eq, attuned, slot}] — `slot` names the body slot it occupies (src/equip-slots.js);
+// [{name, qty, eq, attuned, slot}] - `slot` names the body slot it occupies (src/equip-slots.js);
 // `eq` remains the source of truth for "equipped", since AC and the Attacks module read it.
 let CHARACTER_ITEMS = [];
 
@@ -34,7 +34,7 @@ function removeCharacterItem(idx) {
   renderItemList(); if (typeof renderEquipSlots === "function") renderEquipSlots();
   recompute(); scheduleSave();
 }
-/* Quantity is typed, so this must NOT re-render the list — that would replace the input mid-edit
+/* Quantity is typed, so this must NOT re-render the list - that would replace the input mid-edit
    (see recomputeInventory's comment in derived.js). Only the row's own derived totals change, and
    they're patched in place. */
 function setItemQty(idx, qty) {
@@ -47,7 +47,7 @@ function setItemQty(idx, qty) {
 function setItemFlag(idx, key, val) {
   const it = CHARACTER_ITEMS[idx]; if (!it) return;
   it[key] = val;
-  // Unticking "equipped" also empties whatever slot it was in — the checkbox and the paper doll are
+  // Unticking "equipped" also empties whatever slot it was in - the checkbox and the paper doll are
   // two views of the same fact, and leaving a slot holding an unequipped item would be a lie.
   if (key === "eq" && !val) it.slot = "";
   if (key === "eq" && val && !it.slot && typeof guessSlot === "function") {
@@ -63,7 +63,7 @@ function resolvedItem(it) {
     ...it, lib,
     wt: lib && lib.weight !== "" ? Number(lib.weight) : 0,
     // Through itemValueGp so a house-rule price (or a worthless trinket) reaches the inventory
-    // totals, not just the library's own Cost column — see item-library.js.
+    // totals, not just the library's own Cost column - see item-library.js.
     val: (() => { const v = it.custom ? it.custom.valueGp : lib ? itemValueGp(lib) : ""; return v === "" ? 0 : Number(v); })(),
   };
 }
@@ -132,7 +132,7 @@ function toggleInvDetail(link) {
     detail.innerHTML = `<div class="hint">No item named "${escapeHtml(it.name)}" found in the Equipment Library - load/import it above to see its description.</div>`;
   } else {
     const meta = [lib.type, lib.rarity, lib.reqAttune].filter(Boolean).join(" | ");
-    detail.innerHTML = `<div class="hint">${meta}</div><div>${escapeHtml(lib.text).replace(/\n/g, "<br>")}</div>`;
+    detail.innerHTML = `<div class="hint">${meta}</div><div>${escapeHtml(normalizeDisplayPunctuation(lib.text)).replace(/\n/g, "<br>")}</div>`;
   }
   div.after(d);
 }
@@ -143,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (INVENTORY_SORT.click(e, renderItemList)) return;
     const buy = e.target.closest(".inv-buy"); if (buy) { buyMoreItem(Number(buy.dataset.idx)); return; }
     const del = e.target.closest(".inv-del"); if (del) { removeCharacterItem(Number(del.dataset.idx)); return; }
-    // handled on click, not "change" — see the identical comment on .sp2-prep in spellcasting.js
+    // handled on click, not "change" - see the identical comment on .sp2-prep in spellcasting.js
     const eq = e.target.closest(".inv-eq"); if (eq) { setItemFlag(Number(eq.dataset.idx), "eq", eq.checked); return; }
     const attuned = e.target.closest(".inv-attuned"); if (attuned) { setItemFlag(Number(attuned.dataset.idx), "attuned", attuned.checked); return; }
     const link = e.target.closest(".inv-link"); if (link) { e.preventDefault(); toggleInvDetail(link); }

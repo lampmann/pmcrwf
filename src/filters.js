@@ -1,5 +1,5 @@
 /* ============================================================
-   TRI-STATE FILTER ENGINE — shared by the Spell Library and the Equipment
+   TRI-STATE FILTER ENGINE - shared by the Spell Library and the Equipment
    Library. Extracted from spell-library.js so the two don't keep two copies
    of the same ~80 lines of state machine.
 
@@ -21,7 +21,7 @@
    ============================================================ */
 function filterNextMode(m) { return m === "or" ? "and" : m === "and" ? "xor" : "or"; }
 // Resolved locally rather than through data.js's $ so this module stays a leaf with no load-order
-// dependency — it's included by the standalone tests/filters.html, which loads nothing else.
+// dependency - it's included by the standalone tests/filters.html, which loads nothing else.
 function filterEl(id) { return id ? document.getElementById(id) : null; }
 
 function createFilterSet(cfg) {

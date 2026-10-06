@@ -1,10 +1,10 @@
 /* ============================================================
-   OPTIONAL & VARIANT RULES — 5e.tools' own catalogue of RAW options.
+   OPTIONAL & VARIANT RULES - 5e.tools' own catalogue of RAW options.
 
    Distinct from the Rulings tab next door, and the distinction matters:
    a ruling is one table's adjudication of ambiguous text, while these
    are printed alternatives the books themselves offer. Flanking, Gritty
-   Realism, Proficiency Dice, Variant Encumbrance — a DM switches them
+   Realism, Proficiency Dice, Variant Encumbrance - a DM switches them
    on, and they are the same rules at every table that does.
 
    Imported, never bundled, exactly like the spell/item/race libraries:
@@ -17,7 +17,7 @@
    procedure (Morale, Plot Points, downtime activities) with nothing for
    a character sheet to compute, so switching one on records the choice
    and shows its text. A handful genuinely change a character's numbers,
-   and those say so and are wired up — see VR_EFFECTS. As everywhere
+   and those say so and are wired up - see VR_EFFECTS. As everywhere
    else in this module, an entry states which it is rather than leaving
    you to guess.
    ============================================================ */
@@ -85,7 +85,7 @@ function loadVariantRuleFiles(files) {
 }
 
 /* ----- which are switched on -----
-   Stored with the ruleset rather than the character, since an optional rule is a table-wide choice —
+   Stored with the ruleset rather than the character, since an optional rule is a table-wide choice -
    so it travels in an exported ruleset alongside the bans and settings. */
 function enabledVariants() { return (HOUSE_RULES && Array.isArray(HOUSE_RULES.variants)) ? HOUSE_RULES.variants : []; }
 function variantEnabled(key) { return enabledVariants().indexOf(key) >= 0; }
@@ -100,7 +100,7 @@ function toggleVariant(key) {
 /* What the sheet does when a given rule is switched on. `does` is wired-up behaviour; `elsewhere`
    points at a control that already existed before this catalogue did, so enabling the entry doesn't
    imply a second switch that fights the first. Everything absent from this table is recorded and
-   displayed only — which is most of them, and is the honest default for DM-facing procedure. */
+   displayed only - which is most of them, and is the honest default for DM-facing procedure. */
 const VR_EFFECTS = {
   "Encumbrance|PHB": { does: "your Speed drops as carried weight passes 5× and 10× your Strength score" },
   "Hero Points|DMG": { does: "a Hero Points counter beside your HP, with the level-scaled maximum" },
@@ -148,7 +148,7 @@ function heroPointMax() {
 /* ----- Proficiency Dice (DMG p263) -----
    Replaces the proficiency bonus with a die on ability checks, attack rolls and saving throws;
    expertise rolls it twice rather than doubling. Passive Perception keeps the flat bonus of
-   necessity — there is no roll to make — which is why passivePerception() is left alone. */
+   necessity - there is no roll to make - which is why passivePerception() is left alone. */
 const VR_PROF_DICE = { 2: "d4", 3: "d6", 4: "d8", 5: "d10", 6: "d12" };
 function proficiencyDie() {
   if (!variantEnabled("Proficiency Dice|DMG")) return null;
@@ -162,7 +162,7 @@ function proficiencyDiceTerm(mult) {
 }
 
 /* ----- Rest Variants (DMG p267) -----
-   The entry offers two named variants, so enabling it isn't a choice by itself — the pick lives in
+   The entry offers two named variants, so enabling it isn't a choice by itself - the pick lives in
    Settings (restVariant) and this only supplies the durations to label the buttons with. */
 const VR_REST_TIMES = {
   "": { short: "1 hour", long: "8 hours" },
@@ -233,7 +233,7 @@ function toggleVariantText(btn) {
   const r = VARIANT_RULES.find(x => vrKey(x) === btn.dataset.vrtext); if (!r) return;
   const d = document.createElement("div");
   d.className = "vr-text";
-  d.innerHTML = `${escapeHtml(r.text).replace(/\n/g, "<br>")}` +
+  d.innerHTML = `${escapeHtml(normalizeDisplayPunctuation(r.text)).replace(/\n/g, "<br>")}` +
     `<div class="hint">- ${escapeHtml(r.source)}${r.page ? ", p." + r.page : ""}</div>`;
   row.appendChild(d);
 }

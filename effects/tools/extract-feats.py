@@ -4,7 +4,7 @@ Dev-only helper: flattens data/feats.json (user-supplied, gitignored 5e.tools
 data) into plain-text {name, text} pairs for feeding to an LLM conversion
 pass over the effects database (see DOCS.md "Feature effects" section).
 
-Not part of the shipped app and not committed output — data/ is gitignored
+Not part of the shipped app and not committed output - data/ is gitignored
 because it's sourcebook content, so anything derived from its prose (this
 script's output included) stays out of git too. Run it yourself:
 

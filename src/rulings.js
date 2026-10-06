@@ -1,10 +1,10 @@
 /* ============================================================
-   RULINGS — the part of a house ruleset that can't be a checkbox.
+   RULINGS - the part of a house ruleset that can't be a checkbox.
 
    Most of a table's rules are adjudication, not mechanics: "Total Cover
-   applies to all effects", "a Challenge Rating of '—' is not equal to
+   applies to all effects", "a Challenge Rating of '-' is not equal to
    itself". The sheet can't apply those, and shouldn't pretend to. But
-   there's a failure mode in only ever building the automatable half —
+   there's a failure mode in only ever building the automatable half -
    the Bans tab has buttons and "ability checks are only called for when
    the outcome is uncertain" has nothing to click, so over time the
    rules with switches start feeling like the real ones and the judgment
@@ -40,8 +40,8 @@ const RULING_SUBJECTS = [
 ];
 
 /* { id, subject, text, tags?, auto? }
-   `tags` are names to match against what a character actually has — a class, subclass, spell or feat
-   — and drive the "relevant to this character" section. `auto` names the part of the sheet that
+   `tags` are names to match against what a character actually has - a class, subclass, spell or feat
+   - and drive the "relevant to this character" section. `auto` names the part of the sheet that
    already applies the ruling, and is the honest half: anything without it is yours to remember. */
 const RULINGS_LAMPMANN = [
   // ----- table & social -----
@@ -131,7 +131,7 @@ function activeRulings() {
    feat taken at an ASI. A ruling matches when one of its tags appears among them, so the Echo Knight
    block surfaces for an Echo Knight and stays out of everyone else's way. Matching is substring and
    case-insensitive in both directions, because a tag says "Echo Knight" while the subclass field may
-   read "Echo Knight" or the class row "Fighter" — and "Cleric" should match "Cleric" the class. */
+   read "Echo Knight" or the class row "Fighter" - and "Cleric" should match "Cleric" the class. */
 function characterRulingTerms() {
   const terms = [];
   if (typeof getClasses === "function") {
@@ -171,13 +171,13 @@ function rulingMatches(r, q) {
 let RULINGS_QUERY = "";
 
 function rulingHtml(r) {
-  // "Yours to apply" is stated as plainly as "the sheet does this" — the un-automated rulings are the
+  // "Yours to apply" is stated as plainly as "the sheet does this" - the un-automated rulings are the
   // majority and the point, not leftovers, so they get a label rather than the absence of one.
   const badge = r.auto
     ? `<span class="ruling-auto" title="${escapeHtml(r.auto)}">the sheet applies this</span>`
     : `<span class="ruling-manual">yours to apply</span>`;
   return `<div class="ruling"><span class="ruling-id">${escapeHtml(r.id)}</span>
-    <span class="ruling-text">${escapeHtml(r.text)}</span> ${badge}</div>`;
+    <span class="ruling-text">${escapeHtml(normalizeDisplayPunctuation(r.text))}</span> ${badge}</div>`;
 }
 
 function hrRenderRulings() {

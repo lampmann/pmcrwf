@@ -71,7 +71,7 @@ const THIRD_CASTER_KNOWN = [null, 0, 0, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 9,10,10,11
 // Returns { style: "known"|"prepared", max, spellbookMax? } for a class-table row ({name, sub, lvl}),
 // or null if that class/subclass isn't a spellcaster. `max` for a "prepared" class is how many can be
 // prepared at once; `spellbookMax`, only set for Wizard, is the separate (larger) known/spellbook pool
-// (PHB: 4 + 2 per level, i.e. spells the Wizard actually has *written down* — not counting scroll copies —
+// (PHB: 4 + 2 per level, i.e. spells the Wizard actually has *written down* - not counting scroll copies -
 // as distinct from how many of those it can have prepared on a given day).
 function classSpellAllowance(c, modOf = abilityMod) {
   const name = (c.name || "").trim().toLowerCase(), sub = (c.sub || "").trim().toLowerCase(), lvl = Math.max(0, Math.min(20, c.lvl || 0));
@@ -87,7 +87,7 @@ function classSpellAllowance(c, modOf = abilityMod) {
   return result;
 }
 // Cantrips known (2014 PHB/TCE): a fixed number, entirely separate from the known/prepared/spellbook
-// totals above — cantrips are always available and never "prepared" or written into a spellbook.
+// totals above - cantrips are always available and never "prepared" or written into a spellbook.
 // Paladin and (2014) Ranger aren't in this table, i.e. they get none.
 const CANTRIPS_KNOWN_TABLE = {
   bard:      [0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
@@ -129,12 +129,12 @@ const mod = score => Math.floor(((Number(score)||10) - 10) / 2);
 const sign = n => (n >= 0 ? "+" : "") + n;
 const num = el => Number(el && el.value) || 0;
 // Ability score/modifier reads route through here everywhere (including data.js's own
-// classSpellAllowance below) so a feature that adds to an ability score — e.g. a half-feat like
-// Observant or Resilient — is picked up automatically. effFlat is defined in effects.js, which
+// classSpellAllowance below) so a feature that adds to an ability score - e.g. a half-feat like
+// Observant or Resilient - is picked up automatically. effFlat is defined in effects.js, which
 // loads after this file but before any of these are ever called (all calls happen post-load).
 /* Misc ability adjustments, as a list of signed terms each with an optional label saying what it's
    from: "+4-1" is two unlabelled terms, "+2 belt, -1 curse" is two labelled ones. Numbers are found
-   first and the words after each one, up to the next number or comma, are its label — which handles
+   first and the words after each one, up to the next number or comma, are its label - which handles
    both shapes with one rule instead of two. A "-" inside a label survives as long as it isn't
    followed by a digit, so "half-plate" reads as a label and "-1" reads as a term. */
 function parseMiscTerms(str) {

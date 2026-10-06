@@ -11,11 +11,11 @@
 
    "Ability Score Improvement" entries are excluded: the live app never
    looks up an ASI class feature's own effKey (see activeFeatures() in
-   src/class-library.js) — it always resolves to the *chosen feat's* key
-   instead — so converting the ASI placeholder text itself would be inert
+   src/class-library.js) - it always resolves to the *chosen feat's* key
+   instead - so converting the ASI placeholder text itself would be inert
    dead weight.
 
-   Not committed output — run it yourself:
+   Not committed output - run it yourself:
      node effects/tools/extract-class-features.js > /tmp/class-features.json
    ============================================================ */
 const fs = require("fs");
@@ -27,7 +27,7 @@ const DATA_DIR = path.join(__dirname, "..", "..", "data", "class");
 function textOf(entries) { return stripTags(flattenEntries(entries)); }
 function isAsi(name) { return (name || "").trim().toLowerCase() === "ability score improvement"; }
 
-// "You gain a feature from your <subclass-choice>" style stubs — 5e.tools marks the level a
+// "You gain a feature from your <subclass-choice>" style stubs - 5e.tools marks the level a
 // subclass grants something with a placeholder record carrying no mechanic of its own.
 const PLACEHOLDER_RE = /you gain (a|another) feature (granted by|from) your/i;
 
@@ -59,7 +59,7 @@ function main() {
 
   const filtered = raw.filter(r => !PLACEHOLDER_RE.test(r.text));
 
-  // A feature recurring across levels (e.g. Channel Divinity, Expertise) shares one effKey — see
+  // A feature recurring across levels (e.g. Channel Divinity, Expertise) shares one effKey - see
   // effKeyFor() in src/effects.js, which never includes level. Merge those records into one, with
   // each level's text kept distinct and labeled, so a conversion pass sees the whole progression
   // and writes exactly one DB entry (see conversion-guide.md's "Class/subclass features" section).

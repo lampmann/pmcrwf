@@ -1,5 +1,5 @@
 /* ============================================================
-   XP AND LEVEL — two views of one number.
+   XP AND LEVEL - two views of one number.
 
    PHB p15's Character Advancement table maps experience points to character
    level. The sheet shows both, and editing either one moves the other:
@@ -8,7 +8,7 @@
      - type XP        -> the level becomes whatever that XP earns
 
    The level box is not a third place your level is stored. Your actual level
-   is the sum of the Classes table, and always has been — everything derived
+   is the sum of the Classes table, and always has been - everything derived
    (proficiency bonus, spell slots, max HP, hit dice) reads it from there.
    This box is a *request*: raising it opens the Level Up dialog so the new
    level lands in a specific class with hit points chosen, and lowering it
@@ -17,13 +17,13 @@
 
    Which is why levelling down doesn't try to be clever about which class
    loses the level. It takes it from the last class row that has one to give,
-   after saying what it's about to do — a multiclass character undoing a
+   after saying what it's about to do - a multiclass character undoing a
    level almost always means undoing the most recent one, and guessing
    otherwise would be worse than asking.
    ============================================================ */
 
 /* PHB p15, Character Advancement: the XP at which each level begins. Index 0 is level 1.
-   A short, fixed, prose-free table — the same footing as the multiclass slot table (see DOCS'
+   A short, fixed, prose-free table - the same footing as the multiclass slot table (see DOCS'
    "Where game data comes from"). */
 const XP_THRESHOLDS = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000,
   85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
@@ -35,7 +35,7 @@ function levelForXp(xp) {
 }
 function xpForLevel(lvl) { return XP_THRESHOLDS[Math.max(1, Math.min(20, lvl)) - 1]; }
 
-/* "1,300 XP to level 6" — the thing every player actually wants off this table. Level 20 has no
+/* "1,300 XP to level 6" - the thing every player actually wants off this table. Level 20 has no
    next level, and says so rather than showing a blank. */
 function xpNextText() {
   const xp = num($("char-xp"));
@@ -47,7 +47,7 @@ function xpNextText() {
 }
 
 /* Repaint both readouts from the current state of the sheet. Called from recompute(), so it follows
-   the Classes table however the level got there — level-up dialog, hand-edit, or character switch.
+   the Classes table however the level got there - level-up dialog, hand-edit, or character switch.
    The level box is skipped while it has focus, so it doesn't fight what's being typed into it. */
 function renderXp() {
   const box = $("char-level"); if (!box) return;
@@ -140,7 +140,7 @@ function levelBoxChanged() {
   const dropped = [];
   for (let i = 0; i < drop; i++) { const n = dropOneLevel(); if (!n) break; dropped.push(n); }
   $("char-xp").value = String(xpForLevel(want)); commitMath($("char-xp"));
-  // A Max HP override was written for a level that no longer exists, so it can't stay — the automatic
+  // A Max HP override was written for a level that no longer exists, so it can't stay - the automatic
   // value is right again, and leaving a stale override would silently inflate the character.
   const ov = $("hp-max-override");
   if (ov && ov.value !== "") { ov.value = ""; }
@@ -153,7 +153,7 @@ function levelBoxChanged() {
   renderXp(); saveState();
 }
 
-/* Typing XP moves the level readout, but never the Classes table on its own — crossing a threshold
+/* Typing XP moves the level readout, but never the Classes table on its own - crossing a threshold
    offers the level rather than taking it, since gaining a level is a decision (PHB p15). */
 function xpBoxChanged() {
   const lvl = levelForXp(num($("char-xp")));

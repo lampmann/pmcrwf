@@ -1,9 +1,9 @@
 /* ============================================================
-   COMBAT ROUND TRACKER — your turn's economy, spent as you play it.
+   COMBAT ROUND TRACKER - your turn's economy, spent as you play it.
 
    Modelled on COMP/CON's round tracker: rolling initiative puts you in
-   combat, and from then on the module shows what you have left this turn —
-   action, bonus action, reaction, free object interaction, movement — and
+   combat, and from then on the module shows what you have left this turn -
+   action, bonus action, reaction, free object interaction, movement - and
    End Round gives it all back. Each resource is a button, and clicking it
    opens a menu of what you can actually spend it on, built from THIS
    character's sheet rather than a generic list: your attacks, your spells
@@ -14,13 +14,13 @@
    1. THE ATTACK ACTION GRANTS SWINGS, NOT ONE ATTACK. Spending your action
       on Attack gives you 1 + Extra Attack swings, and each attack roll
       spends one swing. That's why a Fighter 5 can roll twice without the
-      tracker claiming they used two actions — the alternative (one action
+      tracker claiming they used two actions - the alternative (one action
       per attack roll) is wrong for every martial past level 5. Rolling an
       attack with no swings banked spends the action first and then a swing,
       so the common case still needs no bookkeeping (BG3's behaviour).
 
    2. SPENDING IS ADVISORY, NOT ENFORCED. Nothing here blocks a roll. A
-      resource at zero goes red and says so, and you can still act — because
+      resource at zero goes red and says so, and you can still act - because
       a real table has readied actions, Action Surge, effects this sheet
       doesn't model, and a DM. A tracker that refused to let you roll would
       be wrong more often than it was right, and would be the thing you
@@ -39,7 +39,7 @@
      multiplier (TERRAIN_COSTS, edited via its own inline box), so "I moved
      15 feet through difficult terrain" is one number to enter rather than a
      sum to do in your head. Dash adds your speed to the pool rather than
-     doubling it — same result, and it survives a speed change mid-turn.
+     doubling it - same result, and it survives a speed change mid-turn.
    ============================================================ */
 
 const COMBAT_MAX = { action: 1, bonus: 1, reaction: 1, object: 1 };
@@ -57,19 +57,19 @@ function blankCombat() {
     moveUsed: 0, moveBonus: 0,     // feet spent; feet added by Dash and the like
     swings: 0,                     // attacks banked by taking the Attack action
     attacked: false,               // has an attack been rolled this turn (gates Two-Weapon Fighting)
-    terrain: 1,                    // ft of movement each ft of distance costs (TERRAIN_COSTS) — a
+    terrain: 1,                    // ft of movement each ft of distance costs (TERRAIN_COSTS) - a
                                    // terrain property, so it survives End Round but not a fresh fight
-    history: [],                   // undo stack — see pushHistory/undoLast below
+    history: [],                   // undo stack - see pushHistory/undoLast below
   };
 }
 const HISTORY_MAX = 20;
 
 /* ============================================================
-   INITIATIVE ORDER — the table's, not the character's.
+   INITIATIVE ORDER - the table's, not the character's.
 
    This is who is in the fight and whose turn it is, which is a fact about the
    table rather than about any one character, so it lives in its own shared
-   state with its own localStorage key — the same call House Rules makes, and
+   state with its own localStorage key - the same call House Rules makes, and
    for the same reason. It rode along inside COMBAT at first, which made it
    per-character: two PCs open in two tabs each kept their own private order,
    stepping the turn on one did nothing on the other, and switching tabs
@@ -106,8 +106,8 @@ function loadInitiative() {
 }
 
 /* A character's `combat` is persisted as part of its state (see applyState in persistence.js), which
-   means a save made before some field existed here — `history` when Undo was added, `terrain` when
-   the multiplier replaced the old difficult-terrain flag — comes back missing that field entirely.
+   means a save made before some field existed here - `history` when Undo was added, `terrain` when
+   the multiplier replaced the old difficult-terrain flag - comes back missing that field entirely.
    Assigning a stored object straight into COMBAT trusted whatever shape it happened to have, so an
    old save crashed the first time something touched the field it lacked (pushHistory().push() on an
    undefined array). Loading always goes through here instead, layering the saved values over a fresh
@@ -116,7 +116,7 @@ function normalizeCombat(saved) {
   const blank = blankCombat();
   if (!saved || typeof saved !== "object") return blank;
   /* An order saved back when it lived on the character is rescued into the shared list rather than
-     dropped — but only if nothing has been put there yet, so loading a second character can't
+     dropped - but only if nothing has been put there yet, so loading a second character can't
      clobber an order already on screen. `order`/`turnId` are then left out of COMBAT entirely. */
   if (Array.isArray(saved.order) && saved.order.length && !INITIATIVE.order.length) {
     INITIATIVE = normalizeInitiative({ order: saved.order, turnId: saved.turnId });
@@ -152,10 +152,10 @@ function moveMax() { return (typeof speedTotal === "function" ? speedTotal() : 0
 function moveLeft() { return Math.max(0, moveMax() - COMBAT.moveUsed); }
 function leftOf(kind) { return Math.max(0, COMBAT_MAX[kind] - COMBAT.used[kind]); }
 
-/* The movement pool is the one part of the tracker that depends on a number outside it — your Speed,
+/* The movement pool is the one part of the tracker that depends on a number outside it - your Speed,
    which you can change mid-fight (a race correction, an effect, an item). renderCombat() can't be
    called from recompute() to pick that up: this row holds live text boxes, and rebuilding it on
-   every keystroke would take the caret with it. So recompute() calls THIS instead — it writes the
+   every keystroke would take the caret with it. So recompute() calls THIS instead - it writes the
    two numbers in place and touches nothing else. Without it the row kept whatever max it was drawn
    with, so a fight entered while Speed was blank stayed at 0/0 however you fixed the Speed after. */
 function syncCombatMovement() {
@@ -176,7 +176,7 @@ function equippedWeapons() {
 }
 /* PHB p195: two-weapon fighting needs a light melee weapon in each hand.
 
-   "Melee" is the item's own type, NOT "has no range" — a dagger and a handaxe are melee weapons that
+   "Melee" is the item's own type, NOT "has no range" - a dagger and a handaxe are melee weapons that
    also happen to be Thrown, so they carry a 20/60 range and the range test excluded exactly the
    weapons people dual-wield. 5e.tools types them "M" (melee) vs "R" (ranged), which parseItemType
    turns into "Melee Weapon"/"Ranged Weapon"; matching the parsed string avoids re-parsing the
@@ -207,7 +207,7 @@ function combatLog(html) { if (typeof logEvent === "function") logEvent("resourc
 
 function enterCombat(reason) {
   if (COMBAT.active) return;
-  // The order isn't in COMBAT any more, so this reset can't take it with it — a DM who built the
+  // The order isn't in COMBAT any more, so this reset can't take it with it - a DM who built the
   // list before anyone rolled keeps it, with no field-shuffling needed here.
   COMBAT = blankCombat();
   COMBAT.active = true; COMBAT.round = 1;
@@ -236,18 +236,18 @@ function endRound() {
 
 /* ----- initiative order -----
    A local (single-browser) multi-actor turn tracker: the piece the round tracker's header names as
-   its own known limit ("no initiative order for the whole table"). It's a plain list — name +
-   initiative, highest first, with a pointer to whose turn it is — not tied to anyone's resource
+   its own known limit ("no initiative order for the whole table"). It's a plain list - name +
+   initiative, highest first, with a pointer to whose turn it is - not tied to anyone's resource
    pools. That's a deliberate boundary, not an oversight: this module already gives ITS character's
    own action/bonus/reaction/movement pools their own refresh button (End Round), and coupling that
    to "it became your turn in the order" would mean guessing which of possibly several entries is
    "you" and reaching into a resource model this list has no business owning. A DM steps through
    whose turn it is here; each player's own pools stay theirs to manage, same as always.
 
-   The list itself is shared across every character tab — see blankInitiative above. */
+   The list itself is shared across every character tab - see blankInitiative above. */
 function newOrderId() { return "o" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-/* Stable per spec (ES2019+) — ties keep the order they were added/edited in, rather than jumping
+/* Stable per spec (ES2019+) - ties keep the order they were added/edited in, rather than jumping
    around every time something re-sorts. */
 function sortOrder() { INITIATIVE.order.sort((a, b) => b.init - a.init); }
 
@@ -278,13 +278,13 @@ function editOrderEntry(id, field, value) {
 }
 /* The id of the character whose sheet is on screen, or "" when the roster isn't loaded (the test
    harnesses, an older build). Rows are keyed by it so every PC owns their own line in a shared
-   order — matching on a single `pc` flag meant the second character to roll took over the first
+   order - matching on a single `pc` flag meant the second character to roll took over the first
    one's row. */
 function activeCharId() {
   return (typeof activeChar === "function" && activeChar()) ? activeChar().id : "";
 }
 
-/* Called off the real Roll Initiative button (see the click hook below) — seeds or updates this
+/* Called off the real Roll Initiative button (see the click hook below) - seeds or updates this
    character's own row with the number that actually landed in the log, never a second private roll
    that could disagree with it. One entry per character: re-rolling initiative updates it in place
    rather than adding a duplicate. */
@@ -300,7 +300,7 @@ function setPcInitiative(name, value) {
 
 /* Keeps this character's own row labelled with their current name. Rename Alice to Alicia and the
    order said "Alice" until the next initiative roll; called from recompute(), so it follows the
-   name box the moment it changes. Only ever touches a row this character owns — a name the DM typed
+   name box the moment it changes. Only ever touches a row this character owns - a name the DM typed
    by hand for a monster is never overwritten. */
 function syncPcOrderName() {
   const cid = activeCharId(); if (!cid) return;
@@ -310,11 +310,11 @@ function syncPcOrderName() {
   saveInitiative();
   const row = document.querySelector(`.cbt-order-row[data-oid="${e.id}"] .cbt-order-name`);
   // Written in place rather than through renderCombat(), which would rebuild the live inputs and
-  // take the caret with it — the same rule the movement box follows (see syncCombatMovement).
+  // take the caret with it - the same rule the movement box follows (see syncCombatMovement).
   if (row && row !== document.activeElement) row.value = n;
 }
 /* Advances to the next entry in the (already-sorted) order, wrapping back to the top after the last
-   one. Wrapping is announced but doesn't touch COMBAT.round itself or anyone's pools — see this
+   one. Wrapping is announced but doesn't touch COMBAT.round itself or anyone's pools - see this
    section's header comment for why those stay decoupled. */
 function nextTurn() {
   if (!INITIATIVE.order.length) return;
@@ -327,7 +327,7 @@ function nextTurn() {
   combatLog(`<b>Turn</b> - ${escapeHtml(INITIATIVE.order[nextIdx].name)}`);
 }
 
-/* Spend one of a resource. Never refuses — see this file's header — but says when you'd be over. */
+/* Spend one of a resource. Never refuses - see this file's header - but says when you'd be over. */
 function spendResource(kind, what) {
   if (!COMBAT.active) enterCombat();
   const over = leftOf(kind) <= 0;
@@ -348,8 +348,8 @@ function spendMovement(ft, what) {
 }
 
 /* ----- undo -----
-   One entry per user-initiated spend, captured as a snapshot of every field a spend can touch —
-   not a per-field diff — because several spends are compound (Dash adds to moveBonus AND spends the
+   One entry per user-initiated spend, captured as a snapshot of every field a spend can touch -
+   not a per-field diff - because several spends are compound (Dash adds to moveBonus AND spends the
    action; taking Attack with no swings banked spends the action AND sets swings AND attacked). A
    snapshot restores the whole thing in one step regardless of how many fields the spend actually
    changed, so the caller only has to know "before" and "after", never the shape of what happened
@@ -358,11 +358,11 @@ function spendMovement(ft, what) {
    The three call sites that begin a real spend (the menu's entry.run(), a chip double-click, and an
    attack roll auto-booking itself) call pushHistory() first; the mutators themselves (spendResource,
    spendMovement, useAttackSwing) don't, so a compound spend that calls two of them only ever pushes
-   once. Undoing does NOT remove the Event Log entry the spend made — the tracker's whole premise is
+   once. Undoing does NOT remove the Event Log entry the spend made - the tracker's whole premise is
    an auditable log (see this file's header), and erasing history would fight that. Instead Undo adds
    its own log line, so both "this was spent" and "then undone" stay on the record. */
 function pushHistory(label) {
-  // spendResource/spendMovement also auto-enter combat on a first spend — but enterCombat() replaces
+  // spendResource/spendMovement also auto-enter combat on a first spend - but enterCombat() replaces
   // COMBAT wholesale with a fresh blankCombat(), which would discard an entry pushed onto the OLD
   // object a moment earlier. Doing it here first means every push lands on the object that survives.
   if (!COMBAT.active) enterCombat();
@@ -378,7 +378,7 @@ function undoLast() {
   combatLog(`<span class="hint">Undo</span> - ${escapeHtml(entry.label)}`);
 }
 
-/* An attack roll landed. Spends a banked swing, or takes the Attack action first if there are none —
+/* An attack roll landed. Spends a banked swing, or takes the Attack action first if there are none -
    so the ordinary case (click "atk+dmg", never touch this module) books itself correctly. */
 function useAttackSwing(name) {
   if (!COMBAT.active) return;                 // out of combat the tracker stays out of the way
@@ -394,7 +394,7 @@ function useAttackSwing(name) {
 }
 
 /* ----- the resource menus -----
-   Each entry is { label, hint, run } — `run` does whatever the entry means, which is usually
+   Each entry is { label, hint, run } - `run` does whatever the entry means, which is usually
    "spend the resource and log it", and sometimes also "make the roll". Entries are built from the
    live sheet, so an empty inventory or spell list simply produces fewer of them. */
 function menuFor(kind) {
@@ -468,7 +468,7 @@ function bonusMenu() {
 
   /* R47 (house rule): a spell with a bonus-action casting time always costs a bonus action. The
      argument this rejects reads PHB's "you must use a bonus action… provided that you haven't
-     already taken a bonus action this turn" as lapsing once you have — making the spell free rather
+     already taken a bonus action this turn" as lapsing once you have - making the spell free rather
      than uncastable. It doesn't: with the bonus action spent, the spell simply can't be cast. Said
      rather than blocked, like everything else in this tracker. */
   const spells = spellEntries("bonus", "bonus");
@@ -480,7 +480,7 @@ function bonusMenu() {
     submenu: (!baSpent && spells.length) ? spells : null,
     run: (!baSpent && !spells.length) ? () => spend("Cast a Spell") : null });
 
-  // Class features that say "bonus action" in their own text — read from what the Features module
+  // Class features that say "bonus action" in their own text - read from what the Features module
   // rendered, so this follows your actual classes and level with nothing hardcoded per class.
   const feats = bonusActionFeatures();
   out.push({ label: "Class feature", hint: feats.length ? `${feats.length} of your features mention a bonus action` : "none of your features mention a bonus action",
@@ -520,12 +520,12 @@ function objectMenu() {
 
 /* What a foot of DISTANCE costs you in movement. 5e writes these as "each foot of movement costs 1
    extra foot" (difficult terrain, crawling, standing in a creature's space) or "4 feet" (Plant
-   Growth), and they stack — crawling through difficult terrain is 1 + 1 + 1 = 3. A multiplier is
+   Growth), and they stack - crawling through difficult terrain is 1 + 1 + 1 = 3. A multiplier is
    what that arithmetic reduces to, and a stacked case is easier to pick than to compute.
 
    It's a property of the ground, not of your turn, so it's a standing setting that the quick-move
    buttons, the ± steps and the custom-feet input all read rather than something you re-enter on
-   every move — and it survives End Round (a swamp is still a swamp next turn) but resets with a
+   every move - and it survives End Round (a swamp is still a swamp next turn) but resets with a
    fresh fight, since blankCombat() rebuilds the whole state. */
 const TERRAIN_COSTS = [
   { mult: 1, label: "Normal", hint: "each foot of movement costs 1 foot" },
@@ -534,7 +534,7 @@ const TERRAIN_COSTS = [
   { mult: 4, label: "Plant Growth", hint: "each foot of movement costs 4 feet" },
 ];
 /* Direct correction of the movement pool and terrain multiplier, mirroring Hit Dice's remaining-count
-   box (rest.js, correctHitDiceRemaining) — each box shows the number a player thinks in (feet LEFT,
+   box (rest.js, correctHitDiceRemaining) - each box shows the number a player thinks in (feet LEFT,
    the multiplier itself), so it's translated back to what COMBAT actually stores. Neither function
    touches the DOM beyond re-rendering; they take the input element (or anything with a `.value`) so
    they're callable straight from a test without a real `change` event. */
@@ -602,8 +602,8 @@ function orderRowHtml(e) {
     <button type="button" class="cbt-order-del" aria-label="remove from the order">&times;</button>
   </li>`;
 }
-/* Shown whether or not combat is active — a table can build its initiative order before the first
-   roll — which is why this lives outside the active/!active branch of renderCombat() below. */
+/* Shown whether or not combat is active - a table can build its initiative order before the first
+   roll - which is why this lives outside the active/!active branch of renderCombat() below. */
 function orderHtml() {
   const rows = INITIATIVE.order.map(orderRowHtml).join("");
   return `<div class="cbt-order">
@@ -666,7 +666,7 @@ function renderCombat() {
 }
 
 /* The context menu. Rendered as a popup anchored to its chip, with one level of submenu reached by
-   clicking through and a Back entry — flyouts on hover are fiddly to hit and impossible on touch. */
+   clicking through and a Back entry - flyouts on hover are fiddly to hit and impossible on touch. */
 let CBT_MENU = null;      // { kind, entries, stack: [{title, entries}] }
 
 function closeCombatMenu() {
@@ -687,7 +687,7 @@ function paintCombatMenu(anchor) {
   if (!m) { m = document.createElement("div"); m.className = "cbt-menu"; document.body.appendChild(m); }
   const top = CBT_MENU.stack[CBT_MENU.stack.length - 1];
   const back = CBT_MENU.stack.length > 1 ? `<div class="cbt-item cbt-back" data-cbtback="1">← back</div>` : "";
-  // Every entry's `hint` — what it actually does — is a title (hover) tooltip, not visible text, so
+  // Every entry's `hint` - what it actually does - is a title (hover) tooltip, not visible text, so
   // the menu itself reads as a plain list of action names. Consistent with how the rest of the sheet
   // explains a number without cluttering the row for it (Attacks' Fx tooltips, roll-button tooltips).
   m.innerHTML = `<div class="cbt-menu-title">${escapeHtml(top.title)}</div>${back}` +
@@ -737,7 +737,7 @@ document.addEventListener("DOMContentLoaded", () => {
        and they go through pushHistory so Undo covers them like everything else. */
     const mv = e.target.closest(".cbt-mv");
     if (mv) {
-      /* data-mv is the change to the number in the box, which counts feet REMAINING — so the
+      /* data-mv is the change to the number in the box, which counts feet REMAINING - so the
          &minus; buttons spend and the + buttons refund. They used to be the other way round
          (data-mv was feet spent), which meant pressing + made the number beside it go down. */
       const delta = Number(mv.dataset.mv);
@@ -754,7 +754,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* Double-click spends the resource outright, no menu. Most of the time you know what you did and
-     just want the pip gone — the menu is for when you want the sheet to roll it or to remind you what
+     just want the pip gone - the menu is for when you want the sheet to roll it or to remind you what
      the option even is. The menu opens on the first click of the double, so it's dismissed here. */
   el.addEventListener("dblclick", e => {
     const chip = e.target.closest("[data-cbt]"); if (!chip) return;
@@ -769,8 +769,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", e => {
     const item = e.target.closest(".cbt-item");
     if (!item) {
-      // Anything else — a chip/button, the popup's own title bar, or the always-visible movement
-      // box/terrain input outside any menu — has its own handling (or none) below; it must not fall
+      // Anything else - a chip/button, the popup's own title bar, or the always-visible movement
+      // box/terrain input outside any menu - has its own handling (or none) below; it must not fall
       // through to closing the menu on every click.
       if (!e.target.closest("[data-cbt]") && !e.target.closest(".cbt-menu")) closeCombatMenu();
       return;
@@ -789,7 +789,7 @@ document.addEventListener("DOMContentLoaded", () => {
     closeCombatMenu();
   });
 
-  /* The movement box and terrain multiplier, always visible in .cbt-move-row (not the popup menu) —
+  /* The movement box and terrain multiplier, always visible in .cbt-move-row (not the popup menu) -
      commits on `change` (blur/Enter), never on every keystroke, or typing "30" toward a corrected
      value would fight the cursor mid-type. See correctMoveBox/correctTerrainInput above. */
   document.addEventListener("change", e => {
@@ -812,12 +812,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  /* Rolling initiative is what puts you in combat — the whole point of the tracker is that you
-     don't have to remember to turn it on — and it's also what seeds/updates your own row in the
+  /* Rolling initiative is what puts you in combat - the whole point of the tracker is that you
+     don't have to remember to turn it on - and it's also what seeds/updates your own row in the
      initiative order below, with the number that actually landed in the log (LAST_D20_ROLL, set by
      fireRoll in dice.js). Deferred so that roll has already happened: app.js's own click listener
      for [data-roll-check] buttons is registered after this file's (combat.js loads first), so it
-     fires later in this same click's dispatch — but only guaranteed complete by the next tick. */
+     fires later in this same click's dispatch - but only guaranteed complete by the next tick. */
   document.addEventListener("click", e => {
     const init = e.target.closest('[data-roll-check="init"]');
     if (!init) return;
@@ -831,7 +831,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* Attack rolls book themselves. Deferred so the roll's own log entry lands first and the tracker's
      note reads as a consequence of it rather than a prediction. The history snapshot is taken NOW,
-     synchronously, before that deferred booking runs — Undo needs "the state right before this
+     synchronously, before that deferred booking runs - Undo needs "the state right before this
      spend", and by the time the timeout fires that state is already gone. */
   document.addEventListener("click", e => {
     const btn = e.target.closest(".wpn-both, .wpn-roll");

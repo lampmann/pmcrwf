@@ -1,6 +1,6 @@
-// Sidekick class features (Tasha's Cauldron of Everything) — expert, spellcaster, and warrior sidekick
+// Sidekick class features (Tasha's Cauldron of Everything) - expert, spellcaster, and warrior sidekick
 registerEffects({
-  // ===== EXPERT SIDEKICK — automatable =====
+  // ===== EXPERT SIDEKICK - automatable =====
   "class|expert sidekick|expertise": {
     name: "Expertise", sv: 1,
     // One choice id per skill picked: renderEffectControls() draws a single <select> per id and
@@ -29,7 +29,7 @@ registerEffects({
     ],
   },
 
-  // ===== WARRIOR SIDEKICK — automatable =====
+  // ===== WARRIOR SIDEKICK - automatable =====
   "class|warrior sidekick|battle readiness": {
     name: "Battle Readiness", sv: 1,
     effects: [

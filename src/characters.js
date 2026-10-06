@@ -1,23 +1,23 @@
 /* ============================================================
-   CHARACTER ROSTER — several characters in one sheet, one tab each.
+   CHARACTER ROSTER - several characters in one sheet, one tab each.
 
    Storage layout. A character's state is exactly what collectState() has
    always produced (persistence.js), so nothing about a single character's
    shape changes here; the roster just holds several of them:
 
      charsheet-roster : { v: 1, activeId, chars: [{ id, name, state }] }
-     charsheet-v0     : the pre-roster single character — READ ONCE and
+     charsheet-v0     : the pre-roster single character - READ ONCE and
                         migrated in, then left untouched on disk.
 
    The old key is deliberately NOT deleted. It costs a few KB and it is the
    only copy of a character that existed before this feature; if anything
    about the migration is wrong, the user's original is still sitting there
-   to recover by hand. Migration is also idempotent — it only runs when no
+   to recover by hand. Migration is also idempotent - it only runs when no
    roster exists at all, so a later save can't resurrect a stale copy.
 
    Saving is whole-roster (one JSON blob) rather than a key per character:
    collectState() already serialises a whole character in one go, rosters
-   are a handful of entries, and one key keeps switching atomic — there's no
+   are a handful of entries, and one key keeps switching atomic - there's no
    window where the active id points at a character that hasn't been written.
    ============================================================ */
 const ROSTER_KEY = "charsheet-roster";
@@ -29,7 +29,7 @@ let NEEDS_CHARACTER_CREATOR = false;
 function newCharId() { return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
 /* The tab label. A character's name lives inside its own state (the char-name field), so the roster
-   copy is only a cache for rendering tabs without deserialising every character — refreshed from the
+   copy is only a cache for rendering tabs without deserialising every character - refreshed from the
    live sheet on every save (see saveState). */
 function charDisplayName(c) {
   return (c && c.name || "").trim() || "unnamed";
@@ -37,7 +37,7 @@ function charDisplayName(c) {
 
 function activeChar() { return ROSTER.chars.find(c => c.id === ROSTER.activeId) || null; }
 
-/* Returns whether the write actually landed. Callers must not report "saved" on a false — the save
+/* Returns whether the write actually landed. Callers must not report "saved" on a false - the save
    status used to say "saved <time>" unconditionally while a quota failure was being swallowed here,
    which told the user their work was safe at exactly the moment it stopped being. */
 function persistRoster() {
@@ -70,7 +70,7 @@ function loadRoster() {
     return legacy;
   }
 
-  // Genuinely fresh install. Seed one empty entry so the very first save has somewhere to go —
+  // Genuinely fresh install. Seed one empty entry so the very first save has somewhere to go -
   // returning null tells app.js to leave the markup's own blank sheet as-is rather than apply state.
   const id = newCharId();
   NEEDS_CHARACTER_CREATOR = true;
@@ -94,7 +94,7 @@ function switchCharacter(id) {
   ROSTER.activeId = id;
   persistRoster();
   applyState(target.state);
-  // The log follows the character (or its group — see logKeyFor). Repainting only when the key
+  // The log follows the character (or its group - see logKeyFor). Repainting only when the key
   // actually changes is what makes a group feel like one shared log rather than several copies.
   if (logKeyFor(target) !== fromKey) repaintEventLog();
   renderCharacterTabs();
@@ -157,7 +157,7 @@ function deleteCharacter(id) {
   const wasActive = id === ROSTER.activeId;
   const idx = ROSTER.chars.indexOf(c);
   ROSTER.chars.splice(idx, 1);
-  /* Drop the log with the character, or it sits in localStorage forever with no tab to reach it —
+  /* Drop the log with the character, or it sits in localStorage forever with no tab to reach it -
      up to LOG_CAP entries per deleted character, which is exactly the growth that pushes a roster
      into a quota failure. Only its OWN log: a grouped character's log key belongs to the group and
      the remaining members are still using it. */
@@ -170,7 +170,7 @@ function deleteCharacter(id) {
   logEvent("info", `Deleted <b>${escapeHtml(charDisplayName(c))}</b>`);
 }
 
-/* A blank sheet, without going through location.reload() — used by "+" when there's no wizard, and
+/* A blank sheet, without going through location.reload() - used by "+" when there's no wizard, and
    by Reset. Mirrors the markup's own initial state: one empty class row, everything else default. */
 function resetSheetToBlank() {
   // applyState restores omitted fields and collections to their defaults, including scores of 10,
@@ -182,15 +182,15 @@ function resetSheetToBlank() {
    GROUPS AND THE SHARED EVENT LOG
 
    Drag a tab onto another and they form a group. The case this is for is a
-   character and the things they command — a wizard and their familiar, a
-   druid and a summon, a party the same person is running — where what
+   character and the things they command - a wizard and their familiar, a
+   druid and a summon, a party the same person is running - where what
    matters is that everything they did happened in ONE order. So a group
    shares an Event Log: roll on the familiar's sheet and it lands in the same
    stream as the wizard's attack, because that's how the turn actually went.
 
    Storage: each character carries an optional `group` id, and ROSTER.logs is
    keyed by group id where there is one and by character id where there
-   isn't — so an ungrouped character keeps its own log without a special
+   isn't - so an ungrouped character keeps its own log without a special
    case, and grouping is just two characters agreeing on a key.
 
    Entries carry a timestamp. That's what makes merging two logs on grouping
@@ -246,7 +246,7 @@ function groupCharacters(movedId, targetId) {
   const merged = keys.flatMap(k => ROSTER.logs[k] || []).sort((a, b) => b.t - a.t).slice(0, LOG_CAP);
   keys.forEach(k => { if (k !== gid) delete ROSTER.logs[k]; });
 
-  // Everything already in the moved character's group comes along — dragging a tab moves its group,
+  // Everything already in the moved character's group comes along - dragging a tab moves its group,
   // not just the one tab, which is the only reading that doesn't silently split a group in two.
   const movers = moved.group ? groupMembers(moved.group) : [moved];
   movers.forEach(c => { c.group = gid; });
@@ -260,8 +260,8 @@ function groupCharacters(movedId, targetId) {
 }
 
 /* Re-splice the roster so every member of `gid` sits together, at the position of whichever
-   one of them comes first. A group that is not contiguous cannot be drawn as one thing —
-   renderCharacterTabs boxes each contiguous run of one group id — so a group split across a
+   one of them comes first. A group that is not contiguous cannot be drawn as one thing -
+   renderCharacterTabs boxes each contiguous run of one group id - so a group split across a
    non-member renders as two boxes claiming to be the same group. */
 function keepGroupContiguous(gid) {
   if (!gid) return;
@@ -275,7 +275,7 @@ function keepGroupContiguous(gid) {
 /* Move ONE character in or out of a group, carrying its history with it.
 
    This is the membership half of a drag; moveCharacter below is the position half. Splitting
-   them is what lets a drop say "this tab, here, in that group" as one gesture — which is the
+   them is what lets a drop say "this tab, here, in that group" as one gesture - which is the
    whole mechanism now that the ⛓ button is gone.
 
    Returns whether anything actually changed, so a no-op drag stays a no-op. */
@@ -293,7 +293,7 @@ function setCharacterGroup(id, gid) {
   c.group = gid;
 
   // Joining folds this character's own history into the group's, newest first, so the shared
-  // stream still reads as one history rather than two stacked — same rule groupCharacters uses.
+  // stream still reads as one history rather than two stacked - same rule groupCharacters uses.
   if (gid) {
     const mine = ROSTER.logs[c.id] || [];
     ROSTER.logs[gid] = [...(ROSTER.logs[gid] || []), ...mine]
@@ -301,7 +301,7 @@ function setCharacterGroup(id, gid) {
     delete ROSTER.logs[c.id];
   }
 
-  /* A group of one isn't one — and the last member out takes the shared log with it, exactly as
+  /* A group of one isn't one - and the last member out takes the shared log with it, exactly as
      the leaver did.
 
      That second half is new, and it was a real hole. Dissolving used to clear `group` and stop,
@@ -321,14 +321,14 @@ function setCharacterGroup(id, gid) {
 }
 
 /* A character leaves its group and gets its own Event Log back. Still its own named operation
-   even though nothing on screen calls it directly any more — dragging a tab out of the box is
+   even though nothing on screen calls it directly any more - dragging a tab out of the box is
    what invokes it, and "left the group" is worth one line in the log either way. */
 function ungroupCharacter(id) {
   const c = ROSTER.chars.find(x => x.id === id); if (!c || !c.group) return;
   const was = c.group;
   if (!setCharacterGroup(id, null)) return;
   /* AND CLOSE THE HOLE BEHIND IT. A character taken out of the MIDDLE of a run leaves its
-     old group split across it — same group, two runs, drawn as two boxes. Harmless when the
+     old group split across it - same group, two runs, drawn as two boxes. Harmless when the
      leaver was at an end, or when the drag already moved it to a boundary, since the
      re-splice is then a no-op; essential when it left in place from the middle. */
   keepGroupContiguous(was);
@@ -343,8 +343,8 @@ function ungroupCharacter(id) {
    way to leave a group, so that reasoning inverts: moving the block would make the one gesture
    that has to move a single tab the one gesture that cannot.
 
-   ANCHORED ON THE TAB YOU DROPPED ON, and computed against `rest` — the bar with the moved tab
-   already taken out — so the insertion index is found in the list the tab is going back into and
+   ANCHORED ON THE TAB YOU DROPPED ON, and computed against `rest` - the bar with the moved tab
+   already taken out - so the insertion index is found in the list the tab is going back into and
    cannot be thrown off by the tab's own position. The previous version took a null anchor to
    mean "the end", and derived the anchor for an "after" drop as *the tab following the target*,
    which past the last tab is nothing: dropping onto the last tab's right edge silently became
@@ -380,7 +380,7 @@ function renderCharacterTabs() {
     const run = [];
     while (i < ROSTER.chars.length && ROSTER.chars[i].group === c.group) run.push(ROSTER.chars[i++]);
     /* `data-group` is what the drop handler reads to answer "which box is the cursor in", which
-       is the whole basis of joining and leaving now — see groupBoxAt. */
+       is the whole basis of joining and leaving now - see groupBoxAt. */
     html += `<span class="char-group" data-group="${c.group}" ` +
       `role="group" aria-label="Shared event log">` +
       run.map(charTabHtml).join("") + `</span>`;
@@ -408,7 +408,7 @@ function totalLevelOfState(c) {
    group; drop it outside every box and it is in none. That one rule replaces the ⛓ button that
    used to be the only way out of a group, and it is deliberately the BOX that decides rather than
    an index calculation: the dashed rectangle is the thing on screen, so it should be the thing you
-   aim at. It also settles a question an index cannot — dropping level with the last tab in a group
+   aim at. It also settles a question an index cannot - dropping level with the last tab in a group
    but past its right edge is *inside* the box, because that is where the box is drawn.
 
    The rule runs both ways on purpose. It has to: a tab dropped between two members of a group but
@@ -425,7 +425,7 @@ function tabDropIntent(tab, clientX) {
   return "group";
 }
 
-/* Which group's box the cursor is inside, or null for none — "outside the group", literally. */
+/* Which group's box the cursor is inside, or null for none - "outside the group", literally. */
 function groupBoxAt(x, y) {
   const box = [...document.querySelectorAll("#char-tabs .char-group")].find(b => {
     const r = b.getBoundingClientRect();
@@ -437,7 +437,7 @@ function groupBoxAt(x, y) {
 /* What the cursor is over, INCLUDING when it is over nothing.
 
    The bar is a flex row with a gap between tabs and a box that adds padding of its own, so there
-   is a real band of pixels where the cursor is over the container and not over any tab — and it
+   is a real band of pixels where the cursor is over the container and not over any tab - and it
    is the most natural place to aim when dropping BETWEEN two tabs. That used to resolve to "no
    target" and fall through to a move-to-the-end path. It matters more now than it did: the band
    inside a box, where the ⛓ button used to sit, is exactly where someone will aim to drop a tab
@@ -448,7 +448,7 @@ function groupBoxAt(x, y) {
    Grouping is unreachable from a gap, which is right: a gap means "put it here" unambiguously,
    and only the middle of a tab means "put it with this one". */
 /* `ignoreId` is passed in rather than read off TAB_DRAG_ID, because the drop handler clears
-   that before it resolves the target — reading the module state here would exclude nothing at
+   that before it resolves the target - reading the module state here would exclude nothing at
    exactly the moment it matters, and only the hover feedback would benefit. */
 function dropTargetAt(e, ignoreId) {
   const el = e.target.closest && e.target.closest("[data-charid]");
@@ -456,7 +456,7 @@ function dropTargetAt(e, ignoreId) {
 
   /* THE DRAGGED TAB IS NOT A CANDIDATE. It stays in the bar at its old place while you drag
      it, so pulling the FIRST or LAST tab of a group out past its own end makes it the tab
-     nearest the cursor — which resolves to "you dropped on yourself" and is discarded. That
+     nearest the cursor - which resolves to "you dropped on yourself" and is discarded. That
      is why pulling an end tab out towards its own side did nothing, while hauling it across
      to the far side worked: some other tab was then nearest. */
   const tabs = [...document.querySelectorAll("#char-tabs .char-tab")]
@@ -507,7 +507,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   /* The mark is drawn from the SAME resolution the drop uses, so what you see is what you get,
      gaps included. The extra mark is on the BOX: while a grouped tab is being dragged somewhere
-     that would take it out, its group is outlined as losing a member — the one piece of feedback
+     that would take it out, its group is outlined as losing a member - the one piece of feedback
      the ⛓ button used to provide for free by being a visible control. */
   /* Marks the box a drop would take a character out of. Leaving has no button, so the box
      has to say so before the release rather than after. */
@@ -523,13 +523,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
      Leaving a group means dropping outside every box, and vertically there was nowhere to
      do it: #char-tabs is padded `.25rem .5rem 0`, so its bottom edge IS the box's bottom
-     edge — a band of exactly zero pixels. Dragging a tab straight down, which is what
+     edge - a band of exactly zero pixels. Dragging a tab straight down, which is what
      anyone does when they mean "get this out", missed the bar entirely at every depth and
      no drop handler ever ran.
 
      Listening on the document makes the rest of the page the way out. The rule is one
-     sentence — on the bar you are rearranging or regrouping, anywhere else you are leaving
-     — and the target is the size of the window rather than a sliver. Both handlers return
+     sentence - on the bar you are rearranging or regrouping, anywhere else you are leaving
+     - and the target is the size of the window rather than a sliver. Both handlers return
      immediately unless a tab drag is in progress, so nothing else on the page is affected. */
   const overStrip = e => {
     const r = el.getBoundingClientRect();
@@ -563,12 +563,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* Dropped off the bar: leave the group, and stay where you are in the order. There is
        no sensible position to read out of a point nowhere near the bar, and the gesture was
-       never about position — it was about getting out. ungroupCharacter re-splices the group
+       never about position - it was about getting out. ungroupCharacter re-splices the group
        left behind, so leaving from the middle of a run does not split it in two. */
     if (!overStrip(e)) { clearTabDropMarks(); ungroupCharacter(moved); return; }
 
     const hit = dropTargetAt(e, moved);
-    /* Read the box under the cursor BEFORE anything re-renders the bar — after that the
+    /* Read the box under the cursor BEFORE anything re-renders the bar - after that the
        rectangles these coordinates were measured against no longer exist. */
     const landing = hit && hit.intent !== "group" ? groupBoxAt(e.clientX, e.clientY) : null;
     clearTabDropMarks();

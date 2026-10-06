@@ -115,7 +115,7 @@
     },
 
     // ===== Fey Wanderer =====
-    // "Whenever you make a Charisma check" — approximated as the four CHA-based skills, which are
+    // "Whenever you make a Charisma check" - approximated as the four CHA-based skills, which are
     // the only Charisma checks this sheet has rows for.
     "subclass|ranger|fey wanderer|otherworldly glamour": {
       name: "Otherworldly Glamour", sv: 1,

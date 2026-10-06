@@ -1,4 +1,4 @@
-// Race features batch 03 — LLM conversion pass
+// Race features batch 03 - LLM conversion pass
 // D&D 5e (2014) racial trait effects; see conversion-guide.md for rules and caveats
 registerEffects({
   "race|elf (zendikar)|keen senses": {

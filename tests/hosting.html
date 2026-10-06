@@ -10,11 +10,11 @@
      folder with data/ next to it: src/data-folder.js (reading the user's own data/ off disk through
      the File System Access API) and sw.js (precaching the app shell for offline use).
 
-     Neither can be exercised end to end in a test page — showDirectoryPicker needs a real click and
+     Neither can be exercised end to end in a test page - showDirectoryPicker needs a real click and
      a real folder, and a service worker's install event needs a real registration. What CAN be
      tested is everything either one decides on its own: which paths resolve where, what a miss
-     looks like, which folder a user's click actually means, and — the one that will save somebody
-     one day — that the service worker's precache list still matches every tag in the real page.
+     looks like, which folder a user's click actually means, and - the one that will save somebody
+     one day - that the service worker's precache list still matches every tag in the real page.
 
      sw.js is loaded here as an ordinary script. Its event listeners land on window and never fire,
      which is harmless; the functions are what's under test. -->
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   function assert(what, cond) { assertEqual(what, !!cond, true); }
 
   /* A stand-in for a FileSystemDirectoryHandle. An object value is a subdirectory, a string value is
-     a file with that content, and anything missing throws NotFoundError — which is the only part of
+     a file with that content, and anything missing throws NotFoundError - which is the only part of
      the real API's behaviour dataDirFile depends on. */
   function fakeDir(name, tree) {
     const miss = () => { throw new DOMException("no such entry", "NotFoundError"); };
@@ -95,7 +95,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     assert("a file the folder doesn't have reads as not-found, not an error", !miss.ok);
     assertEqual("...with a 404, which is what every loader already handles", miss.status, 404);
 
-    // The shim only ever intercepts data/. Everything else is the network, untouched — this is what
+    // The shim only ever intercepts data/. Everything else is the network, untouched - this is what
     // lets the same loaders run identically hosted and local.
     const css = await dataFetch("../css/base.css");
     assert("a non-data path still goes to the network", css.ok);
@@ -158,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   {
     /* The other half, and a source check rather than a behavioural one: these three live in files
        this harness can't load (app.js wires the whole sheet on DOMContentLoaded). A missing `return`
-       is invisible at runtime — the load still happens, just after everyone stopped waiting — so
+       is invisible at runtime - the load still happens, just after everyone stopped waiting - so
        pinning the keyword is worth more here than elegance. */
     const app = await (await fetch("../src/app.js")).text();
     const cls = await (await fetch("../src/class-library.js")).text();
@@ -189,7 +189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   {
     /* The drift catcher. wantedDataPath decides what gets copied; the loaders decide what gets read.
        If those two ever disagree, the symptom is a library that is silently empty for exactly the
-       people who can't use a live folder — so the list is checked against the source rather than
+       people who can't use a live folder - so the list is checked against the source rather than
        against my memory of the source. Every "data/…" literal in src/ has to survive the predicate. */
     const files = ["spell-library", "item-library", "class-library", "monster-library",
                    "rules-ref", "variant-rules"];
@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     assertEqual("picking the folder that holds it", relFromPickedPath("pmcrwf/data/races.json"), "races.json");
     assertEqual("a differently named data folder", relFromPickedPath("5etools-data/spells/index.json"), "spells/index.json");
     assertEqual("nested deeper", relFromPickedPath("data/bestiary/sub/x.json"), "bestiary/sub/x.json");
-    // A folder that merely CONTAINS a directory called data isn't stripped twice — "data" only goes
+    // A folder that merely CONTAINS a directory called data isn't stripped twice - "data" only goes
     // when it's the first thing after the picked folder's own name.
     assertEqual("a second data/ deeper down survives", relFromPickedPath("x/spells/data/y.json"), "spells/data/y.json");
     assert("a loose file with no folder is refused", relFromPickedPath("races.json") === null);
@@ -253,7 +253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     assertEqual("...a vanished file is removed", d.removed.join(","), "c.json");
     assertEqual("...and that's the whole story", d.total, 3);
 
-    // Same bytes, different hash — the size alone would have missed this.
+    // Same bytes, different hash - the size alone would have missed this.
     const h = diffSnapshotPaths({ "a.json": [10, "h1"] }, { "a.json": [10, "h2"] });
     assertEqual("a same-size edit still counts as changed", h.changed.join(","), "a.json");
   }
@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ---------- storing and reading a folder ----------
   {
     /* Real import, real IndexedDB, real read-back. The File objects are hand-built because a test
-       can't open a file dialog — importFolderFiles only ever touches webkitRelativePath, size and
+       can't open a file dialog - importFolderFiles only ever touches webkitRelativePath, size and
        text(), so these are the whole contract. */
     const mk = (path, text) => ({
       webkitRelativePath: path, size: text.length, name: path.split("/").pop(),
@@ -280,7 +280,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     assertEqual("only the files this sheet reads are stored", res.stored, 3);
     assertEqual("...and the rest are skipped, not failed", res.skipped, 2);
     assert("progress is reported while it runs", seen.length > 0);
-    assert("a first pick reports no diff — nothing existed to change", res.diff === null);
+    assert("a first pick reports no diff - nothing existed to change", res.diff === null);
 
     assertEqual("a stored file reads back byte for byte",
       await snapshotFileText("races.json"), '{"race":[{"name":"Dwarf"}]}');
@@ -360,7 +360,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     /* The assertion that earns this file's keep. The extractor is a regex over the raw HTML; the
        reference is the browser's own parser over the same bytes, filtered by the same rules. If
-       someone adds a script tag in a shape the regex misses — single quotes, an odd line break —
+       someone adds a script tag in a shape the regex misses - single quotes, an odd line break -
        these two disagree here rather than leaving one file out of the offline cache, which is a
        bug that only shows up on a plane. */
     const doc = new DOMParser().parseFromString(html, "text/html");
@@ -402,7 +402,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const src = await (await fetch("../sw.js")).text();
     /* The workflow rewrites this placeholder to the deploying commit, because a service worker only
        updates when its own bytes change. If it is ever renamed, the deploy step's grep fails loudly
-       — and so does this, which is the earlier of the two warnings. */
+       - and so does this, which is the earlier of the two warnings. */
     assert("sw.js still carries the placeholder the deploy stamps", src.includes("__BUILD__"));
     assert("...and the cache name is derived from it", /const CACHE = "pmcrwf-" \+ SW_BUILD/.test(src));
   }

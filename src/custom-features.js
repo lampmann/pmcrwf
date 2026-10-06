@@ -6,7 +6,7 @@ function renderCustomFeatures() {
   const open = new Set([...list.querySelectorAll("details[open]")].map(el => Number(el.dataset.index)));
   list.innerHTML = CUSTOM_FEATURES.map((feature, index) => `<details data-index="${index}"${open.has(index) ? " open" : ""}>
     <summary>${escapeHtml(feature.name)}</summary>
-    <div class="custom-feature-text">${escapeHtml(feature.description)}</div>
+    <div class="custom-feature-text">${escapeHtml(normalizeDisplayPunctuation(feature.description))}</div>
     <button type="button" data-custom-edit="${index}">Edit</button>
     <button type="button" data-custom-remove="${index}">Remove</button>
   </details>`).join("");

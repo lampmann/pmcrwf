@@ -110,9 +110,9 @@ function applyState(state) {
   /* Reset every persisted field to its markup default BEFORE writing the incoming ones. Everything
      else in this function resets when the saved state lacks it (`state.spells || []`), but fields
      were written in place, so any field absent from the incoming state kept the *previous*
-     character's value — switch from an elf to a state that predates the race box and you'd inherit
+     character's value - switch from an elf to a state that predates the race box and you'd inherit
      their Fey Ancestry. A live save always carries every field (collectState walks the same
-     selector), so this only bit hand-built and older-build states — exactly where a silent
+     selector), so this only bit hand-built and older-build states - exactly where a silent
      carry-over is hardest to spot. `defaultValue` is the markup's own `value` attribute, so a field
      that ships with a sensible starting number (Speed's 30) gets it back rather than going blank. */
   document.querySelectorAll("[data-persist]").forEach(el => {
@@ -136,7 +136,7 @@ function applyState(state) {
   }
   // A character saved with an empty Speed (every one made before the box had a default) would leave
   // the Movement pool reading 0/0. Refill it from the race here, at the one moment it can't fight
-  // someone typing — see syncRaceSpeed, which won't touch a number the player set themselves.
+  // someone typing - see syncRaceSpeed, which won't touch a number the player set themselves.
   if (typeof syncRaceSpeed === "function") syncRaceSpeed();
   initMathFields();
   if (typeof addAttackRow === "function") { $("attack-rows").innerHTML = ""; (state.attacks || []).forEach(addAttackRow); }
@@ -145,7 +145,7 @@ function applyState(state) {
   // The round tracker is per character: switching tabs mid-fight shows that character's own turn.
   // normalizeCombat fills in any field a save made before it existed is missing (see its own comment).
   if (typeof normalizeCombat === "function") { COMBAT = normalizeCombat(state.combat); if (typeof renderCombat === "function") renderCombat(); }
-  // Boons are per character too — two characters can each be under their own Guidance. renderBoons()
+  // Boons are per character too - two characters can each be under their own Guidance. renderBoons()
   // also re-syncs the Death Ward HP watcher, so switching tabs can't read the previous character's
   // hit points as a drop to 0.
   if (typeof normalizeBoons === "function") { BOONS = normalizeBoons(state.boons); if (typeof renderBoons === "function") renderBoons(); }
@@ -154,17 +154,17 @@ function applyState(state) {
   recompute();
   renderClassFeatures();
   if (typeof renderHitDice === "function") renderHitDice();
-  if (typeof renderItemList === "function") renderItemList();   // not driven by recompute() — see derived.js
+  if (typeof renderItemList === "function") renderItemList();   // not driven by recompute() - see derived.js
   if (typeof renderEquipSlots === "function") renderEquipSlots();   // the paper doll reads CHARACTER_ITEMS, which has only just been set
   if (typeof renderAllProficiencyLists === "function") renderAllProficiencyLists();
   // Renders off a persisted field but only listens to its own `change` event, which writing .value
-  // above does not fire — so it has to be repainted explicitly or it keeps showing the previous
+  // above does not fire - so it has to be repainted explicitly or it keeps showing the previous
   // character's exhaustion level (see status.js).
   if (typeof updateExhaustion === "function") updateExhaustion();
 }
 /* Saving writes into the active roster entry (src/characters.js) rather than a single fixed key, so
    every character on the tab bar keeps its own state. The entry's cached `name` is refreshed from the
-   live field on the way through — that cache is only ever used to label tabs. */
+   live field on the way through - that cache is only ever used to label tabs. */
 function saveState() {
   clearTimeout(saveTimer);
   saveTimer = null;
@@ -181,7 +181,7 @@ function saveState() {
     catch (e) { console.warn("Could not write charsheet-v0", e); ok = false; }
   }
   // Report what actually happened. A failed write is almost always localStorage quota (a big roster,
-  // or logs that have grown) and the character is then only in memory — losable by closing the tab —
+  // or logs that have grown) and the character is then only in memory - losable by closing the tab -
   // so it has to be loud rather than a console line nobody is looking at.
   const st = $("save-status");
   st.classList.toggle("important-notice", !ok);

@@ -1,5 +1,5 @@
 /* ============================================================
-   print.css — a plain, readable printout/PDF export. Loaded with
+   print.css - a plain, readable printout/PDF export. Loaded with
    media="print" so it only applies when printing/"Print to PDF",
    never on-screen; @media print here is belt-and-suspenders for
    browsers that ignore the link's media attribute.
@@ -19,7 +19,7 @@
     display: none !important;
   }
 
-  /* Undo free-form positioning — always print in plain document flow,
+  /* Undo free-form positioning - always print in plain document flow,
      regardless of the on-screen layout mode, so nothing overlaps or
      gets clipped by a resized module's fixed height. */
   .modules, .modules.lay-active { position: static !important; }
