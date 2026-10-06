@@ -828,3 +828,12 @@ button.linkish {
 
 /* Module layers stay together below dialogs, even while an editing module is raised. */
 .modules { isolation: isolate; }
+
+#levelup-modal .modal-box { width: min(54rem, calc(100vw - 2rem)); max-width: none !important; max-height: calc(100dvh - 2rem); box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; }
+#lu-body { overflow: auto; min-height: 0; }
+#levelup-modal .modal-actions { flex-shrink: 0; }
+#lu-options > * { margin-top: .65rem; }
+#lu-options summary { cursor: pointer; font-weight: bold; }
+.lu-spell-list { max-height: 15rem; overflow: auto; display: grid; gap: .2rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.lu-spell-list label { display: block; }
+.lu-spell-list label[hidden] { display: none; }

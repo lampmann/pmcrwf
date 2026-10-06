@@ -113,7 +113,6 @@ function init() {
     if (e.key === "Enter") { runCommand(e.target.value); e.target.value = ""; }
   });
 
-  $("btn-add-class").addEventListener("click", () => { addClassRow(); recompute(); scheduleSave(); });
 
   $("btn-export").addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(collectState(), null, 2)], { type: "application/json" });

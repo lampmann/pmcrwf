@@ -1386,7 +1386,7 @@ function renderLevelUp() {
   const cur = !isNew ? rows[LEVELUP.target] : null;
   const newLevel = isNew ? 1 : (cur ? cur.lvl + 1 : 1);
   const hitDie = isNew ? (LEVELUP.newClass ? classHitDie(LEVELUP.newClass) : "") : (cur ? cur.hitDie : "");
-  const conMod = abilityMod("con");
+  const conMod = mod(luScore("con"));
   const fixed = hitDie ? (HIT_DIE_FIXED[hitDie] || 5) : 0;
 
   const opts = rows.map(r => `<option value="${r.i}"${LEVELUP.target === r.i ? " selected" : ""}>${escapeHtml(r.name || "(unnamed class)")} ${r.lvl} &rarr; ${r.lvl + 1}</option>`).join("")
@@ -1420,6 +1420,7 @@ function renderLevelUp() {
     ${gained.length ? `<div style="margin-top:.5rem"><b>Gained at level ${newLevel}:</b> <span class="hint">${gained.map(escapeHtml).join(", ")}</span></div>`
       : `<div class="hint" style="margin-top:.5rem">No class features listed at that level in your loaded data.</div>`}`;
 
+  $("lu-body").insertAdjacentHTML("beforeend", luOptionsHtml());
   renderLevelUpChrome();
   if (typeof initComboboxes === "function") initComboboxes($("lu-body"));
 }
@@ -1429,7 +1430,9 @@ function renderLevelUp() {
 function renderLevelUpChrome() {
   if (!LEVELUP) return;
   const blocked = (LEVELUP.target === "new" && !LEVELUP.newClass.trim()) || luMcProfMissing() > 0;
-  $("lu-confirm").disabled = blocked || (LEVELUP.hpMode === "roll" && LEVELUP.rolled == null);
+  const optionError = luOptionsBlocker();
+  if ($("lu-option-error")) $("lu-option-error").textContent = optionError;
+  $("lu-confirm").disabled = blocked || !!optionError || (LEVELUP.hpMode === "roll" && LEVELUP.rolled == null);
 }
 
 function openLevelUp() {
@@ -1442,6 +1445,8 @@ function openLevelUp() {
 function closeLevelUp() { const m = $("levelup-modal"); if (m) m.style.display = "none"; LEVELUP = null; }
 
 function levelUpConfirm() {
+  if (!LEVELUP || (LEVELUP.target === "new" && !LEVELUP.newClass.trim()) || luOptionsBlocker() || luMcProfMissing() || (LEVELUP.hpMode === "roll" && LEVELUP.rolled == null)) return;
+  const draft = luDraft(), draftRow = luRow(), spellPlan = luSpellPlan();
   const rows = levelUpClasses();
   const isNew = LEVELUP.target === "new";
   const hpBefore = maxHP();
@@ -1455,8 +1460,9 @@ function levelUpConfirm() {
     if (!tr) { closeLevelUp(); return; }
     const lvlInput = tr.querySelector(".cls-lvl");
     lvlInput.value = String(Math.min(20, (Number(lvlInput.value) || 1) + 1));
-    commitMathField(lvlInput);
+    lvlInput.dataset.prev = lvlInput.value;
   }
+  luApplyOptions(draft, draftRow, spellPlan);
   recompute();
 
   const cur = isNew ? { name: LEVELUP.newClass, lvl: 1 } : rows[LEVELUP.target];
@@ -1516,7 +1522,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!LEVELUP) return;
     if (e.target.id === "lu-target") {
       LEVELUP.target = e.target.value === "new" ? "new" : Number(e.target.value);
-      LEVELUP.rolled = null; renderLevelUp(); return;
+      LEVELUP.rolled = null; LEVELUP.subclass = ""; renderLevelUp(); return;
     }
     if (e.target.name === "lu-hp") { LEVELUP.hpMode = e.target.value; LEVELUP.rolled = null; renderLevelUp(); return; }
     if (e.target.classList.contains("lu-pick")) {
@@ -1529,7 +1535,7 @@ document.addEventListener("DOMContentLoaded", () => {
      a text box fires on blur and would detach whatever you clicked next. Same rule as the creator. */
   $("lu-body").addEventListener("input", e => {
     if (!LEVELUP || e.target.id !== "lu-newclass") return;
-    LEVELUP.newClass = e.target.value; LEVELUP.rolled = null; LEVELUP.picks = {};
+    LEVELUP.newClass = e.target.value; LEVELUP.rolled = null; LEVELUP.picks = {}; LEVELUP.subclass = "";
     const pos = e.target.selectionStart;
     renderLevelUp();
     const again = $("lu-newclass");
