@@ -55,7 +55,7 @@ function createListSort(columns) {
     header(key, label, cell = true) {
       if (!key) return `<th scope="col">${escapeHtml(label)}</th>`;
       const active = state.key === key;
-      const button = `<button type="button" class="list-sort" data-sort="${key}" aria-label="Sort by ${escapeHtml(label)}">${escapeHtml(label)}${active ? state.descending ? " ▼" : " ▲" : ""}</button>`;
+      const button = `<button type="button" class="list-sort" data-sort="${key}" aria-label="Sort by ${escapeHtml(label)}">${escapeHtml(label)}${active ? state.descending ? " ▲" : " ▼" : ""}</button>`;
       return cell ? `<th scope="col" aria-sort="${active ? state.descending ? "descending" : "ascending" : "none"}">${button}</th>` : button;
     },
     headers(cell = true) { return columns.map(c => this.header(c.key, c.label, cell)).join(cell ? "" : " "); },

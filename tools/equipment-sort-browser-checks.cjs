@@ -12,13 +12,13 @@ module.exports = async function checkEquipmentSort(page) {
   await page.locator('#item-lib-toggle').click();
   const names = () => page.locator('#item-results .itm-name-link').allTextContents();
   assert.deepEqual(await names(), ['Alpha', 'Beta', 'Unknown', 'Zulu']);
-  assert.equal(await page.locator('.itm-sort[data-sort="name"]').innerText(), 'Name ▲');
+  assert.equal(await page.locator('.itm-sort[data-sort="name"]').innerText(), 'Name ▼');
   assert.match(await page.locator('#item-results tbody tr').filter({ hasText: 'Zulu' }).innerText(), /20 lb\./);
   assert.match(await page.locator('#item-results tbody tr').filter({ hasText: 'Zulu' }).innerText(), /400 gp/);
   for (const key of ['name', 'type', 'weight', 'attunement', 'rarity', 'source', 'price']) assert.equal(await page.locator(`.itm-sort[data-sort="${key}"]`).count(), 1);
   await page.locator('.itm-sort[data-sort="name"]').click();
   assert.deepEqual(await names(), ['Zulu', 'Unknown', 'Beta', 'Alpha']);
-  assert.equal(await page.locator('.itm-sort[data-sort="name"]').innerText(), 'Name ▼');
+  assert.equal(await page.locator('.itm-sort[data-sort="name"]').innerText(), 'Name ▲');
   await page.locator('.itm-sort[data-sort="weight"]').click();
   assert.deepEqual(await names(), ['Zulu', 'Alpha', 'Beta', 'Unknown']);
   assert.equal(await page.locator('.itm-sort[data-sort="weight"]').locator('..').getAttribute('aria-sort'), 'descending');

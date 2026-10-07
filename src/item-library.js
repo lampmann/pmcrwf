@@ -486,7 +486,7 @@ function renderItemResults() {
   const headers = ITEM_COLUMNS.map(([key, label]) => {
     const selected = ITEM_SORT.key === key;
     const direction = selected ? (ITEM_SORT.descending ? "descending" : "ascending") : "none";
-    return `<th scope="col" aria-sort="${direction}"><button type="button" class="itm-sort" data-sort="${key}">${label}${selected ? ` <span aria-hidden="true">${ITEM_SORT.descending ? "▼" : "▲"}</span>` : ""}</button></th>`;
+    return `<th scope="col" aria-sort="${direction}"><button type="button" class="itm-sort" data-sort="${key}">${label}${selected ? ` <span aria-hidden="true">${ITEM_SORT.descending ? "▲" : "▼"}</span>` : ""}</button></th>`;
   }).join("");
   el.innerHTML = `<table class="spell-table"><thead><tr><th scope="col">Actions</th>${headers}</tr></thead><tbody>${body}</tbody></table>` + (more ? `<div class='hint'>…and ${more} more - narrow your search</div>` : "");
 }

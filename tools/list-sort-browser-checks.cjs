@@ -19,7 +19,7 @@ module.exports = async function checkListSorting(page) {
   assert.deepEqual(await bookNames(), ['Alpha Sort', 'Zulu Sort']);
   await firstLevel.locator('.list-sort[data-sort="range"]').click();
   assert.deepEqual(await bookNames(), ['Zulu Sort', 'Alpha Sort']);
-  assert.equal(await firstLevel.locator('th[aria-sort="descending"]').innerText(), 'Range ▼');
+  assert.equal(await firstLevel.locator('th[aria-sort="descending"]').innerText(), 'Range ▲');
   await firstLevel.locator('.list-sort[data-sort="range"]').click();
   assert.deepEqual(await bookNames(), ['Alpha Sort', 'Zulu Sort']);
   // Actions still target the selected spell after sorting changes the row indexes.
