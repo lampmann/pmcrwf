@@ -125,6 +125,10 @@ const server = http.createServer((req, res) => {
         el.parentElement.classList.remove('lay-free'); el.classList.remove('lay-dragging'); return shadow;
       }), shadow);
     }
+    const previousExhaustion=await page.locator('#exhaustion-level').inputValue();
+    await page.evaluate(()=>{const el=document.getElementById('exhaustion-level');el.value='3';el.dispatchEvent(new Event('change',{bubbles:true}));recompute();});
+    await require('./theme-accent-checks.cjs')(page,'#exhaustion-effect .exh-on',root);
+    await page.evaluate(value=>{const el=document.getElementById('exhaustion-level');el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));recompute();},previousExhaustion);
     await page.locator('#theme-select').selectOption('solarized-dark.css');
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#theme-select').value === 'solarized-dark.css');
