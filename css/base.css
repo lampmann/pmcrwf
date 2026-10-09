@@ -704,6 +704,7 @@ button.linkish {
 .sb-table { border-collapse: collapse; width: 100%; font-size: .9rem; }
 .sb-table th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted-fg); padding: .35rem .4rem .15rem; white-space: nowrap; }
 .sb-table td { padding: .3rem .4rem; vertical-align: middle; border: 0; }
+.sb-table .sb-row > td { white-space: nowrap; }
 .sb-table .sb-name { white-space: nowrap; font-style: italic; }
 .sb-table .sb-act { white-space: nowrap; width: 1%; }
 .sb-cast { font: inherit; font-size: .75rem; font-weight: bold; text-transform: uppercase; padding: .1rem .45rem; }
