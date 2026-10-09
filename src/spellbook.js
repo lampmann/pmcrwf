@@ -108,11 +108,6 @@ function sbEffectDice(row, slotLevel, stats) {
   return dice;
 }
 
-function sbShorten(t, n) {
-  if (t.length <= n) return t;
-  const cut = t.slice(0, n), sp = cut.lastIndexOf(" ");
-  return (sp > n * .6 ? cut.slice(0, sp) : cut).replace(/[,;:.]$/, "") + "...";
-}
 /* ----- symbols ----- */
 function sbConcIcon() {
   return `<span class="sb-sym" title="Concentration"><svg viewBox="0 0 20 20" aria-label="Concentration"><path d="M10 1 19 10 10 19 1 10z"/><text x="10" y="14">C</text></svg></span>`;
@@ -221,10 +216,6 @@ function sbRowHtml(row, level, rowId) {
   const dice = sbEffectDice(row, level, firstStats);
   const kind = lib.effect ? lib.effect.kind : "";
   const effect = dice ? `<button type="button" class="dice-roll sb-effect" data-dice="${escapeHtml(dice)}" data-rolllabel="${escapeHtml(row.name + (kind ? " " + kind : ""))}">${escapeHtml(dice)}${kind ? ` <span class="sb-eff-kind">${escapeHtml(kind)}</span>` : ""}</button>` : "-";
-  const up = row.lvl === 0
-    ? (lib.cantripScale ? `<span title="Scales with character level">${escapeHtml(Object.entries(lib.cantripScale).map(([l, d]) => d + " at " + l).join(", "))}</span>` : "-")
-    : lib.upScale ? `+${escapeHtml(lib.upScale.per)} per ${lib.upScale.step === 2 ? "two slot levels" : "slot level"}`
-    : lib.upText ? `<span class="sb-uptext" title="${escapeHtml(lib.upText)}">${escapeHtml(sbShorten(lib.upText, 70))}</span>` : "-";
   const comps = lib.comp ? ["v", "s", "m"].filter(k => lib.comp[k]).map(k => k.toUpperCase()).join("/") : "";
   const detailKey = level + "|" + row.name;
   return `<tr class="sb-row" data-detail="${escapeHtml(detailKey)}">
@@ -235,7 +226,6 @@ function sbRowHtml(row, level, rowId) {
       <td>${sbHitDc(row)}</td>
       <td>${effect}</td>
       <td>${escapeHtml(lib.durStr || "-")}</td>
-      <td class="sb-up">${up}</td>
       <td${lib.material ? ` title="${escapeHtml(lib.material)}"` : ""}>${escapeHtml(comps || "-")}</td>
       <td class="hint">${escapeHtml(row.origins.map(o => o.label).join(" | "))}</td>
     </tr>` + (SB_OPEN_DETAIL.has(detailKey) ? sbDetailHtml(row) : "");
@@ -245,7 +235,7 @@ function sbDetailHtml(row) {
   const body = !lib ? `<div class="hint">No spell named "${escapeHtml(row.name)}" in the Spell Library.</div>`
     : `<div class="hint">${escapeHtml([lib.school, lib.material ? "M: " + lib.material : ""].filter(Boolean).join(" | "))}</div><div>${renderInlineSpellText(lib.rawText, lib.name)}</div>` +
       (lib.rawHigher ? `<div style="margin-top:3px"><b>At Higher Levels:</b> ${renderInlineSpellText(lib.rawHigher, lib.name)}</div>` : "");
-  return `<tr class="sb-detail"><td></td><td colspan="9"><div class="feat-detail">${body}</div></td></tr>`;
+  return `<tr class="sb-detail"><td></td><td colspan="8"><div class="feat-detail">${body}</div></td></tr>`;
 }
 let SB_ROWS = [];
 const SPELLBOOK_SORT = createListSort([
@@ -254,7 +244,6 @@ const SPELLBOOK_SORT = createListSort([
   { key: "hit", label: "Hit / DC", get: r => stripTags(sbHitDc(r)).replace(/<[^>]*>/g, "") },
   { key: "effect", label: "Effect", get: r => r.lib?.dmg },
   { key: "duration", label: "Duration", get: r => r.lib?.durStr },
-  { key: "upcasting", label: "Upcasting", get: r => r.lib?.upText },
   { key: "components", label: "Comp.", get: r => ["v", "s", "m"].filter(k => r.lib?.comp?.[k]).join("/") },
   { key: "class", label: "Class", get: r => r.origins.map(o => o.label).join(" | ") },
 ]);
@@ -279,7 +268,7 @@ function renderSpellbook() {
     if (filtering && !visible.length) continue;
     const body = visible.map(r => { SB_ROWS.push(r); return sbRowHtml(r, L, SB_ROWS.length - 1); }).join("");
     // One table for every level, a tbody per level, so the columns line up all the way down.
-    const head = `<tr class="sb-level-row"><td colspan="10"><div class="sb-level-head"><span class="sb-level-title">${L ? ordinalLevel(L) + " Level" : "Cantrip"}</span>
+    const head = `<tr class="sb-level-row"><td colspan="9"><div class="sb-level-head"><span class="sb-level-title">${L ? ordinalLevel(L) + " Level" : "Cantrip"}</span>
       <span class="sb-level-slots">${sbSlotBoxes("slot", L, slots, slotUsed(L))}${pactHere ? sbSlotBoxes("pact", L, pact.count, pactUsed()) : ""}</span></div></td></tr>`;
     const cols = body ? `<tr class="sb-colhead"><th></th>${SPELLBOOK_SORT.headers()}</tr>` : "";
     sections.push(`<tbody class="sb-level" data-level="${L}">${head}${cols}${body}</tbody>`);

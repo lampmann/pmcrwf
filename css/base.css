@@ -712,8 +712,6 @@ button.linkish {
   background: var(--select); color: var(--select-fg); border-radius: 2px; }
 .sb-effect { font: inherit; font-size: .85rem; padding: .1rem .4rem; white-space: nowrap; }
 .sb-eff-kind { font-size: .75rem; color: var(--muted-fg); }
-.sb-up { font-size: .8rem; max-width: 16rem; }
-.sb-uptext { cursor: help; }
 .sb-detail td { padding-top: 0; }
 /* Manage Spells: laid out like the other dialogs, but not a .modal-overlay (see the markup). */
 .sp-manage-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
