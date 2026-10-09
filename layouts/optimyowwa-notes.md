@@ -28,9 +28,9 @@ Visibility requirements take precedence over frequency ratings.
 | Spellcasting | 3 | Centre column, separate |
 | Features | 3 | Right column, separate from Spellcasting |
 | Companions & Summons | 3 | Right column, separate |
-| Rest | 2 | Below the main gameplay panels |
+| Rest | 2 | Left column, below Speed |
 | Senses | 2 | Below Rest |
-| Inventory & Equipment | 2 | Below Attacks, default tab |
+| Inventory & Equipment | 2 | Below the enlarged Attacks panel, default tab |
 | Inventory Tracker | 0 | Inventory tab |
 | Counters | 1 | Below Companions |
 | Proficiencies | 1 | Below Counters |
@@ -45,11 +45,20 @@ Visibility requirements take precedence over frequency ratings.
 
 ## Review points
 
-The main gameplay panels fit together in the target viewport, beneath the
-app controls. Long spell lists, feature descriptions, movement tables and
-creature stat blocks scroll inside their modules. The layout gives each
-of these a visible panel rather than fitting every row or description
-on screen at once.
+The enlarged gameplay panels now extend below the initial viewport. Page
+scrolling gives them more room while Spellcasting and Features remain
+side by side. Long lists and descriptions also scroll inside modules.
+
+| Panel | First draft | Enlarged draft |
+| --- | --- | --- |
+| Spellcasting | 672 x 256 | 592 x 512 |
+| Features | 304 x 224 | 384 x 400 |
+| Attacks / Offensive Routines | 672 x 176 | 592 x 320 |
+| Companions & Summons | 304 x 208 | 384 x 432 |
+
+The right column is wider, while the centre column is slightly narrower
+and much taller. Each requested panel has substantially more area.
+Inventory, Counters and Proficiencies move down to make room.
 
 HP, Armor Class, Speed and Saving Throws start visible. Saving Throws
 shares its box with Ability Scores and Skills, so switching those tabs
