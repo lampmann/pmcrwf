@@ -1,0 +1,273 @@
+{
+  "free": false,
+  "activated": true,
+  "grid": 16,
+  "snapGrid": true,
+  "snapEdge": true,
+  "zTop": 1,
+  "map": {
+    "header": {
+      "x": 0,
+      "y": 0,
+      "w": 640,
+      "h": 160,
+      "z": 1
+    },
+    "classes": {
+      "x": 0,
+      "y": 0,
+      "w": 640,
+      "h": 160,
+      "z": 1
+    },
+    "background": {
+      "x": 0,
+      "y": 0,
+      "w": 640,
+      "h": 160,
+      "z": 1
+    },
+    "hp": {
+      "x": 656,
+      "y": 0,
+      "w": 352,
+      "h": 160,
+      "z": 1
+    },
+    "ac": {
+      "x": 1024,
+      "y": 0,
+      "w": 176,
+      "h": 160,
+      "z": 1
+    },
+    "initiative": {
+      "x": 1216,
+      "y": 0,
+      "w": 144,
+      "h": 160,
+      "z": 1
+    },
+    "saves": {
+      "x": 0,
+      "y": 176,
+      "w": 352,
+      "h": 288,
+      "z": 1
+    },
+    "abilities": {
+      "x": 0,
+      "y": 176,
+      "w": 352,
+      "h": 288,
+      "z": 1
+    },
+    "skills": {
+      "x": 0,
+      "y": 176,
+      "w": 352,
+      "h": 288,
+      "z": 1
+    },
+    "speed": {
+      "x": 0,
+      "y": 480,
+      "w": 352,
+      "h": 144,
+      "z": 1
+    },
+    "spellcasting": {
+      "x": 368,
+      "y": 176,
+      "w": 672,
+      "h": 256,
+      "z": 1
+    },
+    "attacks": {
+      "x": 368,
+      "y": 448,
+      "w": 672,
+      "h": 176,
+      "z": 1
+    },
+    "routines": {
+      "x": 368,
+      "y": 448,
+      "w": 672,
+      "h": 176,
+      "z": 1
+    },
+    "class-features": {
+      "x": 1056,
+      "y": 176,
+      "w": 304,
+      "h": 224,
+      "z": 1
+    },
+    "companions": {
+      "x": 1056,
+      "y": 416,
+      "w": 304,
+      "h": 208,
+      "z": 1
+    },
+    "rest": {
+      "x": 0,
+      "y": 640,
+      "w": 352,
+      "h": 144,
+      "z": 1
+    },
+    "senses": {
+      "x": 0,
+      "y": 800,
+      "w": 352,
+      "h": 240,
+      "z": 1
+    },
+    "conditions": {
+      "x": 0,
+      "y": 1056,
+      "w": 352,
+      "h": 272,
+      "z": 1
+    },
+    "defenses": {
+      "x": 0,
+      "y": 1056,
+      "w": 352,
+      "h": 272,
+      "z": 1
+    },
+    "exhaustion": {
+      "x": 0,
+      "y": 1056,
+      "w": 352,
+      "h": 272,
+      "z": 1
+    },
+    "death-saves": {
+      "x": 0,
+      "y": 1056,
+      "w": 352,
+      "h": 272,
+      "z": 1
+    },
+    "inventory": {
+      "x": 368,
+      "y": 640,
+      "w": 672,
+      "h": 400,
+      "z": 1
+    },
+    "inventory-tracker": {
+      "x": 368,
+      "y": 640,
+      "w": 672,
+      "h": 400,
+      "z": 1
+    },
+    "counters": {
+      "x": 1056,
+      "y": 640,
+      "w": 304,
+      "h": 144,
+      "z": 1
+    },
+    "proficiencies": {
+      "x": 1056,
+      "y": 800,
+      "w": 304,
+      "h": 240,
+      "z": 1
+    },
+    "pb": {
+      "x": 368,
+      "y": 1056,
+      "w": 992,
+      "h": 272,
+      "z": 1,
+      "hc": 96
+    },
+    "combat": {
+      "x": 368,
+      "y": 1056,
+      "w": 992,
+      "h": 272,
+      "z": 1,
+      "hc": 96
+    },
+    "dice": {
+      "x": 368,
+      "y": 1056,
+      "w": 992,
+      "h": 272,
+      "z": 1,
+      "hc": 96
+    },
+    "house-rules": {
+      "x": 368,
+      "y": 1056,
+      "w": 992,
+      "h": 272,
+      "z": 1,
+      "hc": 96
+    }
+  },
+  "collapsed": {
+    "pb": true,
+    "combat": true,
+    "dice": true,
+    "house-rules": true
+  },
+  "stacks": {
+    "optimyowwa-header": {
+      "members": [
+        "header",
+        "classes",
+        "background"
+      ],
+      "active": "header"
+    },
+    "optimyowwa-saves": {
+      "members": [
+        "saves",
+        "abilities",
+        "skills"
+      ],
+      "active": "saves"
+    },
+    "optimyowwa-attacks": {
+      "members": [
+        "attacks",
+        "routines"
+      ],
+      "active": "attacks"
+    },
+    "optimyowwa-conditions": {
+      "members": [
+        "conditions",
+        "defenses",
+        "exhaustion",
+        "death-saves"
+      ],
+      "active": "conditions"
+    },
+    "optimyowwa-inventory": {
+      "members": [
+        "inventory",
+        "inventory-tracker"
+      ],
+      "active": "inventory"
+    },
+    "optimyowwa-pb": {
+      "members": [
+        "pb",
+        "combat",
+        "dice",
+        "house-rules"
+      ],
+      "active": "pb"
+    }
+  }
+}
