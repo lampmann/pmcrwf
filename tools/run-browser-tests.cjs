@@ -191,6 +191,7 @@ const server = http.createServer((req, res) => {
     await require("./inventory-tracker-browser-checks.cjs")(page);
     await require("./custom-records-browser-checks.cjs")(page);
     await require("./purchases-browser-checks.cjs")(page);
+    await require("./sales-browser-checks.cjs")(page);
     await require("./equipment-sort-browser-checks.cjs")(page);
     await require("./custom-lineage-browser-checks.cjs")(page);
     await require("./senses-order-browser-checks.cjs")(page);

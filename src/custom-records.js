@@ -10,6 +10,7 @@ function customRecordButtons(label, offerPurchase = false) {
   return `<div><button type="submit">${label}</button>${offerPurchase ? ' <button type="submit" data-custom-item-buy>Buy item</button>' : ""} <button type="button" data-custom-cancel>Cancel</button></div>`;
 }
 function closeCustomRecordEditors() {
+  if (typeof closeItemSale === 'function') closeItemSale();
   ['custom-item-editor', 'custom-creature-editor'].forEach(id => { if ($(id)) { $(id).hidden = true; $(id).innerHTML = ''; } });
   customItemEditing = null; customCreatureEditing = null;
 }

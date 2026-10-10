@@ -28,6 +28,42 @@ function buyMoreItem(index) {
   if (!recordItemPurchase(item.name, 1, price)) return;
   item.qty += 1; renderItemList(); recompute(); scheduleSave();
 }
+let sellingItem = null;
+function closeItemSale() {
+  sellingItem = null;
+  const form = $("item-sale-editor");
+  if (form) { form.hidden = true; form.innerHTML = ""; }
+}
+function openItemSale(index) {
+  const item = CHARACTER_ITEMS[index]; if (!item || !(item.qty > 0)) return;
+  closeCustomRecordEditors();
+  sellingItem = item;
+  const r = resolvedItem(item);
+  const price = item.custom ? item.custom.valueGp : r.lib ? itemValueGp(r.lib) : "";
+  const form = $("item-sale-editor");
+  form.innerHTML = `<b>Sell ${escapeHtml(item.name)}</b>` +
+    customRecordField("Quantity", "qty", Math.min(1, item.qty), "number", `min="0" max="${item.qty}" step="any" required`) +
+    customRecordField("Price each (gp)", "price", price === "" ? "" : Number(price) / 2, "number", 'min="0" step="any" required') +
+    '<div class="hint">The default sale price is half the listed value. Adjust it for your agreed price.</div>' +
+    '<div><button type="submit">Sell</button> <button type="button" data-sale-cancel>Cancel</button></div>';
+  form.hidden = false;
+  form.elements.qty.focus(); form.elements.qty.select();
+}
+function sellCharacterItem(item, quantity, unitPrice) {
+  const index = CHARACTER_ITEMS.indexOf(item);
+  if (index < 0 || !Number.isFinite(quantity) || quantity <= 0 || quantity > item.qty ||
+      !Number.isFinite(unitPrice) || unitPrice < 0 || !Number.isFinite(quantity * unitPrice)) return false;
+  const proceeds = Math.round(quantity * unitPrice * 100) / 100;
+  const now = new Date();
+  const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+  INVENTORY_TRANSACTIONS.push({ amount: proceeds, source: "Sale: " + (quantity === 1 ? "" : quantity + " × ") + item.name, date });
+  item.qty -= quantity;
+  closeItemSale();
+  if (item.qty === 0) removeCharacterItem(index);
+  else { renderItemList(); renderEquipSlots(); recompute(); scheduleSave(); }
+  renderInventoryTracker(); scheduleSave();
+  return true;
+}
 function removeCharacterItem(idx) {
   if (typeof closeCustomRecordEditors === "function") closeCustomRecordEditors();
   CHARACTER_ITEMS.splice(idx, 1);
@@ -40,6 +76,8 @@ function removeCharacterItem(idx) {
 function setItemQty(idx, qty) {
   const it = CHARACTER_ITEMS[idx]; if (!it) return;
   it.qty = Math.max(0, Number(qty) || 0);
+  const sell = document.querySelector(`.inv-sell[data-idx="${idx}"]`);
+  if (sell) sell.disabled = !(it.qty > 0);
   const figures = itemRowFigures(it);
   document.querySelectorAll(`.inv-totals[data-idx="${idx}"]`).forEach(el => { el.textContent = figures[Number(el.dataset.figure)]; });
   recompute(); scheduleSave();
@@ -96,13 +134,13 @@ function renderItemList() {
       <td class="hint">${escapeHtml(src)}</td>
       <td><label class="hint"><input type="checkbox" class="inv-eq" data-idx="${i}" ${it.eq ? "checked" : ""} aria-label="Equip ${escapeHtml(it.name)}">${it.slot && typeof slotByKey === "function" && slotByKey(it.slot) ? ` ${escapeHtml(slotByKey(it.slot).label.toLowerCase())}` : ""}</label></td>
       <td>${attuneBox}</td>
-      <td>${r.lib && (it.custom ? it.custom.valueGp : itemValueGp(r.lib)) !== "" ? `<button type="button" class="inv-buy" data-idx="${i}" title="Buy one for ${fmtGP(r.val)} gp">Buy +1</button>` : ""}</td>
+      <td>${r.lib && (it.custom ? it.custom.valueGp : itemValueGp(r.lib)) !== "" ? `<button type="button" class="inv-buy" data-idx="${i}" title="Buy one for ${fmtGP(r.val)} gp">Buy +1</button>` : ""} <button type="button" class="inv-sell" data-idx="${i}"${it.qty > 0 ? "" : " disabled"}>Sell</button></td>
       ${itemRowTotalsHtml(it, i)}
       <td>${it.custom ? `<button type="button" data-custom-item-edit="${i}">Edit</button>` : ""}</td>
       <td><button class="rowbtn inv-del" data-idx="${i}" aria-label="Remove ${escapeHtml(it.name)}">x</button></td>
     </tr>`;
   }).join("");
-  el.innerHTML = `<table class="inventory-table"><thead><tr>${[["qty","Qty"],["name","Item"],["source","Source"],["eq","Equipped"],["attuned","Attunement"],["","Buy"],["weight","Weight each"],["value","Value each"],["totalWeight","Total weight"],["totalValue","Total value"],["","Edit"],["","Remove"]].map(([key,label]) => INVENTORY_SORT.header(key,label)).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = `<table class="inventory-table"><thead><tr>${[["qty","Qty"],["name","Item"],["source","Source"],["eq","Equipped"],["attuned","Attunement"],["","Buy/Sell"],["weight","Weight each"],["value","Value each"],["totalWeight","Total weight"],["totalValue","Total value"],["","Edit"],["","Remove"]].map(([key,label]) => INVENTORY_SORT.header(key,label)).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
 }
 /* Which spell a scroll or tattoo holds: any spell of its level, or free text before spells load. */
 function invSpellPickHtml(it, i, level) {
@@ -142,6 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
   results.addEventListener("click", e => {
     if (INVENTORY_SORT.click(e, renderItemList)) return;
     const buy = e.target.closest(".inv-buy"); if (buy) { buyMoreItem(Number(buy.dataset.idx)); return; }
+    const sell = e.target.closest(".inv-sell"); if (sell) { openItemSale(Number(sell.dataset.idx)); return; }
     const del = e.target.closest(".inv-del"); if (del) { removeCharacterItem(Number(del.dataset.idx)); return; }
     // handled on click, not "change" - see the identical comment on .sp2-prep in spellcasting.js
     const eq = e.target.closest(".inv-eq"); if (eq) { setItemFlag(Number(eq.dataset.idx), "eq", eq.checked); return; }
@@ -159,5 +198,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   results.addEventListener("input", e => {
     const qty = e.target.closest(".inv-qty"); if (qty) setItemQty(Number(qty.dataset.idx), qty.value);
+  });
+  const sale = $("item-sale-editor");
+  if (!sale) return;
+  sale.addEventListener("click", e => { if (e.target.closest("[data-sale-cancel]")) closeItemSale(); });
+  sale.addEventListener("input", () => sale.elements.qty.setCustomValidity(""));
+  sale.addEventListener("submit", e => {
+    e.preventDefault();
+    if (!sale.reportValidity()) return;
+    if (!sellCharacterItem(sellingItem, Number(sale.elements.qty.value), Number(sale.elements.price.value))) {
+      sale.elements.qty.setCustomValidity("Choose a quantity greater than zero and no more than you own.");
+      sale.reportValidity();
+    }
   });
 });
