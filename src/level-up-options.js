@@ -1,6 +1,7 @@
 /* Advancement choices share the creator's feature definitions, while remaining a cancellable draft. */
 function luWithDraft(fn) {
   const previous = CREATOR; CREATOR = luDraft();
+  CREATOR.levelUpSkills = LEVELUP.picks.skills || [];
   try { return fn(CREATOR); } finally { CREATOR = previous; }
 }
 function luDraft() {
@@ -19,6 +20,8 @@ function luDraft() {
   draft.effectChoices = copy(EFFECT_CHOICES); draft.optChoices = copy(OPTFEATURE_CHOICES);
   draft.asiFeats = copy(FEAT_CHOICES); draft.asiScores = copy(ASI_CHOICES); draft.picks = copy(GRANT_SPELL_CHOICES);
   draft.raceFeats = {}; draft.backgroundFeats = copy(FEAT_CHOICES);
+  draft.existingSkills = SKILLS.map(s => crSkillSlug(s[0])).filter(slug =>
+    $('skillprof-' + slug).checked || $('skillexp-' + slug).checked);
   ABILITIES.forEach(a => { draft.scores[a.key] = Number($('score-' + a.key).value) || 10; });
   CHARACTER_SPELLS.filter(s => !s.grantSrc).forEach(s => {
     const store = draft.spells[s.cls] || (draft.spells[s.cls] = { cantrips: [], spells: [], prepared: [] });

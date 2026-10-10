@@ -200,6 +200,7 @@ const server = http.createServer((req, res) => {
     await require("./list-sort-browser-checks.cjs")(page);
     await require("./item-variants-browser-checks.cjs")(page);
     await require("./level-up-browser-checks.cjs")(page);
+    await require("./expertise-browser-checks.cjs")(page);
     if (process.env.PMCRWF_TEST_DATA) await require("./data-folder-browser-checks.cjs")(page, process.env.PMCRWF_TEST_DATA);
     assert.deepEqual(errors, []);
     console.log('Full app: import/rejection, reload persistence, export download, reset, delayed import switching, and hidden-tab save passed; no browser errors.');

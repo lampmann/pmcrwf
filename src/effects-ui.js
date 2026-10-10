@@ -46,6 +46,12 @@ function choiceOptionLabel(o) {
   return ab ? ab.name : s;
 }
 
+/* Expertise choices select an existing skill proficiency, unlike choices granting a new one. */
+function isSkillExpertiseChoice(feature, choice) {
+  return (dbEntryFor(feature)?.effects || []).some(e => e.op === "expertise" &&
+    String(e.target || "").startsWith("skill-") && String(e.target).includes("{choice:" + choice.id + "}"));
+}
+
 /* ----- inline controls: toggle / choice / always-on chip / unsupported marker, appended after
    a feature's uses-tracker in the Features panel (class-library.js's renderRaceSection/renderClassFeatures) ----- */
 function renderEffectControls(feature) {
@@ -104,7 +110,8 @@ function renderEffectControls(feature) {
       for (let i = 0; i < n; i++) {
         const cur = curArr[i] || "";
         const others = curArr.filter((v, j) => j !== i && v);
-        const opts = (c.options || []).filter(o => !others.includes(o))
+        const opts = (c.options || []).filter(o => !others.includes(o) &&
+          (!isSkillExpertiseChoice(feature, c) || o === cur || skillProfMult(o) > 0))
           .map(o => ({ o, label: choiceOptionLabel(o) })).sort((a, b) => a.label.localeCompare(b.label))
           .map(({ o, label }) => `<option value="${o}"${cur === o ? " selected" : ""}>${escapeHtml(label)}</option>`).join("");
         selects += `<select aria-label="${escapeHtml(c.label || feature.name + " " + c.id)}" class="eff-choice" data-fkey="${feature.fkey}" data-choice="${c.id}"${n > 1 ? ` data-slot="${i}"` : ""}><option value="">-</option>${opts}</select> `;
