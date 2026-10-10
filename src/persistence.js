@@ -32,7 +32,7 @@ function validateCharacterState(state) {
     if (state[key] == null) continue;
     if (!Array.isArray(state[key]) || !state[key].every(isRecord)) invalid(`${key} must be a list of objects`);
   }
-  for (const key of ["racialAbilityIncreases", "grantSpellChoices", "featChoices", "asiChoices", "optFeatureChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
+  for (const key of ["racialAbilityIncreases", "grantSpellChoices", "featChoices", "asiChoices", "asiModes", "optFeatureChoices", "usesState", "hdState", "effectChoices", "effectToggles", "proficiencies", "combat", "boons"]) {
     if (state[key] != null && !isRecord(state[key])) invalid(`${key} must be an object`);
   }
   for (const key of ["weapons", "tools", "languages"]) {
@@ -70,7 +70,7 @@ function collectState() {
     companions: (typeof COMPANIONS !== "undefined" ? COMPANIONS : []),
     combat: (typeof COMBAT !== "undefined" ? COMBAT : null),   // the round tracker, so a fight survives a reload
     boons: (typeof BOONS !== "undefined" ? BOONS : null),      // Guidance/Resistance/Death Ward counts (src/boons.js)
-    featChoices: FEAT_CHOICES, asiChoices: ASI_CHOICES, usesState: USES_STATE, hdState: HD_STATE,
+    featChoices: FEAT_CHOICES, asiChoices: ASI_CHOICES, asiModes: ASI_MODES, usesState: USES_STATE, hdState: HD_STATE,
     optFeatureChoices: (typeof OPTFEATURE_CHOICES !== "undefined" ? OPTFEATURE_CHOICES : {}),
     skillOrder: (typeof currentSkillOrder === "function" ? currentSkillOrder() : []),
     effectChoices: EFFECT_CHOICES, effectToggles: EFFECT_TOGGLES,
@@ -100,6 +100,7 @@ function applyState(state) {
   BACKGROUND_GRANTS = state.backgroundGrants !== false;
   FEAT_CHOICES = state.featChoices || {};
   ASI_CHOICES = state.asiChoices || {};
+  ASI_MODES = state.asiModes || {};
   if (typeof OPTFEATURE_CHOICES !== "undefined") OPTFEATURE_CHOICES = state.optFeatureChoices || {};
   // The row order is the character's, so it follows a tab switch and an export (see rows.js).
   if (typeof applySkillOrder === "function") applySkillOrder(state.skillOrder || []);

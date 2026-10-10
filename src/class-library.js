@@ -73,6 +73,7 @@ let FEAT_CHOICES = {};
    same ability twice and picking two different ones need no separate cases. Kept apart from
    FEAT_CHOICES because an ASI is one or the other, never both. */
 let ASI_CHOICES = {};
+let ASI_MODES = {};
 
 /* The total an ability has gained from ASIs taken on features you currently have. Only counts slots
    with no feat chosen - a slot spent on a feat gave you the feat instead. */
@@ -734,19 +735,24 @@ function featPickerHtml(fkey, chosen, offText) {
   return ` &nbsp;<label class="hint">Feat: <input type="text" class="asi-input" data-asikey="${fkey}" value="${escapeHtml(chosen || "")}" style="width:12rem"></label>`;
 }
 
-/* The other half of an Ability Score Improvement: two "+1 to..." pickers, which together express
-   both shapes of the rule (the same ability twice is the +2). Greyed out once a feat is chosen for
-   that slot, because it's one or the other - and the feat box is what you clear to get them back. */
+/* Two +1 picks express either a +2 to one ability or +1 to two different abilities. */
 function asiScoreHtml(e) {
   const picks = ASI_CHOICES[e.fkey] || ["", ""];
-  const taken = !!e.asiChosen;
   const opt = (sel, i) => ABILITIES.map(a =>
     `<option value="${a.key}"${sel === a.key ? " selected" : ""}>${a.key.toUpperCase()}</option>`).join("");
-  const sel = i => `<select class="asi-score" data-asikey="${e.fkey}" data-slot="${i}"${taken ? " disabled" : ""}>` +
+  const sel = i => `<select class="asi-score" data-asikey="${e.fkey}" data-slot="${i}">` +
     `<option value=""${picks[i] ? "" : " selected"}>-</option>${opt(picks[i], i)}</select>`;
   const total = (picks || []).filter(Boolean).length;
   return ` <span class="hint">` +
-    `or +1 ${sel(0)} and +1 ${sel(1)}${total === 2 && picks[0] === picks[1] ? ` <b>(+2 ${escapeHtml(String(picks[0]).toUpperCase())})</b>` : ""}</span>`;
+    `+1 ${sel(0)} and +1 ${sel(1)}${total === 2 && picks[0] === picks[1] ? ` <b>(+2 ${escapeHtml(String(picks[0]).toUpperCase())})</b>` : ""}</span>`;
+}
+function featureAsiChoiceHtml(e) {
+  const featsOff = typeof hrSetting === "function" && hrSetting("feats") === false;
+  const feat = !!e.asiChosen || (!featsOff && ASI_MODES[e.fkey] === "feat");
+  return `<span class="feature-asi"><select class="asi-mode" data-asikey="${e.fkey}" aria-label="Ability Score Improvement or Feat">
+    <option value="asi"${feat ? "" : " selected"}>Ability Score Improvement</option>
+    ${!featsOff || e.asiChosen ? `<option value="feat"${feat ? " selected" : ""}>Feat</option>` : ""}</select>
+    ${feat ? featPickerHtml(e.fkey, e.asiChosen, "") : asiScoreHtml(e)}</span>`;
 }
 
 /* ----- limited-use tracker rendering: the *spec* (whether a feature has finite uses, its max, and
@@ -885,8 +891,7 @@ function renderClassFeatures() {
       // A table can switch feats off entirely (ASI only) - see src/house-rules.js. The picker goes
       // away, but an already-chosen feat still shows, because turning the rule on later must not
       // silently strip a feat off a character who was built under the old ruleset.
-      const picker = featPickerHtml(e.fkey, e.asiChosen, "ASI only - feats are off in this campaign's House Rules.");
-      return `<div>${link}${picker}${asiScoreHtml(e)}${tracker}${renderEffectControls(e)}</div>`;
+      return `<div>${link}${featureAsiChoiceHtml(e)}${tracker}${renderEffectControls(e)}</div>`;
     }).join("") || "<div class='hint'>&nbsp;&nbsp;no features by this level</div>";
     const grantedHtml = (sub && sub.grantedSpells && sub.grantedSpells.length)
       ? grantedSpellsHtml(flattenGrantedSpells(sub.grantedSpells).filter(g => g.minLevel <= lvl), sub.name, rec.name) : "";
@@ -1006,6 +1011,13 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-short-rest").addEventListener("click", openShortRestModal);
   $("btn-long-rest").addEventListener("click", () => performRest("lr"));
   $("class-feat-results").addEventListener("change", e => {
+    const mode = e.target.closest(".asi-mode");
+    if (mode) {
+      const key = mode.dataset.asikey;
+      ASI_MODES[key] = mode.value;
+      delete FEAT_CHOICES[key]; delete ASI_CHOICES[key]; delete EFFECT_CHOICES[key];
+      scheduleSave(); renderClassFeatures(); invalidateEffects(); recompute(); return;
+    }
     const optSel = e.target.closest(".optf-sel");
     if (optSel) {
       const key = optSel.dataset.optkey, slot = Number(optSel.dataset.slot);
@@ -1017,6 +1029,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const inp = e.target.closest(".asi-input");
     if (inp) {
       const v = inp.value.trim();
+      if (inp.closest(".feature-asi")) ASI_MODES[inp.dataset.asikey] = "feat";
       if (v) FEAT_CHOICES[inp.dataset.asikey] = v; else delete FEAT_CHOICES[inp.dataset.asikey];
       scheduleSave(); renderClassFeatures(); recompute(); return;
     }

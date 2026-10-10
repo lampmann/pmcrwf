@@ -1,0 +1,46 @@
+const assert = require('node:assert/strict');
+module.exports = async function checkFeatureAsi(page) {
+  await page.evaluate(() => {
+    CLASS_LIB['ASI Test'] = { name: 'ASI Test', source: 'PHB', hd: 'd8', subs: {}, feats: [{ name: 'Ability Score Improvement', level: 4, source: 'PHB' }] };
+    FEAT_LIB.Alert = { name: 'Alert', source: 'PHB', text: 'Always ready.' };
+    saveClassLib(); saveFeatLib();
+    applyState({ fields: { 'char-name': 'ASI Test', 'score-str': '10' }, classes: [{ name: 'ASI Test', lvl: 4 }] });
+  });
+  const mode = page.locator('#class-feat-results .asi-mode');
+  const abilities = page.locator('#class-feat-results .asi-score');
+  const feat = page.locator('#class-feat-results .asi-input');
+  assert.equal(await mode.inputValue(), 'asi');
+  assert.equal(await feat.count(), 0);
+  await abilities.nth(0).selectOption('str');
+  await abilities.nth(1).selectOption('str');
+  assert.equal(await page.locator('#score-eff-str').innerText(), '12');
+  await mode.selectOption('feat');
+  assert.equal(await abilities.count(), 0);
+  assert.equal(await feat.count(), 1);
+  assert.equal(await page.locator('#score-eff-str').innerText(), '10');
+  await page.reload();
+  assert.equal(await mode.inputValue(), 'feat');
+  assert.equal(await abilities.count(), 0);
+  await feat.fill('Alert'); await feat.dispatchEvent('change');
+  assert.deepEqual(await page.evaluate(() => Object.values(FEAT_CHOICES)), ['Alert']);
+  await feat.fill(''); await feat.dispatchEvent('change');
+  assert.equal(await mode.inputValue(), 'feat');
+  assert.equal(await abilities.count(), 0);
+  await mode.selectOption('asi');
+  assert.equal(await feat.count(), 0);
+  assert.equal(await abilities.count(), 2);
+  assert.deepEqual(await page.evaluate(() => FEAT_CHOICES), {});
+  await abilities.nth(0).selectOption('str');
+  await abilities.nth(1).selectOption('str');
+  await page.reload();
+  assert.equal(await mode.inputValue(), 'asi');
+  assert.equal(await page.locator('#score-eff-str').innerText(), '12');
+  await page.evaluate(() => {
+    const state = collectState();
+    delete state.asiModes; state.featChoices = { [fkeyFor('ASI Test', 'Ability Score Improvement', 4)]: 'Alert' };
+    applyState(state);
+  });
+  assert.equal(await mode.inputValue(), 'feat');
+  assert.equal(await abilities.count(), 0);
+  console.log('Feature ASIs: exclusive two-tier controls, switching clears the previous benefit, empty feat mode, reload and legacy feat inference passed.');
+};
