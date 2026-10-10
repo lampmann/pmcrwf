@@ -122,7 +122,7 @@ module.exports = async function checkCreator(page) {
 
   await page.evaluate(() => { CREATOR.background = 'Acolyte'; goToCreatorStep(CR_STEP.desc); });
   assert.equal(await page.locator('[data-bgkind="languages"]').count(), 2);
-  assert.deepEqual(await page.locator('[data-bgkind="languages"]').first().locator('option').allTextContents(), ['- choose -', 'Common', 'Elvish']);
+  assert.deepEqual(await page.locator('[data-bgkind="languages"]').first().locator('option').allTextContents(), ['- choose -', 'Abyssal', 'Common', 'Elvish']);
   await page.locator('[data-bgkind="languages"]').nth(0).selectOption('Common');
   await page.locator('[data-bgkind="languages"]').nth(1).selectOption('Elvish');
   assert.deepEqual(await page.evaluate(() => creatorBuildState().proficiencies.languages), ['Common', 'Elvish']);

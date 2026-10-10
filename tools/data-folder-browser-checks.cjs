@@ -53,5 +53,17 @@ module.exports = async function checkDataFolder(page, directory) {
     assert(await page.locator('#cr-close').isVisible());
   }
   await page.locator('#cr-close').click();
+  await page.evaluate(() => {
+    openCreator();
+    Object.assign(CREATOR, { race: 'Custom Lineage', subrace: '', customBg: true, bgSkills: ['Religion', 'Arcana'],
+      classes: [{ name: 'Ranger', sub: '', lvl: 1 }], picks: { 'skills:Ranger': ['Stealth', 'Animal Handling', 'Perception'] } });
+    goToCreatorStep(2);
+  });
+  const canny = page.locator('#cr-body .cr-effchoice[data-choice="canny"]');
+  assert.deepEqual(await canny.locator('option').evaluateAll(opts => opts.map(o => o.value).filter(Boolean).sort()),
+    ['animalhandling', 'arcana', 'perception', 'religion', 'stealth']);
+  await canny.selectOption('perception');
+  assert.equal(await canny.inputValue(), 'perception');
+  await page.locator('#cr-close').click();
   console.log('Local 5etools folder: directory picker, snapshot, cache-free reload, prerequisites, race search, tool/language choices and small viewport passed:', imported);
 };

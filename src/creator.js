@@ -644,7 +644,7 @@ function profListText(list) {
         const from = (v.from || []).map(x => String(x).replace(/\|.*/, ""));
         out.push(`choose ${v.count || 1} of: ${from.join(", ")}`);
       } else if (k === "any") { out.push(`any ${v}`);
-      } else if (k === "anyStandard") { out.push(`any ${v} standard language(s)`);
+      } else if (k === "anyStandard") { out.push(`any ${v} language(s)`);
       } else if (v === true) { out.push(String(k).replace(/\|.*/, "")); }
     });
   });
@@ -668,7 +668,9 @@ function flatProfNames(list) {
 function proficiencyOptions(kind, category = "any") {
   if (kind === "skills") return SKILLS.map(s => s[0]);
   if (kind === "languages") return Object.values(LANGUAGE_LIB)
-    .filter(l => category === "anyStandard" ? l.type === "standard" : category === "anyExotic" ? l.type === "exotic" : true)
+    // Free language choices include standard and exotic languages. Explicit choose lists
+    // and exotic-only grants still keep their own restrictions.
+    .filter(l => category === "anyStandard" ? ["standard", "exotic"].includes(l.type) : category === "anyExotic" ? l.type === "exotic" : true)
     .map(l => l.name).sort((a, b) => a.localeCompare(b));
   const types = { anyArtisansTool: "Artisan's Tools", anyMusicalInstrument: "Instrument", anyGamingSet: "Gaming Set" };
   const allowed = types[category] ? [types[category]] : ["Tools", "Artisan's Tools", "Instrument", "Gaming Set"];
@@ -902,9 +904,10 @@ function renderCreator() {
    list, the ability increases and the traits all depend on the race you're halfway through typing -
    but redrawing replaces the box itself, so focus and caret are restored afterwards. */
 function renderCreatorKeepingFocus(el) {
-  const id = el.id, cls = el.className, row = el.dataset.crrow, pos = el.selectionStart;
+  // Expanded fields acquire a temporary class on focus; the replacement input has no such class yet.
+  const id = el.id, cls = [...el.classList].filter(c => c !== "editing-expanded"), row = el.dataset.crrow, pos = el.selectionStart;
   renderCreator();
-  const again = id ? $(id) : document.querySelector(`.${cls.split(/\s+/).filter(Boolean).join(".")}[data-crrow="${row}"]`);
+  const again = id ? $(id) : $("cr-body").querySelector(`.${cls.join(".")}[data-crrow="${row}"]`);
   if (!again) return;
   again.focus();
   try { again.setSelectionRange(pos, pos); } catch (e) { /* not a text input; focus alone is enough */ }
