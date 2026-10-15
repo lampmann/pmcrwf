@@ -382,7 +382,7 @@ function raceFeatHtml() {
   if (typeof hrSetting === "function" && hrSetting("feats") === false) {
     return `<div style="margin-top:.4rem"><b>Feat</b> <span class="hint">off in this campaign's House Rules</span></div>`;
   }
-  const rows = slots.map(s => `<label class="cr-racefeat-slot">${escapeHtml(s.entry)}:
+  const rows = slots.map(s => `<label class="cr-racefeat-slot"><b>${escapeHtml(s.entry)}</b>
     ${creatorCombo("cr-racefeat-" + s.entry.replace(/[^a-z0-9]/gi, ""), CREATOR.raceFeats[s.entry] || "",
       filteredNames("feat", FEAT_LIB, CREATOR.raceFeats[s.entry] || ""), "type to search", "", "", "feat")}
     </label>`).join(" ");
@@ -390,7 +390,7 @@ function raceFeatHtml() {
     const f = (typeof creatorFeatureList === "function" ? creatorFeatureList() : []).find(x => x.isRaceFeat && x.featSlotName === s.entry);
     return f && (CREATOR.raceFeats[s.entry] || "").trim() && typeof crChoicesHtml === "function" ? crChoicesHtml(f) : "";
   }).join("");
-  return `<div style="margin-top:.4rem"><b>Feat</b> ${rows}${choices}</div>`;
+  return `<div style="margin-top:.4rem">${rows}${choices}</div>`;
 }
 
 /* Size. Most races are one size; a few (Dhampir, Fairy, and the other MPMM "Small or Medium" races)
@@ -399,9 +399,9 @@ function raceSizeHtml() {
   const rec = ciFindRace(CREATOR.race);
   const sizes = (rec && rec.size) || [];
   if (sizes.length <= 1) {
-    return sizes.length ? `<div class="hint" style="margin-top:.3rem">Size: <b>${SIZE_NAMES[sizes[0]] || sizes[0]}</b></div>` : "";
+    return sizes.length ? `<div style="margin-top:.3rem"><b>Size</b> ${SIZE_NAMES[sizes[0]] || sizes[0]}</div>` : "";
   }
-  return `<div style="margin-top:.3rem"><label>Size
+  return `<div style="margin-top:.3rem"><label><b>Size</b>
     <select id="cr-size">${sizes.map(s => `<option value="${s}"${CREATOR.size === s ? " selected" : ""}>${SIZE_NAMES[s] || s}</option>`).join("")}</select></label>
     </div>`;
 }
@@ -503,8 +503,8 @@ function creatorStepHtml() {
     const subs = subNames(rec);
     return `<div class="cr-step"><b>Step 1 | Choose a Race</b>
       ${sourceFilterHtml("race", RACE_LIB)}
-      <label>Race ${creatorCombo("cr-race", c.race, races, races.length ? "type to search" : "no race data - type freely", "", "", "race")}</label>
-      ${subs.length || c.subrace ? `<label style="margin-left:.6rem">Subrace ${creatorCombo("cr-subrace", c.subrace, subs, "none", "", "", "race")}</label>` : ""}
+      <label><b>Race</b> ${creatorCombo("cr-race", c.race, races, races.length ? "type to search" : "no race data - type freely", "", "", "race")}</label>
+      ${subs.length || c.subrace ? `<label style="margin-left:.6rem"><b>Subrace</b> ${creatorCombo("cr-subrace", c.subrace, subs, "none", "", "", "race")}</label>` : ""}
       <div style="margin-top:.4rem"><b>Ability increases</b></div>
       ${racialAsiHtml()}
       ${raceSizeHtml()}

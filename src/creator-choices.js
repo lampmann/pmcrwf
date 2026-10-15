@@ -307,11 +307,11 @@ function crRaceProfHtml() {
   const lang = crPickSlotsHtml("langs:race", crLangBlocks(langs), [...fixedLangs, ...crBackgroundLanguages()]);
   const tool = crPickSlotsHtml("tools:race", crToolBlocks(tools), fixedTools);
   const rows = [];
-  if (fixedLangs.length || lang.total) rows.push(`<div>Languages ${escapeHtml(fixedLangs.join(", "))} ${lang.html}</div>`);
-  if (fixedWeapons.length) rows.push(`<div>Weapons ${escapeHtml(fixedWeapons.join(", "))}</div>`);
-  if (fixedTools.length || tool.total) rows.push(`<div>Tools ${escapeHtml(fixedTools.join(", "))} ${tool.html}</div>`);
-  if (resolved.skills.length) rows.push(`<div>Skills ${escapeHtml(resolved.skills.join(", "))}</div>`);
-  if (resolved.armor.length) rows.push(`<div>Armor ${escapeHtml(resolved.armor.join(", "))}</div>`);
+  if (fixedLangs.length || lang.total) rows.push(`<div><b>Languages</b> ${escapeHtml(fixedLangs.join(", "))} ${lang.html}</div>`);
+  if (fixedWeapons.length) rows.push(`<div><b>Weapons</b> ${escapeHtml(fixedWeapons.join(", "))}</div>`);
+  if (fixedTools.length || tool.total) rows.push(`<div><b>Tools</b> ${escapeHtml(fixedTools.join(", "))} ${tool.html}</div>`);
+  if (resolved.skills.length) rows.push(`<div><b>Skills</b> ${escapeHtml(resolved.skills.join(", "))}</div>`);
+  if (resolved.armor.length) rows.push(`<div><b>Armor</b> ${escapeHtml(resolved.armor.join(", "))}</div>`);
   return (rows.length ? `<div style="margin-top:.4rem">${rows.join("")}</div>` : "") + crOriginSwapsHtml();
 }
 
