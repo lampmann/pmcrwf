@@ -219,10 +219,9 @@ function pointsSpent() {
 function creatorCombo(id, value, options, placeholder, extraClass, width, banKind, banPrefix) {
   return comboboxHtml({ id, value, options, placeholder, extraClass, width: width || "12rem", banKind, banPrefix });
 }
-/* Same control for one row of the class table - ids have to be per-row, so these carry a data-crrow
-   index and a class instead of an id. */
+/* A stable per-row ID lets redraws restore focus regardless of temporary styling classes. */
 function creatorRowCombo(cls, row, value, options, placeholder, banKind, banPrefix) {
-  return comboboxHtml({ value, options, placeholder, extraClass: cls, width: "11rem",
+  return comboboxHtml({ id: cls + "-" + row, value, options, placeholder, extraClass: cls, width: "11rem",
     dataAttr: `data-crrow="${row}"`, banKind, banPrefix });
 }
 
